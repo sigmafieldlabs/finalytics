@@ -37,7 +37,7 @@
   "homepage": "https://finalytics.rs/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Nnamdi-sys/finalytics"
+    "url": "git+https://github.com/Nnamdi-sys/finalytics.git"
   },
   "bugs": {
     "url": "https://github.com/Nnamdi-sys/finalytics/issues"
