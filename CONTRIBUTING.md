@@ -58,7 +58,8 @@ difference in the pull request.
 - Write commit messages in the imperative mood ("Add Modified Dietz returns"), with a body that
   explains why when the reason is not obvious.
 - Update `CHANGELOG.md` under "Unreleased" for any user-facing change.
-- New models need a validation test against an independent reference and a methods page.
+- New models need a validation test against an independent reference and a methods page in
+  `docs/methods/`, whose Python examples are run by `bindings/python/tests/test_docs.py`.
 - Public APIs follow semantic versioning: breaking changes wait for a major release.
 
 ## Licence

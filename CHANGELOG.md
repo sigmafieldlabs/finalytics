@@ -69,6 +69,9 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   `Performance`, `MarketData` and functions for risk and optimisation), `Float64Array`s for
   series, TypeScript declarations for every data type, and a worker with a promise-based client
   for running the engine off the main thread. The engine is about 0.6 MB gzipped.
+- Methods and validation pages (`docs/methods/`) for every model: definitions, conventions,
+  references, how each is checked against independent implementations, and examples that run as
+  tests.
 - JSON Schema for every data type the bindings exchange, and for the portfolio document on its
   own, generated from the Rust types; the Python dataclasses and TypeScript declarations are
   generated from it, with the Rust documentation.

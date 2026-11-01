@@ -1,0 +1,41 @@
+# Methods and validation
+
+These pages define each calculation in Finalytics: the formula, the conventions chosen where
+practice differs, the inputs it accepts, the references it follows, and how it is checked
+against independent implementations. The examples are in Python and are run as tests, so their
+outputs are the engine's own.
+
+| Page | Covers |
+| --- | --- |
+| [Tax lots and cost basis](tax-lots.md) | Lot relief methods, corporate actions, realised gains in two currencies |
+| [Valuation and FX rates](valuation.md) | Prices and rates found directly, inverted or crossed; carrying values forward |
+| [Returns](returns.md) | Time-weighted, money-weighted and Modified Dietz returns; periods and annualisation; excess returns |
+| [Contribution to return](contribution.md) | Each holding's share of the return, its own return and the currency effect |
+| [Return statistics and drawdowns](statistics.md) | Volatility, Sharpe, Sortino and Calmar ratios, moments, statistics against a benchmark, drawdowns |
+| [Value at risk and expected shortfall](tail-risk.md) | Historical, parametric and Cornish–Fisher estimates |
+| [Covariance estimation](covariance.md) | Sample, exponentially weighted, Ledoit–Wolf and OAS estimators |
+| [Risk decomposition](risk-decomposition.md) | Marginal and component risk, ex-ante tracking error, risk by group |
+| [Portfolio optimisation](optimisation.md) | Each objective and constraint, its formulation, and how solutions are reported |
+| [Rebalancing](rebalancing.md) | Trades from current holdings to target weights, with lot selection |
+
+## Conventions used throughout
+
+- **Decimals and floats.** Quantities, prices, amounts and cost bases are exact decimals; they
+  are written as strings, such as `"201.50"`, so that no language rounds them. Analytics
+  (returns, statistics, optimisation) use 64-bit floating point.
+- **Signs.** A return of `-0.25` is a fall of 25%. Drawdowns are negative returns. Value at risk
+  and expected shortfall are losses, reported as positive numbers.
+- **Rates.** Returns and rates are fractions, not percentages: `0.03` is 3%.
+- **Annualisation.** Calendar periods annualise with 365.25 days a year, and only when they span
+  a year or more. Statistics of a series of returns annualise with the number of periods a year
+  (252 for daily returns by default).
+- **Errors.** Invalid input is reported with every problem at once, each with a path to where it
+  is (`transactions[14].quantity`, `returns[3]`). A computation that is not defined for valid
+  input, such as a ratio over a dispersion of zero, returns no value rather than a NaN.
+
+## How the checks work
+
+Each page's "Validation" section names an independent implementation and a tolerance. Scripts in
+[`scripts/reference/`](../../scripts/reference) produce the reference values with those
+implementations, and the values are committed as fixtures. The Rust tests compare against them,
+and so do the Python and JavaScript tests, so every language is held to the same numbers.

@@ -18,7 +18,7 @@ constraints.
 - **Runs anywhere.** The core compiles to WebAssembly and runs in the browser, in Node and in
   Python, from one Rust code base.
 - **Validated.** Every model is tested against independent reference implementations, and its
-  methods and tolerances are documented.
+  methods and tolerances are documented in [docs/methods](docs/methods).
 
 ## Scope of 1.0
 
@@ -46,6 +46,8 @@ constraints.
 | `crates/finalytics-*` | The layers behind it: core, ledger, formats, performance, risk, optimisation |
 | `bindings/python` | The Python package |
 | `bindings/wasm` | The WebAssembly module and npm package |
+| `schema` | JSON Schema of the data types, including the portfolio document |
+| `docs/methods` | How each model is defined and validated |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
 
