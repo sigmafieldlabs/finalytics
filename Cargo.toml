@@ -32,7 +32,7 @@ finalytics = { path = "crates/finalytics", version = "=1.0.0-alpha.0" }
 
 rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde"] }
 serde = { version = "1.0.228", features = ["derive", "rc"] }
-serde_json = "1.0.140"
+serde_json = { version = "1.0.140", features = ["float_roundtrip"] }
 serde_path_to_error = "0.1.17"
 schemars = { version = "1.2.3", features = ["preserve_order", "rust_decimal1"] }
 csv = "1.3"
