@@ -1,0 +1,50 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "bindings/python", "bindings/wasm"]
+
+[workspace.package]
+version = "1.0.0-alpha.0"
+edition = "2024"
+rust-version = "1.88"
+authors = ["Nnamdi Olisaeloka"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Nnamdi-sys/finalytics"
+homepage = "https://github.com/Nnamdi-sys/finalytics"
+keywords = ["finance", "portfolio", "optimization", "risk", "performance"]
+categories = ["finance", "mathematics", "science", "wasm"]
+
+[workspace.dependencies]
+finalytics-core = { path = "crates/finalytics-core", version = "=1.0.0-alpha.0" }
+finalytics-ledger = { path = "crates/finalytics-ledger", version = "=1.0.0-alpha.0" }
+finalytics-formats = { path = "crates/finalytics-formats", version = "=1.0.0-alpha.0" }
+finalytics-perf = { path = "crates/finalytics-perf", version = "=1.0.0-alpha.0" }
+finalytics-risk = { path = "crates/finalytics-risk", version = "=1.0.0-alpha.0" }
+finalytics-opt = { path = "crates/finalytics-opt", version = "=1.0.0-alpha.0" }
+finalytics = { path = "crates/finalytics", version = "=1.0.0-alpha.0" }
+
+pyo3 = "0.30"
+wasm-bindgen = "0.2.130"
+wasm-bindgen-test = "0.3.80"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"
+print_stdout = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Small, fast WebAssembly for the npm package.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+panic = "abort"

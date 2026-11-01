@@ -1,0 +1,25 @@
+# Rust
+/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+
+# WebAssembly package output
+/bindings/wasm/pkg/
+
+# Node
+node_modules/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.zed/
+*.swp
+.DS_Store

@@ -1,0 +1,24 @@
+[package]
+name = "finalytics"
+description = "Portfolio analytics: accounting, performance, risk and optimisation, for Rust, Python and WebAssembly."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+finalytics-core = { workspace = true }
+finalytics-ledger = { workspace = true }
+finalytics-formats = { workspace = true }
+finalytics-perf = { workspace = true }
+finalytics-risk = { workspace = true }
+finalytics-opt = { workspace = true }
+
+[lints]
+workspace = true

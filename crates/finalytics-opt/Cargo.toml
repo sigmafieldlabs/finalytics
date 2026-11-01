@@ -1,0 +1,22 @@
+[package]
+name = "finalytics-opt"
+description = "Portfolio optimisation for Finalytics: convex formulations, risk parity, hierarchical risk parity, frontiers and rebalancing."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+finalytics-core = { workspace = true }
+finalytics-ledger = { workspace = true }
+finalytics-perf = { workspace = true }
+finalytics-risk = { workspace = true }
+
+[lints]
+workspace = true

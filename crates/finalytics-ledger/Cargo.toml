@@ -1,0 +1,19 @@
+[package]
+name = "finalytics-ledger"
+description = "Portfolio accounting for Finalytics: instruments, transactions, tax lots, positions and multi-currency valuation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+finalytics-core = { workspace = true }
+
+[lints]
+workspace = true
