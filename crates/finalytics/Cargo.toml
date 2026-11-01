@@ -31,5 +31,8 @@ finalytics-perf = { workspace = true }
 finalytics-risk = { workspace = true }
 finalytics-opt = { workspace = true }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [lints]
 workspace = true

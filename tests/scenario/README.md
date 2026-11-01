@@ -11,3 +11,15 @@ inputs can be checked to give the same results in every language:
   30 October 2026.
 
 The prices are synthetic.
+
+`expected.json` holds the results of the scenario, recorded by the Rust test
+`crates/finalytics/tests/scenario.rs`: valuation, realised gains, returns, contributions,
+statistics, tail risk, risk decomposition, optimisation and a rebalancing proposal. The Python
+and JavaScript tests compute the same results and must match them: decimals exactly, and other
+numbers to $10^{-12}$ relative. After a deliberate change to the engine, regenerate the file with
+
+```sh
+UPDATE_SCENARIO=1 cargo test -p finalytics --test scenario
+```
+
+and review the difference.

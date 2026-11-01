@@ -301,6 +301,7 @@ dependencies = [
  "finalytics-opt",
  "finalytics-perf",
  "finalytics-risk",
+ "serde_json",
 ]
 
 [[package]]
