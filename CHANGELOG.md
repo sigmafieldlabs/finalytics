@@ -14,7 +14,11 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 
 - A workspace of crates behind the `finalytics` facade: core, ledger, formats, performance, risk
   and optimisation.
-- Python bindings (PyO3, abi3 wheels for Python 3.10 and later).
+- A Python package (abi3 wheels for Python 3.10 and later) with the whole engine: portfolios
+  from dataclasses, JSON, documents or CSV; market data from mappings, pandas Series or CSV;
+  books, valuations, performance, contribution, risk and optimisation, with NumPy arrays in and
+  out, frozen dataclasses for results, `ValidationError` listing every problem, and optional
+  pandas conversions (`finalytics[pandas]`).
 - `finalytics-core`: ISO 8601 dates with day and month arithmetic, business-day calendars with
   caller-supplied holidays and the standard adjustment conventions, ISO 4217 currencies, exact
   decimal money with currency-checked arithmetic and rounding, date-indexed time series with
@@ -24,13 +28,14 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   transaction types including splits, spin-offs, mergers, symbol changes and returns of capital,
   tax lots relieved first-in first-out, last-in first-out, by highest or lowest cost, at average
   cost or by specific identification, cash in several currencies, realised gains in local and
-  base currency, holdings on any date, previews of the lots a sale would close, and valuation
-  with caller-supplied prices and FX rates (direct, inverse or crossed through a pivot
-  currency), with carried-forward values reported.
+  base currency, holdings on any date (with cash balances as records), previews of the lots a
+  sale would close, and valuation with caller-supplied prices and FX rates (direct, inverse or
+  crossed through a pivot currency), with carried-forward values reported.
 - `finalytics-formats`: CSV readers for instruments (with classification and identifier
   columns), transactions of every type, and prices and FX rates in long or wide layouts, each
   reporting every problem by line and column; and the versioned portfolio document in JSON,
-  with market data, that reports where a malformed document goes wrong.
+  with market data, that reports where a malformed document goes wrong; market data on its own
+  in the document's format.
 - `finalytics-perf`: daily time-weighted returns chain-linked from values and external flows
   (flows at the start or end of the day), growth of an investment, money-weighted returns
   (internal rate of return), Modified Dietz, month-, quarter- and year-to-date, trailing-year
@@ -61,6 +66,9 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   sale closes, its realised gain, and the currency conversions that fund purchases, as
   transactions ready to apply to the books.
 - WebAssembly bindings and an npm package with TypeScript types.
+- JSON Schema for every data type the bindings exchange, and for the portfolio document on its
+  own, generated from the Rust types; the Python dataclasses and TypeScript declarations are
+  generated from it, with the Rust documentation.
 
 ### Removed
 

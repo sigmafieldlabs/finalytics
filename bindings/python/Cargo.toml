@@ -17,6 +17,9 @@ crate-type = ["cdylib"]
 [dependencies]
 finalytics = { workspace = true }
 pyo3 = { workspace = true, features = ["abi3-py310"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_path_to_error = { workspace = true }
 
 [lints.rust]
 missing_docs = "warn"

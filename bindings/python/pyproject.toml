@@ -29,7 +29,8 @@ Changelog = "https://github.com/Nnamdi-sys/finalytics/blob/main/CHANGELOG.md"
 Issues = "https://github.com/Nnamdi-sys/finalytics/issues"
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
+pandas = ["pandas>=2"]
+test = ["pytest>=8", "pandas>=2", "jsonschema>=4"]
 
 [tool.maturin]
 python-source = "python"

@@ -1,0 +1,12 @@
+id,account,trade_date,type,instrument,quantity,price,fees,amount,currency,sell_amount,sell_currency,buy_amount,buy_currency,withholding_tax
+t1,main,2026-09-01,deposit,,,,,100000,USD,,,,,
+t2,main,2026-09-01,buy,SPY,100,500,10,,,,,,,
+t3,main,2026-09-01,fx_conversion,,,,,,,22000,USD,20000,EUR,
+t4,main,2026-09-02,buy,SAP,80,190.5,5,,,,,,,
+t5,main,2026-09-02,buy,BOND,250,100.05,0,,,,,,,
+t6,isa,2026-09-15,deposit,,,,,20000,USD,,,,,
+t7,isa,2026-09-15,buy,SPY,30,505,5,,,,,,,
+t8,main,2026-09-25,dividend,SPY,,,,180,USD,,,,,27
+t9,main,2026-10-07,sell,SPY,40,512,8,,,,,,,
+t10,main,2026-10-14,withdrawal,,,,,5000,USD,,,,,
+t11,isa,2026-10-20,buy,BOND,45,100.1,0,,,,,,,

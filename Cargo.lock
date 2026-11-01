@@ -380,6 +380,9 @@ version = "1.0.0-alpha.0"
 dependencies = [
  "finalytics",
  "pyo3",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
 ]
 
 [[package]]
