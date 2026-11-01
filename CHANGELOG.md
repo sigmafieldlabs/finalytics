@@ -26,6 +26,10 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   cost or by specific identification, cash in several currencies, realised gains in local and
   base currency, holdings on any date, and valuation with caller-supplied prices and FX rates
   (direct, inverse or crossed through a pivot currency), with carried-forward values reported.
+- `finalytics-formats`: CSV readers for instruments (with classification and identifier
+  columns), transactions of every type, and prices and FX rates in long or wide layouts, each
+  reporting every problem by line and column; and the versioned portfolio document in JSON,
+  with market data, that reports where a malformed document goes wrong.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

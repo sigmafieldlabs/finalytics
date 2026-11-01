@@ -18,6 +18,17 @@ pub use finalytics_ledger::{
     ValueSeries,
 };
 
+pub use finalytics_formats::PortfolioDocument;
+
+/// Reading and writing portfolios: CSV import with validation reports, and the versioned
+/// portfolio document in JSON.
+pub mod formats {
+    pub use finalytics_formats::{
+        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, PortfolioDocument, fx_from_csv,
+        instruments_from_csv, portfolio_from_csv, prices_from_csv, transactions_from_csv,
+    };
+}
+
 /// Numerical helpers: compensated summation and tolerance checks.
 pub mod numeric {
     pub use finalytics_core::numeric::{CompensatedSum, approx_eq, compensated_sum};

@@ -65,6 +65,26 @@ impl MarketData {
         self
     }
 
+    /// Every price series, by instrument.
+    pub fn all_prices(&self) -> impl Iterator<Item = (&InstrumentId, &TimeSeries<Decimal>)> {
+        self.prices.iter()
+    }
+
+    /// Every FX series, as `((base, quote), rates)`.
+    pub fn all_fx(&self) -> impl Iterator<Item = ((Currency, Currency), &TimeSeries<Decimal>)> {
+        self.fx.iter().map(|(pair, rates)| (*pair, rates))
+    }
+
+    /// The currency used to cross rates that are not given directly.
+    pub fn pivot(&self) -> Currency {
+        self.pivot
+    }
+
+    /// How many calendar days a value may be carried forward.
+    pub fn max_carry_days(&self) -> u32 {
+        self.max_carry_days
+    }
+
     /// The prices of `instrument`, if any were supplied.
     pub fn prices(&self, instrument: &InstrumentId) -> Option<&TimeSeries<Decimal>> {
         self.prices.get(instrument)
