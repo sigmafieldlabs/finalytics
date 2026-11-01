@@ -187,6 +187,9 @@ name = "finalytics-ledger"
 version = "1.0.0-alpha.0"
 dependencies = [
  "finalytics-core",
+ "proptest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

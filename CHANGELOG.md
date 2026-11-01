@@ -20,6 +20,12 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   decimal money with currency-checked arithmetic and rounding, date-indexed time series with
   as-of lookups and reindexing that marks carried-forward values, validation reports that list
   every problem with its location, and compensated summation.
+- `finalytics-ledger`: instruments with classifications and multipliers, accounts, sixteen
+  transaction types including splits, spin-offs, mergers, symbol changes and returns of capital,
+  tax lots relieved first-in first-out, last-in first-out, by highest or lowest cost, at average
+  cost or by specific identification, cash in several currencies, realised gains in local and
+  base currency, holdings on any date, and valuation with caller-supplied prices and FX rates
+  (direct, inverse or crossed through a pivot currency), with carried-forward values reported.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed
