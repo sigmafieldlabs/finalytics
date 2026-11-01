@@ -30,6 +30,11 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   columns), transactions of every type, and prices and FX rates in long or wide layouts, each
   reporting every problem by line and column; and the versioned portfolio document in JSON,
   with market data, that reports where a malformed document goes wrong.
+- `finalytics-perf`: daily time-weighted returns chain-linked from values and external flows
+  (flows at the start or end of the day), growth of an investment, money-weighted returns
+  (internal rate of return), Modified Dietz, month-, quarter- and year-to-date, trailing-year
+  and since-inception periods with annualisation for periods of a year or more, and excess
+  returns over a benchmark, arithmetic and geometric.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

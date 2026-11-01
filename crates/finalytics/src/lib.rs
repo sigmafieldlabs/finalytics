@@ -19,6 +19,7 @@ pub use finalytics_ledger::{
 };
 
 pub use finalytics_formats::PortfolioDocument;
+pub use finalytics_perf::{ExcessReturn, FlowTiming, Performance, Period, PeriodReturn};
 
 /// Reading and writing portfolios: CSV import with validation reports, and the versioned
 /// portfolio document in JSON.

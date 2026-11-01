@@ -233,6 +233,8 @@ version = "1.0.0-alpha.0"
 dependencies = [
  "finalytics-core",
  "finalytics-ledger",
+ "proptest",
+ "serde",
 ]
 
 [[package]]
