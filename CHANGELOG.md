@@ -49,6 +49,13 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   tracking error into each holding's marginal and component risk, by holding and by group; and
   holding weights and base-currency returns from a portfolio's books. Validated against
   empyrical, SciPy, pandas and scikit-learn.
+- `finalytics-opt`: portfolio optimisation on the Clarabel interior-point solver: minimum
+  variance, mean–variance, target return, target volatility, maximum Sharpe ratio, maximum
+  diversification and minimum CVaR, with budget, bound, group, leverage, turnover, trading-cost
+  and tracking-error constraints for long-only and long-short portfolios; risk budgeting and risk
+  parity by Newton's method; hierarchical risk parity with single, complete, average or Ward
+  linkage; and the efficient frontier. Every solution reports its status, objective value,
+  largest constraint violation, iterations and time. Validated against CVXPY and PyPortfolioOpt.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

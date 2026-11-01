@@ -39,13 +39,14 @@ cd bindings/python && maturin build --release -o dist && pip install dist/*.whl 
 
 ## Reference values
 
-Validation tests compare against independent implementations, such as empyrical, SciPy and
-scikit-learn. The scripts in `scripts/reference/` generate the reference values, which are
-committed as fixtures under each crate's `tests/fixtures/`:
+Validation tests compare against independent implementations, such as empyrical, SciPy,
+scikit-learn, CVXPY and PyPortfolioOpt. The scripts in `scripts/reference/` generate the
+reference values, which are committed as fixtures under each crate's `tests/fixtures/`:
 
 ```sh
 pip install -r scripts/reference/requirements.txt
 python scripts/reference/risk.py
+python scripts/reference/optimisation.py
 ```
 
 Regenerate a fixture only when you add a case or a reference library changes, and review the

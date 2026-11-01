@@ -54,6 +54,31 @@ pub mod risk {
     };
 }
 
+/// Portfolio optimisation: minimum variance, mean–variance, target return and volatility,
+/// maximum Sharpe ratio and diversification, minimum CVaR, risk budgeting and hierarchical risk
+/// parity, under budget, bound, group, leverage, turnover and tracking-error constraints; and the
+/// efficient frontier.
+///
+/// ```
+/// use finalytics::opt::{Objective, Problem};
+/// use finalytics::risk::Matrix;
+///
+/// let covariance = Matrix::new(
+///     vec!["equity".into(), "bonds".into()],
+///     vec![0.0400, 0.0020, 0.0020, 0.0049],
+/// )?;
+/// let problem = Problem::new(covariance).with_expected_returns(vec![0.07, 0.03]);
+/// let solution = problem.solve(&Objective::MaximumSharpe { risk_free_rate: 0.02 })?;
+/// assert!(solution.status.has_solution());
+/// # Ok::<(), finalytics::Error>(())
+/// ```
+pub mod opt {
+    pub use finalytics_opt::{
+        AssetBound, Bound, Constraints, FrontierPoint, GroupLimit, Linkage, Method, Objective,
+        Problem, Solution, SolveStatus, TrackingErrorLimit, Turnover,
+    };
+}
+
 /// Numerical helpers: compensated summation and tolerance checks.
 pub mod numeric {
     pub use finalytics_core::numeric::{CompensatedSum, approx_eq, compensated_sum};

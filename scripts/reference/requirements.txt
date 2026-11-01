@@ -1,5 +1,11 @@
 # Independent reference implementations used to generate the test fixtures.
+clarabel==0.11.1
+cvxpy==1.9.3
 empyrical-reloaded==0.7.1
+highspy==1.15.1
 numpy==2.5.3
-scipy==1.18.1
+packaging==26.3
+pandas==3.1.0
+pyportfolioopt==1.6.0
 scikit-learn==1.9.1
+scipy==1.18.1
