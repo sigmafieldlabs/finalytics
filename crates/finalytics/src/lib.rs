@@ -33,8 +33,8 @@ pub mod formats {
     };
 }
 
-/// Risk analytics on returns series: statistics, drawdowns, value at risk and expected shortfall,
-/// and rolling versions of each.
+/// Risk analytics: statistics, drawdowns, value at risk and expected shortfall, covariance
+/// estimation, and the decomposition of a portfolio's risk by holding and by group.
 ///
 /// ```
 /// let returns = [0.010, -0.004, 0.007, -0.012, 0.003];
@@ -44,10 +44,13 @@ pub mod formats {
 /// ```
 pub mod risk {
     pub use finalytics_risk::{
-        Drawdown, RelativeStatistics, Statistics, StatisticsOptions, TailMethod, TailRisk,
-        drawdown_series, drawdowns, max_drawdown, normal_cdf, normal_pdf, normal_quantile,
-        relative_statistics, rolling, rolling_relative_statistics, rolling_statistics,
-        rolling_tail_risk, statistics, tail_risk, total_return,
+        CovarianceEstimate, CovarianceMethod, Drawdown, GroupRisk, HoldingReturns, Matrix,
+        RelativeStatistics, ReturnsTable, RiskContribution, RiskDecomposition, Statistics,
+        StatisticsOptions, TailMethod, TailRisk, covariance, drawdown_series, drawdowns,
+        group_risk, holding_returns, holding_weights, max_drawdown, normal_cdf, normal_pdf,
+        normal_quantile, relative_statistics, risk_decomposition, rolling,
+        rolling_relative_statistics, rolling_statistics, rolling_tail_risk, statistics, tail_risk,
+        total_return, tracking_error_decomposition,
     };
 }
 

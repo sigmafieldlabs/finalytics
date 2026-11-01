@@ -1,23 +1,35 @@
-//! Risk analytics: return statistics, drawdowns, value at risk and expected shortfall, and
-//! rolling versions of each.
+//! Risk analytics: return statistics, drawdowns, value at risk and expected shortfall,
+//! covariance estimation, and the decomposition of a portfolio's risk by holding and by group.
 //!
-//! The functions take returns as plain slices, one per period, so they serve both a portfolio's
+//! The statistics take returns as plain slices, one per period, so they serve both a portfolio's
 //! returns from [`finalytics_perf`](https://docs.rs/finalytics-perf) and returns supplied
 //! directly. Inputs are validated: a non-finite value or a return below -100% is reported by
-//! position.
+//! position. [`holding_weights`] and [`holding_returns`] prepare the inputs to risk
+//! decomposition from a portfolio's books.
 //!
 //! Most users should depend on the [`finalytics`](https://docs.rs/finalytics) crate, which re-exports
 //! the public API of every layer.
 
+mod covariance;
+mod decomposition;
 mod distribution;
 mod drawdown;
+mod holdings;
 mod input;
+mod matrix;
 mod rolling;
 mod statistics;
 mod tail;
 
+pub use covariance::{CovarianceEstimate, CovarianceMethod, covariance};
+pub use decomposition::{
+    GroupRisk, RiskContribution, RiskDecomposition, group_risk, risk_decomposition,
+    tracking_error_decomposition,
+};
 pub use distribution::{normal_cdf, normal_pdf, normal_quantile};
 pub use drawdown::{Drawdown, drawdown_series, drawdowns};
+pub use holdings::{HoldingReturns, holding_returns, holding_weights};
+pub use matrix::{Matrix, ReturnsTable};
 pub use rolling::{rolling, rolling_relative_statistics, rolling_statistics, rolling_tail_risk};
 pub use statistics::{
     RelativeStatistics, Statistics, StatisticsOptions, max_drawdown, relative_statistics,

@@ -1,16 +1,18 @@
-"""Generate reference values for the finalytics-risk statistics tests.
+"""Generate reference values for the finalytics-risk tests.
 
-Return statistics come from empyrical, quantiles from SciPy, and the Cornish-Fisher expected
-shortfall from numerical integration of the Edgeworth density, so that each check in
+Return statistics come from empyrical, quantiles from SciPy, the Cornish-Fisher expected shortfall
+from numerical integration of the Edgeworth density, the exponentially weighted covariance from
+pandas, and the shrinkage estimators from scikit-learn, so that each check in
 ``crates/finalytics-risk/tests/reference.rs`` compares against an independent implementation.
 
 Usage:
 
     pip install -r scripts/reference/requirements.txt
-    python scripts/reference/risk_statistics.py
+    python scripts/reference/risk.py
 
-The output, ``crates/finalytics-risk/tests/fixtures/statistics.json``, is committed. Regenerate it
-only when a case is added or a reference library changes, and review the difference.
+The outputs, ``statistics.json`` and ``covariance.json`` in
+``crates/finalytics-risk/tests/fixtures``, are committed. Regenerate them only when a case is added
+or a reference library changes, and review the difference.
 """
 
 import json
@@ -18,12 +20,13 @@ import pathlib
 
 import empyrical as ep
 import numpy as np
+import pandas as pd
 from scipy import integrate, stats
+from sklearn.covariance import OAS, LedoitWolf
 
-OUTPUT = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "crates/finalytics-risk/tests/fixtures/statistics.json"
-)
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+FIXTURES = ROOT / "crates/finalytics-risk/tests/fixtures"
+EWMA_DECAY = 0.94
 CONFIDENCES = [0.95, 0.99]
 
 
@@ -128,15 +131,55 @@ def case(name, periods, risk_free, target, returns, benchmark):
     }
 
 
+def covariance_cases():
+    rng = np.random.default_rng(20261103)
+    for name, assets, observations in [("wide", 6, 250), ("short", 30, 40), ("small", 3, 10)]:
+        loadings = rng.uniform(0.3, 1.2, assets)
+        market = 0.01 * rng.standard_normal(observations)
+        noise = 0.006 * rng.standard_normal((observations, assets))
+        returns = 0.0003 + np.outer(market, loadings) + noise
+        ewma = (
+            pd.DataFrame(returns)
+            .ewm(alpha=1.0 - EWMA_DECAY, adjust=True)
+            .cov(bias=True)
+            .loc[observations - 1]
+            .to_numpy()
+        )
+        ledoit_wolf = LedoitWolf().fit(returns)
+        oas = OAS().fit(returns)
+        yield {
+            "name": name,
+            "columns": returns.T.tolist(),
+            "sample": np.cov(returns, rowvar=False, ddof=1).ravel().tolist(),
+            "ewma": {"decay": EWMA_DECAY, "matrix": ewma.ravel().tolist()},
+            "ledoit_wolf": {
+                "shrinkage": float(ledoit_wolf.shrinkage_),
+                "matrix": ledoit_wolf.covariance_.ravel().tolist(),
+            },
+            "oas": {
+                "shrinkage": float(oas.shrinkage_),
+                "matrix": oas.covariance_.ravel().tolist(),
+            },
+        }
+
+
+def write(name, fixture):
+    path = FIXTURES / name
+    content = {"generated_by": "scripts/reference/risk.py", **fixture}
+    path.write_text(json.dumps(content, indent=1) + "\n")
+    print(f"wrote {path.relative_to(ROOT)}")
+
+
 def main():
     probabilities = [1e-300, 1e-50, 1e-10, 1e-4, 0.01, 0.02425, 0.05, 0.3, 0.5, 0.7, 0.975, 0.999]
-    fixture = {
-        "generated_by": "scripts/reference/risk_statistics.py",
-        "normal_quantile": [[p, float(stats.norm.ppf(p))] for p in probabilities],
-        "cases": [case(*c) for c in cases()],
-    }
-    OUTPUT.write_text(json.dumps(fixture, indent=1) + "\n")
-    print(f"wrote {OUTPUT.relative_to(OUTPUT.parents[4])}")
+    write(
+        "statistics.json",
+        {
+            "normal_quantile": [[p, float(stats.norm.ppf(p))] for p in probabilities],
+            "cases": [case(*c) for c in cases()],
+        },
+    )
+    write("covariance.json", {"cases": list(covariance_cases())})
 
 
 if __name__ == "__main__":

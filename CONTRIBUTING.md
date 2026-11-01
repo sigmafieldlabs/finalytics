@@ -45,7 +45,7 @@ committed as fixtures under each crate's `tests/fixtures/`:
 
 ```sh
 pip install -r scripts/reference/requirements.txt
-python scripts/reference/risk_statistics.py
+python scripts/reference/risk.py
 ```
 
 Regenerate a fixture only when you add a case or a reference library changes, and review the

@@ -44,7 +44,11 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   a benchmark (active return, tracking error, information ratio, beta, alpha and correlation),
   drawdowns with their peak, trough and recovery dates, value at risk and expected shortfall
   (historical, parametric and Cornish–Fisher), the standard normal distribution, and rolling
-  versions of each. Validated against empyrical and SciPy.
+  versions of each; covariance estimation (sample, exponentially weighted, Ledoit–Wolf and
+  oracle approximating shrinkage) with correlation; the decomposition of volatility and ex-ante
+  tracking error into each holding's marginal and component risk, by holding and by group; and
+  holding weights and base-currency returns from a portfolio's books. Validated against
+  empyrical, SciPy, pandas and scikit-learn.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

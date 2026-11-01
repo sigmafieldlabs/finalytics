@@ -1,5 +1,5 @@
 {
- "generated_by": "scripts/reference/risk_statistics.py",
+ "generated_by": "scripts/reference/risk.py",
  "normal_quantile": [
   [
    1e-300,
