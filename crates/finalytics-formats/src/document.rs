@@ -207,6 +207,14 @@ impl PortfolioDocument {
     /// The portfolio's structure is validated as well ([`Portfolio::validate`]); its problems
     /// are reported with paths under `portfolio`.
     pub fn from_json(text: &str) -> Result<PortfolioDocument> {
+        // A well-formed document of this version reads directly; anything else is read again,
+        // more slowly, to report what is wrong and where.
+        if let Ok(repr) = serde_json::from_str::<DocumentRepr>(text)
+            && repr.format == FORMAT
+            && repr.format_version == FORMAT_VERSION
+        {
+            return Self::from_repr(repr, ValidationReport::new());
+        }
         let mut report = ValidationReport::new();
         let value: serde_json::Value = match serde_json::from_str(text) {
             Ok(value) => value,
@@ -242,6 +250,10 @@ impl PortfolioDocument {
                 return Err(Error::Validation(report));
             }
         };
+        Self::from_repr(repr, report)
+    }
+
+    fn from_repr(repr: DocumentRepr, mut report: ValidationReport) -> Result<PortfolioDocument> {
         report.merge("portfolio", repr.portfolio.validate());
         let market = repr.market.map(MarketRepr::into_market);
         report.into_result(PortfolioDocument {

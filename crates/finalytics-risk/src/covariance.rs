@@ -162,22 +162,16 @@ fn ledoit_wolf(centred: &[Vec<f64>], empirical: &[f64], n: usize, t: usize) -> f
     }
     let (nf, tf) = (n as f64, t as f64);
     let mu = trace(empirical, n) / nf;
-    // delta_ = sum of squared entries of X'X / t^2; beta_ = sum of the entries of (X^2)'(X^2).
+    // delta_ = sum of squared entries of X'X / t^2; beta_ = sum of the entries of (X^2)'(X^2),
+    // which is sum_t (sum_i x_ti^2)^2 and so needs one pass over the observations.
     let delta_: f64 = empirical.iter().map(|v| v * v).sum();
-    let squares: Vec<Vec<f64>> = centred
-        .iter()
-        .map(|c| c.iter().map(|x| x * x).collect())
-        .collect();
-    let mut beta_ = 0.0;
-    for i in 0..n {
-        for j in 0..n {
-            beta_ += squares[i]
-                .iter()
-                .zip(&squares[j])
-                .map(|(a, b)| a * b)
-                .sum::<f64>();
+    let mut row_squares = vec![0.0; t];
+    for column in centred {
+        for (sum, x) in row_squares.iter_mut().zip(column) {
+            *sum += x * x;
         }
     }
+    let beta_: f64 = row_squares.iter().map(|s| s * s).sum();
     let beta = (beta_ / tf - delta_) / (nf * tf);
     let delta = (delta_ - 2.0 * mu * trace(empirical, n) + nf * mu * mu) / nf;
     let beta = beta.min(delta);

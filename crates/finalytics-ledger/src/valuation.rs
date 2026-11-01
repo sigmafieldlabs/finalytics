@@ -3,9 +3,11 @@
 use finalytics_core::{Currency, Date, Decimal, Error, Observation, Result, ValidationReport};
 use serde::{Deserialize, Serialize};
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
-use crate::{AccountId, Allocation, Books, HoldingKey, Holdings, InstrumentId, MarketData};
+use crate::{
+    AccountId, Allocation, Books, Effect, HoldingKey, Holdings, InstrumentId, LotId, MarketData,
+};
 
 /// A position valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -111,23 +113,24 @@ impl Books {
                 next: pair[1],
             });
         }
-        let mut problems = ValidationReport::new();
-        let mut holdings = Holdings::default();
+        let base = self.base_currency();
+        let mut look = Lookup {
+            market,
+            problems: ValidationReport::new(),
+        };
+        let mut totals = Totals::default();
         let mut values = Vec::with_capacity(dates.len());
         let mut flows = Vec::with_capacity(dates.len());
         let mut events = self.events().iter().peekable();
         for &date in dates {
             let mut flow = Decimal::ZERO;
             while let Some(event) = events.next_if(|e| e.date <= date) {
-                holdings.apply_all(&event.effects);
+                totals.apply_all(&event.effects);
                 for f in &event.flows {
-                    match market
-                        .fx_rate(f.currency, self.base_currency(), event.date)
-                        .value()
-                    {
+                    match market.fx_rate(f.currency, base, event.date).value() {
                         Some(rate) => flow += f.amount * rate,
-                        None => problems.error(
-                            format!("fx.{}{}", f.currency, self.base_currency()),
+                        None => look.problems.error(
+                            format!("fx.{}{base}", f.currency),
                             format!(
                                 "no rate on or shortly before {} for a flow of {} {}",
                                 event.date, f.amount, f.currency
@@ -136,18 +139,31 @@ impl Books {
                     }
                 }
             }
-            let valuation = self.value_holdings(&holdings, date, market, &mut problems);
-            values.push(valuation.total_base);
+            let mut rates = Rates::new(base, date);
+            let mut total = Decimal::ZERO;
+            for (id, quantity) in &totals.quantities {
+                let Some(instrument) = self.instrument(id) else {
+                    continue;
+                };
+                let local = *quantity * look.price(id, date) * instrument.multiplier;
+                total += local * rates.get(instrument.currency, &mut look);
+            }
+            for (currency, amount) in &totals.cash {
+                if !amount.is_zero() {
+                    total += *amount * rates.get(*currency, &mut look);
+                }
+            }
+            values.push(total);
             flows.push(flow);
         }
-        if problems.has_errors() {
-            return Err(Error::Validation(problems));
+        if look.problems.has_errors() {
+            return Err(Error::Validation(look.problems));
         }
         Ok(ValueSeries {
             dates: dates.to_vec(),
             values,
             flows,
-            warnings: problems,
+            warnings: look.problems,
         })
     }
 
@@ -306,6 +322,78 @@ impl HoldingLine {
     }
 }
 
+/// Quantities by instrument and cash by currency, added up across accounts, kept up to date from
+/// the books' effects, so that a series of valuations needs one pass and one price lookup per
+/// instrument and date.
+#[derive(Default)]
+struct Totals {
+    /// The quantity of each open lot, to know what a change to it replaces.
+    lots: HashMap<(AccountId, InstrumentId, LotId), Decimal>,
+    quantities: BTreeMap<InstrumentId, Decimal>,
+    cash: BTreeMap<Currency, Decimal>,
+}
+
+impl Totals {
+    fn apply_all(&mut self, effects: &[Effect]) {
+        for effect in effects {
+            match effect {
+                Effect::SetLot { lot } => {
+                    let key = (lot.account.clone(), lot.instrument.clone(), lot.id.clone());
+                    let before = self.lots.insert(key, lot.quantity).unwrap_or_default();
+                    self.add(&lot.instrument, lot.quantity - before);
+                }
+                Effect::CloseLot {
+                    account,
+                    instrument,
+                    lot,
+                } => {
+                    let key = (account.clone(), instrument.clone(), lot.clone());
+                    if let Some(before) = self.lots.remove(&key) {
+                        self.add(instrument, -before);
+                    }
+                }
+                Effect::Cash {
+                    currency, amount, ..
+                } => *self.cash.entry(*currency).or_default() += *amount,
+            }
+        }
+    }
+
+    fn add(&mut self, instrument: &InstrumentId, change: Decimal) {
+        let quantity = self.quantities.entry(instrument.clone()).or_default();
+        *quantity += change;
+        if quantity.is_zero() {
+            self.quantities.remove(instrument);
+        }
+    }
+}
+
+/// FX rates into the base currency on one date, each looked up once.
+struct Rates {
+    base: Currency,
+    date: Date,
+    found: Vec<(Currency, Decimal)>,
+}
+
+impl Rates {
+    fn new(base: Currency, date: Date) -> Rates {
+        Rates {
+            base,
+            date,
+            found: Vec::new(),
+        }
+    }
+
+    fn get(&mut self, currency: Currency, look: &mut Lookup<'_>) -> Decimal {
+        if let Some((_, rate)) = self.found.iter().find(|(c, _)| *c == currency) {
+            return *rate;
+        }
+        let rate = look.fx(currency, self.base, self.date);
+        self.found.push((currency, rate));
+        rate
+    }
+}
+
 struct Lookup<'a> {
     market: &'a MarketData,
     problems: ValidationReport,
@@ -369,7 +457,7 @@ impl Books {
             problems: ValidationReport::new(),
         };
         let mut lines: BTreeMap<HoldingKey, HoldingLine> = BTreeMap::new();
-        let mut holdings = Holdings::default();
+        let mut totals = Totals::default();
         let mut events = self.events().iter().peekable();
         let currency_of = |key: &HoldingKey| match key {
             HoldingKey::Cash(c) => *c,
@@ -377,7 +465,7 @@ impl Books {
         };
         for (i, &date) in dates.iter().enumerate() {
             while let Some(event) = events.next_if(|e| e.date <= date) {
-                holdings.apply_all(&event.effects);
+                totals.apply_all(&event.effects);
                 for allocation in &event.allocations {
                     let mut add = |key: HoldingKey,
                                    currency: Currency,
@@ -433,27 +521,26 @@ impl Books {
                     }
                 }
             }
-            for position in holdings.positions() {
-                let key = HoldingKey::Instrument(position.instrument.clone());
-                let Some(instrument) = self.instrument(&position.instrument) else {
+            let mut rates = Rates::new(base, date);
+            for (id, quantity) in &totals.quantities {
+                let Some(instrument) = self.instrument(id) else {
                     continue;
                 };
-                let local = position.quantity
-                    * look.price(&position.instrument, date)
-                    * instrument.multiplier;
-                let in_base = local * look.fx(instrument.currency, base, date);
+                let key = HoldingKey::Instrument(id.clone());
+                let local = *quantity * look.price(id, date) * instrument.multiplier;
+                let in_base = local * rates.get(instrument.currency, &mut look);
                 let line = lines
                     .entry(key.clone())
                     .or_insert_with(|| HoldingLine::new(key, instrument.currency, dates.len()));
                 line.values_local[i] += local;
                 line.values_base[i] += in_base;
             }
-            for (_, currency, amount) in holdings.cash() {
+            for (&currency, &amount) in &totals.cash {
                 let key = HoldingKey::Cash(currency);
                 let in_base = if amount.is_zero() {
                     Decimal::ZERO
                 } else {
-                    amount * look.fx(currency, base, date)
+                    amount * rates.get(currency, &mut look)
                 };
                 let line = lines
                     .entry(key.clone())

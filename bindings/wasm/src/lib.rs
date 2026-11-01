@@ -3,7 +3,9 @@
 //! This layer only converts data between JavaScript and Rust; the analytics live in the
 //! `finalytics` crate. Structured values cross as plain objects in the formats of
 //! `schema/finalytics.schema.json`, whose TypeScript declarations are generated into
-//! `types.d.ts`; series of numbers cross as `Float64Array`s and dates as ISO 8601 strings.
+//! `types.d.ts`, by way of JSON text, which is far faster for large values than reading objects
+//! property by property; series of numbers cross as `Float64Array`s and dates as ISO 8601
+//! strings.
 //!
 //! Errors are thrown as `Error` objects. A validation error has the name `ValidationError` and an
 //! `issues` property listing every problem, each with a `path` and a `message`.
@@ -83,14 +85,31 @@ fn invalid(path: &str, message: impl Into<String>) -> JsValue {
     error(Error::Validation(report))
 }
 
+/// A Rust value as a JavaScript value, through JSON text: one call to the JavaScript engine's
+/// JSON parser is much faster than building a large object property by property across the
+/// boundary.
 fn to_js<T: Serialize + ?Sized>(value: &T) -> Result<JsValue, JsValue> {
-    value
-        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-        .map_err(|e| invalid("", format!("could not encode a result: {e}")))
+    let text = serde_json::to_string(value)
+        .map_err(|e| invalid("", format!("could not encode a result: {e}")))?;
+    js_sys::JSON::parse(&text)
 }
 
+/// A JavaScript value as a Rust value, through JSON text (see `to_js`), reporting where it is
+/// malformed.
 fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue> {
-    serde_path_to_error::deserialize(serde_wasm_bindgen::Deserializer::from(value)).map_err(|e| {
+    if value.is_undefined() {
+        return Err(invalid(name, "is missing"));
+    }
+    let text: String = js_sys::JSON::stringify(&value)
+        .map_err(|_| invalid(name, "cannot be written as JSON"))?
+        .into();
+    // Reading without tracking paths is faster; only a value that fails is read again to find
+    // where it goes wrong.
+    if let Ok(found) = serde_json::from_str(&text) {
+        return Ok(found);
+    }
+    let mut deserializer = serde_json::Deserializer::from_str(&text);
+    serde_path_to_error::deserialize(&mut deserializer).map_err(|e| {
         let path = e.path().to_string();
         let path = if path == "." {
             name.to_owned()

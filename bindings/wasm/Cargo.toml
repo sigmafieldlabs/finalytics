@@ -17,7 +17,6 @@ crate-type = ["cdylib", "rlib"]
 finalytics = { workspace = true }
 js-sys = { workspace = true }
 serde = { workspace = true }
-serde-wasm-bindgen = { workspace = true }
 serde_json = { workspace = true }
 serde_path_to_error = { workspace = true }
 wasm-bindgen = { workspace = true }

@@ -1,6 +1,6 @@
 //! A portfolio and its structural validation.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{HashMap, HashSet};
 
 use finalytics_core::{Currency, Decimal, Money, ValidationReport};
 use serde::{Deserialize, Serialize};
@@ -53,7 +53,7 @@ impl Portfolio {
     pub fn validate(&self) -> ValidationReport {
         let mut report = ValidationReport::new();
 
-        let mut accounts = BTreeSet::new();
+        let mut accounts = HashSet::with_capacity(self.accounts.len());
         for (i, account) in self.accounts.iter().enumerate() {
             if !accounts.insert(&account.id) {
                 report.error(
@@ -63,7 +63,8 @@ impl Portfolio {
             }
         }
 
-        let mut instruments: BTreeMap<&InstrumentId, &Instrument> = BTreeMap::new();
+        let mut instruments: HashMap<&InstrumentId, &Instrument> =
+            HashMap::with_capacity(self.instruments.len());
         for (i, instrument) in self.instruments.iter().enumerate() {
             if instruments.insert(&instrument.id, instrument).is_some() {
                 report.error(
@@ -79,7 +80,7 @@ impl Portfolio {
             }
         }
 
-        let mut transactions = BTreeSet::new();
+        let mut transactions = HashSet::with_capacity(self.transactions.len());
         for (i, tx) in self.transactions.iter().enumerate() {
             let at = |field: &str| format!("transactions[{i}].{field}");
             if !transactions.insert(&tx.id) {
@@ -107,7 +108,7 @@ impl Portfolio {
 struct Checker<'a, F: Fn(&str) -> String> {
     report: &'a mut ValidationReport,
     at: &'a F,
-    instruments: &'a BTreeMap<&'a InstrumentId, &'a Instrument>,
+    instruments: &'a HashMap<&'a InstrumentId, &'a Instrument>,
 }
 
 impl<F: Fn(&str) -> String> Checker<'_, F> {

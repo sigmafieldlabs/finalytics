@@ -53,6 +53,11 @@ fn to_json<T: Serialize>(value: &T) -> PyResult<String> {
 
 /// Parses JSON input, reporting where it is malformed.
 fn from_json<T: DeserializeOwned>(text: &str, name: &str) -> PyResult<T> {
+    // Reading without tracking paths is faster; only input that fails is read again to find
+    // where it goes wrong.
+    if let Ok(found) = serde_json::from_str(text) {
+        return Ok(found);
+    }
     let mut deserializer = serde_json::Deserializer::from_str(text);
     serde_path_to_error::deserialize(&mut deserializer).map_err(|e| {
         let path = e.path().to_string();

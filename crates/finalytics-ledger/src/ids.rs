@@ -1,6 +1,8 @@
 //! Identifiers chosen by the caller.
 
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -10,17 +12,31 @@ macro_rules! identifier {
         ///
         /// Identifiers are non-empty, have no leading or trailing whitespace, and are compared
         /// exactly (case matters).
-        #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+        // The text is shared between copies: the books clone identifiers into every lot, event
+        // and lookup key, so a clone is a reference count rather than an allocation.
+        #[derive(Clone, Eq, PartialOrd, Ord, Serialize)]
         #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
         #[serde(transparent)]
-        pub struct $name(String);
+        pub struct $name(Arc<str>);
+
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                Arc::ptr_eq(&self.0, &other.0) || self.0 == other.0
+            }
+        }
+
+        impl Hash for $name {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.0.hash(state);
+            }
+        }
 
         impl $name {
             /// Creates an identifier, or returns `None` if `id` is empty or has surrounding
             /// whitespace.
             pub fn new(id: impl Into<String>) -> Option<Self> {
-                let id = id.into();
-                (!id.is_empty() && id.trim() == id).then_some(Self(id))
+                let id: String = id.into();
+                (!id.is_empty() && id.trim() == id).then(|| Self(Arc::from(id)))
             }
 
             /// The identifier as text.
@@ -44,7 +60,7 @@ macro_rules! identifier {
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let text = String::deserialize(deserializer)?;
-                $name::new(text.clone()).ok_or_else(|| {
+                $name::new(text.as_str()).ok_or_else(|| {
                     serde::de::Error::custom(format!(
                         "{:?} is not a valid identifier: it must be non-empty, without leading or trailing spaces",
                         text
@@ -76,12 +92,12 @@ identifier!(
 impl LotId {
     /// The lot opened by transaction `tx`.
     pub(crate) fn opened_by(tx: &TransactionId) -> LotId {
-        LotId(tx.as_str().to_owned())
+        LotId(Arc::from(tx.as_str()))
     }
 
     /// The lot derived from this one by the corporate action `action`.
     pub(crate) fn derived(&self, action: &TransactionId) -> LotId {
-        LotId(format!("{}/{}", self.0, action))
+        LotId(Arc::from(format!("{}/{}", self.0, action)))
     }
 }
 

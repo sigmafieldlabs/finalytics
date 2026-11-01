@@ -1,6 +1,6 @@
 //! Keeping the books: applying transactions in order.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use finalytics_core::{Currency, Date, Decimal, Error, Result, ValidationReport};
 use serde::{Deserialize, Serialize};
@@ -338,12 +338,6 @@ impl Holdings {
             .sum()
     }
 
-    pub(crate) fn apply_all(&mut self, effects: &[Effect]) {
-        for effect in effects {
-            self.apply(effect);
-        }
-    }
-
     fn apply(&mut self, effect: &Effect) {
         match effect {
             Effect::SetLot { lot } => {
@@ -488,7 +482,7 @@ impl Books {
 struct Engine<'a> {
     portfolio: &'a Portfolio,
     market: &'a MarketData,
-    instruments: BTreeMap<InstrumentId, &'a Instrument>,
+    instruments: HashMap<InstrumentId, &'a Instrument>,
     holdings: Holdings,
     realised: Vec<RealisedGain>,
     sequence: u64,
