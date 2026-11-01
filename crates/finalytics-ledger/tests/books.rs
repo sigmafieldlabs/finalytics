@@ -417,3 +417,50 @@ fn portfolios_round_trip_through_json() {
     let parsed: Transaction = serde_json::from_str(numbers).unwrap();
     assert_eq!(parsed.kind, buy("AAPL", "10", "150.5", "0"));
 }
+
+#[test]
+fn a_sale_preview_leaves_the_lots_alone() {
+    let books = Books::build(&single_currency(), &MarketData::new()).unwrap();
+    // Before the sale: lots t2 (10 at 150.50) and t3 (10 at 200.50).
+    let march = books.holdings_on(d("2026-03-31"));
+    let main = id(AccountId::new, "main");
+    let preview = |method| {
+        march
+            .lots_for_sale(&main, &iid("AAPL"), dec("12"), method)
+            .unwrap()
+            .into_iter()
+            .map(|s| (s.lot.as_str().to_owned(), s.quantity, s.cost_local))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        preview(LotMethod::Fifo),
+        [
+            ("t2".into(), dec("10"), dec("1505")),
+            ("t3".into(), dec("2"), dec("401"))
+        ]
+    );
+    assert_eq!(
+        preview(LotMethod::HighestCost),
+        [
+            ("t3".into(), dec("10"), dec("2005")),
+            ("t2".into(), dec("2"), dec("301"))
+        ]
+    );
+    assert_eq!(march.lots_of(&main, &iid("AAPL")).len(), 2);
+
+    assert!(
+        march
+            .lots_for_sale(&main, &iid("AAPL"), dec("21"), LotMethod::Fifo)
+            .is_err()
+    );
+    assert!(
+        march
+            .lots_for_sale(&main, &iid("AAPL"), dec("1"), LotMethod::SpecificId)
+            .is_err()
+    );
+    assert!(
+        march
+            .lots_for_sale(&main, &iid("AAPL"), dec("0"), LotMethod::Fifo)
+            .is_err()
+    );
+}

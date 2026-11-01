@@ -1,5 +1,6 @@
 //! Portfolio optimisation: convex formulations of the standard objectives and constraints, risk
-//! budgeting and hierarchical risk parity, and the efficient frontier.
+//! budgeting and hierarchical risk parity, the efficient frontier, and the trades that move an
+//! account to target weights.
 //!
 //! A [`Problem`] holds the assets' covariance matrix, expected returns or scenario returns, and
 //! [`Constraints`]; [`Problem::solve`] finds the optimum for an [`Objective`]. The convex
@@ -18,6 +19,9 @@
 //! Every [`Solution`] reports the solver status, the objective value, the largest constraint
 //! violation and the time taken, so that a result can be shown to be genuine.
 //!
+//! [`rebalance`] turns target weights into trades from an account's current holdings, choosing
+//! the lots each sale closes and the currency conversions that fund purchases.
+//!
 //! Most users should depend on the [`finalytics`](https://docs.rs/finalytics) crate, which re-exports
 //! the public API of every layer.
 
@@ -27,6 +31,7 @@ mod linalg;
 mod optimise;
 mod problem;
 mod program;
+mod rebalance;
 mod risk_budget;
 mod solution;
 
@@ -34,6 +39,9 @@ pub use frontier::FrontierPoint;
 pub use problem::{
     AssetBound, Bound, Constraints, GroupLimit, Linkage, Objective, Problem, TrackingErrorLimit,
     Turnover,
+};
+pub use rebalance::{
+    ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side, rebalance,
 };
 pub use solution::{Method, Solution, SolveStatus};
 

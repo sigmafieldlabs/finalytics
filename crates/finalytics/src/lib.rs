@@ -14,8 +14,8 @@ pub use finalytics_core::{
 pub use finalytics_ledger::{
     Account, AccountId, Allocation, Books, CashValue, Effect, Event, Flow, FlowKind, HoldingKey,
     HoldingLine, HoldingSeries, Holdings, Instrument, InstrumentId, InstrumentKind, Lot, LotId,
-    LotMethod, LotPick, MarketData, Portfolio, Position, PositionValue, RealisedGain, Transaction,
-    TransactionId, TransactionKind, Valuation, ValueSeries,
+    LotMethod, LotPick, LotSale, MarketData, Portfolio, Position, PositionValue, RealisedGain,
+    Transaction, TransactionId, TransactionKind, Valuation, ValueSeries,
 };
 
 pub use finalytics_formats::PortfolioDocument;
@@ -56,8 +56,9 @@ pub mod risk {
 
 /// Portfolio optimisation: minimum variance, mean–variance, target return and volatility,
 /// maximum Sharpe ratio and diversification, minimum CVaR, risk budgeting and hierarchical risk
-/// parity, under budget, bound, group, leverage, turnover and tracking-error constraints; and the
-/// efficient frontier.
+/// parity, under budget, bound, group, leverage, turnover and tracking-error constraints; the
+/// efficient frontier; and the trades, with lot selection, that move an account to target
+/// weights.
 ///
 /// ```
 /// use finalytics::opt::{Objective, Problem};

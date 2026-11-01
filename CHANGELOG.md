@@ -24,8 +24,9 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   transaction types including splits, spin-offs, mergers, symbol changes and returns of capital,
   tax lots relieved first-in first-out, last-in first-out, by highest or lowest cost, at average
   cost or by specific identification, cash in several currencies, realised gains in local and
-  base currency, holdings on any date, and valuation with caller-supplied prices and FX rates
-  (direct, inverse or crossed through a pivot currency), with carried-forward values reported.
+  base currency, holdings on any date, previews of the lots a sale would close, and valuation
+  with caller-supplied prices and FX rates (direct, inverse or crossed through a pivot
+  currency), with carried-forward values reported.
 - `finalytics-formats`: CSV readers for instruments (with classification and identifier
   columns), transactions of every type, and prices and FX rates in long or wide layouts, each
   reporting every problem by line and column; and the versioned portfolio document in JSON,
@@ -56,6 +57,9 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   parity by Newton's method; hierarchical risk parity with single, complete, average or Ward
   linkage; and the efficient frontier. Every solution reports its status, objective value,
   largest constraint violation, iterations and time. Validated against CVXPY and PyPortfolioOpt.
+  Rebalancing proposes the trades that move an account to target weights, with the lots each
+  sale closes, its realised gain, and the currency conversions that fund purchases, as
+  transactions ready to apply to the books.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

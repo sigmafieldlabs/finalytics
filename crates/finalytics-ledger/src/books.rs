@@ -187,6 +187,21 @@ pub struct Position {
     pub lots: usize,
 }
 
+/// The part of a lot that a sale would close.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LotSale {
+    /// The lot.
+    pub lot: LotId,
+    /// When the lot was acquired.
+    pub acquired: Date,
+    /// The units the sale would take from it.
+    pub quantity: Decimal,
+    /// The cost basis of those units in the instrument's currency.
+    pub cost_local: Decimal,
+    /// The cost basis of those units in the base currency.
+    pub cost_base: Decimal,
+}
+
 /// Open lots and cash balances at a point in time.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Holdings {
@@ -228,6 +243,58 @@ impl Holdings {
         self.cash
             .iter()
             .map(|((account, currency), amount)| (account, *currency, *amount))
+    }
+
+    /// The lots a sale of `quantity` units of `instrument` from `account` would close, chosen by
+    /// `method`, without changing the holdings. Each lot's cost is the part the sale would take.
+    ///
+    /// [`LotMethod::SpecificId`] needs the lots named, so it is refused here; name the lots in
+    /// the sale instead.
+    pub fn lots_for_sale(
+        &self,
+        account: &AccountId,
+        instrument: &InstrumentId,
+        quantity: Decimal,
+        method: LotMethod,
+    ) -> Result<Vec<LotSale>> {
+        let mut report = ValidationReport::new();
+        if quantity <= Decimal::ZERO {
+            report.error("quantity", "must be greater than zero");
+        }
+        if method == LotMethod::SpecificId {
+            report.error(
+                "method",
+                "choose a method that selects lots without naming them",
+            );
+        }
+        if report.has_errors() {
+            return Err(Error::Validation(report));
+        }
+        let mut lots = self.lots_of(account, instrument).to_vec();
+        match relieve(&mut lots, quantity, method, &[]) {
+            Ok(relief) => Ok(relief
+                .into_iter()
+                .map(|r| LotSale {
+                    lot: r.lot.id,
+                    acquired: r.lot.acquired,
+                    quantity: r.quantity,
+                    cost_local: r.cost_local,
+                    cost_base: r.cost_base,
+                })
+                .collect()),
+            Err(e) => {
+                let message = match e {
+                    ReliefError::Insufficient { held } => format!(
+                        "needs {quantity} units of {instrument}, but account {account} holds {held}"
+                    ),
+                    ReliefError::UnknownLot(lot) | ReliefError::LotTooSmall { lot, .. } => {
+                        format!("lot {lot} cannot be relieved")
+                    }
+                };
+                report.error("quantity", message);
+                Err(Error::Validation(report))
+            }
+        }
     }
 
     /// The quantity of `instrument` held in all accounts.
