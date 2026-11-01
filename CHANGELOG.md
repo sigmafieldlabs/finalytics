@@ -15,6 +15,11 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 - A workspace of crates behind the `finalytics` facade: core, ledger, formats, performance, risk
   and optimisation.
 - Python bindings (PyO3, abi3 wheels for Python 3.10 and later).
+- `finalytics-core`: ISO 8601 dates with day and month arithmetic, business-day calendars with
+  caller-supplied holidays and the standard adjustment conventions, ISO 4217 currencies, exact
+  decimal money with currency-checked arithmetic and rounding, date-indexed time series with
+  as-of lookups and reindexing that marks carried-forward values, validation reports that list
+  every problem with its location, and compensated summation.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

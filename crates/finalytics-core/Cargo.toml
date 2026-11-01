@@ -13,6 +13,13 @@ categories.workspace = true
 readme = "../../README.md"
 
 [dependencies]
+rust_decimal = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

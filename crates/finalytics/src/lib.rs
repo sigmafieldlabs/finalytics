@@ -6,6 +6,16 @@
 //! rates, and receive typed results. The same API is available from Python and, through
 //! WebAssembly, from JavaScript and TypeScript.
 
+pub use finalytics_core::{
+    BusinessDayConvention, Calendar, Currency, Date, Decimal, Error, Fill, Issue, Money,
+    Observation, Result, Rounding, Severity, TimeSeries, ValidationReport, Weekday,
+};
+
+/// Numerical helpers: compensated summation and tolerance checks.
+pub mod numeric {
+    pub use finalytics_core::numeric::{CompensatedSum, approx_eq, compensated_sum};
+}
+
 /// The version of this release of Finalytics.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
