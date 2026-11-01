@@ -11,6 +11,7 @@ use crate::{AccountId, InstrumentId, LotId, LotMethod, TransactionId};
 /// order given. Positions are booked on the trade date; the settlement date is recorded for cash
 /// reporting.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Transaction {
     /// The caller's identifier, unique within the portfolio.
     pub id: TransactionId,
@@ -31,6 +32,7 @@ pub struct Transaction {
 
 /// What a transaction does. Amounts of instruments are in the instrument's currency.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TransactionKind {
     /// Buy `quantity` units at `price` per unit, paying `fees` on top.
@@ -193,6 +195,7 @@ pub enum TransactionKind {
 
 /// A lot named by a sale or transfer, for specific identification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct LotPick {
     /// The lot.
     pub lot: LotId,

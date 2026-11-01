@@ -34,45 +34,56 @@ pub struct PortfolioDocument {
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct DocumentRepr {
+    /// Always `"finalytics.portfolio"`.
+    #[cfg_attr(feature = "schema", schemars(extend("const" = FORMAT)))]
     format: String,
+    /// The version of the format, 1 for this release.
+    #[cfg_attr(feature = "schema", schemars(extend("const" = FORMAT_VERSION)))]
     format_version: u32,
+    /// The portfolio.
     portfolio: Portfolio,
+    /// Market data stored with the portfolio.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     market: Option<MarketRepr>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schema", schemars(rename = "DocumentMarketData"))]
+/// Market data stored in a portfolio document.
 struct MarketRepr {
+    /// The currency through which FX rates are crossed; USD by default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pivot: Option<Currency>,
+    /// How many days a price or rate may be carried forward; 5 by default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     max_carry_days: Option<u32>,
+    /// Prices by instrument, in each instrument's currency.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     prices: BTreeMap<InstrumentId, TimeSeries<Decimal>>,
+    /// FX rates: units of `quote` per unit of `base`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     fx: Vec<FxRepr>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schema", schemars(rename = "DocumentFxRates"))]
+/// The rates for one currency pair in a portfolio document.
 struct FxRepr {
+    /// The currency priced.
     base: Currency,
+    /// The currency it is priced in.
     quote: Currency,
+    /// Units of `quote` per unit of `base`.
     rates: TimeSeries<Decimal>,
 }
 
-impl PortfolioDocument {
-    /// A document holding `portfolio` without market data.
-    pub fn new(portfolio: Portfolio) -> PortfolioDocument {
-        PortfolioDocument {
-            portfolio,
-            market: None,
-        }
-    }
-
-    /// Writes the document as indented JSON.
-    pub fn to_json(&self) -> String {
-        let market = self.market.as_ref().map(|m| MarketRepr {
+impl MarketRepr {
+    fn from_market(m: &MarketData) -> MarketRepr {
+        MarketRepr {
             pivot: Some(m.pivot()),
             max_carry_days: Some(m.max_carry_days()),
             prices: m
@@ -87,7 +98,98 @@ impl PortfolioDocument {
                     rates: rates.clone(),
                 })
                 .collect(),
-        });
+        }
+    }
+
+    fn into_market(self) -> MarketData {
+        let mut market = MarketData::new();
+        if let Some(pivot) = self.pivot {
+            market = market.with_pivot(pivot);
+        }
+        if let Some(days) = self.max_carry_days {
+            market = market.with_max_carry_days(days);
+        }
+        for (id, prices) in self.prices {
+            market = market.with_prices(id, prices);
+        }
+        for fx in self.fx {
+            market = market.with_fx(fx.base, fx.quote, fx.rates);
+        }
+        market
+    }
+}
+
+/// Market data in the portfolio document's format (the document's `market` member), for
+/// reading and writing market data on its own.
+///
+/// ```
+/// use finalytics_formats::MarketDocument;
+///
+/// let text = r#"{"prices": {"AAPL": {"dates": ["2026-11-02"], "values": ["201.50"]}}}"#;
+/// let MarketDocument(market) = serde_json::from_str(text)?;
+/// assert_eq!(market.pivot().code(), "USD");
+/// # Ok::<(), serde_json::Error>(())
+/// ```
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MarketDocument(pub MarketData);
+
+impl Serialize for MarketDocument {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        MarketRepr::from_market(&self.0).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for MarketDocument {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        MarketRepr::deserialize(deserializer).map(|m| MarketDocument(m.into_market()))
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for MarketDocument {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "DocumentMarketData".into()
+    }
+
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        generator.subschema_for::<MarketRepr>()
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for PortfolioDocument {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "PortfolioDocument".into()
+    }
+
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let mut schema = DocumentRepr::json_schema(generator);
+        schema.insert(
+            "description".into(),
+            "A portfolio and, optionally, the market data to value it, in one versioned document."
+                .into(),
+        );
+        schema
+    }
+}
+
+impl PortfolioDocument {
+    /// A document holding `portfolio` without market data.
+    pub fn new(portfolio: Portfolio) -> PortfolioDocument {
+        PortfolioDocument {
+            portfolio,
+            market: None,
+        }
+    }
+
+    /// Writes the document as indented JSON.
+    pub fn to_json(&self) -> String {
+        let market = self.market.as_ref().map(MarketRepr::from_market);
         let repr = DocumentRepr {
             format: FORMAT.to_owned(),
             format_version: FORMAT_VERSION,
@@ -141,22 +243,7 @@ impl PortfolioDocument {
             }
         };
         report.merge("portfolio", repr.portfolio.validate());
-        let market = repr.market.map(|m| {
-            let mut market = MarketData::new();
-            if let Some(pivot) = m.pivot {
-                market = market.with_pivot(pivot);
-            }
-            if let Some(days) = m.max_carry_days {
-                market = market.with_max_carry_days(days);
-            }
-            for (id, prices) in m.prices {
-                market = market.with_prices(id, prices);
-            }
-            for fx in m.fx {
-                market = market.with_fx(fx.base, fx.quote, fx.rates);
-            }
-            market
-        });
+        let market = repr.market.map(MarketRepr::into_market);
         report.into_result(PortfolioDocument {
             portfolio: repr.portfolio,
             market,

@@ -1,0 +1,892 @@
+{
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "description": "Always `\"finalytics.portfolio\"`.",
+      "const": "finalytics.portfolio"
+    },
+    "format_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0,
+      "description": "The version of the format, 1 for this release.",
+      "const": 1
+    },
+    "portfolio": {
+      "$ref": "#/$defs/Portfolio",
+      "description": "The portfolio."
+    },
+    "market": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DocumentMarketData"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Market data stored with the portfolio."
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "portfolio"
+  ],
+  "description": "A portfolio and, optionally, the market data to value it, in one versioned document.",
+  "title": "Finalytics portfolio document",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/AccountId",
+          "description": "The caller's identifier."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A display name."
+        },
+        "lot_method": {
+          "$ref": "#/$defs/LotMethod",
+          "description": "How sales in this account choose lots, unless a sale says otherwise.",
+          "default": "fifo"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "description": "An account in a portfolio, such as a brokerage or custody account."
+    },
+    "AccountId": {
+      "type": "string",
+      "description": "Identifies an account within a portfolio.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
+    },
+    "Currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "An ISO 4217 currency code, for example \"USD\"."
+    },
+    "Date": {
+      "type": "string",
+      "format": "date",
+      "description": "A calendar date in ISO 8601 form, for example \"2026-11-02\"."
+    },
+    "Decimal": {
+      "description": "An exact decimal number. Finalytics writes decimals as strings, such as \"201.50\", and reads strings or numbers.",
+      "type": [
+        "string",
+        "number"
+      ],
+      "pattern": "^-?\\d+(\\.\\d+)?([eE]\\d+)?$"
+    },
+    "DocumentFxRates": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency priced."
+        },
+        "quote": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency it is priced in."
+        },
+        "rates": {
+          "$ref": "#/$defs/TimeSeries",
+          "description": "Units of `quote` per unit of `base`."
+        }
+      },
+      "required": [
+        "base",
+        "quote",
+        "rates"
+      ],
+      "description": "The rates for one currency pair in a portfolio document."
+    },
+    "DocumentMarketData": {
+      "type": "object",
+      "properties": {
+        "pivot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Currency"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The currency through which FX rates are crossed; USD by default."
+        },
+        "max_carry_days": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0,
+          "description": "How many days a price or rate may be carried forward; 5 by default."
+        },
+        "prices": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/TimeSeries"
+          },
+          "description": "Prices by instrument, in each instrument's currency."
+        },
+        "fx": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DocumentFxRates"
+          },
+          "description": "FX rates: units of `quote` per unit of `base`."
+        }
+      },
+      "description": "Market data stored in a portfolio document."
+    },
+    "Instrument": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "The caller's identifier."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A display name."
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind",
+          "description": "The kind of instrument."
+        },
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency it is priced and traded in."
+        },
+        "multiplier": {
+          "description": "The value of one unit at a price of one: 1 for shares, the contract size for futures\nand options.",
+          "default": "1",
+          "$ref": "#/$defs/Decimal"
+        },
+        "classifications": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Classifications by scheme, for example `asset_class: Equity`, `region: Europe`."
+        },
+        "identifiers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Other identifiers by scheme, for example `isin` or `ticker`."
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "currency"
+      ],
+      "description": "Something a portfolio can hold, other than cash."
+    },
+    "InstrumentId": {
+      "type": "string",
+      "description": "Identifies an instrument, for example `\"AAPL\"` or `\"US0378331005\"`.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
+    },
+    "InstrumentKind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "equity",
+          "description": "A share in a company."
+        },
+        {
+          "type": "string",
+          "const": "fund",
+          "description": "A mutual fund, exchange-traded fund or similar pooled vehicle."
+        },
+        {
+          "type": "string",
+          "const": "bond",
+          "description": "A bond, priced per unit (supply clean or dirty prices consistently)."
+        },
+        {
+          "type": "string",
+          "const": "future",
+          "description": "A futures contract, priced per unit of the underlying with a contract multiplier."
+        },
+        {
+          "type": "string",
+          "const": "option",
+          "description": "An option, priced per unit of the underlying with a contract multiplier."
+        },
+        {
+          "type": "string",
+          "const": "fx_forward",
+          "description": "An FX forward, priced as its value per unit of notional."
+        },
+        {
+          "type": "string",
+          "const": "other",
+          "description": "Anything else."
+        }
+      ],
+      "description": "What kind of instrument something is.\n\nEvery kind is held and valued the same way, as a quantity times a price times a multiplier.\nDerivatives and bonds are supplied already priced; Finalytics does not price them."
+    },
+    "LotId": {
+      "type": "string",
+      "description": "Identifies a tax lot: the transaction that opened it, followed by `/` and the corporate\naction that derived it, if any.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
+    },
+    "LotMethod": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "fifo",
+          "description": "First in, first out: the oldest lots first."
+        },
+        {
+          "type": "string",
+          "const": "lifo",
+          "description": "Last in, first out: the newest lots first."
+        },
+        {
+          "type": "string",
+          "const": "highest_cost",
+          "description": "The lots with the highest cost per unit first."
+        },
+        {
+          "type": "string",
+          "const": "lowest_cost",
+          "description": "The lots with the lowest cost per unit first."
+        },
+        {
+          "type": "string",
+          "const": "average_cost",
+          "description": "Every lot reduced in proportion, so each sale carries the average cost."
+        },
+        {
+          "type": "string",
+          "const": "specific_id",
+          "description": "The lots named by the sale."
+        }
+      ],
+      "description": "How sales choose which tax lots to close."
+    },
+    "LotPick": {
+      "type": "object",
+      "properties": {
+        "lot": {
+          "$ref": "#/$defs/LotId",
+          "description": "The lot."
+        },
+        "quantity": {
+          "description": "The number of units to take from it.",
+          "$ref": "#/$defs/Decimal"
+        }
+      },
+      "required": [
+        "lot",
+        "quantity"
+      ],
+      "description": "A lot named by a sale or transfer, for specific identification."
+    },
+    "Money": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "$ref": "#/$defs/Decimal"
+        },
+        "currency": {
+          "$ref": "#/$defs/Currency"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until `Money::round` is called."
+    },
+    "Portfolio": {
+      "type": "object",
+      "properties": {
+        "base_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency results are reported in."
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Account"
+          },
+          "description": "The accounts."
+        },
+        "instruments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Instrument"
+          },
+          "description": "The instruments the transactions refer to."
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Transaction"
+          },
+          "description": "The transactions, in any order; they are applied by trade date, and in the order given\nwithin a date."
+        }
+      },
+      "required": [
+        "base_currency",
+        "accounts",
+        "instruments",
+        "transactions"
+      ],
+      "description": "Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,\ninstruments and transactions."
+    },
+    "TimeSeries": {
+      "type": "object",
+      "properties": {
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Decimal"
+          }
+        }
+      },
+      "required": [
+        "dates",
+        "values"
+      ],
+      "description": "Values indexed by strictly increasing dates.\n\nConstruction checks the ordering, so every `TimeSeries` can be searched by date. A series is\nserialised as `{\"dates\": [...], \"values\": [...]}`, and deserialising checks it again."
+    },
+    "Transaction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/TransactionId",
+          "description": "The caller's identifier, unique within the portfolio."
+        },
+        "account": {
+          "$ref": "#/$defs/AccountId",
+          "description": "The account the transaction belongs to."
+        },
+        "trade_date": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the transaction takes effect for positions and performance."
+        },
+        "settle_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The date cash settles, if different from the trade date."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A free-text note."
+        }
+      },
+      "required": [
+        "id",
+        "account",
+        "trade_date"
+      ],
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "buy"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument bought."
+            },
+            "quantity": {
+              "description": "The number of units, greater than zero.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "price": {
+              "description": "The price per unit, zero or more.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "fees": {
+              "description": "Commissions and other costs of the trade, added to the cost basis.",
+              "default": "0",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "quantity",
+            "price"
+          ],
+          "description": "Buy `quantity` units at `price` per unit, paying `fees` on top."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "sell"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument sold."
+            },
+            "quantity": {
+              "description": "The number of units, greater than zero.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "price": {
+              "description": "The price per unit, zero or more.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "fees": {
+              "description": "Commissions and other costs, deducted from the proceeds.",
+              "default": "0",
+              "$ref": "#/$defs/Decimal"
+            },
+            "lot_method": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LotMethod"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Overrides the account's lot method for this sale."
+            },
+            "lots": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/LotPick"
+              },
+              "description": "The lots to close, for specific identification."
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "quantity",
+            "price"
+          ],
+          "description": "Sell `quantity` units at `price` per unit, with `fees` deducted from the proceeds."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "deposit"
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The amount, greater than zero."
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "Cash paid into the account from outside the portfolio."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "withdrawal"
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The amount, greater than zero."
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "Cash taken out of the portfolio."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "transfer_in"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument received."
+            },
+            "quantity": {
+              "description": "The number of units, greater than zero.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "cost_basis": {
+              "description": "The total cost basis carried over, in the instrument's currency. When absent, the\nmarket value on the trade date is used.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "acquired": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The original acquisition date, when the holding period carries over."
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "quantity"
+          ],
+          "description": "Units received from outside the portfolio."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "transfer_out"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument sent."
+            },
+            "quantity": {
+              "description": "The number of units, greater than zero.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "lot_method": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LotMethod"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Overrides the account's lot method for this transfer."
+            },
+            "lots": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/LotPick"
+              },
+              "description": "The lots to send, for specific identification."
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "quantity"
+          ],
+          "description": "Units sent out of the portfolio. No gain is realised."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "dividend"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument that paid it."
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The gross amount."
+            },
+            "withholding_tax": {
+              "description": "Tax withheld at source, in the same currency.",
+              "default": "0",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "amount"
+          ],
+          "description": "A dividend received in cash."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "interest"
+            },
+            "instrument": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/InstrumentId"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The instrument that paid it, if any."
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The gross amount."
+            },
+            "withholding_tax": {
+              "description": "Tax withheld at source, in the same currency.",
+              "default": "0",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "Interest received in cash, from an instrument or on the cash balance."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "fee"
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The amount, greater than zero."
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "A fee not tied to a trade, such as a custody or management fee."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "tax"
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The amount, greater than zero."
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "A tax not tied to a trade."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "fx_conversion"
+            },
+            "sell": {
+              "$ref": "#/$defs/Money",
+              "description": "The amount given up."
+            },
+            "buy": {
+              "$ref": "#/$defs/Money",
+              "description": "The amount received."
+            }
+          },
+          "required": [
+            "type",
+            "sell",
+            "buy"
+          ],
+          "description": "Cash converted from one currency to another."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "split"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument split."
+            },
+            "from": {
+              "description": "Units before.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "to": {
+              "description": "Units after.",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "from",
+            "to"
+          ],
+          "description": "A share split: every `from` units become `to` units, with cost basis unchanged. A reverse\nsplit has `to` below `from`."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "spin_off"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument held."
+            },
+            "new_instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The new instrument received."
+            },
+            "ratio": {
+              "description": "New units per unit held.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "cost_allocation": {
+              "description": "The share of cost basis moved to the new units.",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "new_instrument",
+            "ratio",
+            "cost_allocation"
+          ],
+          "description": "A spin-off: holders receive `ratio` units of a new instrument per unit held, and a share\n`cost_allocation` (between 0 and 1) of the cost basis moves to the new units."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "merger"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument held."
+            },
+            "new_instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument received."
+            },
+            "ratio": {
+              "description": "New units per unit held; zero for an all-cash takeover.",
+              "$ref": "#/$defs/Decimal"
+            },
+            "cash_per_unit": {
+              "description": "Cash per unit held, in the held instrument's currency.",
+              "default": "0",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "new_instrument",
+            "ratio"
+          ],
+          "description": "A merger or acquisition: each unit held becomes `ratio` units of `new_instrument`, plus\n`cash_per_unit` in cash, which reduces the cost basis (gains beyond the basis are\nrealised)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "symbol_change"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The old identifier."
+            },
+            "new_instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The new identifier."
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "new_instrument"
+          ],
+          "description": "The instrument's identifier changes; lots carry over unchanged."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "return_of_capital"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument that paid it."
+            },
+            "amount": {
+              "$ref": "#/$defs/Money",
+              "description": "The total amount, in the instrument's currency."
+            }
+          },
+          "required": [
+            "type",
+            "instrument",
+            "amount"
+          ],
+          "description": "A return of capital paid in cash, which reduces the cost basis (amounts beyond the basis\nare realised as gains)."
+        }
+      ],
+      "description": "One event in the life of a portfolio.\n\nTransactions are applied in trade-date order; transactions on the same date are applied in the\norder given. Positions are booked on the trade date; the settlement date is recorded for cash\nreporting."
+    },
+    "TransactionId": {
+      "type": "string",
+      "description": "Identifies a transaction. Lots opened by a transaction take their identity from it.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
+    }
+  },
+  "$id": "https://github.com/Nnamdi-sys/finalytics/blob/main/schema/portfolio-document.schema.json"
+}

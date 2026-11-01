@@ -8,6 +8,7 @@ use crate::input::{check_returns, invalid};
 
 /// The returns of several assets over the same periods, one column per asset.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(try_from = "ReturnsTableRepr", into = "ReturnsTableRepr")]
 pub struct ReturnsTable {
     labels: Vec<String>,
@@ -15,6 +16,7 @@ pub struct ReturnsTable {
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct ReturnsTableRepr {
     labels: Vec<String>,
     columns: Vec<Vec<f64>>,
@@ -92,6 +94,7 @@ impl ReturnsTable {
 /// A square matrix with labelled rows and columns, stored row by row; a covariance or
 /// correlation matrix.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(try_from = "MatrixRepr", into = "MatrixRepr")]
 pub struct Matrix {
     labels: Vec<String>,
@@ -99,6 +102,7 @@ pub struct Matrix {
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct MatrixRepr {
     labels: Vec<String>,
     values: Vec<f64>,

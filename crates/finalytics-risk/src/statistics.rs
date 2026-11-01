@@ -8,6 +8,7 @@ use crate::input::{self, Moments, invalid};
 
 /// Conventions for [`statistics`] and [`relative_statistics`].
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct StatisticsOptions {
     /// Return periods in a year: 252 for daily trading-day returns (the default), 52 for weekly,
@@ -58,6 +59,7 @@ impl StatisticsOptions {
 /// Annualised figures scale by [`StatisticsOptions::periods_per_year`]. Ratios that divide by a
 /// dispersion are `None` when the returns do not vary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Statistics {
     /// The number of returns.
     pub observations: usize,
@@ -93,6 +95,7 @@ pub struct Statistics {
 
 /// Statistics of a returns series against a benchmark's returns over the same periods.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct RelativeStatistics {
     /// The number of returns.
     pub observations: usize,

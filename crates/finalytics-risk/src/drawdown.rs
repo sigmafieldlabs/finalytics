@@ -6,6 +6,7 @@ use finalytics_core::{Date, Result, TimeSeries, ValidationReport};
 
 /// One fall from a peak, to the trough and, if it happened, back to the peak.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Drawdown {
     /// The date of the peak the fall started from.
     pub peak: Date,

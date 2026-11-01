@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// A reporting period ending on an as-of date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case", tag = "period")]
 pub enum Period {
     /// From the end of the previous month.

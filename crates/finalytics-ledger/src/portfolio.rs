@@ -12,6 +12,7 @@ use crate::{
 /// Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
 /// instruments and transactions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Portfolio {
     /// The currency results are reported in.
     pub base_currency: Currency,

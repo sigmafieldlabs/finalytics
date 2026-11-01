@@ -11,6 +11,7 @@ macro_rules! identifier {
         /// Identifiers are non-empty, have no leading or trailing whitespace, and are compared
         /// exactly (case matters).
         #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+        #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
         #[serde(transparent)]
         pub struct $name(String);
 

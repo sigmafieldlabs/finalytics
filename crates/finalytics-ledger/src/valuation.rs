@@ -9,6 +9,7 @@ use crate::{AccountId, Allocation, Books, HoldingKey, Holdings, InstrumentId, Ma
 
 /// A position valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct PositionValue {
     /// The account.
     pub account: AccountId,
@@ -38,6 +39,7 @@ pub struct PositionValue {
 
 /// A cash balance valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct CashValue {
     /// The account.
     pub account: AccountId,
@@ -53,6 +55,7 @@ pub struct CashValue {
 
 /// The holdings valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Valuation {
     /// The valuation date.
     pub date: Date,
@@ -70,6 +73,7 @@ pub struct Valuation {
 
 /// Daily values and external flows in the base currency, the input to performance measurement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ValueSeries {
     /// The dates.
     pub dates: Vec<Date>,
@@ -248,6 +252,7 @@ impl Books {
 /// Values, value moved in and income per holding over dates, in the holding's currency and in
 /// the base currency: the input to contribution analysis.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct HoldingSeries {
     /// The dates.
     pub dates: Vec<Date>,
@@ -265,6 +270,7 @@ pub struct HoldingSeries {
 /// purchase moves cash into a share) appears as a trade out of one line and into another, so
 /// trades across all lines add up to the portfolio's external flows plus its income.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct HoldingLine {
     /// The holding.
     pub holding: HoldingKey,

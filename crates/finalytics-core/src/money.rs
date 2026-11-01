@@ -9,6 +9,7 @@ use crate::{Currency, Error, Result};
 
 /// How to round an amount to its currency's minor units.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum Rounding {
     /// To the nearest; halves go to the even neighbour (banker's rounding).
@@ -47,6 +48,7 @@ impl Rounding {
 /// # Ok::<(), finalytics_core::Error>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Money {
     amount: Decimal,
     currency: Currency,

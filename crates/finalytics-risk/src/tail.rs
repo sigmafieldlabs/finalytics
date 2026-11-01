@@ -9,6 +9,7 @@ use crate::input::{self, Moments, invalid};
 
 /// How the tail of the return distribution is estimated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum TailMethod {
     /// From the observed returns: the quantile with linear interpolation between order
@@ -27,6 +28,7 @@ pub enum TailMethod {
 /// Both are losses, reported as positive returns: a value at risk of 0.021 at 95% confidence
 /// means that one period in twenty is expected to lose 2.1% or more.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct TailRisk {
     /// The confidence level, for example 0.95.
     pub confidence: f64,

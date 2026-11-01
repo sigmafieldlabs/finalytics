@@ -19,6 +19,7 @@ use crate::{Date, Error, Result};
 /// # Ok::<(), finalytics_core::Error>(())
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct TimeSeries<T> {
     dates: Vec<Date>,
     values: Vec<T>,
@@ -167,6 +168,7 @@ impl<T: Clone> TimeSeries<T> {
 
 /// How [`TimeSeries::reindex`] fills a date that has no observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case", tag = "method")]
 pub enum Fill {
     /// Leave it missing.
@@ -253,6 +255,7 @@ fn check_increasing(dates: &[Date]) -> Result<()> {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct RawSeries<T> {
     dates: Vec<Date>,
     values: Vec<T>,

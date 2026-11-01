@@ -12,6 +12,7 @@ use crate::{AccountId, InstrumentId};
 /// Every kind is held and valued the same way, as a quantity times a price times a multiplier.
 /// Derivatives and bonds are supplied already priced; Finalytics does not price them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum InstrumentKind {
     /// A share in a company.
@@ -32,6 +33,7 @@ pub enum InstrumentKind {
 
 /// Something a portfolio can hold, other than cash.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Instrument {
     /// The caller's identifier.
     pub id: InstrumentId,
@@ -45,6 +47,7 @@ pub struct Instrument {
     /// The value of one unit at a price of one: 1 for shares, the contract size for futures
     /// and options.
     #[serde(default = "one", skip_serializing_if = "is_one")]
+    #[cfg_attr(feature = "schema", schemars(extend("default" = "1")))]
     pub multiplier: Decimal,
     /// Classifications by scheme, for example `asset_class: Equity`, `region: Europe`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -86,6 +89,7 @@ fn is_one(value: &Decimal) -> bool {
 
 /// How sales choose which tax lots to close.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum LotMethod {
     /// First in, first out: the oldest lots first.
@@ -105,6 +109,7 @@ pub enum LotMethod {
 
 /// An account in a portfolio, such as a brokerage or custody account.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Account {
     /// The caller's identifier.
     pub id: AccountId,

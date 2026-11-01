@@ -12,4 +12,4 @@ pub use csv_import::{
     CsvOptions, FxSeries, fx_from_csv, instruments_from_csv, portfolio_from_csv, prices_from_csv,
     transactions_from_csv,
 };
-pub use document::{FORMAT, FORMAT_VERSION, PortfolioDocument};
+pub use document::{FORMAT, FORMAT_VERSION, MarketDocument, PortfolioDocument};

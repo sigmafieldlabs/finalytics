@@ -11,6 +11,7 @@ use crate::{AccountId, InstrumentId, LotId, LotMethod, LotPick, TransactionId};
 /// the portfolio's base currency at the acquisition rate (`cost_base`). Keeping totals rather than
 /// unit costs means that splitting a lot never loses or creates cost.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Lot {
     /// The lot's identifier.
     pub id: LotId,

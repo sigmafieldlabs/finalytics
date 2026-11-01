@@ -11,6 +11,7 @@ use crate::linalg::Factor;
 
 /// Lower and upper limits on a weight.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Bound {
     /// The smallest weight allowed; negative for a short position.
     pub min: f64,
@@ -20,6 +21,7 @@ pub struct Bound {
 
 /// Limits on one asset's weight, in place of the default bounds.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct AssetBound {
     /// The asset's label.
     pub asset: String,
@@ -31,6 +33,7 @@ pub struct AssetBound {
 
 /// Limits on the total weight of a group of assets, such as an asset class or a region.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct GroupLimit {
     /// The group's name, used in messages.
     pub name: String,
@@ -44,6 +47,7 @@ pub struct GroupLimit {
 
 /// Trading from the current portfolio: a limit on turnover, costs per unit traded, or both.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Turnover {
     /// The current weights, one per asset.
     pub current: Vec<f64>,
@@ -59,6 +63,7 @@ pub struct Turnover {
 
 /// A limit on ex-ante tracking error against a benchmark.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct TrackingErrorLimit {
     /// The benchmark's weights, one per asset.
     pub benchmark: Vec<f64>,
@@ -69,6 +74,7 @@ pub struct TrackingErrorLimit {
 
 /// The constraints on a portfolio. The default is fully invested and long-only.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct Constraints {
     /// The sum of the weights; 1 by default.
@@ -118,6 +124,7 @@ impl Constraints {
 
 /// How clusters are joined in hierarchical risk parity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum Linkage {
     /// The distance between the closest members (the method of López de Prado, 2016).
@@ -133,6 +140,7 @@ pub enum Linkage {
 
 /// What an optimisation seeks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "objective", rename_all = "snake_case")]
 pub enum Objective {
     /// The smallest variance.
@@ -206,6 +214,7 @@ impl Objective {
 /// The covariance matrix and expected returns should be in the same units, for example both
 /// annualised. Scenario returns, for minimum CVaR, are per period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Problem {
     /// The asset labels.
     pub labels: Vec<String>,

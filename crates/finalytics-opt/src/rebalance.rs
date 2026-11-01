@@ -14,6 +14,7 @@ use finalytics_ledger::{
 
 /// Choices for [`rebalance`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
 pub struct RebalanceOptions {
     /// How sales choose lots; first in, first out by default. Highest cost first defers gains.
@@ -36,6 +37,7 @@ impl Default for RebalanceOptions {
 
 /// Buy or sell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum Side {
     /// A purchase.
@@ -46,6 +48,7 @@ pub enum Side {
 
 /// A proposed trade in one instrument.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ProposedTrade {
     /// The instrument.
     pub instrument: InstrumentId,
@@ -69,6 +72,7 @@ pub struct ProposedTrade {
 
 /// A proposed currency conversion.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ProposedConversion {
     /// The amount sold.
     pub sell: Money,
@@ -78,6 +82,7 @@ pub struct ProposedConversion {
 
 /// The trades that move an account to target weights, and their effects.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Rebalance {
     /// The account.
     pub account: AccountId,

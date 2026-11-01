@@ -160,6 +160,21 @@ impl<'de> Deserialize<'de> for Currency {
     }
 }
 
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for Currency {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Currency".into()
+    }
+
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "An ISO 4217 currency code, for example \"USD\"."
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

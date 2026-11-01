@@ -13,6 +13,7 @@ use crate::{
 
 /// A change to the books made by one transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "effect", rename_all = "snake_case")]
 pub enum Effect {
     /// A lot was opened or changed; this is its new state.
@@ -43,6 +44,7 @@ pub enum Effect {
 /// Why value entered or left the portfolio from outside: the flows that performance measurement
 /// must separate from investment returns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum FlowKind {
     /// Cash deposited.
@@ -57,6 +59,7 @@ pub enum FlowKind {
 
 /// Value entering (positive) or leaving (negative) the portfolio, in `currency`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Flow {
     /// The account.
     pub account: AccountId,
@@ -71,6 +74,7 @@ pub struct Flow {
 /// A holding for performance attribution: an instrument, or cash in one currency, added up
 /// across accounts.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "holding", content = "id", rename_all = "snake_case")]
 pub enum HoldingKey {
     /// An instrument.
@@ -83,6 +87,7 @@ pub enum HoldingKey {
 /// contribution. Value moved between holdings nets to zero; only external flows change the
 /// portfolio's total.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "allocation", rename_all = "snake_case")]
 pub enum Allocation {
     /// `amount` (in `currency`) moved into `holding` (negative: out of it).
@@ -117,6 +122,7 @@ pub enum Allocation {
 
 /// One transaction as applied to the books.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Event {
     /// The trade date.
     pub date: Date,
@@ -134,6 +140,7 @@ pub struct Event {
 
 /// A gain or loss realised by a sale, a return of capital or a cash merger, for one lot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct RealisedGain {
     /// The transaction that realised it.
     pub transaction: TransactionId,
@@ -172,6 +179,7 @@ impl RealisedGain {
 
 /// A position: the open lots of one instrument in one account, added up.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Position {
     /// The account.
     pub account: AccountId,
@@ -189,6 +197,7 @@ pub struct Position {
 
 /// The part of a lot that a sale would close.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct LotSale {
     /// The lot.
     pub lot: LotId,
@@ -200,6 +209,18 @@ pub struct LotSale {
     pub cost_local: Decimal,
     /// The cost basis of those units in the base currency.
     pub cost_base: Decimal,
+}
+
+/// A cash balance in one account and currency.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct CashBalance {
+    /// The account.
+    pub account: AccountId,
+    /// The currency.
+    pub currency: Currency,
+    /// The balance, negative if overdrawn.
+    pub amount: Decimal,
 }
 
 /// Open lots and cash balances at a point in time.
@@ -295,6 +316,17 @@ impl Holdings {
                 Err(Error::Validation(report))
             }
         }
+    }
+
+    /// The cash balances as records, by account and currency.
+    pub fn cash_balances(&self) -> Vec<CashBalance> {
+        self.cash()
+            .map(|(account, currency, amount)| CashBalance {
+                account: account.clone(),
+                currency,
+                amount,
+            })
+            .collect()
     }
 
     /// The quantity of `instrument` held in all accounts.

@@ -6,6 +6,7 @@ use crate::problem::Objective;
 
 /// How an optimisation ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum SolveStatus {
     /// Solved to the solver's full accuracy.
@@ -33,6 +34,7 @@ impl SolveStatus {
 
 /// The method that produced a solution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum Method {
     /// The Clarabel interior-point solver for convex conic programmes.
@@ -46,6 +48,7 @@ pub enum Method {
 /// The result of an optimisation, with what is needed to judge it: the status, the objective,
 /// how closely the constraints hold, and the work done.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Solution {
     /// The objective optimised.
     pub objective: Objective,

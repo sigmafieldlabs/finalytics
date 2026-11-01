@@ -6,6 +6,7 @@ use crate::{Date, Error, Result, Weekday};
 
 /// How to move a date that falls on a non-business day.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum BusinessDayConvention {
     /// Leave the date as it is.
@@ -33,6 +34,7 @@ pub enum BusinessDayConvention {
 /// # Ok::<(), finalytics_core::Error>(())
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(try_from = "CalendarSpec", into = "CalendarSpec")]
 pub struct Calendar {
     weekend: [bool; 7],
@@ -40,6 +42,7 @@ pub struct Calendar {
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 struct CalendarSpec {
     weekend: Vec<Weekday>,
     holidays: Vec<Date>,

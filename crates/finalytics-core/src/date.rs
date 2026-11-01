@@ -9,6 +9,7 @@ use crate::{Error, Result};
 
 /// A day of the week.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum Weekday {
     /// Monday.
@@ -262,6 +263,21 @@ impl<'de> Deserialize<'de> for Date {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Date, D::Error> {
         let text = <std::borrow::Cow<'de, str>>::deserialize(deserializer)?;
         text.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for Date {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Date".into()
+    }
+
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string",
+            "format": "date",
+            "description": "A calendar date in ISO 8601 form, for example \"2026-11-02\"."
+        })
     }
 }
 

@@ -9,6 +9,7 @@ use crate::Period;
 
 /// When external flows are assumed to happen within the day they are recorded on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum FlowTiming {
     /// At the start of the day: a deposit earns that day's return.
@@ -23,6 +24,7 @@ pub const DAYS_PER_YEAR: f64 = 365.25;
 
 /// A return over a reporting period.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct PeriodReturn {
     /// The valuation date the period starts from.
     pub start: Date,
@@ -36,6 +38,7 @@ pub struct PeriodReturn {
 
 /// A return compared with a benchmark's over the same dates.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ExcessReturn {
     /// The portfolio's cumulative return.
     pub portfolio: f64,

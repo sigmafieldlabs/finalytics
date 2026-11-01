@@ -12,10 +12,10 @@ pub use finalytics_core::{
 };
 
 pub use finalytics_ledger::{
-    Account, AccountId, Allocation, Books, CashValue, Effect, Event, Flow, FlowKind, HoldingKey,
-    HoldingLine, HoldingSeries, Holdings, Instrument, InstrumentId, InstrumentKind, Lot, LotId,
-    LotMethod, LotPick, LotSale, MarketData, Portfolio, Position, PositionValue, RealisedGain,
-    Transaction, TransactionId, TransactionKind, Valuation, ValueSeries,
+    Account, AccountId, Allocation, Books, CashBalance, CashValue, Effect, Event, Flow, FlowKind,
+    HoldingKey, HoldingLine, HoldingSeries, Holdings, Instrument, InstrumentId, InstrumentKind,
+    Lot, LotId, LotMethod, LotPick, LotSale, MarketData, Portfolio, Position, PositionValue,
+    RealisedGain, Transaction, TransactionId, TransactionKind, Valuation, ValueSeries,
 };
 
 pub use finalytics_formats::PortfolioDocument;
@@ -28,8 +28,9 @@ pub use finalytics_perf::{
 /// portfolio document in JSON.
 pub mod formats {
     pub use finalytics_formats::{
-        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, PortfolioDocument, fx_from_csv,
-        instruments_from_csv, portfolio_from_csv, prices_from_csv, transactions_from_csv,
+        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument,
+        fx_from_csv, instruments_from_csv, portfolio_from_csv, prices_from_csv,
+        transactions_from_csv,
     };
 }
 
@@ -76,7 +77,8 @@ pub mod risk {
 pub mod opt {
     pub use finalytics_opt::{
         AssetBound, Bound, Constraints, FrontierPoint, GroupLimit, Linkage, Method, Objective,
-        Problem, Solution, SolveStatus, TrackingErrorLimit, Turnover,
+        Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side, Solution,
+        SolveStatus, TrackingErrorLimit, Turnover, rebalance,
     };
 }
 

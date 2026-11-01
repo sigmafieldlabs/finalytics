@@ -62,6 +62,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// How serious a validation issue is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     /// The input can be used, but the caller should know about this.
@@ -72,6 +73,7 @@ pub enum Severity {
 
 /// One problem found while validating input.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Issue {
     /// Where the problem is, for example `transactions[14].quantity`.
     pub path: String,
@@ -100,6 +102,7 @@ impl fmt::Display for Issue {
 /// Each issue carries a path that locates it in the input, so that a user interface can point
 /// to the exact field.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ValidationReport {
     issues: Vec<Issue>,
 }

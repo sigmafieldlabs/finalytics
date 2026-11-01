@@ -9,6 +9,7 @@ use crate::matrix::{Matrix, ReturnsTable};
 
 /// How a covariance matrix is estimated from returns.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "method", rename_all = "snake_case")]
 pub enum CovarianceMethod {
     /// The sample covariance, with divisor n - 1.
@@ -30,6 +31,7 @@ pub enum CovarianceMethod {
 
 /// An estimated covariance matrix, per period of the returns.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct CovarianceEstimate {
     /// The estimator used.
     pub method: CovarianceMethod,

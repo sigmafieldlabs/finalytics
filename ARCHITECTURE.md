@@ -36,6 +36,24 @@ bindings/wasm        wasm-bindgen module and the npm package
 Arrows point from a crate to the crates that depend on it. A crate never depends on a crate
 above it in this list.
 
+## Data types across languages
+
+The Rust types are the single description of the data the engine reads and returns. With the
+`schema` feature, each public type also describes itself as JSON Schema:
+
+```
+Rust types ──cargo run -p finalytics-codegen──▶ schema/finalytics.schema.json
+                                                schema/portfolio-document.schema.json
+schema ──python scripts/generate-types.py──▶ bindings/python/python/finalytics/_types.py
+                                           bindings/wasm/types.d.ts
+```
+
+The generated Python dataclasses and TypeScript declarations carry the Rust documentation, and
+CI fails if any generated file is out of date. Values cross into Python as JSON text and into
+JavaScript as plain objects, both in the schema's formats; numeric series cross as `float64`
+buffers (NumPy arrays in Python, `Float64Array` in JavaScript). Decimals are written as strings,
+so that amounts keep their exact value in every language.
+
 ## Conventions
 
 - Public items are documented; `missing_docs` is enabled.
@@ -43,4 +61,5 @@ above it in this list.
 - Fallible functions return the crate's error type. Input validation collects every problem it
   finds into a report rather than stopping at the first.
 - Tests that compare against reference implementations keep their fixtures in the crate's
-  `tests/` directory, with the script that produced them.
+  `tests/` directory, with the script that produced them in `scripts/reference/`. The Python
+  and JavaScript tests check the same fixtures, and share the scenario in `tests/scenario/`.

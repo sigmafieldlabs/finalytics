@@ -12,6 +12,10 @@ keywords.workspace = true
 categories.workspace = true
 readme = "../../README.md"
 
+[features]
+# JSON Schema descriptions of the public types, for the bindings and documentation.
+schema = ["dep:schemars", "finalytics-core/schema", "finalytics-ledger/schema", "finalytics-perf/schema", "finalytics-risk/schema"]
+
 [dependencies]
 finalytics-core = { workspace = true }
 finalytics-ledger = { workspace = true }
@@ -20,6 +24,7 @@ finalytics-risk = { workspace = true }
 clarabel = { workspace = true }
 serde = { workspace = true }
 web-time = { workspace = true }
+schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

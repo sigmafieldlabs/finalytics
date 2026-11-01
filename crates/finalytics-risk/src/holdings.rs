@@ -38,6 +38,7 @@ pub fn holding_weights(valuation: &Valuation) -> Result<Vec<(HoldingKey, f64)>> 
 
 /// Returns of holdings in the base currency between consecutive dates.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct HoldingReturns {
     /// The holdings, in the order of the table's columns.
     pub holdings: Vec<HoldingKey>,
