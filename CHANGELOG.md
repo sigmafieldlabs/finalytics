@@ -76,6 +76,10 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   own, generated from the Rust types; the Python dataclasses and TypeScript declarations are
   generated from it, with the Rust documentation.
 
+- Benchmarks of the main operations and performance budgets checked in CI: books for 100,000
+  transactions in under 2 seconds, natively and in WebAssembly, and a 500-asset optimisation in
+  under half a second. Results are in `docs/performance.md`.
+
 ### Removed
 
 - Data fetching from third-party websites, screeners and technical indicators.

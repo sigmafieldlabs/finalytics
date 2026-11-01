@@ -19,6 +19,9 @@ constraints.
   Python, from one Rust code base.
 - **Validated.** Every model is tested against independent reference implementations, and its
   methods and tolerances are documented in [docs/methods](docs/methods).
+- **Fast.** The books for 100,000 transactions build in under a second, natively and in
+  WebAssembly, and a 500-asset optimisation solves in under half a second; see
+  [docs/performance.md](docs/performance.md).
 
 ## Scope of 1.0
 
@@ -48,6 +51,8 @@ constraints.
 | `bindings/wasm` | The WebAssembly module and npm package |
 | `schema` | JSON Schema of the data types, including the portfolio document |
 | `docs/methods` | How each model is defined and validated |
+| `docs/performance.md` | Performance budgets and benchmark results |
+| `tools` | Benchmarks and the schema generator |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
 

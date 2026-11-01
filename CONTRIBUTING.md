@@ -52,6 +52,22 @@ python scripts/reference/optimisation.py
 Regenerate a fixture only when you add a case or a reference library changes, and review the
 difference in the pull request.
 
+## Benchmarks and performance budgets
+
+The benchmarks in `tools/bench` measure the main operations at the sizes of the budgets in
+[docs/performance.md](docs/performance.md):
+
+```sh
+cargo bench -p finalytics-bench
+cargo run --release -p finalytics-bench --bin budgets -- --write-document large.json
+bindings/wasm/build.sh && node bindings/wasm/test/budget.mjs large.json
+```
+
+For a change that may affect performance, run the benchmarks before and after it on the same
+machine and include the comparison in the pull request. Criterion keeps the previous run under
+`target/criterion` and reports the change. Update the tables in `docs/performance.md` when a
+change moves the numbers materially.
+
 ## Pull requests
 
 - Keep each pull request focused on one change, with tests.

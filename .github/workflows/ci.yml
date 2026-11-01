@@ -92,6 +92,32 @@ jobs:
       - name: Type-check the TypeScript declarations
         run: npx --yes -p typescript@5.9.3 tsc -p bindings/wasm/test
 
+  budgets:
+    name: Performance budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Read the wasm-bindgen version from Cargo.lock
+        id: wasm-bindgen
+        run: |
+          version=$(awk '/^name = "wasm-bindgen"$/ { getline; gsub(/version = |"/, ""); print }' Cargo.lock)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ steps.wasm-bindgen.outputs.version }}
+      - name: Check the native budgets
+        run: cargo run --release -p finalytics-bench --bin budgets -- --write-document large.json
+      - run: bindings/wasm/build.sh
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check the WebAssembly budget
+        run: node bindings/wasm/test/budget.mjs large.json
+
   python:
     name: Python ${{ matrix.python }}
     strategy:

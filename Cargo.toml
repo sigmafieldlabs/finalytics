@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "bindings/python", "bindings/wasm", "tools/codegen"]
+members = [
+    "crates/*",
+    "bindings/python",
+    "bindings/wasm",
+    "tools/bench",
+    "tools/codegen",
+]
 
 [workspace.package]
 version = "1.0.0-alpha.0"
@@ -34,6 +40,7 @@ libm = "0.2.16"
 clarabel = "0.11.1"
 web-time = "1.1"
 proptest = "1.7"
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 
 pyo3 = "0.30"
 wasm-bindgen = "0.2.130"
