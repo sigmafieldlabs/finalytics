@@ -1,0 +1,41 @@
+name: Bug report
+description: Report something that does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for taking the time to report a problem. Please search existing issues first.
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      options: [Rust, Python, JavaScript / TypeScript]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Finalytics version
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: A minimal example, with input data if possible.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, language version, browser if relevant.
