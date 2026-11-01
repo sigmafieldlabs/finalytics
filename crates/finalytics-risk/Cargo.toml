@@ -15,6 +15,11 @@ readme = "../../README.md"
 [dependencies]
 finalytics-core = { workspace = true }
 finalytics-ledger = { workspace = true }
+libm = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

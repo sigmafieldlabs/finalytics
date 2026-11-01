@@ -37,6 +37,20 @@ CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
 cd bindings/python && maturin build --release -o dist && pip install dist/*.whl && pytest
 ```
 
+## Reference values
+
+Validation tests compare against independent implementations, such as empyrical, SciPy and
+scikit-learn. The scripts in `scripts/reference/` generate the reference values, which are
+committed as fixtures under each crate's `tests/fixtures/`:
+
+```sh
+pip install -r scripts/reference/requirements.txt
+python scripts/reference/risk_statistics.py
+```
+
+Regenerate a fixture only when you add a case or a reference library changes, and review the
+difference in the pull request.
+
 ## Pull requests
 
 - Keep each pull request focused on one change, with tests.

@@ -33,6 +33,24 @@ pub mod formats {
     };
 }
 
+/// Risk analytics on returns series: statistics, drawdowns, value at risk and expected shortfall,
+/// and rolling versions of each.
+///
+/// ```
+/// let returns = [0.010, -0.004, 0.007, -0.012, 0.003];
+/// let stats = finalytics::risk::statistics(&returns, &Default::default())?;
+/// assert!(stats.volatility > 0.0);
+/// # Ok::<(), finalytics::Error>(())
+/// ```
+pub mod risk {
+    pub use finalytics_risk::{
+        Drawdown, RelativeStatistics, Statistics, StatisticsOptions, TailMethod, TailRisk,
+        drawdown_series, drawdowns, max_drawdown, normal_cdf, normal_pdf, normal_quantile,
+        relative_statistics, rolling, rolling_relative_statistics, rolling_statistics,
+        rolling_tail_risk, statistics, tail_risk, total_return,
+    };
+}
+
 /// Numerical helpers: compensated summation and tolerance checks.
 pub mod numeric {
     pub use finalytics_core::numeric::{CompensatedSum, approx_eq, compensated_sum};

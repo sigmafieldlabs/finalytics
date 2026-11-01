@@ -1,0 +1,5 @@
+# Independent reference implementations used to generate the test fixtures.
+empyrical-reloaded==0.7.1
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.9.1

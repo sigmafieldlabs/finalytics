@@ -39,6 +39,12 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   return by holding and by classification, linked so that contributions add up to the
   time-weighted return, with each holding's return in local and base currency and the currency
   effect.
+- `finalytics-risk`: return statistics (annualised return, volatility, downside deviation, Sharpe,
+  Sortino and Calmar ratios, maximum drawdown, skewness and excess kurtosis), statistics against
+  a benchmark (active return, tracking error, information ratio, beta, alpha and correlation),
+  drawdowns with their peak, trough and recovery dates, value at risk and expected shortfall
+  (historical, parametric and Cornish–Fisher), the standard normal distribution, and rolling
+  versions of each. Validated against empyrical and SciPy.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed
