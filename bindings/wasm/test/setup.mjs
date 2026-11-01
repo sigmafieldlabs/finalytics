@@ -1,0 +1,36 @@
+// Loads the built package (bindings/wasm/pkg) and the shared test data.
+import { readFile } from "node:fs/promises";
+
+import init, * as finalytics from "../pkg/finalytics.js";
+
+const root = new URL("../../../", import.meta.url);
+
+export async function engine() {
+  await init({ module_or_path: await readFile(new URL("../pkg/finalytics_bg.wasm", import.meta.url)) });
+  return finalytics;
+}
+
+export async function text(path) {
+  return readFile(new URL(path, root), "utf8");
+}
+
+export async function json(path) {
+  return JSON.parse(await text(path));
+}
+
+export function close(actual, expected, tolerance, what) {
+  const scale = Math.max(Math.abs(expected), 1);
+  if (!(Math.abs(actual - expected) <= tolerance * scale)) {
+    throw new Error(`${what}: ${actual} against the reference ${expected}`);
+  }
+}
+
+export async function scenario(fl) {
+  const portfolio = fl.portfolioFromCsv(
+    await text("tests/scenario/instruments.csv"),
+    await text("tests/scenario/transactions.csv"),
+    "USD",
+  );
+  const market = fl.MarketData.fromCsv(await text("tests/scenario/prices.csv"), await text("tests/scenario/fx.csv"));
+  return { portfolio, market };
+}

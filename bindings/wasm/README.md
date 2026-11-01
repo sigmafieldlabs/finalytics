@@ -12,10 +12,42 @@ npm install finalytics
 ```
 
 ```ts
-import init, { version } from "finalytics";
+import init, { Books, MarketData, portfolioFromCsv, statistics, solve } from "finalytics";
 
-await init();
-console.log(version());
+await init(); // in Node: await init({ module_or_path: await readFile(wasmPath) })
+
+const portfolio = portfolioFromCsv(instrumentsCsv, transactionsCsv, "USD");
+const market = MarketData.fromCsv(pricesCsv, fxCsv);
+const books = new Books(portfolio, market);
+
+const performance = books.performance();
+performance.period("YTD");
+statistics(performance.returns, { risk_free_rate: 0.03 });
+
+const solution = solve(
+  { labels, covariance, expected_returns: mu },
+  { objective: "maximum_sharpe", risk_free_rate: 0.03 },
+);
+```
+
+Data objects use the field names of the
+[schema](https://github.com/Nnamdi-sys/finalytics/tree/main/schema) (`sharpe_ratio`,
+`expected_return`); decimals are strings, dates are ISO 8601 strings, and series of numbers are
+`Float64Array`s. Invalid input throws an `Error` named `ValidationError` whose `issues` list every
+problem with where it is.
+
+## Off the main thread
+
+```ts
+import { createEngine } from "finalytics/client.js";
+
+const engine = createEngine(
+  new Worker(new URL("finalytics/worker.js", import.meta.url), { type: "module" }),
+);
+const stats = await engine.call("statistics", returns);
+const books = await engine.books(portfolio, market.toDocument());
+const performance = await books.call("performance");
+const daily = await performance.get("returns");
 ```
 
 - Source and issues: https://github.com/Nnamdi-sys/finalytics

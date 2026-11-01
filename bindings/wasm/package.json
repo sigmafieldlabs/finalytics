@@ -11,7 +11,14 @@
   },
   "homepage": "https://github.com/Nnamdi-sys/finalytics#readme",
   "bugs": "https://github.com/Nnamdi-sys/finalytics/issues",
-  "keywords": ["finance", "portfolio", "optimization", "risk", "performance", "webassembly"],
+  "keywords": [
+    "finance",
+    "portfolio",
+    "optimization",
+    "risk",
+    "performance",
+    "webassembly"
+  ],
   "type": "module",
   "main": "finalytics.js",
   "module": "finalytics.js",
@@ -21,9 +28,24 @@
     "finalytics_bg.wasm.d.ts",
     "finalytics.js",
     "finalytics.d.ts",
+    "worker.js",
+    "client.js",
+    "client.d.ts",
     "README.md",
     "LICENSE-MIT",
     "LICENSE-APACHE"
   ],
-  "sideEffects": false
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./finalytics.d.ts",
+      "default": "./finalytics.js"
+    },
+    "./worker.js": "./worker.js",
+    "./client.js": {
+      "types": "./client.d.ts",
+      "default": "./client.js"
+    },
+    "./finalytics_bg.wasm": "./finalytics_bg.wasm"
+  }
 }

@@ -79,6 +79,18 @@ jobs:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
         run: cargo test -p finalytics-wasm --target wasm32-unknown-unknown
       - run: bindings/wasm/build.sh
+      - name: Check the size of the engine
+        run: |
+          size=$(gzip -9 -c bindings/wasm/pkg/finalytics_bg.wasm | wc -c)
+          echo "The engine is $size bytes gzipped (budget 2 MiB)"
+          test "$size" -le 2097152
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Test the npm package in Node
+        run: node --test bindings/wasm/test/*.test.mjs
+      - name: Type-check the TypeScript declarations
+        run: npx --yes -p typescript@5.9.3 tsc -p bindings/wasm/test
 
   python:
     name: Python ${{ matrix.python }}

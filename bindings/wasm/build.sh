@@ -13,4 +13,5 @@ rm -rf "$out"
 wasm-bindgen --target web --out-dir "$out" --out-name finalytics \
   target/wasm32-unknown-unknown/wasm-release/finalytics_wasm.wasm
 cp bindings/wasm/package.json bindings/wasm/README.md LICENSE-MIT LICENSE-APACHE "$out"/
-echo "Built $out ($(wc -c < "$out/finalytics_bg.wasm") bytes of WebAssembly)"
+cp bindings/wasm/js/worker.js bindings/wasm/js/client.js bindings/wasm/js/client.d.ts "$out"/
+echo "Built $out ($(wc -c < "$out/finalytics_bg.wasm") bytes of WebAssembly, $(gzip -9 -c "$out/finalytics_bg.wasm" | wc -c) gzipped)"

@@ -65,7 +65,10 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   Rebalancing proposes the trades that move an account to target weights, with the lots each
   sale closes, its realised gain, and the currency conversions that fund purchases, as
   transactions ready to apply to the books.
-- WebAssembly bindings and an npm package with TypeScript types.
+- An npm package that runs the engine as WebAssembly, with the same API (`Books`,
+  `Performance`, `MarketData` and functions for risk and optimisation), `Float64Array`s for
+  series, TypeScript declarations for every data type, and a worker with a promise-based client
+  for running the engine off the main thread. The engine is about 0.6 MB gzipped.
 - JSON Schema for every data type the bindings exchange, and for the portfolio document on its
   own, generated from the Rust types; the Python dataclasses and TypeScript declarations are
   generated from it, with the Rust documentation.
