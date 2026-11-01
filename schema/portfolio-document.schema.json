@@ -888,5 +888,5 @@
       "description": "Identifies a transaction. Lots opened by a transaction take their identity from it.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
     }
   },
-  "$id": "https://github.com/Nnamdi-sys/finalytics/blob/main/schema/portfolio-document.schema.json"
+  "$id": "https://github.com/sigmafieldlabs/finalytics/blob/main/schema/portfolio-document.schema.json"
 }

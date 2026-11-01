@@ -14,10 +14,10 @@ exclude = ["fuzz"]
 version = "1.0.0-alpha.0"
 edition = "2024"
 rust-version = "1.88"
-authors = ["Nnamdi Olisaeloka"]
+authors = ["Nnamdi Olisaeloka <nnamdi@sigmafieldlabs.com>"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Nnamdi-sys/finalytics"
-homepage = "https://github.com/Nnamdi-sys/finalytics"
+repository = "https://github.com/sigmafieldlabs/finalytics"
+homepage = "https://sigmafield.app/libraries/finalytics"
 keywords = ["finance", "portfolio", "optimization", "risk", "performance"]
 categories = ["finance", "mathematics", "science", "wasm"]
 

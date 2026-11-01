@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT OR Apache-2.0"
 license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
-authors = [{ name = "Nnamdi Olisaeloka" }]
+authors = [{ name = "Nnamdi Olisaeloka", email = "nnamdi@sigmafieldlabs.com" }]
 keywords = ["finance", "portfolio", "optimization", "risk", "performance"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -24,9 +24,10 @@ dependencies = ["numpy>=1.24"]
 dynamic = ["version"]
 
 [project.urls]
-Repository = "https://github.com/Nnamdi-sys/finalytics"
-Changelog = "https://github.com/Nnamdi-sys/finalytics/blob/main/CHANGELOG.md"
-Issues = "https://github.com/Nnamdi-sys/finalytics/issues"
+Homepage = "https://sigmafield.app/libraries/finalytics"
+Repository = "https://github.com/sigmafieldlabs/finalytics"
+Changelog = "https://github.com/sigmafieldlabs/finalytics/blob/main/CHANGELOG.md"
+Issues = "https://github.com/sigmafieldlabs/finalytics/issues"
 
 [project.optional-dependencies]
 pandas = ["pandas>=2"]

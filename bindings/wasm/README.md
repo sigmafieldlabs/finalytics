@@ -31,7 +31,7 @@ const solution = solve(
 ```
 
 Data objects use the field names of the
-[schema](https://github.com/Nnamdi-sys/finalytics/tree/main/schema) (`sharpe_ratio`,
+[schema](https://github.com/sigmafieldlabs/finalytics/tree/main/schema) (`sharpe_ratio`,
 `expected_return`); decimals are strings, dates are ISO 8601 strings, and series of numbers are
 `Float64Array`s. Invalid input throws an `Error` named `ValidationError` whose `issues` list every
 problem with where it is.
@@ -50,5 +50,5 @@ const performance = await books.call("performance");
 const daily = await performance.get("returns");
 ```
 
-- Source and issues: https://github.com/Nnamdi-sys/finalytics
+- Source and issues: https://github.com/sigmafieldlabs/finalytics
 - Licence: MIT OR Apache-2.0

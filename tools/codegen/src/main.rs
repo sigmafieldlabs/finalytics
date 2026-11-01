@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 
 use finalytics::{formats::PortfolioDocument, opt, risk};
 
-const BASE_URL: &str = "https://github.com/Nnamdi-sys/finalytics/blob/main/schema";
+const BASE_URL: &str = "https://github.com/sigmafieldlabs/finalytics/blob/main/schema";
 
 fn generator() -> SchemaGenerator {
     SchemaSettings::draft2020_12().into_generator()

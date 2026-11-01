@@ -3,14 +3,14 @@
   "version": "1.0.0-alpha.0",
   "description": "Portfolio analytics: accounting, performance, risk and optimisation, compiled to WebAssembly.",
   "license": "MIT OR Apache-2.0",
-  "author": "Nnamdi Olisaeloka",
+  "author": "Nnamdi Olisaeloka <nnamdi@sigmafieldlabs.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nnamdi-sys/finalytics.git",
+    "url": "git+https://github.com/sigmafieldlabs/finalytics.git",
     "directory": "bindings/wasm"
   },
-  "homepage": "https://github.com/Nnamdi-sys/finalytics#readme",
-  "bugs": "https://github.com/Nnamdi-sys/finalytics/issues",
+  "homepage": "https://sigmafield.app/libraries/finalytics",
+  "bugs": "https://github.com/sigmafieldlabs/finalytics/issues",
   "keywords": [
     "finance",
     "portfolio",

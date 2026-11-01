@@ -60,5 +60,5 @@ raises `finalytics.ValidationError`, whose `issues` list every problem with wher
 
 Wheels are published for Linux, macOS and Windows and work with Python 3.10 and later.
 
-- Source and issues: https://github.com/Nnamdi-sys/finalytics
+- Source and issues: https://github.com/sigmafieldlabs/finalytics
 - Licence: MIT OR Apache-2.0
