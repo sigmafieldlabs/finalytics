@@ -1,0 +1,17 @@
+id,account,trade_date,type,instrument,quantity,price,fees,amount,currency,lot_method,lots,cost_basis,acquired,withholding_tax,sell_amount,sell_currency,buy_amount,buy_currency,from,to,new_instrument,ratio,cost_allocation,cash_per_unit,settle_date,note
+t1,main,2026-01-02,deposit,,,,,10000,USD,,,,,,,,,,,,,,,,2026-01-05,first
+t2,main,2026-01-05,buy,AAPL,10,150,5,,,,,,,,,,,,,,,,,,,
+t3,main,2026-01-06,transfer_in,MSFT,5,,,,,,,1500,2025-06-01,,,,,,,,,,,,,
+t4,main,2026-02-02,sell,AAPL,4,190,1,,,specific_id,t2:4,,,,,,,,,,,,,,,
+t5,main,2026-02-03,dividend,AAPL,,,,12.5,USD,,,,,1.5,,,,,,,,,,,,
+t6,main,2026-02-04,interest,,,,,3,USD,,,,,,,,,,,,,,,,,
+t7,main,2026-02-05,fee,,,,,2,USD,,,,,,,,,,,,,,,,,
+t8,main,2026-02-06,tax,,,,,1,USD,,,,,,,,,,,,,,,,,
+t9,main,2026-02-09,fx_conversion,,,,,,,,,,,,1000,USD,900,EUR,,,,,,,,
+t10,main,2026-03-02,split,AAPL,,,,,,,,,,,,,,,1,4,,,,,,
+t11,main,2026-03-03,spin_off,MSFT,,,,,,,,,,,,,,,,,NEWCO,0.5,0.1,,,
+t12,main,2026-03-04,merger,NEWCO,,,,,,,,,,,,,,,,,BIGCO,0.25,2,,,
+t13,main,2026-03-05,symbol_change,BIGCO,,,,,,,,,,,,,,,,,BIG,,,,,
+t14,main,2026-03-06,return_of_capital,AAPL,,,,5,USD,,,,,,,,,,,,,,,,,
+t15,main,2026-03-09,transfer_out,AAPL,2,,,,,lifo,,,,,,,,,,,,,,,,
+t16,main,2026-03-10,withdrawal,,,,,100,USD,,,,,,,,,,,,,,,,,

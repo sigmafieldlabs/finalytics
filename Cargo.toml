@@ -6,7 +6,9 @@ members = [
     "bindings/wasm",
     "tools/bench",
     "tools/codegen",
+    "tools/fuzz-checks",
 ]
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "1.0.0-alpha.0"

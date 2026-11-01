@@ -52,7 +52,8 @@ constraints.
 | `schema` | JSON Schema of the data types, including the portfolio document |
 | `docs/methods` | How each model is defined and validated |
 | `docs/performance.md` | Performance budgets and benchmark results |
-| `tools` | Benchmarks and the schema generator |
+| `tools` | Benchmarks, fuzz checks and the schema generator |
+| `fuzz` | Fuzz targets and their seed corpus |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
 

@@ -469,6 +469,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "finalytics-fuzz-checks"
+version = "1.0.0-alpha.0"
+dependencies = [
+ "finalytics",
+ "serde_json",
+]
+
+[[package]]
 name = "finalytics-ledger"
 version = "1.0.0-alpha.0"
 dependencies = [

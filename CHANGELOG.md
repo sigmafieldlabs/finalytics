@@ -79,6 +79,8 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 - Benchmarks of the main operations and performance budgets checked in CI: books for 100,000
   transactions in under 2 seconds, natively and in WebAssembly, and a 500-asset optimisation in
   under half a second. Results are in `docs/performance.md`.
+- Fuzz targets for every reader and for the numerical entry points, with a seed corpus that the
+  tests replay.
 
 ### Removed
 

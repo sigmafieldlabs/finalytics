@@ -1,0 +1,3 @@
+id,kind,currency,name,class.asset_class,id.isin,multiplier
+AAPL,equity,USD,Apple Inc.,Equity,US0378331005,
+ESZ6,future,USD,E-mini,Equity,,50

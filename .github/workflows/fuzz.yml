@@ -1,0 +1,71 @@
+name: Fuzz
+
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "fuzz/**"
+      - "tools/fuzz-checks/**"
+      - "Cargo.lock"
+      - ".github/workflows/fuzz.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: How long to run each target, in seconds
+        default: "1800"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - csv_instruments
+          - csv_transactions
+          - csv_prices
+          - csv_fx
+          - csv_portfolio
+          - document
+          - market_document
+          - returns
+          - optimisation
+    env:
+      TARGET: ${{ matrix.target }}
+      # One minute per target on pull requests, half an hour on the weekly run.
+      SECONDS_PER_TARGET: ${{ github.event_name == 'pull_request' && '60' || inputs.seconds || '1800' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      # Optimised, with debug assertions so that integer overflow fails the run.
+      - name: Run the target, starting from the checked-in corpus
+        run: |
+          mkdir -p "fuzz/work/$TARGET"
+          cargo fuzz run -O -a "$TARGET" "fuzz/work/$TARGET" "fuzz/corpus/$TARGET" -- \
+            -max_total_time="$SECONDS_PER_TARGET" -rss_limit_mb=2048 -timeout=10
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore

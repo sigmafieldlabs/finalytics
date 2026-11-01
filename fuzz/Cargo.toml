@@ -1,0 +1,84 @@
+[package]
+name = "finalytics-fuzz"
+description = "Fuzz targets for Finalytics, run with cargo-fuzz."
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+finalytics-fuzz-checks = { path = "../tools/fuzz-checks" }
+
+# A workspace of its own, so that the fuzzing flags never reach the main workspace's builds.
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "csv_instruments"
+path = "fuzz_targets/csv_instruments.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "csv_transactions"
+path = "fuzz_targets/csv_transactions.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "csv_prices"
+path = "fuzz_targets/csv_prices.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "csv_fx"
+path = "fuzz_targets/csv_fx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "csv_portfolio"
+path = "fuzz_targets/csv_portfolio.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "document"
+path = "fuzz_targets/document.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "market_document"
+path = "fuzz_targets/market_document.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "returns"
+path = "fuzz_targets/returns.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "optimisation"
+path = "fuzz_targets/optimisation.rs"
+test = false
+doc = false
+bench = false

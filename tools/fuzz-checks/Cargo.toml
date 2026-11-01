@@ -1,0 +1,17 @@
+[package]
+name = "finalytics-fuzz-checks"
+description = "The checks the Finalytics fuzz targets run, shared with a test that replays the corpus."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+finalytics = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

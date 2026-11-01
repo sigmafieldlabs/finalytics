@@ -1,0 +1,261 @@
+{
+  "format": "finalytics.portfolio",
+  "format_version": 1,
+  "portfolio": {
+    "base_currency": "USD",
+    "accounts": [
+      {
+        "id": "main",
+        "lot_method": "fifo"
+      }
+    ],
+    "instruments": [
+      {
+        "id": "AAPL",
+        "kind": "equity",
+        "currency": "USD"
+      },
+      {
+        "id": "MSFT",
+        "kind": "equity",
+        "currency": "USD"
+      },
+      {
+        "id": "NEWCO",
+        "kind": "equity",
+        "currency": "USD"
+      },
+      {
+        "id": "BIGCO",
+        "kind": "equity",
+        "currency": "USD"
+      },
+      {
+        "id": "BIG",
+        "kind": "equity",
+        "currency": "USD"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "t1",
+        "account": "main",
+        "trade_date": "2026-01-02",
+        "settle_date": "2026-01-05",
+        "type": "deposit",
+        "amount": {
+          "amount": "10000",
+          "currency": "USD"
+        },
+        "note": "first"
+      },
+      {
+        "id": "t2",
+        "account": "main",
+        "trade_date": "2026-01-05",
+        "type": "buy",
+        "instrument": "AAPL",
+        "quantity": "10",
+        "price": "150",
+        "fees": "5"
+      },
+      {
+        "id": "t3",
+        "account": "main",
+        "trade_date": "2026-01-06",
+        "type": "transfer_in",
+        "instrument": "MSFT",
+        "quantity": "5",
+        "cost_basis": "1500",
+        "acquired": "2025-06-01"
+      },
+      {
+        "id": "t4",
+        "account": "main",
+        "trade_date": "2026-02-02",
+        "type": "sell",
+        "instrument": "AAPL",
+        "quantity": "4",
+        "price": "190",
+        "fees": "1",
+        "lot_method": "specific_id",
+        "lots": [
+          {
+            "lot": "t2",
+            "quantity": "4"
+          }
+        ]
+      },
+      {
+        "id": "t5",
+        "account": "main",
+        "trade_date": "2026-02-03",
+        "type": "dividend",
+        "instrument": "AAPL",
+        "amount": {
+          "amount": "12.5",
+          "currency": "USD"
+        },
+        "withholding_tax": "1.5"
+      },
+      {
+        "id": "t6",
+        "account": "main",
+        "trade_date": "2026-02-04",
+        "type": "interest",
+        "amount": {
+          "amount": "3",
+          "currency": "USD"
+        },
+        "withholding_tax": "0"
+      },
+      {
+        "id": "t7",
+        "account": "main",
+        "trade_date": "2026-02-05",
+        "type": "fee",
+        "amount": {
+          "amount": "2",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t8",
+        "account": "main",
+        "trade_date": "2026-02-06",
+        "type": "tax",
+        "amount": {
+          "amount": "1",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t9",
+        "account": "main",
+        "trade_date": "2026-02-09",
+        "type": "fx_conversion",
+        "sell": {
+          "amount": "1000",
+          "currency": "USD"
+        },
+        "buy": {
+          "amount": "900",
+          "currency": "EUR"
+        }
+      },
+      {
+        "id": "t10",
+        "account": "main",
+        "trade_date": "2026-03-02",
+        "type": "split",
+        "instrument": "AAPL",
+        "from": "1",
+        "to": "4"
+      },
+      {
+        "id": "t11",
+        "account": "main",
+        "trade_date": "2026-03-03",
+        "type": "spin_off",
+        "instrument": "MSFT",
+        "new_instrument": "NEWCO",
+        "ratio": "0.5",
+        "cost_allocation": "0.1"
+      },
+      {
+        "id": "t12",
+        "account": "main",
+        "trade_date": "2026-03-04",
+        "type": "merger",
+        "instrument": "NEWCO",
+        "new_instrument": "BIGCO",
+        "ratio": "0.25",
+        "cash_per_unit": "0"
+      },
+      {
+        "id": "t13",
+        "account": "main",
+        "trade_date": "2026-03-05",
+        "type": "symbol_change",
+        "instrument": "BIGCO",
+        "new_instrument": "BIG"
+      },
+      {
+        "id": "t14",
+        "account": "main",
+        "trade_date": "2026-03-06",
+        "type": "return_of_capital",
+        "instrument": "AAPL",
+        "amount": {
+          "amount": "5",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t15",
+        "account": "main",
+        "trade_date": "2026-03-09",
+        "type": "transfer_out",
+        "instrument": "AAPL",
+        "quantity": "2",
+        "lot_method": "lifo"
+      },
+      {
+        "id": "t16",
+        "account": "main",
+        "trade_date": "2026-03-10",
+        "type": "withdrawal",
+        "amount": {
+          "amount": "100",
+          "currency": "USD"
+        }
+      }
+    ]
+  },
+  "market": {
+    "pivot": "USD",
+    "max_carry_days": 5,
+    "prices": {
+      "AAPL": {
+        "dates": [
+          "2026-03-10"
+        ],
+        "values": [
+          "50"
+        ]
+      },
+      "BIG": {
+        "dates": [
+          "2026-03-10"
+        ],
+        "values": [
+          "20"
+        ]
+      },
+      "MSFT": {
+        "dates": [
+          "2026-01-06"
+        ],
+        "values": [
+          "300"
+        ]
+      }
+    },
+    "fx": [
+      {
+        "base": "EUR",
+        "quote": "USD",
+        "rates": {
+          "dates": [
+            "2026-02-09",
+            "2026-03-10"
+          ],
+          "values": [
+            "1.11",
+            "1.1"
+          ]
+        }
+      }
+    ]
+  }
+}

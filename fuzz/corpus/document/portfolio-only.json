@@ -1,0 +1,167 @@
+{
+  "format": "finalytics.portfolio",
+  "format_version": 1,
+  "portfolio": {
+    "base_currency": "USD",
+    "accounts": [
+      {
+        "id": "isa",
+        "lot_method": "fifo"
+      },
+      {
+        "id": "main",
+        "lot_method": "fifo"
+      }
+    ],
+    "instruments": [
+      {
+        "id": "SPY",
+        "name": "S&P 500 ETF",
+        "kind": "fund",
+        "currency": "USD",
+        "classifications": {
+          "asset_class": "Equity",
+          "region": "North America"
+        }
+      },
+      {
+        "id": "SAP",
+        "name": "SAP SE",
+        "kind": "equity",
+        "currency": "EUR",
+        "classifications": {
+          "asset_class": "Equity",
+          "region": "Europe"
+        }
+      },
+      {
+        "id": "BOND",
+        "name": "US Treasury 2031",
+        "kind": "bond",
+        "currency": "USD",
+        "classifications": {
+          "asset_class": "Fixed income",
+          "region": "North America"
+        }
+      }
+    ],
+    "transactions": [
+      {
+        "id": "t1",
+        "account": "main",
+        "trade_date": "2026-09-01",
+        "type": "deposit",
+        "amount": {
+          "amount": "100000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t2",
+        "account": "main",
+        "trade_date": "2026-09-01",
+        "type": "buy",
+        "instrument": "SPY",
+        "quantity": "100",
+        "price": "500",
+        "fees": "10"
+      },
+      {
+        "id": "t3",
+        "account": "main",
+        "trade_date": "2026-09-01",
+        "type": "fx_conversion",
+        "sell": {
+          "amount": "22000",
+          "currency": "USD"
+        },
+        "buy": {
+          "amount": "20000",
+          "currency": "EUR"
+        }
+      },
+      {
+        "id": "t4",
+        "account": "main",
+        "trade_date": "2026-09-02",
+        "type": "buy",
+        "instrument": "SAP",
+        "quantity": "80",
+        "price": "190.5",
+        "fees": "5"
+      },
+      {
+        "id": "t5",
+        "account": "main",
+        "trade_date": "2026-09-02",
+        "type": "buy",
+        "instrument": "BOND",
+        "quantity": "250",
+        "price": "100.05",
+        "fees": "0"
+      },
+      {
+        "id": "t6",
+        "account": "isa",
+        "trade_date": "2026-09-15",
+        "type": "deposit",
+        "amount": {
+          "amount": "20000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t7",
+        "account": "isa",
+        "trade_date": "2026-09-15",
+        "type": "buy",
+        "instrument": "SPY",
+        "quantity": "30",
+        "price": "505",
+        "fees": "5"
+      },
+      {
+        "id": "t8",
+        "account": "main",
+        "trade_date": "2026-09-25",
+        "type": "dividend",
+        "instrument": "SPY",
+        "amount": {
+          "amount": "180",
+          "currency": "USD"
+        },
+        "withholding_tax": "27"
+      },
+      {
+        "id": "t9",
+        "account": "main",
+        "trade_date": "2026-10-07",
+        "type": "sell",
+        "instrument": "SPY",
+        "quantity": "40",
+        "price": "512",
+        "fees": "8"
+      },
+      {
+        "id": "t10",
+        "account": "main",
+        "trade_date": "2026-10-14",
+        "type": "withdrawal",
+        "amount": {
+          "amount": "5000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t11",
+        "account": "isa",
+        "trade_date": "2026-10-20",
+        "type": "buy",
+        "instrument": "BOND",
+        "quantity": "45",
+        "price": "100.1",
+        "fees": "0"
+      }
+    ]
+  }
+}

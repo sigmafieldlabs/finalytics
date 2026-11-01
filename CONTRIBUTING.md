@@ -68,6 +68,26 @@ machine and include the comparison in the pull request. Criterion keeps the prev
 `target/criterion` and reports the change. Update the tables in `docs/performance.md` when a
 change moves the numbers materially.
 
+## Fuzzing
+
+Every reader (CSV and JSON) and the numerical entry points have fuzz targets in `fuzz/`. The
+checks they run live in `tools/fuzz-checks`, and `cargo test` replays the seed corpus in
+`fuzz/corpus` on stable Rust. Fuzzing itself needs a nightly toolchain and
+[cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz):
+
+```sh
+cargo install cargo-fuzz
+cargo +nightly fuzz list
+cargo +nightly fuzz run -O -a document -- -max_total_time=300
+```
+
+With `-a` (debug assertions), integer overflow fails the run too. A target fails when the engine
+panics, overflows the stack, runs out of memory or time, or when a check fails, for example a
+document that does not read back equal to itself. To fix a failure, add the input from
+`fuzz/artifacts/<target>/` to `fuzz/corpus/<target>/` with a descriptive name, so that
+`cargo test` keeps checking it, and then fix the cause. CI fuzzes each target for a minute on
+pull requests that change the engine, and for longer every week.
+
 ## Pull requests
 
 - Keep each pull request focused on one change, with tests.
