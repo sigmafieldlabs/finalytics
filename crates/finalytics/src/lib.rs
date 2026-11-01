@@ -12,14 +12,17 @@ pub use finalytics_core::{
 };
 
 pub use finalytics_ledger::{
-    Account, AccountId, Books, CashValue, Effect, Event, Flow, FlowKind, Holdings, Instrument,
-    InstrumentId, InstrumentKind, Lot, LotId, LotMethod, LotPick, MarketData, Portfolio, Position,
-    PositionValue, RealisedGain, Transaction, TransactionId, TransactionKind, Valuation,
-    ValueSeries,
+    Account, AccountId, Allocation, Books, CashValue, Effect, Event, Flow, FlowKind, HoldingKey,
+    HoldingLine, HoldingSeries, Holdings, Instrument, InstrumentId, InstrumentKind, Lot, LotId,
+    LotMethod, LotPick, MarketData, Portfolio, Position, PositionValue, RealisedGain, Transaction,
+    TransactionId, TransactionKind, Valuation, ValueSeries,
 };
 
 pub use finalytics_formats::PortfolioDocument;
-pub use finalytics_perf::{ExcessReturn, FlowTiming, Performance, Period, PeriodReturn};
+pub use finalytics_perf::{
+    Contribution, ExcessReturn, FlowTiming, GroupContribution, Performance, Period, PeriodReturn,
+    group_contributions,
+};
 
 /// Reading and writing portfolios: CSV import with validation reports, and the versioned
 /// portfolio document in JSON.

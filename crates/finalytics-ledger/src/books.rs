@@ -68,6 +68,53 @@ pub struct Flow {
     pub kind: FlowKind,
 }
 
+/// A holding for performance attribution: an instrument, or cash in one currency, added up
+/// across accounts.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(tag = "holding", content = "id", rename_all = "snake_case")]
+pub enum HoldingKey {
+    /// An instrument.
+    Instrument(InstrumentId),
+    /// Cash in one currency.
+    Cash(Currency),
+}
+
+/// How a transaction moved value between holdings, used to measure each holding's
+/// contribution. Value moved between holdings nets to zero; only external flows change the
+/// portfolio's total.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "allocation", rename_all = "snake_case")]
+pub enum Allocation {
+    /// `amount` (in `currency`) moved into `holding` (negative: out of it).
+    Trade {
+        /// The holding.
+        holding: HoldingKey,
+        /// The currency of `amount`.
+        currency: Currency,
+        /// The value moved in.
+        amount: Decimal,
+    },
+    /// `amount` (in `currency`) earned by `holding` and paid out to cash, such as a dividend.
+    Income {
+        /// The holding that earned it.
+        holding: HoldingKey,
+        /// The currency of `amount`.
+        currency: Currency,
+        /// The amount, net of tax withheld.
+        amount: Decimal,
+    },
+    /// `quantity` units of `to` replaced part of `from` (a spin-off, merger or symbol change);
+    /// the value moved is the market value of the new units on the date.
+    Exchange {
+        /// The instrument given up, wholly or in part.
+        from: InstrumentId,
+        /// The instrument received.
+        to: InstrumentId,
+        /// The units of `to` received.
+        quantity: Decimal,
+    },
+}
+
 /// One transaction as applied to the books.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Event {
@@ -81,6 +128,8 @@ pub struct Event {
     pub effects: Vec<Effect>,
     /// The external flows it caused.
     pub flows: Vec<Flow>,
+    /// How it moved value between holdings.
+    pub allocations: Vec<Allocation>,
 }
 
 /// A gain or loss realised by a sale, a return of capital or a cash merger, for one lot.
@@ -363,6 +412,25 @@ impl<'a> Engine<'a> {
         let mut cash = Vec::new();
         let mut flows = Vec::new();
         self.apply_kind(tx, &mut cash, &mut flows)?;
+        let received = match &tx.kind {
+            TransactionKind::SpinOff { new_instrument, .. }
+            | TransactionKind::Merger { new_instrument, .. }
+            | TransactionKind::SymbolChange { new_instrument, .. } => {
+                let key = (tx.account.clone(), new_instrument.clone());
+                let total = |lots: &[Lot]| -> Decimal { lots.iter().map(|x| x.quantity).sum() };
+                let before_qty = before
+                    .iter()
+                    .find(|(k, _)| *k == key)
+                    .map_or(Decimal::ZERO, |(_, l)| total(l));
+                self.holdings
+                    .lots
+                    .get(&key)
+                    .map_or(Decimal::ZERO, |l| total(l))
+                    - before_qty
+            }
+            _ => Decimal::ZERO,
+        };
+        let allocations = allocations(tx, &cash, &flows, received);
 
         let mut effects = Vec::new();
         for (key, old) in before {
@@ -400,6 +468,7 @@ impl<'a> Engine<'a> {
             index,
             effects,
             flows,
+            allocations,
         })
     }
 
@@ -840,6 +909,125 @@ impl<'a> Engine<'a> {
         self.realised.extend(gains);
         Ok(())
     }
+}
+
+/// How `tx` moved value between holdings, from the cash it moved, the external flows it caused
+/// and the units of a new instrument it delivered.
+fn allocations(
+    tx: &Transaction,
+    cash: &[(Currency, Decimal)],
+    flows: &[Flow],
+    received: Decimal,
+) -> Vec<Allocation> {
+    use TransactionKind::*;
+    let trade = |holding: HoldingKey, currency: Currency, amount: Decimal| Allocation::Trade {
+        holding,
+        currency,
+        amount,
+    };
+    let cash_trades = || cash.iter().map(|&(c, a)| trade(HoldingKey::Cash(c), c, a));
+    match &tx.kind {
+        Buy { instrument, .. } | Sell { instrument, .. } => {
+            let mut out: Vec<Allocation> = cash_trades().collect();
+            out.extend(
+                cash.iter()
+                    .map(|&(c, a)| trade(HoldingKey::Instrument(instrument.clone()), c, -a)),
+            );
+            out
+        }
+        Deposit { .. } | Withdrawal { .. } => cash_trades().collect(),
+        TransferIn { instrument, .. } | TransferOut { instrument, .. } => flows
+            .iter()
+            .map(|f| {
+                trade(
+                    HoldingKey::Instrument(instrument.clone()),
+                    f.currency,
+                    f.amount,
+                )
+            })
+            .collect(),
+        Dividend { instrument, .. } | ReturnOfCapital { instrument, .. } => {
+            income(instrument, cash)
+        }
+        Interest {
+            instrument: Some(instrument),
+            ..
+        } => income(instrument, cash),
+        Interest {
+            instrument: None, ..
+        }
+        | Fee { .. }
+        | Tax { .. }
+        | Split { .. } => Vec::new(),
+        FxConversion { sell, buy } => vec![
+            trade(
+                HoldingKey::Cash(sell.currency()),
+                sell.currency(),
+                -sell.amount(),
+            ),
+            // The currency bought receives the market value of what was sold; any difference
+            // from the amount actually received is that holding's gain or loss.
+            trade(
+                HoldingKey::Cash(buy.currency()),
+                sell.currency(),
+                sell.amount(),
+            ),
+        ],
+        SpinOff {
+            instrument,
+            new_instrument,
+            ..
+        }
+        | SymbolChange {
+            instrument,
+            new_instrument,
+        } => {
+            vec![Allocation::Exchange {
+                from: instrument.clone(),
+                to: new_instrument.clone(),
+                quantity: received,
+            }]
+        }
+        Merger {
+            instrument,
+            new_instrument,
+            ratio,
+            ..
+        } => {
+            let mut out = Vec::new();
+            if !ratio.is_zero() {
+                out.push(Allocation::Exchange {
+                    from: instrument.clone(),
+                    to: new_instrument.clone(),
+                    quantity: received,
+                });
+            }
+            for &(c, a) in cash {
+                out.push(trade(HoldingKey::Instrument(instrument.clone()), c, -a));
+                out.push(trade(HoldingKey::Cash(c), c, a));
+            }
+            out
+        }
+    }
+}
+
+fn income(instrument: &InstrumentId, cash: &[(Currency, Decimal)]) -> Vec<Allocation> {
+    cash.iter()
+        .flat_map(|&(c, a)| {
+            [
+                Allocation::Income {
+                    holding: HoldingKey::Instrument(instrument.clone()),
+                    currency: c,
+                    amount: a,
+                },
+                Allocation::Trade {
+                    holding: HoldingKey::Cash(c),
+                    currency: c,
+                    amount: a,
+                },
+            ]
+        })
+        .collect()
 }
 
 fn touched_keys(tx: &Transaction) -> Vec<(AccountId, InstrumentId)> {

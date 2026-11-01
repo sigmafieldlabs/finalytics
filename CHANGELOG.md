@@ -35,6 +35,10 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   (internal rate of return), Modified Dietz, month-, quarter- and year-to-date, trailing-year
   and since-inception periods with annualisation for periods of a year or more, and excess
   returns over a benchmark, arithmetic and geometric.
+- Daily value, trade cash and income for each holding and cash balance, and contribution to
+  return by holding and by classification, linked so that contributions add up to the
+  time-weighted return, with each holding's return in local and base currency and the currency
+  effect.
 - WebAssembly bindings and an npm package with TypeScript types.
 
 ### Removed

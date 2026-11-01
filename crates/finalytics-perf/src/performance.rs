@@ -55,12 +55,12 @@ pub struct ExcessReturn {
 /// include that timing.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Performance {
-    dates: Vec<Date>,
-    values: Vec<f64>,
-    flows: Vec<f64>,
+    pub(crate) dates: Vec<Date>,
+    pub(crate) values: Vec<f64>,
+    pub(crate) flows: Vec<f64>,
     returns: Vec<f64>,
-    growth: Vec<f64>,
-    timing: FlowTiming,
+    pub(crate) growth: Vec<f64>,
+    pub(crate) timing: FlowTiming,
 }
 
 fn to_f64(value: Decimal) -> f64 {

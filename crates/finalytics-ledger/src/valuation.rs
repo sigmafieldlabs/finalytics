@@ -3,7 +3,9 @@
 use finalytics_core::{Currency, Date, Decimal, Error, Observation, Result, ValidationReport};
 use serde::{Deserialize, Serialize};
 
-use crate::{AccountId, Books, Holdings, InstrumentId, MarketData};
+use std::collections::BTreeMap;
+
+use crate::{AccountId, Allocation, Books, HoldingKey, Holdings, InstrumentId, MarketData};
 
 /// A position valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -240,5 +242,228 @@ impl Books {
             total_base: total,
             warnings: ValidationReport::new(),
         }
+    }
+}
+
+/// Values, value moved in and income per holding over dates, in the holding's currency and in
+/// the base currency: the input to contribution analysis.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HoldingSeries {
+    /// The dates.
+    pub dates: Vec<Date>,
+    /// The base currency.
+    pub base_currency: Currency,
+    /// One line per instrument and per cash currency held at any time, in key order.
+    pub lines: Vec<HoldingLine>,
+    /// Prices and rates carried forward from earlier dates.
+    pub warnings: ValidationReport,
+}
+
+/// One holding's values, trades and income on each date of a [`HoldingSeries`].
+///
+/// Trades and income are those since the previous date. Value moved between holdings (a
+/// purchase moves cash into a share) appears as a trade out of one line and into another, so
+/// trades across all lines add up to the portfolio's external flows plus its income.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HoldingLine {
+    /// The holding.
+    pub holding: HoldingKey,
+    /// The holding's own currency: the instrument's, or the cash currency.
+    pub currency: Currency,
+    /// The value at the end of each date, in `currency`.
+    pub values_local: Vec<Decimal>,
+    /// The value at the end of each date, in the base currency.
+    pub values_base: Vec<Decimal>,
+    /// The value moved in since the previous date, in `currency`.
+    pub trades_local: Vec<Decimal>,
+    /// The value moved in since the previous date, in the base currency.
+    pub trades_base: Vec<Decimal>,
+    /// The income earned since the previous date, in `currency`.
+    pub income_local: Vec<Decimal>,
+    /// The income earned since the previous date, in the base currency.
+    pub income_base: Vec<Decimal>,
+}
+
+impl HoldingLine {
+    fn new(holding: HoldingKey, currency: Currency, len: usize) -> HoldingLine {
+        let zeros = vec![Decimal::ZERO; len];
+        HoldingLine {
+            holding,
+            currency,
+            values_local: zeros.clone(),
+            values_base: zeros.clone(),
+            trades_local: zeros.clone(),
+            trades_base: zeros.clone(),
+            income_local: zeros.clone(),
+            income_base: zeros,
+        }
+    }
+}
+
+struct Lookup<'a> {
+    market: &'a MarketData,
+    problems: ValidationReport,
+}
+
+impl Lookup<'_> {
+    fn fx(&mut self, from: Currency, to: Currency, date: Date) -> Decimal {
+        match self.market.fx_rate(from, to, date) {
+            Observation::Observed(rate) => rate,
+            Observation::Carried { value, from: since } => {
+                self.problems.warning(
+                    format!("fx.{from}{to}"),
+                    format!("rate for {date} carried from {since}"),
+                );
+                value
+            }
+            Observation::Missing => {
+                self.problems.error(
+                    format!("fx.{from}{to}"),
+                    format!("no rate on or shortly before {date}"),
+                );
+                Decimal::ZERO
+            }
+        }
+    }
+
+    fn price(&mut self, instrument: &InstrumentId, date: Date) -> Decimal {
+        match self.market.price(instrument, date) {
+            Observation::Observed(price) => price,
+            Observation::Carried { value, from } => {
+                self.problems.warning(
+                    format!("prices.{instrument}"),
+                    format!("price for {date} carried from {from}"),
+                );
+                value
+            }
+            Observation::Missing => {
+                self.problems.error(
+                    format!("prices.{instrument}"),
+                    format!("no price on or shortly before {date}"),
+                );
+                Decimal::ZERO
+            }
+        }
+    }
+}
+
+impl Books {
+    /// Each holding's values, trades and income on `dates` (strictly increasing), in one pass
+    /// over the transactions.
+    pub fn holding_series(&self, dates: &[Date], market: &MarketData) -> Result<HoldingSeries> {
+        if let Some(pair) = dates.windows(2).find(|p| p[1] <= p[0]) {
+            return Err(Error::UnorderedDates {
+                previous: pair[0],
+                next: pair[1],
+            });
+        }
+        let base = self.base_currency();
+        let mut look = Lookup {
+            market,
+            problems: ValidationReport::new(),
+        };
+        let mut lines: BTreeMap<HoldingKey, HoldingLine> = BTreeMap::new();
+        let mut holdings = Holdings::default();
+        let mut events = self.events().iter().peekable();
+        let currency_of = |key: &HoldingKey| match key {
+            HoldingKey::Cash(c) => *c,
+            HoldingKey::Instrument(id) => self.instrument(id).map_or(base, |i| i.currency),
+        };
+        for (i, &date) in dates.iter().enumerate() {
+            while let Some(event) = events.next_if(|e| e.date <= date) {
+                holdings.apply_all(&event.effects);
+                for allocation in &event.allocations {
+                    let mut add = |key: HoldingKey,
+                                   currency: Currency,
+                                   amount: Decimal,
+                                   income: bool,
+                                   look: &mut Lookup<'_>| {
+                        let line_currency = currency_of(&key);
+                        let local = amount * look.fx(currency, line_currency, event.date);
+                        let in_base = amount * look.fx(currency, base, event.date);
+                        let line = lines
+                            .entry(key.clone())
+                            .or_insert_with(|| HoldingLine::new(key, line_currency, dates.len()));
+                        if income {
+                            line.income_local[i] += local;
+                            line.income_base[i] += in_base;
+                        } else {
+                            line.trades_local[i] += local;
+                            line.trades_base[i] += in_base;
+                        }
+                    };
+                    match allocation {
+                        Allocation::Trade {
+                            holding,
+                            currency,
+                            amount,
+                        } => add(holding.clone(), *currency, *amount, false, &mut look),
+                        Allocation::Income {
+                            holding,
+                            currency,
+                            amount,
+                        } => add(holding.clone(), *currency, *amount, true, &mut look),
+                        Allocation::Exchange { from, to, quantity } => {
+                            let Some(instrument) = self.instrument(to) else {
+                                continue;
+                            };
+                            let value =
+                                *quantity * look.price(to, event.date) * instrument.multiplier;
+                            add(
+                                HoldingKey::Instrument(to.clone()),
+                                instrument.currency,
+                                value,
+                                false,
+                                &mut look,
+                            );
+                            add(
+                                HoldingKey::Instrument(from.clone()),
+                                instrument.currency,
+                                -value,
+                                false,
+                                &mut look,
+                            );
+                        }
+                    }
+                }
+            }
+            for position in holdings.positions() {
+                let key = HoldingKey::Instrument(position.instrument.clone());
+                let Some(instrument) = self.instrument(&position.instrument) else {
+                    continue;
+                };
+                let local = position.quantity
+                    * look.price(&position.instrument, date)
+                    * instrument.multiplier;
+                let in_base = local * look.fx(instrument.currency, base, date);
+                let line = lines
+                    .entry(key.clone())
+                    .or_insert_with(|| HoldingLine::new(key, instrument.currency, dates.len()));
+                line.values_local[i] += local;
+                line.values_base[i] += in_base;
+            }
+            for (_, currency, amount) in holdings.cash() {
+                let key = HoldingKey::Cash(currency);
+                let in_base = if amount.is_zero() {
+                    Decimal::ZERO
+                } else {
+                    amount * look.fx(currency, base, date)
+                };
+                let line = lines
+                    .entry(key.clone())
+                    .or_insert_with(|| HoldingLine::new(key, currency, dates.len()));
+                line.values_local[i] += amount;
+                line.values_base[i] += in_base;
+            }
+        }
+        if look.problems.has_errors() {
+            return Err(Error::Validation(look.problems));
+        }
+        Ok(HoldingSeries {
+            dates: dates.to_vec(),
+            base_currency: base,
+            lines: lines.into_values().collect(),
+            warnings: look.problems,
+        })
     }
 }

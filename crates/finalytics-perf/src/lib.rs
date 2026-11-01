@@ -5,9 +5,11 @@
 //! Most users should depend on the [`finalytics`](https://docs.rs/finalytics) crate, which
 //! re-exports the public API of every layer.
 
+mod contribution;
 mod performance;
 mod periods;
 
+pub use contribution::{Contribution, GroupContribution, group_contributions};
 pub use performance::{
     DAYS_PER_YEAR, ExcessReturn, FlowTiming, Performance, PeriodReturn, annualise,
     internal_rate_of_return,

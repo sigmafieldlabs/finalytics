@@ -17,11 +17,13 @@ mod portfolio;
 mod transaction;
 mod valuation;
 
-pub use books::{Books, Effect, Event, Flow, FlowKind, Holdings, Position, RealisedGain};
+pub use books::{
+    Allocation, Books, Effect, Event, Flow, FlowKind, HoldingKey, Holdings, Position, RealisedGain,
+};
 pub use ids::{AccountId, InstrumentId, LotId, TransactionId};
 pub use instrument::{Account, Instrument, InstrumentKind, LotMethod};
 pub use lots::Lot;
 pub use market::MarketData;
 pub use portfolio::Portfolio;
 pub use transaction::{LotPick, Transaction, TransactionKind};
-pub use valuation::{CashValue, PositionValue, Valuation, ValueSeries};
+pub use valuation::{CashValue, HoldingLine, HoldingSeries, PositionValue, Valuation, ValueSeries};
