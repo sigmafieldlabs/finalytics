@@ -1,0 +1,41 @@
+[build-system]
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "finalytics"
+description = "Portfolio analytics: accounting, performance, risk and optimisation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
+authors = [{ name = "Nnamdi Olisaeloka" }]
+keywords = ["finance", "portfolio", "optimization", "risk", "performance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+dependencies = ["numpy>=1.24"]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/Nnamdi-sys/finalytics"
+Changelog = "https://github.com/Nnamdi-sys/finalytics/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Nnamdi-sys/finalytics/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "finalytics._finalytics"
+features = ["pyo3/extension-module"]
+include = [{ path = "LICENSE-MIT", format = "sdist" }, { path = "LICENSE-APACHE", format = "sdist" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
