@@ -6,6 +6,11 @@
 //! rates, and receive typed results. The same API is available from Python and, through
 //! WebAssembly, from JavaScript and TypeScript.
 
+// The README's examples run as documentation tests.
+#[cfg(doctest)]
+#[doc = include_str!("../../../README.md")]
+struct ReadmeExamples;
+
 pub use finalytics_core::{
     BusinessDayConvention, Calendar, Currency, Date, Decimal, Error, Fill, Issue, Money,
     Observation, Result, Rounding, Severity, TimeSeries, ValidationReport, Weekday,

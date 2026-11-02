@@ -5,8 +5,8 @@ JavaScript and TypeScript through WebAssembly. It keeps the books of a multi-cur
 from its transactions, measures performance and risk, and optimises portfolios under real-world
 constraints.
 
-> **Status:** Finalytics 1.0 is in active development (`1.0.0-alpha`). It is a redesign of the
-> 0.x series; the 0.9 release remains available on the `0.9.x` line.
+> **Status:** Finalytics 1.0 is in active development. It is a redesign of the 0.x series; the
+> 0.9 release remains available on the `0.9.x` branch.
 
 ## Design
 
@@ -41,6 +41,86 @@ constraints.
 | Rust | [`finalytics`](https://crates.io/crates/finalytics) | `cargo add finalytics` |
 | Python (3.10+) | [`finalytics`](https://pypi.org/project/finalytics/) | `pip install finalytics` |
 | JavaScript / TypeScript | [`finalytics`](https://www.npmjs.com/package/finalytics) | `npm install finalytics` |
+
+Until 1.0.0 is released, these commands install the 0.x series (0.9 on crates.io and PyPI, 0.2 on
+npm). Install a 1.0 pre-release with `cargo add finalytics@<version>`, `pip install --pre
+finalytics` or `npm install finalytics@next`.
+
+## Quick start
+
+A portfolio is its instruments and transactions; with prices, the engine keeps its books and
+measures it. Here, a deposit buys two funds at the end of January, and their prices at the end of
+each month value the portfolio:
+
+```rust
+use finalytics::formats::{CsvOptions, portfolio_from_csv, prices_from_csv};
+use finalytics::{Books, Currency, Date, FlowTiming, HoldingKey, MarketData, Performance};
+
+const INSTRUMENTS: &str = "\
+id,kind,currency,class.asset_class
+SPY,fund,USD,Equity
+AGG,fund,USD,Bonds
+";
+
+const TRANSACTIONS: &str = "\
+id,account,trade_date,type,instrument,quantity,price,amount,currency
+t1,main,2026-01-30,deposit,,,,10000,USD
+t2,main,2026-01-30,buy,SPY,12,500,,
+t3,main,2026-01-30,buy,AGG,40,100,,
+";
+
+const PRICES: &str = "\
+date,SPY,AGG
+2026-01-30,500,100
+2026-02-27,520,100.8
+2026-03-31,490,101.5
+2026-04-30,530,101
+";
+
+fn main() -> Result<(), finalytics::Error> {
+    let options = CsvOptions::default();
+    let portfolio = portfolio_from_csv(Currency::USD, INSTRUMENTS, TRANSACTIONS, None, options)?;
+    let mut market = MarketData::new();
+    for (instrument, prices) in prices_from_csv(PRICES, options)? {
+        market = market.with_prices(instrument, prices);
+    }
+    let books = Books::build(&portfolio, &market)?;
+
+    let dates: Vec<Date> = ["2026-01-30", "2026-02-27", "2026-03-31", "2026-04-30"]
+        .into_iter()
+        .map(str::parse)
+        .collect::<Result<_, _>>()?;
+    let (first, last) = (dates[0], dates[3]);
+
+    // The value at the end of April, in the base currency.
+    let valuation = books.value_on(last, &market)?;
+    assert_eq!(valuation.total_base.to_string(), "10400");
+
+    // The time-weighted return since the purchase, and each holding's contribution to it.
+    let values = books.value_series(&dates, &market)?;
+    let performance = Performance::from_values(&values, FlowTiming::StartOfDay)?;
+    let twr = performance.time_weighted(first, last).unwrap_or(f64::NAN);
+    assert_eq!(format!("{twr:.4}"), "0.0400");
+
+    let holdings = books.holding_series(&dates, &market)?;
+    let contributions: Vec<String> = performance
+        .contributions(&holdings, first, last)?
+        .iter()
+        .filter_map(|c| match &c.holding {
+            HoldingKey::Instrument(id) => Some(format!("{id} {:.4}", c.contribution)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(contributions, ["AGG 0.0040", "SPY 0.0360"]);
+    Ok(())
+}
+```
+
+The same example is in the READMEs of the
+[Python](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/python#quick-start) and
+[JavaScript](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#quick-start)
+packages. The examples run as tests, so their results are
+the engine's own.
 
 ## Repository layout
 
