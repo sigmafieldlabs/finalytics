@@ -26,7 +26,7 @@ pip install "finalytics[pandas]"  # with pandas conversions
 ## Quick start
 
 Estimate risk and return from a year of monthly returns, then find the portfolio with the highest
-Sharpe ratio that holds between 10% and 60% of each asset: This example uses pandas
+Sharpe ratio that holds between 10% and 60% of each asset. This example uses pandas
 (`pip install "finalytics[pandas]"`); NumPy arrays work as well.
 
 ```python

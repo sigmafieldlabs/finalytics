@@ -4,14 +4,18 @@ This document is a short map of the code base for contributors.
 
 ## Principles
 
-1. **No input or output in the engine.** No network, files, clocks, environment variables or
-   global state, and no async runtime. Callers supply data; the engine returns results.
-2. **WebAssembly first.** Every library crate builds for `wasm32-unknown-unknown`. Parallelism
-   is optional, behind the `parallel` feature.
+1. **No input or output in the engine.** No network, files, environment variables or global
+   state, and no async runtime. The only clock is the timer behind the solve time an optimisation
+   reports. Callers supply data; the engine returns results.
+2. **WebAssembly first.** Every library crate builds for `wasm32-unknown-unknown`, and the engine
+   runs on one thread.
 3. **Exact where money is counted.** Ledger quantities and amounts use decimal arithmetic;
    analytics use `f64` with documented tolerances.
-4. **Deterministic.** Results do not depend on hash order, thread scheduling or platform.
-5. **Thin bindings.** The Python and WebAssembly layers convert data and add no logic.
+4. **Deterministic.** Results do not depend on hash order or platform; the solve time is the one
+   field that varies from run to run.
+5. **Thin bindings.** The Python and WebAssembly layers convert data and call the engine. They add
+   only what their language needs, such as period labels, default dates and grouping by a
+   function the caller passes in; every model is computed in Rust.
 
 ## Crates
 
@@ -35,8 +39,8 @@ bindings/python      PyO3 extension and the Python package
 bindings/wasm        wasm-bindgen module and the npm package
 ```
 
-Arrows point from a crate to the crates that depend on it. A crate never depends on a crate
-above it in this list.
+Each arrow points from a crate to a crate it depends on. A crate depends only on crates above
+it in this list.
 
 ## Data types across languages
 

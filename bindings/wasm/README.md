@@ -25,8 +25,8 @@ npm install finalytics
 ## Quick start
 
 Estimate risk and return from a year of monthly returns, then find the portfolio with the highest
-Sharpe ratio that holds between 10% and 60% of each asset: Saved as
-`quick-start.mjs`, it runs with `node quick-start.mjs`:
+Sharpe ratio that holds between 10% and 60% of each asset. Saved as `quick-start.mjs`, it runs
+with `node quick-start.mjs`:
 
 ```js
 import { readFile } from "node:fs/promises";
@@ -77,9 +77,10 @@ const tables = reportTables(report); // for CSV, spreadsheet or PDF export
 
 Data objects use the field names of the
 [schema](https://github.com/sigmafieldlabs/finalytics/tree/main/schema) (`sharpe_ratio`,
-`expected_return`); decimals are strings, dates are ISO 8601 strings, and series of numbers are
-`Float64Array`s. Invalid input throws an `Error` named `ValidationError` whose `issues` list every
-problem with where it is.
+`expected_return`); decimals are strings, dates are ISO 8601 strings, and series of numbers in
+data objects are arrays. A series of numbers returned on its own, such as `performance.returns`
+or `drawdownSeries(...)`, is a `Float64Array`. Invalid input throws an `Error` named
+`ValidationError` whose `issues` list every problem with where it is.
 
 ## Off the main thread
 

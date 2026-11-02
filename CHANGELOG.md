@@ -36,8 +36,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.0.0-alpha.0] - 2026-11-02
 
-Finalytics 1.0 is a redesign of the library. See the migration guide (to follow) for moving from
-0.9.
+Finalytics 1.0 is a redesign of the library. See the
+[migration guide](docs/migrating-from-0.9.md) for moving from 0.9.
 
 ### Added
 
@@ -158,7 +158,6 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 - JSON Schema for every data type the bindings exchange, and for the portfolio document on its
   own, generated from the Rust types; the Python dataclasses and TypeScript declarations are
   generated from it, with the Rust documentation.
-
 - Benchmarks of the main operations and performance budgets checked in CI: books for 100,000
   transactions in under 2 seconds, natively and in WebAssembly, and a 500-asset optimisation in
   under half a second. Results are in `docs/performance.md`.
@@ -174,3 +173,7 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 ## [0.9.0] - 2026-05-01
 
 The last release of the 0.x series. See the `0.9.x` branch.
+
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-alpha.0...HEAD
+[1.0.0-alpha.0]: https://github.com/sigmafieldlabs/finalytics/releases/tag/v1.0.0-alpha.0
+[0.9.0]: https://github.com/sigmafieldlabs/finalytics/tree/0.9.x

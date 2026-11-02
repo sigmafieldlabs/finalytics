@@ -33,9 +33,10 @@ outputs are the engine's own.
 - **Signs.** A return of `-0.25` is a fall of 25%. Drawdowns are negative returns. Value at risk
   and expected shortfall are losses, reported as positive numbers.
 - **Rates.** Returns and rates are fractions, not percentages: `0.03` is 3%.
-- **Annualisation.** Calendar periods annualise with 365.25 days a year, and only when they span
-  a year or more. Statistics of a series of returns annualise with the number of periods a year
-  (252 for daily returns by default).
+- **Annualisation.** A period's time-weighted return is annualised with 365.25 days a year, and
+  only when the period spans at least 365 days. The money-weighted return is an annual rate by
+  construction and counts time as actual/365. Statistics of a series of returns annualise with
+  the number of periods a year (252 for daily returns by default).
 - **Errors.** Invalid input is reported with every problem at once, each with a path to where it
   is (`transactions[14].quantity`, `returns[3]`). A computation that is not defined for valid
   input, such as a ratio over a dispersion of zero, returns no value rather than a NaN.

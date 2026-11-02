@@ -49,7 +49,8 @@ impl Problem {
             } else {
                 low + (high - low) * k as f64 / (points - 1) as f64
             };
-            // Back the end points off by a hair, so that rounding cannot make them infeasible.
+            // Lower each target by a relative 1e-10, so that rounding cannot make the end points
+            // infeasible.
             let target = target - 1e-10 * target.abs().max(1.0);
             let solution = self.solve(&Objective::TargetReturn { target })?;
             if let (Some(weights), Some(expected_return), Some(volatility)) = (

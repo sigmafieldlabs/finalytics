@@ -25,7 +25,7 @@ constraints.
 
 - **A pure engine.** Finalytics performs no input or output. You supply instruments,
   transactions, prices and FX rates; it returns typed results. The same inputs give the same
-  outputs on every platform.
+  outputs on every platform, apart from the time an optimisation reports it took.
 - **Accounting first.** Tax lots, corporate actions and cash in several currencies are part of
   the data model, with exact decimal arithmetic in the ledger.
 - **Runs anywhere.** The core compiles to WebAssembly and runs in the browser, in Node and in

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Currency, Date};
 
-/// The error type of `finalytics-core`.
+/// The engine's error type, returned by every function that can fail.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {

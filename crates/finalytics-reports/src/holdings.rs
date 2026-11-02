@@ -228,7 +228,7 @@ pub fn holdings_report(
         add(&mut row.unrealised_local, p.unrealised_local);
         add(&mut row.unrealised_base, p.unrealised_base);
     }
-    // Accounts with no cash in a currency are left out; a holding of nothing is clutter.
+    // Zero cash balances are left out of the holdings.
     for c in valuation.cash.iter().filter(|c| !c.amount.is_zero()) {
         let key = HoldingKey::Cash(c.currency);
         let row = rows.entry(key.clone()).or_insert_with(|| HoldingRow {

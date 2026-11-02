@@ -20,7 +20,7 @@
 //! constraints.bounds = Bound { min: 0.0, max: 0.4 };
 //! ```
 //!
-//! Records that are complete as they stand, such as a [`opt::Bound`] or a [`Transaction`]'s kind,
+//! Records that are complete as they stand, such as an [`opt::Bound`] or an [`opt::GroupLimit`],
 //! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
 //! non-exhaustive too, so a `match` on one needs a wildcard arm.
 
