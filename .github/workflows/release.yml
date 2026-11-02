@@ -20,7 +20,7 @@ jobs:
     name: Check the version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: The tag matches the version in Cargo.toml
         if: github.event_name == 'push'
         run: |
@@ -46,7 +46,7 @@ jobs:
           - { name: macOS x86_64, runner: macos-15-intel, target: x86_64 }
           - { name: Windows x64, runner: windows-latest, target: x64 }
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -78,7 +78,7 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build the source distribution
         uses: PyO3/maturin-action@v1
         with:
