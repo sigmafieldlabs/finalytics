@@ -159,7 +159,8 @@ pub struct OptimisationResult {
 
 impl Assets {
     /// Assets from their prices: the returns between consecutive dates on which every asset has
-    /// a price. The number of periods in a year is detected from the dates.
+    /// a price. Prices should include income, as adjusted closes do. The number of periods in a
+    /// year is detected from the dates.
     pub fn from_prices(prices: &PriceTable) -> Result<Assets> {
         let found = prices.returns()?;
         let periods = periods_per_year(prices.dates());

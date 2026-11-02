@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A data guide (`docs/data.md`): every input, column by column, with the dataset files as
+  examples and advice on bringing data from brokers and data providers; its examples run as
+  tests.
 - A guide to migrating from 0.9 (`docs/migrating-from-0.9.md`): what changed, what replaces
   each part of 0.9, and a 0.9 optimisation worked through in 1.0, run as a test.
 - Reporting periods are read from their labels by the engine (`Period` implements `FromStr` and

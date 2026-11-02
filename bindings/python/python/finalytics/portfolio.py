@@ -342,8 +342,8 @@ class Portfolio:
           deposit.
 
         ``fl.datasets.file("portfolio/transactions.csv")`` and the other dataset files show each
-        layout. Every problem in every file is reported at once, by line and column, in a
-        :class:`~finalytics.ValidationError`.
+        layout, and the data guide (https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md) describes every column. Every problem in every
+        file is reported at once, by line and column, in a :class:`~finalytics.ValidationError`.
         """
         native = call(
             _finalytics.NativePortfolio.from_csv,

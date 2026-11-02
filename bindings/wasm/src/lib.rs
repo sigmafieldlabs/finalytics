@@ -71,7 +71,8 @@ export interface RebalanceChoices extends Partial<RebalanceOptions> {
 /**
  * The CSV text of a portfolio's files, for `Portfolio.fromCsv`. Only the transactions are
  * required; `datasets.file("portfolio/transactions.csv")` and the other dataset files show each
- * layout.
+ * layout, and the data guide describes every column:
+ * https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md
  */
 export interface PortfolioFiles {
   /**

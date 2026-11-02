@@ -72,8 +72,9 @@ class Assets:
 
     `prices` is a pandas DataFrame indexed by date with one column of prices per asset, a
     :class:`~finalytics.types.PriceTable`, or a CSV file (a ``date`` column and one column per
-    asset) given as a path or as text. Dates on which an asset has no price are left out, with
-    a warning, so that every asset's returns cover the same periods.
+    asset) given as a path or as text. Prices should include income, as adjusted closes do.
+    Dates on which an asset has no price are left out, with a warning, so that every asset's
+    returns cover the same periods.
 
     - `risk_free_rate`: the annual risk-free rate, for Sharpe ratios; 0 by default.
     - `risk_free_asset`: one of the assets, such as T-bills, to serve as the risk-free asset

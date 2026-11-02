@@ -45,7 +45,10 @@ pub struct Portfolio {
 }
 
 /// The CSV files of a portfolio, for [`Portfolio::from_csv`]. Only the transactions are
-/// required.
+/// required. The [data guide] describes every column, and
+/// [`datasets::file`](crate::datasets::file) gives an example of each file.
+///
+/// [data guide]: https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md
 #[derive(Debug, Clone, Copy)]
 pub struct PortfolioCsv<'a> {
     transactions: &'a str,

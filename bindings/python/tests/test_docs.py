@@ -13,6 +13,7 @@ PAGES = [
     *sorted(p for p in (ROOT / "docs" / "methods").glob("*.md") if p.name != "README.md"),
     ROOT / "bindings" / "python" / "README.md",
     ROOT / "docs" / "migrating-from-0.9.md",
+    ROOT / "docs" / "data.md",
 ]
 BLOCK = re.compile(r"```python\n(.*?)```", re.DOTALL)
 
