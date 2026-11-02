@@ -2,7 +2,8 @@
 
 Each problem is formulated afresh in CVXPY, solved to tight tolerances, and compared in
 ``crates/finalytics-opt/tests/reference.rs`` with the result of the Rust formulation. The maximum
-Sharpe ratio portfolio and hierarchical risk parity come from PyPortfolioOpt.
+Sharpe ratio portfolio and hierarchical risk parity come from PyPortfolioOpt. The factor model
+cases are formulated in CVXPY in factor form, with the factor exposures as variables.
 
 Usage:
 
@@ -42,7 +43,7 @@ def data():
     mu = 0.02 + 0.6 * np.sqrt(np.diag(cov)) * rng.uniform(0.2, 1.0, n)
     scenarios = rng.multivariate_normal(mu / 252, cov / 252, 300)
     labels = [f"asset {i}" for i in range(n)]
-    return labels, cov, mu, scenarios
+    return labels, cov, mu, scenarios, (loadings, factor_cov, specific)
 
 
 def solve(objective, constraints):
@@ -52,8 +53,94 @@ def solve(objective, constraints):
     return problem
 
 
+def factor_model_cases(labels, mu, model):
+    """Problems on the factor model behind the covariance matrix, in factor form."""
+    loadings, factor_cov, specific = model
+    n, k = loadings.shape
+    w = cp.Variable(n)
+    y = cp.Variable(k)
+    risk = cp.quad_form(y, factor_cov) + cp.sum(cp.multiply(specific, cp.square(w)))
+    exposure = [y == loadings.T @ w]
+    long_only = [cp.sum(w) == 1, w >= 0, w <= 1]
+    equal = np.full(n, 1.0 / n)
+    active = loadings.T @ equal
+    cases = []
+
+    def variance(x):
+        z = loadings.T @ x
+        return z @ factor_cov @ z + specific @ x**2
+
+    def case(name, problem, constraints, weights, value):
+        cases.append(
+            {
+                "name": name,
+                "problem": problem,
+                "constraints": constraints,
+                "weights": [float(x) for x in weights],
+                "objective_value": float(value),
+            }
+        )
+
+    limits = [
+        {"factor": "f0", "min": 0.75, "max": 0.8},
+        {"factor": "f1", "min": -0.05, "max": 0.05, "benchmark": equal.tolist()},
+    ]
+    solve(
+        cp.Minimize(risk),
+        exposure + long_only + [y[0] >= 0.75, y[0] <= 0.8, cp.abs(y[1] - active[1]) <= 0.05],
+    )
+    case(
+        "minimum variance with factor exposure limits",
+        {"objective": "minimum_variance"},
+        {"factor_exposures": limits},
+        w.value,
+        variance(w.value),
+    )
+
+    tracking_variance = cp.quad_form(y - active, factor_cov) + cp.sum(
+        cp.multiply(specific, cp.square(w - equal))
+    )
+    solve(
+        cp.Maximize(mu @ w - 1.5 * risk),
+        exposure + long_only + [tracking_variance <= 0.04**2],
+    )
+    case(
+        "mean-variance with a tracking-error limit",
+        {"objective": "mean_variance", "risk_aversion": 3.0},
+        {"tracking_error": {"benchmark": equal.tolist(), "limit": 0.04}},
+        w.value,
+        mu @ w.value - 1.5 * variance(w.value),
+    )
+
+    t = cp.Variable(n)
+    s = cp.Variable()
+    z = cp.Variable(k)
+    solve(
+        cp.Minimize(cp.quad_form(z, factor_cov) + cp.sum(cp.multiply(specific, cp.square(t)))),
+        [z == loadings.T @ t, (mu - 0.03) @ t == 1, cp.sum(t) == s, t >= 0, t <= s],
+    )
+    weights = t.value / s.value
+    case(
+        "maximum Sharpe",
+        {"objective": "maximum_sharpe", "risk_free_rate": 0.03},
+        {},
+        weights,
+        (mu @ weights - 0.03) / np.sqrt(variance(weights)),
+    )
+
+    solve(cp.Maximize(mu @ w), exposure + long_only + [risk <= 0.2**2])
+    case(
+        "target volatility",
+        {"objective": "target_volatility", "target": 0.2},
+        {},
+        w.value,
+        mu @ w.value,
+    )
+    return cases
+
+
 def main():
-    labels, cov, mu, scenarios = data()
+    labels, cov, mu, scenarios, model = data()
     n = len(labels)
     w = cp.Variable(n)
     psd = cp.psd_wrap(cov)
@@ -198,6 +285,8 @@ def main():
             results.append({"linkage": linkage, "weights": [float(weights[n]) for n in names]})
         hrp.append({"covariance": matrix.ravel().tolist(), "results": results})
 
+    factor_cases = factor_model_cases(labels, mu, model)
+
     fixture = {
         "generated_by": "scripts/reference/optimisation.py",
         "labels": labels,
@@ -206,6 +295,12 @@ def main():
         "scenarios": scenarios.T.tolist(),
         "cases": cases,
         "hierarchical_risk_parity": hrp,
+        "factor_model": {
+            "exposures": model[0].tolist(),
+            "factor_covariance": model[1].ravel().tolist(),
+            "specific_variances": model[2].tolist(),
+            "cases": factor_cases,
+        },
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(fixture, indent=1) + "\n")

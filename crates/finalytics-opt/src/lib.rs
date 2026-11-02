@@ -2,8 +2,9 @@
 //! budgeting and hierarchical risk parity, the efficient frontier, and the trades that move an
 //! account to target weights.
 //!
-//! A [`Problem`] holds the assets' covariance matrix, expected returns or scenario returns, and
-//! [`Constraints`]; [`Problem::solve`] finds the optimum for an [`Objective`]. The convex
+//! A [`Problem`] holds the assets' covariance matrix or a factor model, expected returns or
+//! scenario returns, and [`Constraints`]; [`Problem::solve`] finds the optimum for an
+//! [`Objective`]. The convex
 //! problems are solved by Clarabel, an interior-point solver for conic programmes:
 //!
 //! | Objective | Formulation |
@@ -13,6 +14,7 @@
 //! | Maximum Sharpe ratio, maximum diversification | Quadratic programme after the Charnes–Cooper transformation |
 //! | Minimum CVaR | Linear programme (Rockafellar and Uryasev) |
 //! | Turnover limits and trading costs | Linear constraints on absolute trades |
+//! | Factor models | Variance in factor form, `y' F y + sum d w^2` with `y = B' w`; exposure limits as linear constraints on `y` |
 //! | Risk budgeting | Newton's method on Spinu's convex formulation, with an exponential-cone programme as a fallback |
 //! | Hierarchical risk parity | Clustering and recursive bisection, without a solver |
 //!
@@ -37,8 +39,8 @@ mod solution;
 
 pub use frontier::FrontierPoint;
 pub use problem::{
-    AssetBound, Bound, Constraints, GroupLimit, Linkage, Objective, Problem, TrackingErrorLimit,
-    Turnover,
+    AssetBound, Bound, Constraints, FactorExposureLimit, GroupLimit, Linkage, Objective, Problem,
+    TrackingErrorLimit, Turnover,
 };
 pub use rebalance::{
     ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side, rebalance,

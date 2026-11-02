@@ -1,8 +1,8 @@
 # Portfolio optimisation
 
-An optimisation problem holds the assets' covariance matrix $\Sigma$, their expected returns
-$\mu$ (in the same units, for example both annualised), scenario returns for minimum CVaR, and
-constraints. Finalytics formulates each objective as a convex conic programme and solves it with
+An optimisation problem holds the assets' covariance matrix $\Sigma$ or a
+[factor model](factor-models.md), their expected returns $\mu$ (in the same units, for example
+both annualised), scenario returns for minimum CVaR, and constraints. Finalytics formulates each objective as a convex conic programme and solves it with
 Clarabel, an interior-point solver, or, for risk budgeting and hierarchical risk parity, with
 methods of their own.
 
@@ -17,10 +17,14 @@ methods of their own.
 | Turnover | $\sum_i \lvert w_i - w^0_i \rvert \le T$ from current weights $w^0$ | none |
 | Trading costs | $c^\top \lvert w - w^0 \rvert$ subtracted from the expected return | none |
 | Tracking error | $\sqrt{(w - b)^\top \Sigma (w - b)} \le \text{TE}$ against benchmark weights $b$ | none |
+| Factor exposures | $m_k \le (B^\top w)_k \le M_k$, or on active exposures $(B^\top (w - b))_k$; needs a factor model | none |
 
 Absolute values are linearised with auxiliary variables $d_i \ge \pm(w_i - w^0_i)$, and the
 tracking-error limit is a second-order cone on a factor $R$ of the covariance ($R^\top R =
-\Sigma$, by Cholesky factorisation with pivoting, which also handles riskless assets).
+\Sigma$, by Cholesky factorisation with pivoting, which also handles riskless assets). With a
+factor model, the variance is written in factor form, $y^\top F y + \sum_i d_i w_i^2$ with
+$y = B^\top w$, and the cone is built from a factor of $F$ and the specific volatilities; see
+[factor models](factor-models.md).
 
 ## Objectives
 

@@ -147,6 +147,35 @@
       ],
       "description": "Limits on one asset's weight, in place of the default bounds."
     },
+    "AssetFit": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "The asset's label."
+        },
+        "intercept": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The intercept: the regression's alpha, or the mean return for a statistical model;\n`None` for a fundamental model."
+        },
+        "r_squared": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The share of the asset's return variance the factors explain. `None` when the asset's\nreturns do not vary."
+        }
+      },
+      "required": [
+        "asset"
+      ],
+      "description": "How well a factor model explains one asset's returns over the estimation period."
+    },
     "Bound": {
       "type": "object",
       "properties": {
@@ -288,6 +317,14 @@
           ],
           "description": "A tracking-error limit.",
           "default": null
+        },
+        "factor_exposures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FactorExposureLimit"
+          },
+          "description": "Limits on factor exposures; they need a factor model.",
+          "default": []
         }
       },
       "description": "The constraints on a portfolio. The default is fully invested and long-only."
@@ -726,6 +763,258 @@
         "geometric"
       ],
       "description": "A return compared with a benchmark's over the same dates."
+    },
+    "FactorContribution": {
+      "type": "object",
+      "properties": {
+        "factor": {
+          "type": "string",
+          "description": "The factor's name."
+        },
+        "exposure": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's exposure to the factor, `(B' w)_k`."
+        },
+        "marginal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the\nportfolio has no volatility."
+        },
+        "component": {
+          "type": "number",
+          "format": "double",
+          "description": "`exposure * marginal`. With the specific component, the components add up to the\nvolatility."
+        },
+        "share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`component / volatility`. `None` when the portfolio has no volatility."
+        }
+      },
+      "required": [
+        "factor",
+        "exposure",
+        "component"
+      ],
+      "description": "One factor's share of a portfolio's volatility."
+    },
+    "FactorExposureLimit": {
+      "type": "object",
+      "properties": {
+        "factor": {
+          "type": "string",
+          "description": "The factor's name, as in the factor model."
+        },
+        "min": {
+          "type": "number",
+          "format": "double",
+          "description": "The smallest exposure allowed."
+        },
+        "max": {
+          "type": "number",
+          "format": "double",
+          "description": "The largest exposure allowed."
+        },
+        "benchmark": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Benchmark weights, one per asset. When given, the limits apply to the active exposure,\nthat of `weights - benchmark`.",
+          "default": null
+        }
+      },
+      "required": [
+        "factor",
+        "min",
+        "max"
+      ],
+      "description": "Limits on a portfolio's exposure to one factor of the problem's factor model, such as a beta\nbetween 0.9 and 1.1 to the market factor or a neutral exposure to an industry."
+    },
+    "FactorMethod": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "regression",
+          "description": "Time-series regression of each asset's returns on given factor returns."
+        },
+        {
+          "type": "string",
+          "const": "statistical",
+          "description": "Principal components of the sample covariance matrix."
+        },
+        {
+          "type": "string",
+          "const": "fundamental",
+          "description": "Cross-sectional regression of each period's returns on given exposures."
+        }
+      ],
+      "description": "How a factor model was estimated."
+    },
+    "FactorModel": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The asset labels."
+        },
+        "exposures": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "description": "Each asset's exposure to each factor: one row per asset, one entry per factor, in the\norder of the factor covariance matrix's labels."
+        },
+        "factor_covariance": {
+          "$ref": "#/$defs/Matrix",
+          "description": "The covariance matrix of the factor returns, labelled with the factor names."
+        },
+        "specific_variances": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The variance of each asset's specific return, one per asset."
+        }
+      },
+      "required": [
+        "assets",
+        "exposures",
+        "factor_covariance",
+        "specific_variances"
+      ],
+      "description": "A linear factor model of asset returns, `r = B f + e`: each asset's exposures `B` to a set of\nfactors, the covariance `F` of the factor returns, and the variance `d` of each asset's\nspecific return `e`, which is uncorrelated across assets and with the factors.\n\nThe model implies the covariance matrix `B F B' + diag(d)` for the assets. The factor\ncovariance and the specific variances share units, for example both daily or both\nannualised."
+    },
+    "FactorModelEstimate": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/FactorMethod",
+          "description": "How the model was estimated."
+        },
+        "model": {
+          "$ref": "#/$defs/FactorModel",
+          "description": "The model, in the units of the returns (per period)."
+        },
+        "fit": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssetFit"
+          },
+          "description": "The fit for each asset, in the model's order."
+        },
+        "factor_returns": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "description": "The factor returns over the estimation period, one column per factor: the given factor\nreturns for a regression model, the principal component scores for a statistical model,\nand the estimated factor returns for a fundamental model."
+        },
+        "explained_variance": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "For a statistical model, each component's share of the total variance."
+        },
+        "observations": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of periods of returns used."
+        }
+      },
+      "required": [
+        "method",
+        "model",
+        "fit",
+        "factor_returns",
+        "observations"
+      ],
+      "description": "A factor model estimated from returns, with how well it fits each asset."
+    },
+    "FactorRisk": {
+      "type": "object",
+      "properties": {
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The volatility, `sqrt(x' F x + sum d w^2)`, in the units of the model."
+        },
+        "factor_volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The volatility from the factors alone, `sqrt(x' F x)`."
+        },
+        "specific_volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The volatility from specific returns alone, `sqrt(sum d w^2)`."
+        },
+        "factors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FactorContribution"
+          },
+          "description": "Each factor's contribution, in the model's order."
+        },
+        "specific_component": {
+          "type": "number",
+          "format": "double",
+          "description": "The specific part's contribution, `sum d w^2 / volatility`."
+        },
+        "specific_share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`specific_component / volatility`. `None` when the portfolio has no volatility."
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RiskContribution"
+          },
+          "description": "Each asset's contribution under the model's covariance matrix, in the model's order."
+        }
+      },
+      "required": [
+        "volatility",
+        "factor_volatility",
+        "specific_volatility",
+        "factors",
+        "specific_component",
+        "assets"
+      ],
+      "description": "A portfolio's volatility under a factor model, split into each factor's contribution and the\nspecific (stock-specific) part, and into each asset's contribution (Euler allocation)."
     },
     "Flow": {
       "type": "object",
@@ -1934,6 +2223,18 @@
           "description": "The covariance matrix of the assets' returns.",
           "default": null
         },
+        "factor_model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactorModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A factor model of the assets' returns, in place of a covariance matrix. Its assets must\nbe the problem's labels, in order.",
+          "default": null
+        },
         "expected_returns": {
           "type": [
             "array",
@@ -1971,14 +2272,15 @@
             "groups": [],
             "leverage": null,
             "turnover": null,
-            "tracking_error": null
+            "tracking_error": null,
+            "factor_exposures": []
           }
         }
       },
       "required": [
         "labels"
       ],
-      "description": "A portfolio optimisation problem: the assets, estimates of their risk and return, and the\nconstraints.\n\nThe covariance matrix and expected returns should be in the same units, for example both\nannualised. Scenario returns, for minimum CVaR, are per period."
+      "description": "A portfolio optimisation problem: the assets, estimates of their risk and return, and the\nconstraints.\n\nRisk comes from a covariance matrix or from a factor model, which the solver uses in factor\nform, so that large problems solve faster. The risk estimates and expected returns should be\nin the same units, for example both annualised. Scenario returns, for minimum CVaR, are per\nperiod."
     },
     "ProposedConversion": {
       "type": "object",
@@ -2476,7 +2778,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The volatility at the weights, when a covariance matrix is given."
+          "description": "The volatility at the weights, when a covariance matrix or a factor model is given."
         },
         "max_violation": {
           "type": [

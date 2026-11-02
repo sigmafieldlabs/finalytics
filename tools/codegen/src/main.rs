@@ -66,6 +66,9 @@ fn api() -> Value {
     add::<risk::RiskDecomposition>(&mut g);
     add::<risk::GroupRisk>(&mut g);
     add::<risk::HoldingReturns>(&mut g);
+    add::<risk::FactorModel>(&mut g);
+    add::<risk::FactorModelEstimate>(&mut g);
+    add::<risk::FactorRisk>(&mut g);
     // Optimisation.
     add::<opt::Problem>(&mut g);
     add::<opt::Objective>(&mut g);

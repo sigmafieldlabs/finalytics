@@ -10,7 +10,7 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use finalytics::opt::{Linkage, Objective};
 use finalytics::risk::{self, CovarianceMethod, StatisticsOptions, TailMethod};
 use finalytics::{Books, FlowTiming, Performance};
-use finalytics_bench::{factor_returns, large_portfolio, large_problem};
+use finalytics_bench::{factor_returns, large_factor_problem, large_portfolio, large_problem};
 
 fn ledger(c: &mut Criterion) {
     let large = large_portfolio(2_000, 100_000, 10);
@@ -49,6 +49,15 @@ fn risk_measures(c: &mut Criterion) {
     group.bench_function("Ledoit-Wolf covariance, 500 assets by 1,000 returns", |b| {
         b.iter(|| risk::covariance(&table, CovarianceMethod::LedoitWolf))
     });
+    group.bench_function(
+        "statistical factor model, 10 factors, 500 assets by 1,000 returns",
+        |b| b.iter(|| risk::statistical_model(&table, 10)),
+    );
+    let factors = factor_returns(3, 1_000);
+    group.bench_function(
+        "regression factor model, 3 factors, 500 assets by 1,000 returns",
+        |b| b.iter(|| risk::regression_model(&table, &factors)),
+    );
     group.finish();
 }
 
@@ -83,6 +92,27 @@ fn optimisation(c: &mut Criterion) {
         group.bench_function(name, |b| {
             b.iter_batched(
                 || problem.clone(),
+                |p| p.solve(&objective),
+                BatchSize::LargeInput,
+            )
+        });
+    }
+    let factor_problem = large_factor_problem(500);
+    for (name, objective) in [
+        (
+            "minimum variance, 10-factor model",
+            Objective::MinimumVariance,
+        ),
+        (
+            "maximum Sharpe ratio, 10-factor model",
+            Objective::MaximumSharpe {
+                risk_free_rate: 0.02,
+            },
+        ),
+    ] {
+        group.bench_function(name, |b| {
+            b.iter_batched(
+                || factor_problem.clone(),
                 |p| p.solve(&objective),
                 BatchSize::LargeInput,
             )

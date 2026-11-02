@@ -28,6 +28,9 @@ LotId = str
 """A tax lot's identifier."""
 
 
+FactorMethod = Literal["regression", "statistical", "fundamental"]
+"""How a factor model was estimated."""
+
 FlowKind = Literal["deposit", "withdrawal", "transfer_in", "transfer_out"]
 """Why value entered or left the portfolio from outside: the flows that performance measurement must
 separate from investment returns.
@@ -153,6 +156,24 @@ class AssetBound:
 
 
 @dataclass(frozen=True, kw_only=True)
+class AssetFit:
+    """How well a factor model explains one asset's returns over the estimation period."""
+
+    asset: str
+    """The asset's label."""
+
+    intercept: float | None = None
+    """The intercept: the regression's alpha, or the mean return for a statistical model; `None` for
+    a fundamental model.
+    """
+
+    r_squared: float | None = None
+    """The share of the asset's return variance the factors explain. `None` when the asset's returns
+    do not vary.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class Bound:
     """Lower and upper limits on a weight."""
 
@@ -221,6 +242,9 @@ class Constraints:
 
     tracking_error: TrackingErrorLimit | None = None
     """A tracking-error limit."""
+
+    factor_exposures: list[FactorExposureLimit] = field(default_factory=list)
+    """Limits on factor exposures; they need a factor model."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -454,6 +478,129 @@ class ExcessReturn:
 
     geometric: float
     """`(1 + portfolio) / (1 + benchmark) - 1`."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FactorContribution:
+    """One factor's share of a portfolio's volatility."""
+
+    factor: str
+    """The factor's name."""
+
+    exposure: float
+    """The portfolio's exposure to the factor, `(B' w)_k`."""
+
+    marginal: float | None = None
+    """The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the
+    portfolio has no volatility.
+    """
+
+    component: float
+    """`exposure * marginal`. With the specific component, the components add up to the volatility.
+    """
+
+    share: float | None = None
+    """`component / volatility`. `None` when the portfolio has no volatility."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FactorExposureLimit:
+    """Limits on a portfolio's exposure to one factor of the problem's factor model, such as a beta
+    between 0.9 and 1.1 to the market factor or a neutral exposure to an industry.
+    """
+
+    factor: str
+    """The factor's name, as in the factor model."""
+
+    min: float
+    """The smallest exposure allowed."""
+
+    max: float
+    """The largest exposure allowed."""
+
+    benchmark: list[float] | None = None
+    """Benchmark weights, one per asset. When given, the limits apply to the active exposure, that
+    of `weights - benchmark`.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class FactorModel:
+    """A linear factor model of asset returns, `r = B f + e`: each asset's exposures `B` to a set of
+    factors, the covariance `F` of the factor returns, and the variance `d` of each asset's
+    specific return `e`, which is uncorrelated across assets and with the factors.
+
+    The model implies the covariance matrix `B F B' + diag(d)` for the assets. The factor
+    covariance and the specific variances share units, for example both daily or both annualised.
+    """
+
+    assets: list[str]
+    """The asset labels."""
+
+    exposures: list[list[float]]
+    """Each asset's exposure to each factor: one row per asset, one entry per factor, in the order
+    of the factor covariance matrix's labels.
+    """
+
+    factor_covariance: Matrix
+    """The covariance matrix of the factor returns, labelled with the factor names."""
+
+    specific_variances: list[float]
+    """The variance of each asset's specific return, one per asset."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FactorModelEstimate:
+    """A factor model estimated from returns, with how well it fits each asset."""
+
+    method: FactorMethod
+    """How the model was estimated."""
+
+    model: FactorModel
+    """The model, in the units of the returns (per period)."""
+
+    fit: list[AssetFit]
+    """The fit for each asset, in the model's order."""
+
+    factor_returns: list[list[float]]
+    """The factor returns over the estimation period, one column per factor: the given factor
+    returns for a regression model, the principal component scores for a statistical model, and
+    the estimated factor returns for a fundamental model.
+    """
+
+    explained_variance: list[float] | None = None
+    """For a statistical model, each component's share of the total variance."""
+
+    observations: int
+    """The number of periods of returns used."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FactorRisk:
+    """A portfolio's volatility under a factor model, split into each factor's contribution and the
+    specific (stock-specific) part, and into each asset's contribution (Euler allocation).
+    """
+
+    volatility: float
+    """The volatility, `sqrt(x' F x + sum d w^2)`, in the units of the model."""
+
+    factor_volatility: float
+    """The volatility from the factors alone, `sqrt(x' F x)`."""
+
+    specific_volatility: float
+    """The volatility from specific returns alone, `sqrt(sum d w^2)`."""
+
+    factors: list[FactorContribution]
+    """Each factor's contribution, in the model's order."""
+
+    specific_component: float
+    """The specific part's contribution, `sum d w^2 / volatility`."""
+
+    specific_share: float | None = None
+    """`specific_component / volatility`. `None` when the portfolio has no volatility."""
+
+    assets: list[RiskContribution]
+    """Each asset's contribution under the model's covariance matrix, in the model's order."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1058,8 +1205,10 @@ class Problem:
     """A portfolio optimisation problem: the assets, estimates of their risk and return, and the
     constraints.
 
-    The covariance matrix and expected returns should be in the same units, for example both
-    annualised. Scenario returns, for minimum CVaR, are per period.
+    Risk comes from a covariance matrix or from a factor model, which the solver uses in factor
+    form, so that large problems solve faster. The risk estimates and expected returns should be
+    in the same units, for example both annualised. Scenario returns, for minimum CVaR, are per
+    period.
     """
 
     labels: list[str]
@@ -1068,13 +1217,18 @@ class Problem:
     covariance: Matrix | None = None
     """The covariance matrix of the assets' returns."""
 
+    factor_model: FactorModel | None = None
+    """A factor model of the assets' returns, in place of a covariance matrix. Its assets must be
+    the problem's labels, in order.
+    """
+
     expected_returns: list[float] | None = None
     """The expected return of each asset."""
 
     scenarios: ReturnsTable | None = None
     """Scenario returns, one column per asset, for minimum CVaR."""
 
-    constraints: Constraints = field(default_factory=lambda: Constraints(budget=1.0, bounds=Bound(min=0.0, max=1.0), asset_bounds=[], groups=[], leverage=None, turnover=None, tracking_error=None))
+    constraints: Constraints = field(default_factory=lambda: Constraints(budget=1.0, bounds=Bound(min=0.0, max=1.0), asset_bounds=[], groups=[], leverage=None, turnover=None, tracking_error=None, factor_exposures=[]))
     """The constraints."""
 
 
@@ -1318,7 +1472,7 @@ class Solution:
     """The expected return at the weights, when expected returns are given."""
 
     volatility: float | None = None
-    """The volatility at the weights, when a covariance matrix is given."""
+    """The volatility at the weights, when a covariance matrix or a factor model is given."""
 
     max_violation: float | None = None
     """The largest amount by which the weights break a constraint (0 when every constraint holds
@@ -1857,6 +2011,7 @@ __all__ = [
     "AccountId",
     "Allocation",
     "AssetBound",
+    "AssetFit",
     "Bound",
     "Buy",
     "CashBalance",
@@ -1878,6 +2033,12 @@ __all__ = [
     "Ewma",
     "ExcessReturn",
     "ExchangeAllocation",
+    "FactorContribution",
+    "FactorExposureLimit",
+    "FactorMethod",
+    "FactorModel",
+    "FactorModelEstimate",
+    "FactorRisk",
     "Fee",
     "Flow",
     "FlowKind",

@@ -35,7 +35,8 @@ pub mod formats {
 }
 
 /// Risk analytics: statistics, drawdowns, value at risk and expected shortfall, covariance
-/// estimation, and the decomposition of a portfolio's risk by holding and by group.
+/// estimation, factor models, and the decomposition of a portfolio's risk by holding, by group
+/// and by factor.
 ///
 /// ```
 /// let returns = [0.010, -0.004, 0.007, -0.012, 0.003];
@@ -45,21 +46,23 @@ pub mod formats {
 /// ```
 pub mod risk {
     pub use finalytics_risk::{
-        CovarianceEstimate, CovarianceMethod, Drawdown, GroupRisk, HoldingReturns, Matrix,
+        AssetFit, CovarianceEstimate, CovarianceMethod, Drawdown, FactorContribution, FactorMethod,
+        FactorModel, FactorModelEstimate, FactorRisk, GroupRisk, HoldingReturns, Matrix,
         RelativeStatistics, ReturnsTable, RiskContribution, RiskDecomposition, Statistics,
         StatisticsOptions, TailMethod, TailRisk, covariance, drawdown_series, drawdowns,
-        group_risk, holding_returns, holding_weights, max_drawdown, normal_cdf, normal_pdf,
-        normal_quantile, relative_statistics, risk_decomposition, rolling,
-        rolling_relative_statistics, rolling_statistics, rolling_tail_risk, statistics, tail_risk,
+        factor_risk, factor_tracking_error, fundamental_model, group_risk, holding_returns,
+        holding_weights, max_drawdown, normal_cdf, normal_pdf, normal_quantile, regression_model,
+        relative_statistics, risk_decomposition, rolling, rolling_relative_statistics,
+        rolling_statistics, rolling_tail_risk, statistical_model, statistics, tail_risk,
         total_return, tracking_error_decomposition,
     };
 }
 
 /// Portfolio optimisation: minimum variance, mean–variance, target return and volatility,
 /// maximum Sharpe ratio and diversification, minimum CVaR, risk budgeting and hierarchical risk
-/// parity, under budget, bound, group, leverage, turnover and tracking-error constraints; the
-/// efficient frontier; and the trades, with lot selection, that move an account to target
-/// weights.
+/// parity, with a covariance matrix or a factor model, under budget, bound, group, leverage,
+/// turnover, tracking-error and factor exposure constraints; the efficient frontier; and the
+/// trades, with lot selection, that move an account to target weights.
 ///
 /// ```
 /// use finalytics::opt::{Objective, Problem};
@@ -76,9 +79,9 @@ pub mod risk {
 /// ```
 pub mod opt {
     pub use finalytics_opt::{
-        AssetBound, Bound, Constraints, FrontierPoint, GroupLimit, Linkage, Method, Objective,
-        Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side, Solution,
-        SolveStatus, TrackingErrorLimit, Turnover, rebalance,
+        AssetBound, Bound, Constraints, FactorExposureLimit, FrontierPoint, GroupLimit, Linkage,
+        Method, Objective, Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions,
+        Side, Solution, SolveStatus, TrackingErrorLimit, Turnover, rebalance,
     };
 }
 

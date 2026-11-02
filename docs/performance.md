@@ -37,10 +37,14 @@ Median times from `cargo bench -p finalytics-bench`:
 | Risk | Return statistics, 1,000 returns | 16 µs |
 | Risk | Cornish–Fisher value at risk and expected shortfall, 1,000 returns | 7.4 µs |
 | Risk | Ledoit–Wolf covariance, 500 assets by 1,000 returns | 154 ms |
+| Risk | Regression factor model, 3 factors, 500 assets by 1,000 returns | 8.2 ms |
+| Risk | Statistical factor model, 10 components, 500 assets by 1,000 returns | 459 ms |
 | Optimisation | Minimum variance, 500 assets with bounds and groups | 394 ms |
 | Optimisation | Maximum Sharpe ratio, 500 assets with bounds and groups | 386 ms |
 | Optimisation | Risk parity, 500 assets | 229 ms |
 | Optimisation | Hierarchical risk parity, 500 assets | 74 ms |
+| Optimisation | Minimum variance, 500 assets with a 10-factor model, bounds and groups | 9.6 ms |
+| Optimisation | Maximum Sharpe ratio, 500 assets with a 10-factor model, bounds and groups | 12.7 ms |
 
 The portfolio holds 2,000 instruments in USD, EUR and GBP across ten accounts that use four lot
 methods, with deposits, currency conversions, purchases, sales and dividends, daily FX rates and
@@ -65,5 +69,10 @@ compare runs on the same machine when judging a change.
 - **Covariance** grows with the square of the number of assets times the number of
   observations.
 - **Optimisation** with a full covariance matrix grows roughly with the cube of the number of
-  assets, as the solver factorises a dense system at each iteration. Hierarchical risk parity
-  needs no solver.
+  assets, as the solver factorises a dense system at each iteration. With a factor model the
+  system stays sparse, and the time grows roughly with the number of assets times the square of
+  the number of factors, which is why large problems are much faster in factor form.
+  Hierarchical risk parity needs no solver.
+- **A statistical factor model** needs the eigendecomposition of the covariance matrix, which
+  grows with the cube of the number of assets; a regression model needs one least-squares fit per
+  asset.

@@ -62,6 +62,22 @@ export interface AssetBound {
   max: number;
 }
 
+/** How well a factor model explains one asset's returns over the estimation period. */
+export interface AssetFit {
+  /** The asset's label. */
+  asset: string;
+  /**
+   * The intercept: the regression's alpha, or the mean return for a statistical model;
+   * `None` for a fundamental model.
+   */
+  intercept?: number | null;
+  /**
+   * The share of the asset's return variance the factors explain. `None` when the asset's
+   * returns do not vary.
+   */
+  r_squared?: number | null;
+}
+
 /** Lower and upper limits on a weight. */
 export interface Bound {
   /** The smallest weight allowed; negative for a short position. */
@@ -110,6 +126,8 @@ export interface Constraints {
   turnover?: Turnover | null;
   /** A tracking-error limit. */
   tracking_error?: TrackingErrorLimit | null;
+  /** Limits on factor exposures; they need a factor model. */
+  factor_exposures?: FactorExposureLimit[];
 }
 
 /** What one holding added to the portfolio's return over a period. */
@@ -262,6 +280,111 @@ export interface ExcessReturn {
   arithmetic: number;
   /** `(1 + portfolio) / (1 + benchmark) - 1`. */
   geometric: number;
+}
+
+/** One factor's share of a portfolio's volatility. */
+export interface FactorContribution {
+  /** The factor's name. */
+  factor: string;
+  /** The portfolio's exposure to the factor, `(B' w)_k`. */
+  exposure: number;
+  /**
+   * The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the
+   * portfolio has no volatility.
+   */
+  marginal?: number | null;
+  /**
+   * `exposure * marginal`. With the specific component, the components add up to the
+   * volatility.
+   */
+  component: number;
+  /** `component / volatility`. `None` when the portfolio has no volatility. */
+  share?: number | null;
+}
+
+/**
+ * Limits on a portfolio's exposure to one factor of the problem's factor model, such as a beta
+ * between 0.9 and 1.1 to the market factor or a neutral exposure to an industry.
+ */
+export interface FactorExposureLimit {
+  /** The factor's name, as in the factor model. */
+  factor: string;
+  /** The smallest exposure allowed. */
+  min: number;
+  /** The largest exposure allowed. */
+  max: number;
+  /**
+   * Benchmark weights, one per asset. When given, the limits apply to the active exposure,
+   * that of `weights - benchmark`.
+   */
+  benchmark?: number[] | null;
+}
+
+/** How a factor model was estimated. */
+export type FactorMethod = "regression" | "statistical" | "fundamental";
+
+/**
+ * A linear factor model of asset returns, `r = B f + e`: each asset's exposures `B` to a set of
+ * factors, the covariance `F` of the factor returns, and the variance `d` of each asset's
+ * specific return `e`, which is uncorrelated across assets and with the factors.
+ *
+ * The model implies the covariance matrix `B F B' + diag(d)` for the assets. The factor
+ * covariance and the specific variances share units, for example both daily or both
+ * annualised.
+ */
+export interface FactorModel {
+  /** The asset labels. */
+  assets: string[];
+  /**
+   * Each asset's exposure to each factor: one row per asset, one entry per factor, in the
+   * order of the factor covariance matrix's labels.
+   */
+  exposures: number[][];
+  /** The covariance matrix of the factor returns, labelled with the factor names. */
+  factor_covariance: Matrix;
+  /** The variance of each asset's specific return, one per asset. */
+  specific_variances: number[];
+}
+
+/** A factor model estimated from returns, with how well it fits each asset. */
+export interface FactorModelEstimate {
+  /** How the model was estimated. */
+  method: FactorMethod;
+  /** The model, in the units of the returns (per period). */
+  model: FactorModel;
+  /** The fit for each asset, in the model's order. */
+  fit: AssetFit[];
+  /**
+   * The factor returns over the estimation period, one column per factor: the given factor
+   * returns for a regression model, the principal component scores for a statistical model,
+   * and the estimated factor returns for a fundamental model.
+   */
+  factor_returns: number[][];
+  /** For a statistical model, each component's share of the total variance. */
+  explained_variance?: number[] | null;
+  /** The number of periods of returns used. */
+  observations: number;
+}
+
+/**
+ * A portfolio's volatility under a factor model, split into each factor's contribution and the
+ * specific (stock-specific) part, and into each asset's contribution (Euler allocation).
+ */
+export interface FactorRisk {
+  /** The volatility, `sqrt(x' F x + sum d w^2)`, in the units of the model. */
+  volatility: number;
+  /** The volatility from the factors alone, `sqrt(x' F x)`. */
+  factor_volatility: number;
+  /** The volatility from specific returns alone, `sqrt(sum d w^2)`. */
+  specific_volatility: number;
+  /** Each factor's contribution, in the model's order. */
+  factors: FactorContribution[];
+  /** The specific part's contribution, `sum d w^2 / volatility`. */
+  specific_component: number;
+  /** `specific_component / volatility`. `None` when the portfolio has no volatility. */
+  specific_share?: number | null;
+  /** Each asset's contribution under the model's covariance matrix, in the model's order. */
+  assets: RiskContribution[];
 }
 
 /** Value entering (positive) or leaving (negative) the portfolio, in `currency`. */
@@ -696,14 +819,21 @@ export interface PositionValue {
  * A portfolio optimisation problem: the assets, estimates of their risk and return, and the
  * constraints.
  *
- * The covariance matrix and expected returns should be in the same units, for example both
- * annualised. Scenario returns, for minimum CVaR, are per period.
+ * Risk comes from a covariance matrix or from a factor model, which the solver uses in factor
+ * form, so that large problems solve faster. The risk estimates and expected returns should be
+ * in the same units, for example both annualised. Scenario returns, for minimum CVaR, are per
+ * period.
  */
 export interface Problem {
   /** The asset labels. */
   labels: string[];
   /** The covariance matrix of the assets' returns. */
   covariance?: Matrix | null;
+  /**
+   * A factor model of the assets' returns, in place of a covariance matrix. Its assets must
+   * be the problem's labels, in order.
+   */
+  factor_model?: FactorModel | null;
   /** The expected return of each asset. */
   expected_returns?: number[] | null;
   /** Scenario returns, one column per asset, for minimum CVaR. */
@@ -893,7 +1023,7 @@ export interface Solution {
   objective_value?: number | null;
   /** The expected return at the weights, when expected returns are given. */
   expected_return?: number | null;
-  /** The volatility at the weights, when a covariance matrix is given. */
+  /** The volatility at the weights, when a covariance matrix or a factor model is given. */
   volatility?: number | null;
   /**
    * The largest amount by which the weights break a constraint (0 when every constraint

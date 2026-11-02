@@ -19,7 +19,7 @@ use finalytics::formats::{
 };
 use finalytics::opt::{Objective, Problem, Rebalance, RebalanceOptions};
 use finalytics::risk::{
-    self, CovarianceMethod, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
+    self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
 };
 use finalytics::{
     AccountId, Currency, Date, Decimal, Error, FlowTiming, HoldingKey, HoldingSeries, InstrumentId,
@@ -978,6 +978,86 @@ pub fn tracking_error_decomposition(
 ) -> Result<JsValue, JsValue> {
     let matrix: Matrix = from_js(matrix, "covariance")?;
     to_js(&risk::tracking_error_decomposition(weights, benchmark, &matrix).map_err(error)?)
+}
+
+/// Estimates a factor model by regressing each asset's returns on factor returns, with an
+/// intercept. Both tables cover the same periods; the model is per period.
+#[wasm_bindgen(js_name = regressionModel, unchecked_return_type = "FactorModelEstimate")]
+pub fn regression_model(
+    #[wasm_bindgen(unchecked_param_type = "ReturnsTable")] returns: JsValue,
+    #[wasm_bindgen(js_name = factorReturns, unchecked_param_type = "ReturnsTable")]
+    factor_returns: JsValue,
+) -> Result<JsValue, JsValue> {
+    let returns: ReturnsTable = from_js(returns, "returns")?;
+    let factors: ReturnsTable = from_js(factor_returns, "factor_returns")?;
+    to_js(&risk::regression_model(&returns, &factors).map_err(error)?)
+}
+
+/// Estimates a statistical factor model from the first `factors` principal components of the
+/// sample covariance matrix. The factors are named `pc1`, `pc2` and so on.
+#[wasm_bindgen(js_name = statisticalModel, unchecked_return_type = "FactorModelEstimate")]
+pub fn statistical_model(
+    #[wasm_bindgen(unchecked_param_type = "ReturnsTable")] returns: JsValue,
+    factors: usize,
+) -> Result<JsValue, JsValue> {
+    let returns: ReturnsTable = from_js(returns, "returns")?;
+    to_js(&risk::statistical_model(&returns, factors).map_err(error)?)
+}
+
+/// Estimates a fundamental factor model for given exposures, one row per asset and one entry per
+/// factor: each period's returns are regressed on the exposures to estimate the factor returns.
+#[wasm_bindgen(js_name = fundamentalModel, unchecked_return_type = "FactorModelEstimate")]
+pub fn fundamental_model(
+    #[wasm_bindgen(unchecked_param_type = "ReturnsTable")] returns: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "string[]")] factors: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "number[][]")] exposures: JsValue,
+) -> Result<JsValue, JsValue> {
+    let returns: ReturnsTable = from_js(returns, "returns")?;
+    let factors: Vec<String> = from_js(factors, "factors")?;
+    let exposures: Vec<Vec<f64>> = from_js(exposures, "exposures")?;
+    to_js(&risk::fundamental_model(&returns, &factors, &exposures).map_err(error)?)
+}
+
+/// Checks a factor model built from exposures and risk estimates supplied from elsewhere,
+/// returning it unchanged.
+#[wasm_bindgen(js_name = factorModel, unchecked_return_type = "FactorModel")]
+pub fn factor_model(
+    #[wasm_bindgen(unchecked_param_type = "FactorModel")] model: JsValue,
+) -> Result<JsValue, JsValue> {
+    let model: FactorModel = from_js(model, "model")?;
+    to_js(&model)
+}
+
+/// The covariance matrix of the assets that a factor model implies, `B F B' + diag(d)`.
+#[wasm_bindgen(js_name = impliedCovariance, unchecked_return_type = "Matrix")]
+pub fn implied_covariance(
+    #[wasm_bindgen(unchecked_param_type = "FactorModel")] model: JsValue,
+) -> Result<JsValue, JsValue> {
+    let model: FactorModel = from_js(model, "model")?;
+    to_js(&model.covariance())
+}
+
+/// Splits a portfolio's volatility under a factor model into each factor's contribution and the
+/// specific part, and into each asset's contribution.
+#[wasm_bindgen(js_name = factorRisk, unchecked_return_type = "FactorRisk")]
+pub fn factor_risk(
+    #[wasm_bindgen(unchecked_param_type = "Float64Array | number[]")] weights: &[f64],
+    #[wasm_bindgen(unchecked_param_type = "FactorModel")] model: JsValue,
+) -> Result<JsValue, JsValue> {
+    let model: FactorModel = from_js(model, "model")?;
+    to_js(&risk::factor_risk(weights, &model).map_err(error)?)
+}
+
+/// The ex-ante tracking error against benchmark weights under a factor model, split by factor
+/// and by asset.
+#[wasm_bindgen(js_name = factorTrackingError, unchecked_return_type = "FactorRisk")]
+pub fn factor_tracking_error(
+    #[wasm_bindgen(unchecked_param_type = "Float64Array | number[]")] weights: &[f64],
+    #[wasm_bindgen(unchecked_param_type = "Float64Array | number[]")] benchmark: &[f64],
+    #[wasm_bindgen(unchecked_param_type = "FactorModel")] model: JsValue,
+) -> Result<JsValue, JsValue> {
+    let model: FactorModel = from_js(model, "model")?;
+    to_js(&risk::factor_tracking_error(weights, benchmark, &model).map_err(error)?)
 }
 
 /// The standard normal distribution function.

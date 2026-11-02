@@ -18,7 +18,7 @@ use finalytics::formats::{
 };
 use finalytics::opt::{Objective, Problem, Rebalance, RebalanceOptions};
 use finalytics::risk::{
-    self, CovarianceMethod, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
+    self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
 };
 use finalytics::{
     Books, Currency, Date, Decimal, Error, FlowTiming, HoldingKey, HoldingSeries, InstrumentId,
@@ -638,26 +638,94 @@ fn drawdown_series<'py>(
     Ok(float_bytes(py, series.values()))
 }
 
-/// `columns` holds the assets' returns one asset after another (each `observations` long).
-#[pyfunction]
-fn covariance(columns: &[u8], labels: &str, method: &str) -> PyResult<String> {
+/// A table of returns from `columns`, the returns of each asset one asset after another (each
+/// `observations` long), and the JSON list of `labels`.
+fn table(columns: &[u8], labels: &str, name: &str) -> PyResult<ReturnsTable> {
     let labels: Vec<String> = from_json(labels, "labels")?;
-    let values = floats(columns, "returns")?;
+    let values = floats(columns, name)?;
     let n = labels.len().max(1);
     if !values.len().is_multiple_of(n) {
         return Err(invalid(
-            "returns",
+            name,
             "must have the same number of returns for every asset",
         ));
     }
     let t = values.len() / n;
-    let table = ReturnsTable::new(
+    ReturnsTable::new(
         labels,
         values.chunks(t.max(1)).map(<[f64]>::to_vec).collect(),
     )
-    .map_err(engine)?;
+    .map_err(engine)
+}
+
+#[pyfunction]
+fn covariance(columns: &[u8], labels: &str, method: &str) -> PyResult<String> {
+    let table = table(columns, labels, "returns")?;
     let method: CovarianceMethod = from_json(method, "method")?;
     to_json(&risk::covariance(&table, method).map_err(engine)?)
+}
+
+#[pyfunction]
+fn regression_model(
+    columns: &[u8],
+    labels: &str,
+    factor_columns: &[u8],
+    factor_labels: &str,
+) -> PyResult<String> {
+    let returns = table(columns, labels, "returns")?;
+    let factors = table(factor_columns, factor_labels, "factor_returns")?;
+    to_json(&risk::regression_model(&returns, &factors).map_err(engine)?)
+}
+
+#[pyfunction]
+fn statistical_model(columns: &[u8], labels: &str, factors: usize) -> PyResult<String> {
+    let returns = table(columns, labels, "returns")?;
+    to_json(&risk::statistical_model(&returns, factors).map_err(engine)?)
+}
+
+#[pyfunction]
+fn fundamental_model(
+    columns: &[u8],
+    labels: &str,
+    factors: &str,
+    exposures: &str,
+) -> PyResult<String> {
+    let returns = table(columns, labels, "returns")?;
+    let factors: Vec<String> = from_json(factors, "factors")?;
+    let exposures: Vec<Vec<f64>> = from_json(exposures, "exposures")?;
+    to_json(&risk::fundamental_model(&returns, &factors, &exposures).map_err(engine)?)
+}
+
+/// Checks a factor model, returning it unchanged. Problems are reported with the paths of the
+/// model's fields, which the Python function takes as separate arguments.
+#[pyfunction]
+fn factor_model(model: &str) -> PyResult<String> {
+    let model: FactorModel = from_json(model, "")?;
+    to_json(&model)
+}
+
+#[pyfunction]
+fn implied_covariance(model: &str) -> PyResult<String> {
+    let model: FactorModel = from_json(model, "model")?;
+    to_json(&model.covariance())
+}
+
+#[pyfunction]
+fn factor_risk(weights: &[u8], model: &str) -> PyResult<String> {
+    let model: FactorModel = from_json(model, "model")?;
+    to_json(&risk::factor_risk(&floats(weights, "weights")?, &model).map_err(engine)?)
+}
+
+#[pyfunction]
+fn factor_tracking_error(weights: &[u8], benchmark: &[u8], model: &str) -> PyResult<String> {
+    let model: FactorModel = from_json(model, "model")?;
+    let found = risk::factor_tracking_error(
+        &floats(weights, "weights")?,
+        &floats(benchmark, "benchmark")?,
+        &model,
+    )
+    .map_err(engine)?;
+    to_json(&found)
 }
 
 #[pyfunction]
@@ -745,6 +813,13 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(drawdowns, m)?)?;
     m.add_function(wrap_pyfunction!(drawdown_series, m)?)?;
     m.add_function(wrap_pyfunction!(covariance, m)?)?;
+    m.add_function(wrap_pyfunction!(regression_model, m)?)?;
+    m.add_function(wrap_pyfunction!(statistical_model, m)?)?;
+    m.add_function(wrap_pyfunction!(fundamental_model, m)?)?;
+    m.add_function(wrap_pyfunction!(factor_model, m)?)?;
+    m.add_function(wrap_pyfunction!(implied_covariance, m)?)?;
+    m.add_function(wrap_pyfunction!(factor_risk, m)?)?;
+    m.add_function(wrap_pyfunction!(factor_tracking_error, m)?)?;
     m.add_function(wrap_pyfunction!(correlation, m)?)?;
     m.add_function(wrap_pyfunction!(risk_decomposition, m)?)?;
     m.add_function(wrap_pyfunction!(tracking_error_decomposition, m)?)?;

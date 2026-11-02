@@ -190,8 +190,11 @@ pub fn returns(data: &[u8]) {
 }
 
 /// A small problem from bytes: the first byte picks the number of assets and the objective; the
-/// rest are numbers for a factor of the covariance, expected returns and bounds. Every solution
-/// with weights must report how far they break the constraints.
+/// rest are numbers for a factor of the covariance, expected returns and bounds. The problem is
+/// solved with the covariance matrix and, in factor form, with the same risk as a factor model
+/// and an exposure limit. Every solution with weights must report how far they break the
+/// constraints. The numbers also make a table of returns for the covariance estimators, the
+/// factor model estimators and minimum CVaR.
 pub fn optimisation(data: &[u8]) {
     let Some((&control, rest)) = data.split_first() else {
         return;
@@ -213,16 +216,18 @@ pub fn optimisation(data: &[u8]) {
     let Ok(matrix) = Matrix::new(labels.clone(), covariance) else {
         return;
     };
-    let mut problem = Problem::new(matrix).with_expected_returns(values[n * n..n * n + n].to_vec());
-    if let Some(&bound) = values.get(n * n + n) {
-        problem = problem.with_constraints(Constraints {
-            bounds: finalytics::opt::Bound {
-                min: -bound.abs().min(1.0),
-                max: 1.0,
-            },
-            leverage: Some(2.0),
-            ..Default::default()
-        });
+    let expected = values[n * n..n * n + n].to_vec();
+    let constraints = values.get(n * n + n).map(|&bound| Constraints {
+        bounds: finalytics::opt::Bound {
+            min: -bound.abs().min(1.0),
+            max: 1.0,
+        },
+        leverage: Some(2.0),
+        ..Default::default()
+    });
+    let mut problem = Problem::new(matrix).with_expected_returns(expected.clone());
+    if let Some(c) = &constraints {
+        problem = problem.with_constraints(c.clone());
     }
     let objective = match control / 5 % 8 {
         0 => Objective::MinimumVariance,
@@ -246,6 +251,38 @@ pub fn optimisation(data: &[u8]) {
             "a solution without its violation"
         );
     }
+    // The same covariance as a factor model, with the rows of the factor as exposures and
+    // uncorrelated unit-variance factors, solved in factor form with an exposure limit.
+    let factors: Vec<String> = (0..n).map(|k| format!("f{k}")).collect();
+    let identity: Vec<f64> = (0..n * n)
+        .map(|k| if k % (n + 1) == 0 { 1.0 } else { 0.0 })
+        .collect();
+    let exposures: Vec<Vec<f64>> = factor.chunks(n).map(<[f64]>::to_vec).collect();
+    if let Ok(identity) = Matrix::new(factors, identity)
+        && let Ok(model) = risk::FactorModel::new(labels.clone(), exposures, identity, vec![0.0; n])
+    {
+        let _ = risk::factor_risk(&vec![1.0 / n as f64; n], &model);
+        let mut limited = constraints.unwrap_or_default();
+        limited
+            .factor_exposures
+            .push(finalytics::opt::FactorExposureLimit {
+                factor: "f0".into(),
+                min: -1.0,
+                max: 1.0,
+                benchmark: None,
+            });
+        let factor_problem = Problem::from_factor_model(model)
+            .with_expected_returns(expected)
+            .with_constraints(limited);
+        if let Ok(solution) = factor_problem.solve(&objective)
+            && solution.weights.is_some()
+        {
+            assert!(
+                solution.max_violation.is_some(),
+                "a factor-model solution without its violation"
+            );
+        }
+    }
     let scenarios = values.chunks_exact(n).take(64).map(<[f64]>::to_vec);
     let mut columns = vec![Vec::new(); n];
     for row in scenarios {
@@ -262,6 +299,9 @@ pub fn optimisation(data: &[u8]) {
         ] {
             let _ = risk::covariance(&table, method);
         }
+        let observations = table.observations();
+        let _ = risk::statistical_model(&table, n.min(observations - 1).max(1));
+        let _ = risk::regression_model(&table, &table);
         let _ = Problem::from_scenarios(table).solve(&Objective::MinimumCvar { confidence: 0.9 });
     }
 }

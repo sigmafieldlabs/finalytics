@@ -66,7 +66,7 @@ pub struct Solution {
     pub objective_value: Option<f64>,
     /// The expected return at the weights, when expected returns are given.
     pub expected_return: Option<f64>,
-    /// The volatility at the weights, when a covariance matrix is given.
+    /// The volatility at the weights, when a covariance matrix or a factor model is given.
     pub volatility: Option<f64>,
     /// The largest amount by which the weights break a constraint (0 when every constraint
     /// holds exactly).

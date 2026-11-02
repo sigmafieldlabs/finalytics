@@ -1,5 +1,6 @@
 //! Risk analytics: return statistics, drawdowns, value at risk and expected shortfall,
-//! covariance estimation, and the decomposition of a portfolio's risk by holding and by group.
+//! covariance estimation, factor models, and the decomposition of a portfolio's risk by holding,
+//! by group and by factor.
 //!
 //! The statistics take returns as plain slices, one per period, so they serve both a portfolio's
 //! returns from [`finalytics_perf`](https://docs.rs/finalytics-perf) and returns supplied
@@ -14,8 +15,10 @@ mod covariance;
 mod decomposition;
 mod distribution;
 mod drawdown;
+mod factor;
 mod holdings;
 mod input;
+mod linalg;
 mod matrix;
 mod rolling;
 mod statistics;
@@ -28,6 +31,10 @@ pub use decomposition::{
 };
 pub use distribution::{normal_cdf, normal_pdf, normal_quantile};
 pub use drawdown::{Drawdown, drawdown_series, drawdowns};
+pub use factor::{
+    AssetFit, FactorContribution, FactorMethod, FactorModel, FactorModelEstimate, FactorRisk,
+    factor_risk, factor_tracking_error, fundamental_model, regression_model, statistical_model,
+};
 pub use holdings::{HoldingReturns, holding_returns, holding_weights};
 pub use matrix::{Matrix, ReturnsTable};
 pub use rolling::{rolling, rolling_relative_statistics, rolling_statistics, rolling_tail_risk};

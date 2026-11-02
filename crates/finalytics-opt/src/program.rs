@@ -69,6 +69,16 @@ impl Program {
         }
     }
 
+    /// Adds `scale * diag(values)` to `P` for the variables from `offset`.
+    pub(crate) fn quadratic_diagonal(&mut self, offset: usize, values: &[f64], scale: f64) {
+        for (i, v) in values.iter().enumerate() {
+            let value = v * scale;
+            if value != 0.0 {
+                self.quadratic.push((offset + i, offset + i, value));
+            }
+        }
+    }
+
     pub(crate) fn equal(&mut self, row: Row) {
         self.equalities.push(row);
     }

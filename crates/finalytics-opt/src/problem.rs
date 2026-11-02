@@ -1,11 +1,12 @@
 //! Optimisation problems: assets, their risk and return estimates, constraints and objectives.
 
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize};
 
 use finalytics_core::{Error, Result, ValidationReport};
-use finalytics_risk::{Matrix, ReturnsTable};
+use finalytics_risk::{FactorModel, Matrix, ReturnsTable};
 
 use crate::linalg::Factor;
 
@@ -72,6 +73,23 @@ pub struct TrackingErrorLimit {
     pub limit: f64,
 }
 
+/// Limits on a portfolio's exposure to one factor of the problem's factor model, such as a beta
+/// between 0.9 and 1.1 to the market factor or a neutral exposure to an industry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct FactorExposureLimit {
+    /// The factor's name, as in the factor model.
+    pub factor: String,
+    /// The smallest exposure allowed.
+    pub min: f64,
+    /// The largest exposure allowed.
+    pub max: f64,
+    /// Benchmark weights, one per asset. When given, the limits apply to the active exposure,
+    /// that of `weights - benchmark`.
+    #[serde(default)]
+    pub benchmark: Option<Vec<f64>>,
+}
+
 /// The constraints on a portfolio. The default is fully invested and long-only.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -91,6 +109,8 @@ pub struct Constraints {
     pub turnover: Option<Turnover>,
     /// A tracking-error limit.
     pub tracking_error: Option<TrackingErrorLimit>,
+    /// Limits on factor exposures; they need a factor model.
+    pub factor_exposures: Vec<FactorExposureLimit>,
 }
 
 impl Default for Constraints {
@@ -103,6 +123,7 @@ impl Default for Constraints {
             leverage: None,
             turnover: None,
             tracking_error: None,
+            factor_exposures: Vec::new(),
         }
     }
 }
@@ -119,6 +140,7 @@ impl Constraints {
             && self.leverage.is_none()
             && self.turnover.is_none()
             && self.tracking_error.is_none()
+            && self.factor_exposures.is_empty()
     }
 }
 
@@ -211,8 +233,10 @@ impl Objective {
 /// A portfolio optimisation problem: the assets, estimates of their risk and return, and the
 /// constraints.
 ///
-/// The covariance matrix and expected returns should be in the same units, for example both
-/// annualised. Scenario returns, for minimum CVaR, are per period.
+/// Risk comes from a covariance matrix or from a factor model, which the solver uses in factor
+/// form, so that large problems solve faster. The risk estimates and expected returns should be
+/// in the same units, for example both annualised. Scenario returns, for minimum CVaR, are per
+/// period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Problem {
@@ -221,6 +245,10 @@ pub struct Problem {
     /// The covariance matrix of the assets' returns.
     #[serde(default)]
     pub covariance: Option<Matrix>,
+    /// A factor model of the assets' returns, in place of a covariance matrix. Its assets must
+    /// be the problem's labels, in order.
+    #[serde(default)]
+    pub factor_model: Option<FactorModel>,
     /// The expected return of each asset.
     #[serde(default)]
     pub expected_returns: Option<Vec<f64>>,
@@ -238,6 +266,7 @@ impl Problem {
         Problem {
             labels: covariance.labels().to_vec(),
             covariance: Some(covariance),
+            factor_model: None,
             expected_returns: None,
             scenarios: None,
             constraints: Constraints::default(),
@@ -249,10 +278,29 @@ impl Problem {
         Problem {
             labels: scenarios.labels().to_vec(),
             covariance: None,
+            factor_model: None,
             expected_returns: None,
             scenarios: Some(scenarios),
             constraints: Constraints::default(),
         }
+    }
+
+    /// A problem over the assets of a factor model, with the default constraints.
+    pub fn from_factor_model(model: FactorModel) -> Problem {
+        Problem {
+            labels: model.assets().to_vec(),
+            covariance: None,
+            factor_model: Some(model),
+            expected_returns: None,
+            scenarios: None,
+            constraints: Constraints::default(),
+        }
+    }
+
+    /// Sets the factor model.
+    pub fn with_factor_model(mut self, model: FactorModel) -> Problem {
+        self.factor_model = Some(model);
+        self
     }
 
     /// Sets the expected returns, one per asset.
@@ -293,20 +341,38 @@ impl Problem {
             }
         }
 
-        if let Some(covariance) = &self.covariance {
-            if covariance.labels() != self.labels.as_slice() {
-                report.error(
-                    "covariance.labels",
-                    "must be the problem's labels, in order",
-                );
-            } else {
-                check_symmetric(covariance, &mut report);
+        match (&self.covariance, &self.factor_model) {
+            (Some(_), Some(_)) => report.error(
+                "factor_model",
+                "give a covariance matrix or a factor model, not both",
+            ),
+            (Some(covariance), None) => {
+                if covariance.labels() != self.labels.as_slice() {
+                    report.error(
+                        "covariance.labels",
+                        "must be the problem's labels, in order",
+                    );
+                } else {
+                    check_symmetric(covariance, &mut report);
+                }
             }
-        } else if objective.needs_covariance() || self.constraints.tracking_error.is_some() {
-            report.error(
-                "covariance",
-                "is needed for this objective and these constraints",
-            );
+            (None, Some(model)) => {
+                if model.assets() != self.labels.as_slice() {
+                    report.error(
+                        "factor_model.assets",
+                        "must be the problem's labels, in order",
+                    );
+                }
+            }
+            (None, None) => {
+                if objective.needs_covariance() || self.constraints.tracking_error.is_some() {
+                    report.error(
+                        "covariance",
+                        "a covariance matrix or a factor model is needed for this objective and \
+                         these constraints",
+                    );
+                }
+            }
         }
         match &self.expected_returns {
             Some(mu) => check_vector(mu, n, "expected_returns", &mut report),
@@ -331,16 +397,22 @@ impl Problem {
             return Err(Error::Validation(report));
         }
 
-        let needs_factor = self.constraints.tracking_error.is_some()
+        let needs_root = self.constraints.tracking_error.is_some()
             || matches!(objective, Objective::TargetVolatility { .. });
-        let factor = match (&self.covariance, needs_factor) {
-            (Some(c), true) => Some(Factor::of(c)?),
-            (Some(c), false) => {
-                // Checks that the matrix is positive semidefinite.
-                Factor::of(c)?;
-                None
+        let risk = match (&self.covariance, &self.factor_model) {
+            (Some(matrix), _) => {
+                // Factorising also checks that the matrix is positive semidefinite.
+                let root = Factor::of(matrix)?;
+                Some(RiskModel::Covariance {
+                    matrix,
+                    root: needs_root.then_some(root),
+                })
             }
-            (None, _) => None,
+            (None, Some(model)) => Some(RiskModel::Factors {
+                model,
+                root: Factor::of(model.factor_covariance())?,
+            }),
+            (None, None) => None,
         };
         let groups = self
             .constraints
@@ -348,12 +420,30 @@ impl Problem {
             .iter()
             .map(|g| g.assets.iter().map(|a| index[a.as_str()]).collect())
             .collect();
+        let exposure_limits = match &self.factor_model {
+            Some(model) => self
+                .constraints
+                .factor_exposures
+                .iter()
+                .filter_map(|limit| {
+                    let k = model.factors().iter().position(|f| *f == limit.factor)?;
+                    let shift = limit.benchmark.as_ref().map(|b| {
+                        model
+                            .portfolio_exposures(b)
+                            .map_or(0.0, |x| x.get(k).copied().unwrap_or(0.0))
+                    });
+                    Some((k, shift.unwrap_or(0.0)))
+                })
+                .collect(),
+            None => Vec::new(),
+        };
         Ok(Prepared {
             problem: self,
             n,
             bounds,
             groups,
-            factor,
+            risk,
+            exposure_limits,
         })
     }
 
@@ -443,6 +533,24 @@ impl Problem {
                 );
             }
         }
+        for (k, limit) in c.factor_exposures.iter().enumerate() {
+            let path = format!("constraints.factor_exposures[{k}]");
+            check_bound(limit.min, limit.max, &path, report);
+            match &self.factor_model {
+                Some(model) => {
+                    if !model.factors().contains(&limit.factor) {
+                        report.error(
+                            format!("{path}.factor"),
+                            format!("the factor model has no factor {}", limit.factor),
+                        );
+                    }
+                }
+                None => report.error(&path, "factor exposure limits need a factor model"),
+            }
+            if let Some(b) = &limit.benchmark {
+                check_vector(b, n, &format!("{path}.benchmark"), report);
+            }
+        }
         let fixed_form = matches!(
             objective,
             Objective::RiskBudgeting { .. } | Objective::HierarchicalRiskParity { .. }
@@ -466,17 +574,74 @@ pub(crate) struct Prepared<'a> {
     pub(crate) bounds: Vec<Bound>,
     /// The members of each group, by position.
     pub(crate) groups: Vec<Vec<usize>>,
-    /// A factor `R` of the covariance matrix with `R'R = C`, when a second-order cone needs one.
-    pub(crate) factor: Option<Factor>,
+    /// The risk model, when the problem has one.
+    pub(crate) risk: Option<RiskModel<'a>>,
+    /// For each factor exposure limit, the factor's position and the benchmark's exposure to it
+    /// (0 without a benchmark).
+    pub(crate) exposure_limits: Vec<(usize, f64)>,
+}
+
+/// Where a problem's risk comes from.
+pub(crate) enum RiskModel<'a> {
+    /// A covariance matrix `C`, with a factor `R` (`R'R = C`) when a second-order cone needs one.
+    Covariance {
+        matrix: &'a Matrix,
+        root: Option<Factor>,
+    },
+    /// A factor model, with a factor `R` of its factor covariance (`R'R = F`).
+    Factors {
+        model: &'a FactorModel,
+        root: Factor,
+    },
+}
+
+impl RiskModel<'_> {
+    /// The variance of a portfolio with weights `w`.
+    pub(crate) fn variance(&self, w: &[f64]) -> f64 {
+        let v = match self {
+            RiskModel::Covariance { matrix, .. } => matrix.quadratic_form(w).ok(),
+            RiskModel::Factors { model, .. } => model.variance(w).ok(),
+        };
+        v.unwrap_or(f64::NAN).max(0.0)
+    }
+
+    /// Each asset's volatility.
+    pub(crate) fn volatilities(&self) -> Vec<f64> {
+        match self {
+            RiskModel::Covariance { matrix, .. } => {
+                matrix.diagonal().iter().map(|v| v.sqrt()).collect()
+            }
+            RiskModel::Factors { model, .. } => {
+                let f = model.factor_covariance();
+                model
+                    .exposures()
+                    .iter()
+                    .zip(model.specific_variances())
+                    .map(|(b, d)| {
+                        let fb = f.times(b).unwrap_or_default();
+                        let v: f64 = b.iter().zip(&fb).map(|(x, y)| x * y).sum();
+                        (v + d).max(0.0).sqrt()
+                    })
+                    .collect()
+            }
+        }
+    }
+
+    /// The covariance matrix, built from the factor model if need be.
+    pub(crate) fn dense(&self) -> Cow<'_, Matrix> {
+        match self {
+            RiskModel::Covariance { matrix, .. } => Cow::Borrowed(*matrix),
+            RiskModel::Factors { model, .. } => Cow::Owned(model.covariance()),
+        }
+    }
 }
 
 impl Prepared<'_> {
-    pub(crate) fn covariance(&self) -> &Matrix {
-        // `prepare` checks that the objective's covariance matrix is present.
-        self.problem
-            .covariance
+    /// The risk model. `prepare` checks that an objective or constraint that needs one has it.
+    pub(crate) fn risk(&self) -> &RiskModel<'_> {
+        self.risk
             .as_ref()
-            .expect("a validated problem has its covariance matrix")
+            .expect("a validated problem has a risk model where it needs one")
     }
 
     pub(crate) fn expected_returns(&self) -> &[f64] {
@@ -524,11 +689,14 @@ impl Prepared<'_> {
                 .zip(&te.benchmark)
                 .map(|(w, b)| w - b)
                 .collect();
-            let variance = self
-                .covariance()
-                .quadratic_form(&active)
-                .unwrap_or(f64::NAN);
-            worst = worst.max(variance.max(0.0).sqrt() - te.limit);
+            worst = worst.max(self.risk().variance(&active).sqrt() - te.limit);
+        }
+        if let Some(RiskModel::Factors { model, .. }) = &self.risk {
+            let x = model.portfolio_exposures(weights).unwrap_or_default();
+            for (&(k, shift), limit) in self.exposure_limits.iter().zip(&c.factor_exposures) {
+                let exposure = x.get(k).copied().unwrap_or(f64::NAN) - shift;
+                worst = worst.max(limit.min - exposure).max(exposure - limit.max);
+            }
         }
         worst.max(0.0)
     }

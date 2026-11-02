@@ -302,7 +302,21 @@ pub fn large_problem(assets: usize) -> Problem {
         finalytics::risk::covariance(&returns, finalytics::risk::CovarianceMethod::LedoitWolf)
             .unwrap_or_else(|e| unreachable!("the generated covariance is valid: {e}"));
     let covariance: Matrix = estimate.matrix.scaled(252.0);
-    let labels = covariance.labels().to_vec();
+    with_budget_constraints(Problem::new(covariance), assets)
+}
+
+/// The budget's optimisation problem with risk from a ten-factor statistical model of the same
+/// returns, annualised, in place of the covariance matrix.
+pub fn large_factor_problem(assets: usize) -> Problem {
+    let returns = factor_returns(assets, 504);
+    let model = finalytics::risk::statistical_model(&returns, 10)
+        .unwrap_or_else(|e| unreachable!("the generated returns have components: {e}"))
+        .model;
+    with_budget_constraints(Problem::from_factor_model(model.scaled(252.0)), assets)
+}
+
+fn with_budget_constraints(problem: Problem, assets: usize) -> Problem {
+    let labels = problem.labels.clone();
     let expected: Vec<f64> = (0..assets)
         .map(|i| 0.02 + 0.06 * ((i * 37 % 101) as f64 / 100.0))
         .collect();
@@ -314,7 +328,7 @@ pub fn large_problem(assets: usize) -> Problem {
             max: 0.2,
         })
         .collect();
-    Problem::new(covariance)
+    problem
         .with_expected_returns(expected)
         .with_constraints(Constraints {
             bounds: finalytics::opt::Bound {

@@ -105,3 +105,171 @@ fn hierarchical_risk_parity_matches_the_reference() {
         }
     }
 }
+
+fn factor_model(fixture: &Value) -> finalytics_risk::FactorModel {
+    let names: Vec<String> = serde_json::from_value(fixture["labels"].clone()).unwrap();
+    let block = &fixture["factor_model"];
+    let exposures: Vec<Vec<f64>> = block["exposures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(floats)
+        .collect();
+    let factors = vec!["f0".to_owned(), "f1".to_owned()];
+    finalytics_risk::FactorModel::new(
+        names,
+        exposures,
+        Matrix::new(factors, floats(&block["factor_covariance"])).unwrap(),
+        floats(&block["specific_variances"]),
+    )
+    .unwrap()
+}
+
+#[test]
+fn factor_model_solutions_match_the_reference() {
+    let fixture = fixture();
+    let model = factor_model(&fixture);
+    let base = Problem::from_factor_model(model.clone())
+        .with_expected_returns(floats(&fixture["expected_returns"]));
+    for case in fixture["factor_model"]["cases"].as_array().unwrap() {
+        let name = case["name"].as_str().unwrap();
+        let objective: Objective = serde_json::from_value(case["problem"].clone()).unwrap();
+        let constraints: Constraints = serde_json::from_value(case["constraints"].clone()).unwrap();
+        let solution = base
+            .clone()
+            .with_constraints(constraints.clone())
+            .solve(&objective)
+            .unwrap();
+        assert_eq!(solution.status, SolveStatus::Optimal, "{name}");
+        assert!(
+            solution.max_violation.unwrap() < 1e-7,
+            "{name}: {:?}",
+            solution.max_violation
+        );
+        let value = solution.objective_value.unwrap();
+        let reference = case["objective_value"].as_f64().unwrap();
+        assert!(
+            (value - reference).abs() <= 1e-7 * reference.abs().max(1.0),
+            "{name}: objective {value} against the reference {reference}"
+        );
+        // The objectives agree to the solver's tolerance; where a binding cone leaves the
+        // objective nearly flat, the weights agree less closely.
+        let weights = solution.weights.unwrap();
+        for (k, (w, r)) in weights.iter().zip(floats(&case["weights"])).enumerate() {
+            assert!(
+                (w - r).abs() < 1e-4,
+                "{name}: weight {k} is {w}, the reference {r}"
+            );
+        }
+        for limit in &constraints.factor_exposures {
+            let k = model
+                .factors()
+                .iter()
+                .position(|f| *f == limit.factor)
+                .unwrap();
+            let mut exposure = model.portfolio_exposures(&weights).unwrap()[k];
+            if let Some(b) = &limit.benchmark {
+                exposure -= model.portfolio_exposures(b).unwrap()[k];
+            }
+            assert!(
+                exposure >= limit.min - 1e-8 && exposure <= limit.max + 1e-8,
+                "{name}: exposure to {} is {exposure}",
+                limit.factor
+            );
+        }
+    }
+}
+
+#[test]
+fn a_factor_model_gives_the_solutions_of_its_covariance_matrix() {
+    let fixture = fixture();
+    let model = factor_model(&fixture);
+    let mu = floats(&fixture["expected_returns"]);
+    let factor_form = Problem::from_factor_model(model.clone()).with_expected_returns(mu.clone());
+    let dense = Problem::new(model.covariance()).with_expected_returns(mu);
+    let equal = vec![1.0 / 8.0; 8];
+    let tracking = Constraints {
+        tracking_error: Some(TrackingErrorLimit {
+            benchmark: equal,
+            limit: 0.05,
+        }),
+        ..Default::default()
+    };
+    let objectives: Vec<(Objective, Constraints)> = vec![
+        (Objective::MinimumVariance, Default::default()),
+        (
+            Objective::MeanVariance { risk_aversion: 2.0 },
+            tracking.clone(),
+        ),
+        (Objective::TargetReturn { target: 0.13 }, Default::default()),
+        (Objective::TargetVolatility { target: 0.18 }, tracking),
+        (
+            Objective::MaximumSharpe {
+                risk_free_rate: 0.02,
+            },
+            Default::default(),
+        ),
+        (Objective::MaximumDiversification, Default::default()),
+        (
+            Objective::RiskBudgeting { budgets: None },
+            Default::default(),
+        ),
+        (
+            Objective::HierarchicalRiskParity {
+                linkage: Linkage::Ward,
+            },
+            Default::default(),
+        ),
+    ];
+    for (objective, constraints) in objectives {
+        let a = factor_form
+            .clone()
+            .with_constraints(constraints.clone())
+            .solve(&objective)
+            .unwrap();
+        let b = dense
+            .clone()
+            .with_constraints(constraints)
+            .solve(&objective)
+            .unwrap();
+        assert_eq!(a.status, SolveStatus::Optimal, "{objective:?}");
+        let (wa, wb) = (a.weights.unwrap(), b.weights.unwrap());
+        for (x, y) in wa.iter().zip(&wb) {
+            assert!((x - y).abs() < 1e-4, "{objective:?}: {wa:?} against {wb:?}");
+        }
+        if let (Some(va), Some(vb)) = (a.objective_value, b.objective_value) {
+            assert!((va - vb).abs() <= 1e-7 * vb.abs().max(1.0), "{objective:?}");
+        }
+        let (sa, sb) = (a.volatility.unwrap(), b.volatility.unwrap());
+        assert!(
+            (sa - sb).abs() < 1e-5 * sb,
+            "{objective:?}: {sa} against {sb}"
+        );
+    }
+}
+
+#[test]
+fn factor_model_problems_are_validated() {
+    let fixture = fixture();
+    let model = factor_model(&fixture);
+    let both = Problem::new(model.covariance()).with_factor_model(model.clone());
+    let error = both.solve(&Objective::MinimumVariance).unwrap_err();
+    assert!(error.to_string().contains("not both"), "{error}");
+    let limits = Constraints {
+        factor_exposures: vec![FactorExposureLimit {
+            factor: "momentum".into(),
+            min: 0.0,
+            max: 1.0,
+            benchmark: None,
+        }],
+        ..Default::default()
+    };
+    let unknown = Problem::from_factor_model(model.clone()).with_constraints(limits.clone());
+    let error = unknown.solve(&Objective::MinimumVariance).unwrap_err();
+    assert!(error.to_string().contains("no factor momentum"), "{error}");
+    let without_model = Problem::new(model.covariance()).with_constraints(limits);
+    let error = without_model
+        .solve(&Objective::MinimumVariance)
+        .unwrap_err();
+    assert!(error.to_string().contains("need a factor model"), "{error}");
+}

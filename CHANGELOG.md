@@ -65,6 +65,15 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   Rebalancing proposes the trades that move an account to target weights, with the lots each
   sale closes, its realised gain, and the currency conversions that fund purchases, as
   transactions ready to apply to the books.
+- Factor models: estimation by time-series regression on factor returns, from the principal
+  components of the sample covariance, or by cross-sectional regression on given exposures, with
+  each asset's fit; models built from exposures and risk estimates supplied by the caller; the
+  covariance a model implies; and the decomposition of volatility and ex-ante tracking error by
+  factor, by the specific part and by asset. Validated against statsmodels, scikit-learn and
+  NumPy.
+- Optimisation with a factor model in place of a covariance matrix, solved in factor form (a
+  500-asset problem with ten factors solves in about 10 ms), and limits on factor exposures,
+  absolute or relative to a benchmark.
 - A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
   with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,

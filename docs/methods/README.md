@@ -14,6 +14,7 @@ outputs are the engine's own.
 | [Return statistics and drawdowns](statistics.md) | Volatility, Sharpe, Sortino and Calmar ratios, moments, statistics against a benchmark, drawdowns |
 | [Value at risk and expected shortfall](tail-risk.md) | Historical, parametric and Cornish–Fisher estimates |
 | [Covariance estimation](covariance.md) | Sample, exponentially weighted, Ledoit–Wolf and OAS estimators |
+| [Factor models](factor-models.md) | Regression, statistical and fundamental models; risk by factor; optimisation in factor form with exposure limits |
 | [Risk decomposition](risk-decomposition.md) | Marginal and component risk, ex-ante tracking error, risk by group |
 | [Portfolio optimisation](optimisation.md) | Each objective and constraint, its formulation, and how solutions are reported |
 | [Rebalancing](rebalancing.md) | Trades from current holdings to target weights, with lot selection |

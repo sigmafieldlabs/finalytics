@@ -25,8 +25,8 @@ impl Problem {
     /// with target returns evenly spaced from the minimum-variance portfolio's expected return
     /// to the largest attainable, each with the smallest variance for its return.
     ///
-    /// Needs a covariance matrix and expected returns. Points the solver cannot solve are left
-    /// out.
+    /// Needs a covariance matrix or a factor model, and expected returns. Points the solver
+    /// cannot solve are left out.
     pub fn frontier(&self, points: usize) -> Result<Vec<FrontierPoint>> {
         if points < 2 {
             return Err(invalid("points", "must be at least 2"));

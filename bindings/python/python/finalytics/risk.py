@@ -1,5 +1,5 @@
 """Risk analytics on returns: statistics, drawdowns, value at risk and expected shortfall,
-covariance estimation and risk decomposition.
+covariance estimation, factor models and risk decomposition.
 
 Every function takes returns as any one-dimensional sequence of numbers (a list, a NumPy array or
 a pandas Series), one return per period::
@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, overload
 
 import numpy as np
 
@@ -24,10 +24,16 @@ from finalytics._arrays import FloatArray
 from finalytics._convert import dumps, loads
 from finalytics._errors import call
 from finalytics._types import (
+    AssetFit,
     CovarianceEstimate,
     CovarianceMethod,
     Drawdown,
     Ewma,
+    FactorContribution,
+    FactorMethod,
+    FactorModel,
+    FactorModelEstimate,
+    FactorRisk,
     GroupRisk,
     LedoitWolf,
     Matrix,
@@ -42,10 +48,16 @@ from finalytics._types import (
 )
 
 __all__ = [
+    "AssetFit",
     "CovarianceEstimate",
     "CovarianceMethod",
     "Drawdown",
     "Ewma",
+    "FactorContribution",
+    "FactorMethod",
+    "FactorModel",
+    "FactorModelEstimate",
+    "FactorRisk",
     "GroupRisk",
     "LedoitWolf",
     "Matrix",
@@ -61,16 +73,24 @@ __all__ = [
     "covariance",
     "drawdown_series",
     "drawdowns",
+    "factor_model",
+    "factor_risk",
+    "factor_tracking_error",
+    "fundamental_model",
     "group_risk",
+    "implied_covariance",
     "matrix",
     "normal_cdf",
     "normal_pdf",
     "normal_quantile",
+    "regression_model",
     "relative_statistics",
     "risk_decomposition",
     "rolling_relative_statistics",
     "rolling_statistics",
     "rolling_tail_risk",
+    "scaled",
+    "statistical_model",
     "statistics",
     "tail_risk",
     "to_array",
@@ -208,16 +228,125 @@ def covariance(
     `method` is ``"sample"``, ``"ewma"`` (with `decay`), ``"ledoit_wolf"`` or ``"oas"``. The
     matrix is per period: scale it to annualise, for example ``scaled(estimate.matrix, 252)``.
     """
-    if labels is None and hasattr(returns, "columns"):
-        labels = [str(c) for c in returns.columns]
-    array = np.asarray(returns, dtype=np.float64)
-    if array.ndim != 2:
-        raise ValueError("returns must be two-dimensional: one row per period, one column per asset")
-    if labels is None:
-        labels = [f"asset {i}" for i in range(array.shape[1])]
-    columns = _arrays.floats_to_buffer(array.T.copy())
-    text = call(_finalytics.covariance, columns, json.dumps(list(labels)), dumps(_method(method, decay)))
+    columns, names = _table(returns, labels)
+    text = call(_finalytics.covariance, columns, names, dumps(_method(method, decay)))
     return loads(CovarianceEstimate, text)
+
+
+def _table(values: Any, labels: Sequence[str] | None, prefix: str = "asset", name: str = "returns") -> tuple[bytes, str]:
+    """A two-dimensional array or DataFrame (one row per period, one column per series) as the
+    native module's columns and labels."""
+    if labels is None and hasattr(values, "columns"):
+        labels = [str(c) for c in values.columns]
+    array = np.asarray(values, dtype=np.float64)
+    if array.ndim != 2:
+        raise ValueError(f"{name} must be two-dimensional: one row per period, one column per series")
+    if labels is None:
+        labels = [f"{prefix} {i}" for i in range(array.shape[1])]
+    return _arrays.floats_to_buffer(array.T.copy()), json.dumps(list(labels))
+
+
+def regression_model(
+    returns: Any,
+    factor_returns: Any,
+    *,
+    labels: Sequence[str] | None = None,
+    factor_labels: Sequence[str] | None = None,
+) -> FactorModelEstimate:
+    """Estimates a factor model by regressing each asset's returns on factor returns, with an
+    intercept. Both are two-dimensional (one row per period, the same periods) or pandas
+    DataFrames, whose columns give the labels. The model is per period: use :func:`scaled` to
+    annualise it."""
+    columns, names = _table(returns, labels)
+    factor_columns, factor_names = _table(factor_returns, factor_labels, "factor", "factor_returns")
+    text = call(_finalytics.regression_model, columns, names, factor_columns, factor_names)
+    return loads(FactorModelEstimate, text)
+
+
+def statistical_model(returns: Any, factors: int, *, labels: Sequence[str] | None = None) -> FactorModelEstimate:
+    """Estimates a statistical factor model from the first `factors` principal components of the
+    sample covariance matrix of `returns` (one row per period, one column per asset). The factors
+    are named ``pc1``, ``pc2`` and so on."""
+    columns, names = _table(returns, labels)
+    return loads(FactorModelEstimate, call(_finalytics.statistical_model, columns, names, int(factors)))
+
+
+def fundamental_model(
+    returns: Any,
+    exposures: Any,
+    *,
+    labels: Sequence[str] | None = None,
+    factors: Sequence[str] | None = None,
+) -> FactorModelEstimate:
+    """Estimates a fundamental factor model for given `exposures`: one row per asset and one
+    column per factor, as an array or a DataFrame whose columns name the factors. Each period's
+    returns are regressed on the exposures to estimate the factor returns; include a column of
+    ones for a market factor."""
+    columns, names = _table(returns, labels)
+    if factors is None and hasattr(exposures, "columns"):
+        factors = [str(c) for c in exposures.columns]
+    array = np.asarray(exposures, dtype=np.float64)
+    if array.ndim != 2:
+        raise ValueError("exposures must be two-dimensional: one row per asset, one column per factor")
+    if factors is None:
+        factors = [f"factor {i}" for i in range(array.shape[1])]
+    text = call(_finalytics.fundamental_model, columns, names, json.dumps(list(factors)), json.dumps(array.tolist()))
+    return loads(FactorModelEstimate, text)
+
+
+def factor_model(
+    exposures: Any,
+    factor_covariance: Any,
+    specific_variances: Any,
+    *,
+    assets: Sequence[str] | None = None,
+    factors: Sequence[str] | None = None,
+) -> FactorModel:
+    """A factor model from its parts, for exposures and risk estimates supplied from elsewhere:
+    `exposures` with one row per asset and one column per factor (a DataFrame's index and columns
+    give the assets and factors), the factor covariance matrix, and one specific variance per
+    asset. The model is checked."""
+    if hasattr(exposures, "columns"):
+        assets = [str(a) for a in exposures.index] if assets is None else assets
+        factors = [str(c) for c in exposures.columns] if factors is None else factors
+    array = np.asarray(exposures, dtype=np.float64)
+    if array.ndim != 2:
+        raise ValueError("exposures must be two-dimensional: one row per asset, one column per factor")
+    if assets is None:
+        assets = [f"asset {i}" for i in range(array.shape[0])]
+    if factors is None:
+        factors = [f"factor {i}" for i in range(array.shape[1])]
+    covariance = factor_covariance if isinstance(factor_covariance, Matrix) else matrix(factor_covariance, factors)
+    model = FactorModel(
+        assets=list(assets),
+        exposures=array.tolist(),
+        factor_covariance=covariance,
+        specific_variances=np.asarray(specific_variances, dtype=np.float64).tolist(),
+    )
+    return loads(FactorModel, call(_finalytics.factor_model, dumps(model)))
+
+
+def _model(value: FactorModel | FactorModelEstimate) -> FactorModel:
+    return value.model if isinstance(value, FactorModelEstimate) else value
+
+
+def implied_covariance(model: FactorModel | FactorModelEstimate) -> Matrix:
+    """The covariance matrix of the assets that a factor model implies, ``B F B' + diag(d)``."""
+    return loads(Matrix, call(_finalytics.implied_covariance, dumps(_model(model))))
+
+
+def factor_risk(weights: Any, model: FactorModel | FactorModelEstimate) -> FactorRisk:
+    """Splits the volatility of a portfolio with `weights` under a factor model into each
+    factor's contribution and the specific part, and into each asset's contribution."""
+    text = call(_finalytics.factor_risk, _returns(weights), dumps(_model(model)))
+    return loads(FactorRisk, text)
+
+
+def factor_tracking_error(weights: Any, benchmark: Any, model: FactorModel | FactorModelEstimate) -> FactorRisk:
+    """The ex-ante tracking error against `benchmark` weights under a factor model, split by
+    factor and by asset; the exposures are the active exposures."""
+    text = call(_finalytics.factor_tracking_error, _returns(weights), _returns(benchmark), dumps(_model(model)))
+    return loads(FactorRisk, text)
 
 
 def matrix(values: Any, labels: Sequence[str] | None = None) -> Matrix:
@@ -238,8 +367,24 @@ def to_array(value: Matrix) -> FloatArray:
     return np.asarray(value.values, dtype=np.float64).reshape(n, n)
 
 
-def scaled(value: Matrix, factor: float) -> Matrix:
-    """Every entry multiplied by `factor`, for example 252 to annualise a daily covariance."""
+@overload
+def scaled(value: Matrix, factor: float) -> Matrix: ...
+
+
+@overload
+def scaled(value: FactorModel, factor: float) -> FactorModel: ...
+
+
+def scaled(value: Matrix | FactorModel, factor: float) -> Matrix | FactorModel:
+    """A covariance matrix, or a factor model's factor covariance and specific variances,
+    multiplied by `factor`, for example 252 to annualise daily estimates."""
+    if isinstance(value, FactorModel):
+        return FactorModel(
+            assets=list(value.assets),
+            exposures=[list(row) for row in value.exposures],
+            factor_covariance=scaled(value.factor_covariance, factor),
+            specific_variances=[d * factor for d in value.specific_variances],
+        )
     return Matrix(labels=list(value.labels), values=[v * factor for v in value.values])
 
 

@@ -30,8 +30,8 @@ constraints.
 | Data | Import and validation of instruments, transactions, prices, FX rates and benchmarks (CSV and JSON); a versioned portfolio document |
 | Holdings | Positions and tax lots on any date; cost basis; realised and unrealised gains in local and base currency; weights by any classification |
 | Performance | Time-weighted and money-weighted returns, standard periods, contribution, benchmark-relative returns, currency effect |
-| Risk | Return statistics, drawdowns, covariance estimators, value at risk and expected shortfall, risk decomposition, ex-ante tracking error |
-| Optimisation | Minimum variance, mean–variance, maximum Sharpe, target return or volatility, maximum diversification, minimum CVaR, risk parity, hierarchical risk parity; budget, bound, group, turnover and tracking-error constraints; efficient frontiers; rebalancing trades |
+| Risk | Return statistics, drawdowns, covariance estimators, factor models (regression, statistical and fundamental), value at risk and expected shortfall, risk decomposition by holding, group and factor, ex-ante tracking error |
+| Optimisation | Minimum variance, mean–variance, maximum Sharpe, target return or volatility, maximum diversification, minimum CVaR, risk parity, hierarchical risk parity; budget, bound, group, turnover, tracking-error and factor exposure constraints; factor models in factor form; efficient frontiers; rebalancing trades |
 
 ## Packages
 

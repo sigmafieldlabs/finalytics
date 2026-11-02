@@ -4,7 +4,7 @@ use web_time::Instant;
 
 use finalytics_core::Result;
 
-use crate::problem::{Objective, Prepared, Problem, Turnover};
+use crate::problem::{Objective, Prepared, Problem, RiskModel, Turnover};
 use crate::program::{Program, Row};
 use crate::solution::{Method, Solution, SolveStatus};
 use crate::{hrp, risk_budget};
@@ -17,6 +17,114 @@ struct Layout {
     scale: Option<usize>,
     /// The absolute trades `d_i >= |w_i - current_i|`, when turnover is limited or costed.
     trades: Option<usize>,
+    /// The portfolio's factor exposures `y = B' w`, when risk comes from a factor model.
+    factors: Option<usize>,
+}
+
+/// Adds the weights and the auxiliary variables the problem needs, with the rows that define
+/// them.
+fn layout(program: &mut Program, prepared: &Prepared<'_>, homogeneous: bool) -> Layout {
+    let n = prepared.n;
+    let weights = program.variables(n);
+    let scale = homogeneous.then(|| program.variables(1));
+    if let Some(k) = scale {
+        program.at_most(Row::new(vec![(k, -1.0)], 0.0));
+    }
+    let trades = prepared
+        .constraints()
+        .turnover
+        .as_ref()
+        .filter(|t| t.limit.is_some() || t.costs.is_some())
+        .map(|_| program.variables(n));
+    let factors = match &prepared.risk {
+        Some(RiskModel::Factors { model, .. }) => {
+            let k = model.factors().len();
+            let y = program.variables(k);
+            for j in 0..k {
+                let mut coeffs = vec![(y + j, 1.0)];
+                for (i, row) in model.exposures().iter().enumerate() {
+                    if row[j] != 0.0 {
+                        coeffs.push((weights + i, -row[j]));
+                    }
+                }
+                program.equal(Row::new(coeffs, 0.0));
+            }
+            Some(y)
+        }
+        _ => None,
+    };
+    Layout {
+        weights,
+        scale,
+        trades,
+        factors,
+    }
+}
+
+/// Adds `scale * w' C w` to the objective, in factor form `y' F y + sum d w^2` for a factor
+/// model.
+fn add_variance(program: &mut Program, layout: &Layout, prepared: &Prepared<'_>, scale: f64) {
+    match (prepared.risk(), layout.factors) {
+        (RiskModel::Factors { model, .. }, Some(y)) => {
+            program.quadratic(y, model.factor_covariance(), scale);
+            program.quadratic_diagonal(layout.weights, model.specific_variances(), scale);
+        }
+        (risk, _) => program.quadratic(layout.weights, &risk.dense(), scale),
+    }
+}
+
+/// The rows `R (w - shift)` of a second-order cone whose norm is the volatility of `w - shift`,
+/// as `rhs - coeffs . x`.
+fn risk_rows(prepared: &Prepared<'_>, layout: &Layout, shift: Option<&[f64]>) -> Vec<Row> {
+    let w = layout.weights;
+    let negated = |values: &[f64], offset: usize| -> Vec<(usize, f64)> {
+        values
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| **v != 0.0)
+            .map(|(i, v)| (offset + i, -v))
+            .collect()
+    };
+    match (prepared.risk(), layout.factors) {
+        (RiskModel::Factors { model, root }, Some(y)) => {
+            let shifted = shift.map(|b| model.portfolio_exposures(b).unwrap_or_default());
+            let mut rows: Vec<Row> = root
+                .rows
+                .iter()
+                .map(|r| {
+                    let constant = shifted
+                        .as_ref()
+                        .map_or(0.0, |x| r.iter().zip(x).map(|(a, b)| a * b).sum());
+                    layout.row(negated(r, y), -constant)
+                })
+                .collect();
+            for (i, d) in model.specific_variances().iter().enumerate() {
+                if *d > 0.0 {
+                    let s = d.sqrt();
+                    let constant = shift.map_or(0.0, |b| s * b[i]);
+                    rows.push(layout.row(vec![(w + i, -s)], -constant));
+                }
+            }
+            rows
+        }
+        (
+            RiskModel::Covariance {
+                root: Some(root), ..
+            },
+            _,
+        ) => {
+            let shifted = shift.map(|b| root.times(b));
+            root.rows
+                .iter()
+                .enumerate()
+                .map(|(k, r)| {
+                    let constant = shifted.as_ref().map_or(0.0, |x| x[k]);
+                    layout.row(negated(r, w), -constant)
+                })
+                .collect()
+        }
+        _ => Vec::new(),
+    }
 }
 
 impl Layout {
@@ -77,11 +185,11 @@ impl Problem {
             Objective::RiskBudgeting { budgets } => {
                 let n = prepared.n;
                 let budgets = budgets.clone().unwrap_or_else(|| vec![1.0; n]);
-                let found = risk_budget::solve(prepared.covariance(), &budgets)?;
+                let found = risk_budget::solve(&prepared.risk().dense(), &budgets)?;
                 (found.status, found.weights, found.method, found.iterations)
             }
             Objective::HierarchicalRiskParity { linkage } => {
-                let weights = hrp::weights(prepared.covariance(), *linkage)?;
+                let weights = hrp::weights(&prepared.risk().dense(), *linkage)?;
                 (
                     SolveStatus::Optimal,
                     Some(weights),
@@ -113,35 +221,20 @@ impl Problem {
 
 /// Builds the programme for one of the solver-based objectives.
 fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout) {
-    let n = prepared.n;
     let mut program = Program::default();
-    let weights = program.variables(n);
     let homogeneous = matches!(
         objective,
         Objective::MaximumSharpe { .. } | Objective::MaximumDiversification
     );
-    let scale = homogeneous.then(|| program.variables(1));
-    if let Some(k) = scale {
-        program.at_most(Row::new(vec![(k, -1.0)], 0.0));
-    }
-    let constraints = prepared.constraints();
-    let trades = constraints
-        .turnover
-        .as_ref()
-        .filter(|t| t.limit.is_some() || t.costs.is_some())
-        .map(|_| program.variables(n));
-    let layout = Layout {
-        weights,
-        scale,
-        trades,
-    };
+    let layout = layout(&mut program, prepared, homogeneous);
+    let scale = layout.scale;
     add_constraints(&mut program, &layout, prepared);
 
     let mu = prepared.expected_returns();
     let costs = prepared.costs();
     match objective {
         Objective::MinimumVariance | Objective::TargetReturn { .. } => {
-            program.quadratic(weights, prepared.covariance(), 1.0);
+            add_variance(&mut program, &layout, prepared, 1.0);
             if let Objective::TargetReturn { target } = objective {
                 let mut coeffs = layout.on_weights(&mu.iter().map(|m| -m).collect::<Vec<_>>());
                 coeffs.extend(layout.costs(costs).into_iter().map(|(i, c)| (i, -c)));
@@ -149,27 +242,17 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
             }
         }
         Objective::MeanVariance { risk_aversion } => {
-            program.quadratic(weights, prepared.covariance(), *risk_aversion);
+            add_variance(&mut program, &layout, prepared, *risk_aversion);
             add_return_to_objective(&mut program, &layout, mu, costs);
         }
         Objective::TargetVolatility { target } => {
             add_return_to_objective(&mut program, &layout, mu, costs);
-            let factor = prepared
-                .factor
-                .as_ref()
-                .map(|f| f.rows.as_slice())
-                .unwrap_or(&[]);
             let mut rows = vec![Row::new(Vec::new(), *target)];
-            for r in factor {
-                rows.push(Row::new(
-                    layout.on_weights(&r.iter().map(|v| -v).collect::<Vec<_>>()),
-                    0.0,
-                ));
-            }
+            rows.extend(risk_rows(prepared, &layout, None));
             program.second_order_cone(rows);
         }
         Objective::MaximumSharpe { risk_free_rate } => {
-            program.quadratic(weights, prepared.covariance(), 1.0);
+            add_variance(&mut program, &layout, prepared, 1.0);
             let mut coeffs = layout.on_weights(mu);
             coeffs.extend(layout.costs(costs));
             if let Some(k) = scale {
@@ -178,9 +261,8 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
             program.equal(Row::new(coeffs, 1.0));
         }
         Objective::MaximumDiversification => {
-            let covariance = prepared.covariance();
-            program.quadratic(weights, covariance, 1.0);
-            let volatilities: Vec<f64> = covariance.diagonal().iter().map(|v| v.sqrt()).collect();
+            add_variance(&mut program, &layout, prepared, 1.0);
+            let volatilities = prepared.risk().volatilities();
             program.equal(Row::new(layout.on_weights(&volatilities), 1.0));
         }
         Objective::MinimumCvar { confidence } => {
@@ -255,14 +337,16 @@ fn add_constraints(program: &mut Program, layout: &Layout, prepared: &Prepared<'
             program.at_most(layout.row((0..n).map(|i| (d + i, 1.0)).collect(), *limit));
         }
     }
-    if let (Some(te), Some(factor)) = (&c.tracking_error, &prepared.factor) {
+    if let Some(te) = &c.tracking_error {
         let mut rows = vec![layout.row(Vec::new(), te.limit)];
-        let shift = factor.times(&te.benchmark);
-        for (r, s) in factor.rows.iter().zip(shift) {
-            let coeffs = layout.on_weights(&r.iter().map(|v| -v).collect::<Vec<_>>());
-            rows.push(layout.row(coeffs, -s));
-        }
+        rows.extend(risk_rows(prepared, layout, Some(&te.benchmark)));
         program.second_order_cone(rows);
+    }
+    if let Some(y) = layout.factors {
+        for (&(k, shift), limit) in prepared.exposure_limits.iter().zip(&c.factor_exposures) {
+            program.at_most(layout.row(vec![(y + k, 1.0)], limit.max + shift));
+            program.at_most(layout.row(vec![(y + k, -1.0)], -(limit.min + shift)));
+        }
     }
 }
 
@@ -289,16 +373,12 @@ fn report(
 ) -> Solution {
     let problem = prepared.problem;
     let mu = problem.expected_returns.as_deref();
-    let covariance = problem.covariance.as_ref();
+    let risk = prepared.risk.as_ref();
     let expected_return = weights
         .as_ref()
         .zip(mu)
         .map(|(w, mu)| w.iter().zip(mu).map(|(a, b)| a * b).sum::<f64>());
-    let variance = weights
-        .as_ref()
-        .zip(covariance)
-        .and_then(|(w, c)| c.quadratic_form(w).ok())
-        .map(|v| v.max(0.0));
+    let variance = weights.as_ref().zip(risk).map(|(w, r)| r.variance(w));
     let volatility = variance.map(f64::sqrt);
     let objective_value = weights.as_ref().and_then(|w| match objective {
         Objective::MinimumVariance | Objective::TargetReturn { .. } => variance,
@@ -310,8 +390,8 @@ fn report(
             Some((expected_return? - risk_free_rate) / volatility?)
         }
         Objective::MaximumDiversification => {
-            let c = covariance?;
-            let weighted: f64 = w.iter().zip(c.diagonal()).map(|(w, v)| w * v.sqrt()).sum();
+            let volatilities = risk?.volatilities();
+            let weighted: f64 = w.iter().zip(volatilities).map(|(w, v)| w * v).sum();
             Some(weighted / volatility?)
         }
         Objective::MinimumCvar { confidence } => {
@@ -329,7 +409,7 @@ fn report(
             Some(cvar(&returns, 1.0 - confidence))
         }
         Objective::RiskBudgeting { budgets } => {
-            risk_budget::largest_gap(covariance?, w, budgets.as_deref())
+            risk_budget::largest_gap(&risk?.dense(), w, budgets.as_deref())
         }
         Objective::HierarchicalRiskParity { .. } => None,
     });
@@ -399,18 +479,7 @@ pub(crate) fn cvar(returns: &[f64], alpha: f64) -> f64 {
 pub(crate) fn maximum_return(prepared: &Prepared<'_>) -> Option<f64> {
     let n = prepared.n;
     let mut program = Program::default();
-    let weights = program.variables(n);
-    let constraints = prepared.constraints();
-    let trades = constraints
-        .turnover
-        .as_ref()
-        .filter(|t| t.limit.is_some() || t.costs.is_some())
-        .map(|_| program.variables(n));
-    let layout = Layout {
-        weights,
-        scale: None,
-        trades,
-    };
+    let layout = layout(&mut program, prepared, false);
     add_constraints(&mut program, &layout, prepared);
     add_return_to_objective(
         &mut program,

@@ -2,12 +2,19 @@
 // and strict: it is type-checked, not run.
 import init, {
   Books,
+  factorRisk,
+  impliedCovariance,
   MarketData,
   portfolioFromCsv,
   solve,
+  statisticalModel,
   statistics,
   tailRisk,
+  type FactorModelEstimate,
+  type Matrix,
   type Objective,
+  type Problem,
+  type ReturnsTable,
   type Solution,
   type Statistics,
 } from "../pkg/finalytics.js";
@@ -46,3 +53,17 @@ export async function example(worker: Worker): Promise<void> {
 
   console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown);
 }
+
+// Factor models: estimation, risk and a problem with exposure limits.
+declare const table: ReturnsTable;
+const estimate: FactorModelEstimate = statisticalModel(table, 3);
+const exposure: number = factorRisk([0.5, 0.5], estimate.model).factors[0].exposure;
+const implied: Matrix = impliedCovariance(estimate.model);
+const factorProblem: Problem = {
+  labels: estimate.model.assets,
+  factor_model: estimate.model,
+  constraints: { factor_exposures: [{ factor: "pc1", min: 0.9, max: 1.1 }] },
+};
+void exposure;
+void implied;
+void factorProblem;

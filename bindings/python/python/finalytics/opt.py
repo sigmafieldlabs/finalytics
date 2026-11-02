@@ -22,6 +22,9 @@ from finalytics._types import (
     AssetBound,
     Bound,
     Constraints,
+    FactorExposureLimit,
+    FactorModel,
+    FactorModelEstimate,
     FrontierPoint,
     GroupLimit,
     HierarchicalRiskParity,
@@ -53,6 +56,7 @@ __all__ = [
     "AssetBound",
     "Bound",
     "Constraints",
+    "FactorExposureLimit",
     "FrontierPoint",
     "GroupLimit",
     "HierarchicalRiskParity",
@@ -83,8 +87,9 @@ __all__ = [
 
 class Problem(_types.Problem):
     """A portfolio optimisation problem: the assets, estimates of their risk and return, and the
-    constraints. The covariance matrix and expected returns should be in the same units, for
-    example both annualised; scenario returns, for minimum CVaR, are per period."""
+    constraints. Risk comes from a covariance matrix or a factor model; the risk estimates and
+    expected returns should be in the same units, for example both annualised; scenario returns,
+    for minimum CVaR, are per period."""
 
     @classmethod
     def from_covariance(
@@ -105,6 +110,27 @@ class Problem(_types.Problem):
             covariance=matrix,
             expected_returns=None if expected_returns is None else np.asarray(expected_returns, float).tolist(),
             scenarios=None if scenarios is None else _scenarios(scenarios, matrix.labels),
+            constraints=constraints or Constraints(),
+        )
+
+    @classmethod
+    def from_factor_model(
+        cls,
+        model: FactorModel | FactorModelEstimate,
+        *,
+        expected_returns: Any = None,
+        constraints: Constraints | None = None,
+        scenarios: Any = None,
+    ) -> Problem:
+        """A problem over the assets of a factor model, which the solver uses in factor form, so
+        that large problems solve much faster than with a full covariance matrix. Use
+        :class:`FactorExposureLimit` constraints to limit the portfolio's factor exposures."""
+        model = model.model if isinstance(model, FactorModelEstimate) else model
+        return cls(
+            labels=list(model.assets),
+            factor_model=model,
+            expected_returns=None if expected_returns is None else np.asarray(expected_returns, float).tolist(),
+            scenarios=None if scenarios is None else _scenarios(scenarios, model.assets),
             constraints=constraints or Constraints(),
         )
 
