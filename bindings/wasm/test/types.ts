@@ -51,6 +51,7 @@ export async function example(worker: Worker): Promise<void> {
   const books = new Books(portfolio, new MarketData());
   const performance = books.performance();
   const returns: Float64Array = performance.returns;
+  const dates: string[] = performance.dates;
   const threeYears = performance.period("3Y");
   const plan = books.rebalance("main", [[{ holding: "instrument", id: "SPY" }, 1]], { lot_method: "highest_cost" });
 

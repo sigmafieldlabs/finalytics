@@ -837,7 +837,7 @@ impl Performance {
 
     /// The valuation dates.
     #[wasm_bindgen(getter)]
-    pub fn parse_dates(&self) -> Vec<String> {
+    pub fn dates(&self) -> Vec<String> {
         date_strings(self.inner.dates())
     }
 

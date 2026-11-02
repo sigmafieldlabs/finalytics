@@ -22,6 +22,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The descriptions of the shared data types no longer name Rust methods or `None`; they read the
   same in the JSON Schema, the Python types and the TypeScript declarations.
 
+### Fixed
+
+- JavaScript: the valuation dates of a `Performance` are its `dates` property; they were
+  published as `parse_dates`.
+
 ## [1.0.0-alpha.0] - 2026-11-02
 
 Finalytics 1.0 is a redesign of the library. See the migration guide (to follow) for moving from

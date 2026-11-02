@@ -16,6 +16,8 @@ test("the scenario's books, values and performance", () => {
   const perf = books.performance();
   assert.ok(perf.returns instanceof Float64Array);
   assert.equal(perf.returns.length, 43);
+  assert.equal(perf.dates.length, 44);
+  assert.deepEqual(perf.dates, books.defaultDates());
   const total = perf.contributions().reduce((sum, c) => sum + c.contribution, 0);
   close(total, perf.timeWeighted(), 1e-12, "contributions");
   assert.equal(perf.period("MTD").start, "2026-09-30");
