@@ -24,11 +24,11 @@ pub use finalytics_perf::{
     group_contributions,
 };
 
-/// Reading and writing portfolios: CSV import with validation reports, and the versioned
-/// portfolio document in JSON.
+/// Reading and writing portfolios: CSV import with validation reports, the versioned portfolio
+/// document in JSON, and a JSON reader for any of the engine's types.
 pub mod formats {
     pub use finalytics_formats::{
-        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument,
+        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument, from_json,
         fx_from_csv, instruments_from_csv, portfolio_from_csv, prices_from_csv,
         transactions_from_csv,
     };

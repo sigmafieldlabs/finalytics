@@ -103,21 +103,7 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
     let text: String = js_sys::JSON::stringify(&value)
         .map_err(|_| invalid(name, "cannot be written as JSON"))?
         .into();
-    // Reading without tracking paths is faster; only a value that fails is read again to find
-    // where it goes wrong.
-    if let Ok(found) = serde_json::from_str(&text) {
-        return Ok(found);
-    }
-    let mut deserializer = serde_json::Deserializer::from_str(&text);
-    serde_path_to_error::deserialize(&mut deserializer).map_err(|e| {
-        let path = e.path().to_string();
-        let path = if path == "." {
-            name.to_owned()
-        } else {
-            format!("{name}.{path}")
-        };
-        invalid(&path, e.inner().to_string())
-    })
+    finalytics::formats::from_json(&text, name).map_err(error)
 }
 
 fn optional<T: DeserializeOwned + Default>(value: JsValue, name: &str) -> Result<T, JsValue> {

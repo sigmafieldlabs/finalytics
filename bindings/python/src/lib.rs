@@ -51,23 +51,9 @@ fn to_json<T: Serialize>(value: &T) -> PyResult<String> {
     serde_json::to_string(value).map_err(|e| invalid("", format!("could not encode a result: {e}")))
 }
 
-/// Parses JSON input, reporting where it is malformed.
+/// Parses JSON input, reporting where it is malformed with paths under `name`.
 fn from_json<T: DeserializeOwned>(text: &str, name: &str) -> PyResult<T> {
-    // Reading without tracking paths is faster; only input that fails is read again to find
-    // where it goes wrong.
-    if let Ok(found) = serde_json::from_str(text) {
-        return Ok(found);
-    }
-    let mut deserializer = serde_json::Deserializer::from_str(text);
-    serde_path_to_error::deserialize(&mut deserializer).map_err(|e| {
-        let path = e.path().to_string();
-        let path = if path == "." {
-            name.to_owned()
-        } else {
-            format!("{name}.{path}")
-        };
-        invalid(&path, e.inner().to_string())
-    })
+    finalytics::formats::from_json(text, name).map_err(engine)
 }
 
 /// Parses a name such as `"start_of_day"` or `"fifo"` as the enum value it names.

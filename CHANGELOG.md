@@ -65,6 +65,8 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   Rebalancing proposes the trades that move an account to target weights, with the lots each
   sale closes, its realised gain, and the currency conversions that fund purchases, as
   transactions ready to apply to the books.
+- A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
+  with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,
   `Performance`, `MarketData` and functions for risk and optimisation), `Float64Array`s for
   series, TypeScript declarations for every data type, and a worker with a promise-based client
