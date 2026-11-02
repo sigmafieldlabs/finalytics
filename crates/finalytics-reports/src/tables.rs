@@ -103,6 +103,43 @@ pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
     })
 }
 
+/// Any report given as JSON, or the six together, as text for printing, with the portfolio's
+/// `name` if given. The Python and JavaScript packages use it; from Rust, display the report.
+#[doc(hidden)]
+pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
+    let value: serde_json::Value =
+        serde_json::from_str(report).map_err(|e| invalid("report", format!("is not JSON: {e}")))?;
+    fn read<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> Result<T> {
+        serde_json::from_value(value).map_err(|e| invalid("report", e.to_string()))
+    }
+    if value.get("overview").is_some() {
+        return Ok(read::<crate::PortfolioReport>(value)?.to_text(name));
+    }
+    let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
+        .map_err(|_| invalid("report.provenance.report", "is not a report kind"))?;
+    let mut page = crate::text::Page::new(name);
+    match kind {
+        ReportKind::Holdings => crate::text::holdings(&mut page, &read(value)?),
+        ReportKind::Overview => crate::text::overview(&mut page, &read(value)?),
+        ReportKind::Performance => {
+            crate::text::performance(&mut page, &read(value)?, &Default::default());
+        }
+        ReportKind::Risk => crate::text::risk(&mut page, &read(value)?),
+        ReportKind::Attribution => crate::text::attribution(&mut page, &read(value)?),
+        ReportKind::Scenarios => crate::text::scenarios(&mut page, &read(value)?),
+    }
+    Ok(page.finish())
+}
+
+/// The six reports given as JSON as one HTML page, with the portfolio's `name` if given. The
+/// Python and JavaScript packages use it; from Rust, call `PortfolioReport::to_html`.
+#[doc(hidden)]
+pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
+    let report: crate::PortfolioReport = serde_json::from_str(report)
+        .map_err(|e| invalid("report", format!("is not a full portfolio report: {e}")))?;
+    Ok(report.to_html(name))
+}
+
 fn n(x: f64) -> Cell {
     if x.is_finite() {
         Cell::Number(x)

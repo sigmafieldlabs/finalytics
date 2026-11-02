@@ -2,8 +2,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde::{Deserialize, Serialize};
-
 use finalytics_core::{Currency, Date, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, PortfolioDocument, market_from_csv, portfolio_from_csv};
 use finalytics_ledger::{
@@ -12,9 +10,9 @@ use finalytics_ledger::{
 use finalytics_opt::{CombinedRebalance, RebalanceOptions, rebalance_accounts};
 use finalytics_perf::{FlowTiming, Performance};
 use finalytics_reports::{
-    AttributionReport, HoldingsReport, OverviewReport, PerformanceReport, ReportOptions,
-    RiskReport, ScenariosReport, Source, attribution_report, holdings_report, overview_report,
-    performance_report, risk_report, scenarios_report,
+    AttributionReport, HoldingsReport, OverviewReport, PerformanceReport, PortfolioReport,
+    ReportOptions, RiskReport, ScenariosReport, Source, attribution_report, holdings_report,
+    overview_report, performance_report, portfolio_report, risk_report, scenarios_report,
 };
 use finalytics_risk::{holding_returns, holding_weights};
 
@@ -111,26 +109,6 @@ impl<'a> PortfolioCsv<'a> {
         self.options.delimiter = delimiter;
         self
     }
-}
-
-/// The six reports on a portfolio. The attribution report needs the benchmark's segments, and
-/// the scenarios report needs scenarios, in the report options; without them, they are absent.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[non_exhaustive]
-pub struct PortfolioReport {
-    /// Value, returns and risk at a glance.
-    pub overview: OverviewReport,
-    /// Holdings, lots, income and realised gains.
-    pub holdings: HoldingsReport,
-    /// Returns over periods, contribution and flows.
-    pub performance: PerformanceReport,
-    /// Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier.
-    pub risk: RiskReport,
-    /// Attribution against the benchmark.
-    pub attribution: Option<AttributionReport>,
-    /// The effect of scenarios on value and risk.
-    pub scenarios: Option<ScenariosReport>,
 }
 
 impl Portfolio {
@@ -365,24 +343,10 @@ impl Portfolio {
         Source::of(&self.data, &self.market)
     }
 
-    /// Every report on the portfolio, from one set of options.
+    /// Every report on the portfolio, from one set of options. The report prints as text
+    /// (`to_string()` or `to_text(name)`).
     pub fn report(&self, options: &ReportOptions) -> Result<PortfolioReport> {
-        let source = self.source();
-        let (books, market) = (&self.books, &self.market);
-        Ok(PortfolioReport {
-            overview: overview_report(books, market, &source, options)?,
-            holdings: holdings_report(books, market, &source, options)?,
-            performance: performance_report(books, market, &source, options)?,
-            risk: risk_report(books, market, &source, options)?,
-            attribution: match options.attribution {
-                Some(_) => Some(attribution_report(books, market, &source, options)?),
-                None => None,
-            },
-            scenarios: match options.scenarios.is_empty() {
-                false => Some(scenarios_report(books, market, &source, options)?),
-                true => None,
-            },
-        })
+        portfolio_report(&self.books, &self.market, &self.source(), options)
     }
 
     /// The overview report.

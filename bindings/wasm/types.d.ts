@@ -1798,17 +1798,18 @@ export interface PortfolioPoint {
 }
 
 /**
- * The six reports on a portfolio. The attribution report needs the benchmark's segments, and
- * the scenarios report needs scenarios, in the report options; without them, they are absent.
+ * The six reports on a portfolio, from one set of options. The attribution report needs the
+ * benchmark's segments, and the scenarios report needs scenarios, in the options; without
+ * them, they are absent.
  */
 export interface PortfolioReport {
-  /** Value, returns and risk at a glance. */
+  /** Value, returns and risk at a glance, with the efficient frontier. */
   overview: OverviewReport;
   /** Holdings, lots, income and realised gains. */
   holdings: HoldingsReport;
   /** Returns over periods, contribution and flows. */
   performance: PerformanceReport;
-  /** Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier. */
+  /** Volatility, tail risk, drawdowns and where the risk comes from. */
   risk: RiskReport;
   /** Attribution against the benchmark. */
   attribution?: AttributionReport | null;

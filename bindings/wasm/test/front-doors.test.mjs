@@ -61,6 +61,19 @@ test("fees are an expense, not a loss on cash", () => {
   assert.ok(Math.abs(usd.return_base) < 1e-12);
 });
 
+test("reports print as text and lay out as one HTML page", () => {
+  const portfolio = fl.datasets.portfolio();
+  const report = portfolio.report(fl.datasets.reportOptions());
+  const text = fl.reportText(report, "Morgan family portfolio");
+  assert.ok(text.split("\n").every((line) => [...line].length <= 80));
+  assert.equal(text.split("Morgan family portfolio").length - 1, 6);
+  assert.ok(fl.reportText(report.risk).includes("FINALYTICS  ·  RISK"));
+  const html = fl.reportHtml(report, "Morgan family portfolio");
+  assert.ok(html.startsWith("<!doctype html>"));
+  assert.ok(html.includes("<title>Morgan family portfolio</title>"));
+  assert.ok(!html.includes("<script"));
+});
+
 test("a portfolio from its transactions alone", () => {
   const portfolio = fl.Portfolio.fromCsv({
     transactions: "date,type,instrument,quantity,price,amount,currency\n2026-01-02,deposit,,,,20000,USD\n" +

@@ -1124,6 +1124,18 @@ fn report_tables(report: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (report, name=None))]
+fn report_text(report: &str, name: Option<&str>) -> PyResult<String> {
+    finalytics::reports::report_text(report, name).map_err(engine)
+}
+
+#[pyfunction]
+#[pyo3(signature = (report, name=None))]
+fn report_html(report: &str, name: Option<&str>) -> PyResult<String> {
+    finalytics::reports::report_html(report, name).map_err(engine)
+}
+
+#[pyfunction]
 fn stressed_covariance(covariance: &str, stress: &str) -> PyResult<String> {
     let covariance: Matrix = from_json(covariance, "covariance")?;
     let stress: risk::CorrelationStress = from_json(stress, "stress")?;
@@ -1304,6 +1316,8 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(stressed_covariance, m)?)?;
     m.add_function(wrap_pyfunction!(parse_period, m)?)?;
     m.add_function(wrap_pyfunction!(report_tables, m)?)?;
+    m.add_function(wrap_pyfunction!(report_text, m)?)?;
+    m.add_function(wrap_pyfunction!(report_html, m)?)?;
     m.add_function(wrap_pyfunction!(brinson_fachler, m)?)?;
     m.add_function(wrap_pyfunction!(karnosky_singer, m)?)?;
     m.add_function(wrap_pyfunction!(frontier, m)?)?;

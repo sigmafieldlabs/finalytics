@@ -36,6 +36,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   currency), and the base currency may be left out (that of the first deposit).
 - `formats::market_from_csv` builds market data from price and FX files, and
   `formats::price_columns_from_csv` reads prices in the order of the file.
+- The reports print: every report implements `Display` in Rust as text 80 columns wide, with
+  tables, bars and sparklines (`print(report)` in Python, `reportText(report)` in JavaScript), and
+  the full report lays out as one self-contained HTML page with the Finalytics logo and an
+  optional portfolio name: inline SVG charts with hover details, no scripts or external
+  resources, light and dark themes, and print layout (`PortfolioReport::to_html`, Python
+  `to_html` and `save_html`, JavaScript `reportHtml`). `Portfolio::report` returns a
+  `PortfolioReport`, now in the reports module with `portfolio_report`.
 - In Node.js the npm package is ready on import: its `node` entry point loads the WebAssembly
   file, so `init` is needed only in browsers.
 - Rust constructors for inputs that gained `#[non_exhaustive]`: `TaxRates::new`,

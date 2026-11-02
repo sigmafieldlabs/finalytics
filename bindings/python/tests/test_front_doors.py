@@ -140,3 +140,17 @@ def test_fees_are_an_expense_and_cash_is_riskless():
     usd_row = risk.covariance.labels.index("USD cash")
     n = len(risk.covariance.labels)
     assert all(v == 0.0 for v in risk.covariance.values[usd_row * n : (usd_row + 1) * n])
+
+
+def test_reports_print_and_save_as_html(tmp_path):
+    portfolio = fl.datasets.portfolio()
+    report = portfolio.report(fl.datasets.report_options())
+    text = str(report)
+    assert text.startswith("━") and all(len(line) <= 80 for line in text.splitlines())
+    assert report.to_text(name="Morgan family portfolio").count("Morgan family portfolio") == 6
+    assert str(report.risk).splitlines()[1].startswith("FINALYTICS  ·  RISK")
+    assert str(portfolio.performance_report()).splitlines()[1].startswith("FINALYTICS  ·  PERFORMANCE")
+    path = report.save_html(tmp_path / "report.html", name="Morgan family portfolio")
+    html = path.read_text(encoding="utf-8")
+    assert html.startswith("<!doctype html>") and "<title>Morgan family portfolio</title>" in html
+    assert "<script" not in html

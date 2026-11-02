@@ -11,6 +11,8 @@ import decimal
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal, Union
 
+from finalytics._printing import PrintedPortfolioReport, PrintedReport
+
 
 Currency = str
 """An ISO 4217 currency code, such as "USD"."""
@@ -420,7 +422,7 @@ class AttributionPeriod:
 
 
 @dataclass(frozen=True, kw_only=True)
-class AttributionReport:
+class AttributionReport(PrintedReport):
     """The attribution report."""
 
     provenance: Provenance
@@ -1724,7 +1726,7 @@ class HoldingSeries:
 
 
 @dataclass(frozen=True, kw_only=True)
-class HoldingsReport:
+class HoldingsReport(PrintedReport):
     """The holdings report."""
 
     provenance: Provenance
@@ -2242,7 +2244,7 @@ class OptimiseOptions:
 
 
 @dataclass(frozen=True, kw_only=True)
-class OverviewReport:
+class OverviewReport(PrintedReport):
     """The overview report."""
 
     provenance: Provenance
@@ -2281,7 +2283,7 @@ class OverviewReport:
 
 
 @dataclass(frozen=True, kw_only=True)
-class PerformanceReport:
+class PerformanceReport(PrintedReport):
     """The performance report."""
 
     provenance: Provenance
@@ -2528,13 +2530,14 @@ class PortfolioPoint:
 
 
 @dataclass(frozen=True, kw_only=True)
-class PortfolioReport:
-    """The six reports on a portfolio. The attribution report needs the benchmark's segments, and
-    the scenarios report needs scenarios, in the report options; without them, they are absent.
+class PortfolioReport(PrintedPortfolioReport):
+    """The six reports on a portfolio, from one set of options. The attribution report needs the
+    benchmark's segments, and the scenarios report needs scenarios, in the options; without them,
+    they are absent.
     """
 
     overview: OverviewReport
-    """Value, returns and risk at a glance."""
+    """Value, returns and risk at a glance, with the efficient frontier."""
 
     holdings: HoldingsReport
     """Holdings, lots, income and realised gains."""
@@ -2543,7 +2546,7 @@ class PortfolioReport:
     """Returns over periods, contribution and flows."""
 
     risk: RiskReport
-    """Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier."""
+    """Volatility, tail risk, drawdowns and where the risk comes from."""
 
     attribution: AttributionReport | None = None
     """Attribution against the benchmark."""
@@ -3171,7 +3174,7 @@ class RiskDecomposition:
 
 
 @dataclass(frozen=True, kw_only=True)
-class RiskReport:
+class RiskReport(PrintedReport):
     """The risk report."""
 
     provenance: Provenance
@@ -3396,7 +3399,7 @@ class ScenarioSummary:
 
 
 @dataclass(frozen=True, kw_only=True)
-class ScenariosReport:
+class ScenariosReport(PrintedReport):
     """The scenarios report."""
 
     provenance: Provenance

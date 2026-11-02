@@ -14,6 +14,10 @@ report holds and the few figures the reports derive themselves.
 | Attribution | Brinson–Fachler attribution against a benchmark's segments, by period and linked, with the portfolio's segments measured from its books |
 | Scenarios | Named shock and historical scenarios run together, side by side, with the change in each holding's value in each scenario |
 
+`Portfolio.report` computes all six from one set of options; the attribution report needs the
+benchmark's segments and the scenarios report needs scenarios, and without them they are left
+out.
+
 Each report is defined by the same options: the report's date (the last price date by default),
 the first valuation date (the first transaction's by default), the classification schemes to
 break figures down by, a benchmark (any instrument with prices in the market data), the
@@ -23,6 +27,17 @@ window of rolling statistics (63 periods), the number of histogram bins (30), th
 lists (10), the long-term holding period (365 days), expected returns for the frontier, benchmark
 weights for the tracking error, the benchmark segments for attribution and the scenarios. Each
 report uses the options that concern it.
+
+## Printed and HTML reports
+
+Every report prints as text, 80 columns wide, with tables, bars and sparklines: `print(report)` in
+Python, `report.to_string()` in Rust, `reportText(report)` in JavaScript. The full report also
+lays out as one HTML page (`report.to_html(name)`, `report.save_html(path, name)` in Python,
+`reportHtml(report, name)` in JavaScript), with the portfolio's name as its title if given: inline
+styles and SVG charts with hover details, no scripts or external resources, in the reader's light
+or dark theme, and one report to a printed page. Both show the report's figures as computed, and
+both are built in the engine, so they are the same in every language. A table too wide for the
+text's columns is split into several, each repeating its first column.
 
 ## Provenance
 

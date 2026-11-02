@@ -135,6 +135,17 @@ def nullable(schema: dict) -> tuple[dict, bool]:
 # The pattern of the keys of a map keyed by whole numbers, such as years.
 INTEGER_KEYS = "^-?\\d+$"
 
+# Python base classes that give generated classes behaviour: the reports print as text.
+BASES = {
+    "OverviewReport": "PrintedReport",
+    "HoldingsReport": "PrintedReport",
+    "PerformanceReport": "PrintedReport",
+    "RiskReport": "PrintedReport",
+    "AttributionReport": "PrintedReport",
+    "ScenariosReport": "PrintedReport",
+    "PortfolioReport": "PrintedPortfolioReport",
+}
+
 
 def map_value(schema: dict) -> dict | None:
     """The schema of a map's values: its additional properties, or the one pattern its keys
@@ -337,7 +348,8 @@ class Python:
             fields.append((key, annotation, default, doc(prop.get("description"))))
         if extra:
             fields.append(extra)
-        lines = ["@dataclass(frozen=True, kw_only=True)", f"class {name}:"]
+        base = f"({BASES[name]})" if name in BASES else ""
+        lines = ["@dataclass(frozen=True, kw_only=True)", f"class {name}{base}:"]
         lines.append(docstring(doc(schema.get("description")), 4))
         if tag:
             lines += ["", f"    {tag[0].upper()}: ClassVar[str] = {json.dumps(tag[1])}"]
@@ -405,7 +417,8 @@ class Python:
         header = f'"""Data types exchanged with the Finalytics engine.\n\n{HEADER}\n"""'
         parts = [
             header,
-            "from __future__ import annotations\n\nimport datetime\nimport decimal\nfrom dataclasses import dataclass, field\nfrom typing import ClassVar, Literal, Union",
+            "from __future__ import annotations\n\nimport datetime\nimport decimal\nfrom dataclasses import dataclass, field\nfrom typing import ClassVar, Literal, Union\n\n"
+            "from finalytics._printing import PrintedPortfolioReport, PrintedReport",
             "\n\n".join(aliases),
             "\n\n".join(literals),
             "\n\n\n".join(self.blocks),

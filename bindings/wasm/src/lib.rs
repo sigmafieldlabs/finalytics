@@ -1710,6 +1710,35 @@ pub fn report_tables(
     to_js(&finalytics::reports::report_tables(&text).map_err(error)?)
 }
 
+/// Any report, or the six from `Portfolio.report`, as text for printing, 80 columns wide, with
+/// the portfolio's `name`, if given, under each title.
+#[wasm_bindgen(js_name = reportText)]
+pub fn report_text(
+    #[wasm_bindgen(unchecked_param_type = "object")] report: JsValue,
+    name: Option<String>,
+) -> Result<String, JsValue> {
+    let text = js_sys::JSON::stringify(&report)
+        .map_err(|_| invalid("report", "could not be written as JSON"))?
+        .as_string()
+        .unwrap_or_default();
+    finalytics::reports::report_text(&text, name.as_deref()).map_err(error)
+}
+
+/// The six reports from `Portfolio.report` as one self-contained HTML page, with the
+/// portfolio's `name`, if given, as its title: inline styles and SVG charts, no scripts, in light
+/// and dark themes, ready to print.
+#[wasm_bindgen(js_name = reportHtml)]
+pub fn report_html(
+    #[wasm_bindgen(unchecked_param_type = "PortfolioReport")] report: JsValue,
+    name: Option<String>,
+) -> Result<String, JsValue> {
+    let text = js_sys::JSON::stringify(&report)
+        .map_err(|_| invalid("report", "could not be written as JSON"))?
+        .as_string()
+        .unwrap_or_default();
+    finalytics::reports::report_html(&text, name.as_deref()).map_err(error)
+}
+
 /// `covariance` with every volatility scaled and every correlation moved toward one by
 /// `stress`: `s^2 ((1 - a) C + a v v')`, with `v` the volatilities.
 #[wasm_bindgen(js_name = stressedCovariance, unchecked_return_type = "Matrix")]

@@ -4850,7 +4850,7 @@
       "properties": {
         "overview": {
           "$ref": "#/$defs/OverviewReport",
-          "description": "Value, returns and risk at a glance."
+          "description": "Value, returns and risk at a glance, with the efficient frontier."
         },
         "holdings": {
           "$ref": "#/$defs/HoldingsReport",
@@ -4862,7 +4862,7 @@
         },
         "risk": {
           "$ref": "#/$defs/RiskReport",
-          "description": "Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier."
+          "description": "Volatility, tail risk, drawdowns and where the risk comes from."
         },
         "attribution": {
           "anyOf": [
@@ -4893,7 +4893,7 @@
         "performance",
         "risk"
       ],
-      "description": "The six reports on a portfolio. The attribution report needs the benchmark's segments, and\nthe scenarios report needs scenarios, in the report options; without them, they are absent."
+      "description": "The six reports on a portfolio, from one set of options. The attribution report needs the\nbenchmark's segments, and the scenarios report needs scenarios, in the options; without\nthem, they are absent."
     },
     "Position": {
       "type": "object",

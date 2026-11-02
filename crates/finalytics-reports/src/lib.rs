@@ -17,12 +17,15 @@
 mod attribution;
 mod context;
 mod holdings;
+mod html;
 mod overview;
 mod performance;
+mod report;
 mod risk;
 mod scenarios;
 mod shapes;
 mod tables;
+mod text;
 
 pub use attribution::{
     AttributionInputs, AttributionReport, BenchmarkPeriod, BenchmarkSegment, attribution_report,
@@ -36,10 +39,11 @@ pub use overview::{Headline, HoldingRiskReturn, OverviewReport, PortfolioPoint, 
 pub use performance::{
     MonthFlows, PerformanceReport, PeriodRow, SchemeContributions, YearReturn, performance_report,
 };
+pub use report::{PortfolioReport, portfolio_report};
 pub use risk::{HoldingsRisk, RiskReport, TailRow, risk_report};
 pub use scenarios::{
     NamedScenario, ScenarioDefinition, ScenarioOutcome, ScenarioSummary, ScenariosReport,
     scenarios_report,
 };
 pub use shapes::{Amount, Bin, Breakdown, Grid, Histogram, Series, Slice, Unit};
-pub use tables::{Cell, Column, ColumnKind, ReportTable, report_tables};
+pub use tables::{Cell, Column, ColumnKind, ReportTable, report_html, report_tables, report_text};

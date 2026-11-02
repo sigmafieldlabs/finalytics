@@ -79,8 +79,9 @@ pub use assets::{
     AssetGroup, AssetStatistics, Assets, ObjectiveName, OptimisationResult, OptimiseOptions,
     Optimiser,
 };
+pub use finalytics_reports::PortfolioReport;
 pub use finalytics_risk::PriceTable;
-pub use portfolio::{Portfolio, PortfolioCsv, PortfolioReport};
+pub use portfolio::{Portfolio, PortfolioCsv};
 
 /// Performance measurement: time- and money-weighted returns over reporting periods,
 /// contribution by holding and by group, households of accounts, and attribution against a
