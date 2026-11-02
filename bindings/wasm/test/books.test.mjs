@@ -41,6 +41,24 @@ test("rebalancing proposals apply to the books", () => {
   close(Number(spy.market_value_base) / Number(plan.value_base), 0.4, 1e-6, "SPY weight");
 });
 
+test("rebalancing with fees, tax rates and several accounts", () => {
+  const books = new fl.Books(portfolio, market);
+  const targets = [
+    [{ holding: "instrument", id: "SPY" }, 0.2],
+    [{ holding: "instrument", id: "BOND" }, 0.5],
+  ];
+  const plan = books.rebalance("main", targets, {
+    fees: { rate: "0.001", minimum: "5" },
+    tax: { short_term: "0.4", long_term: "0.2" },
+  });
+  assert.ok(plan.trades.every((t) => Number(t.fees) >= 5));
+  assert.ok(plan.tax_base !== null && plan.tax_base !== undefined);
+  const combined = books.rebalanceAccounts(["isa", "main"], targets);
+  const spy = combined.weights_after.find(([k]) => k.holding === "instrument" && k.id === "SPY");
+  close(spy[1], 0.2, 1e-6, "combined SPY weight");
+  books.free();
+});
+
 test("documents round trip", () => {
   const text = fl.writeDocument(portfolio, market.toDocument());
   const document = fl.readDocument(text);

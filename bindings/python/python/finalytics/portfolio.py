@@ -9,7 +9,7 @@ import json
 import math
 import os
 import pathlib
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, NamedTuple
 
 import numpy as np
@@ -393,25 +393,74 @@ class Books:
         lot_method: _types.LotMethod = "fifo",
         whole_units: bool = False,
         minimum_trade: decimal.Decimal | int | str = 0,
+        fees: _types.Fees | None = None,
+        tax: _types.TaxRates | None = None,
     ) -> _types.Rebalance:
         """The trades that move `account` to `targets`: weights by instrument identifier (or by
         holding, for cash), as shares of the account's value on `date` (by default the last
         price date).
 
         Instruments held but not listed are sold; base-currency cash takes the weight the targets
-        leave, and other currencies are converted to their targets (zero if not listed).
+        leave, and other currencies are converted to their targets (zero if not listed). Each
+        trade pays `fees`; with `tax` rates, sales take the lots that cost the least tax, and the
+        tax is estimated.
         """
+        options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
+        pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
+        text = call(self._native.rebalance, self._rebalance_date(date), account, dumps(pairs), dumps(options))
+        return loads(_types.Rebalance, text)
+
+    def rebalance_accounts(
+        self,
+        accounts: Sequence[str],
+        targets: Mapping[str | _types.HoldingKey, float],
+        *,
+        date: DateLike | None = None,
+        lot_method: _types.LotMethod = "fifo",
+        whole_units: bool = False,
+        minimum_trade: decimal.Decimal | int | str = 0,
+        fees: _types.Fees | None = None,
+        tax: _types.TaxRates | None = None,
+    ) -> _types.CombinedRebalance:
+        """The trades that move several `accounts` together to `targets`, as shares of their
+        combined value: one proposal per account. A holding above its target is sold from the
+        accounts that hold it in proportion to their holdings, and one below is bought in
+        proportion to the value each account has free; trades do not move cash between
+        accounts."""
+        options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
+        pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
+        text = call(
+            self._native.rebalance_accounts,
+            self._rebalance_date(date),
+            json.dumps(list(accounts)),
+            dumps(pairs),
+            dumps(options),
+        )
+        return loads(_types.CombinedRebalance, text)
+
+    def _rebalance_date(self, date: DateLike | None) -> str:
         if date is None:
             dates = self.market.price_dates
             if len(dates) == 0:
                 raise ValueError("give a date: the market data has no prices")
             date = dates[-1]
-        pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
-        options = _types.RebalanceOptions(
-            lot_method=lot_method, whole_units=whole_units, minimum_trade=decimal.Decimal(str(minimum_trade))
+        return _arrays.date(date)
+
+    @staticmethod
+    def _rebalance_options(
+        lot_method: _types.LotMethod,
+        whole_units: bool,
+        minimum_trade: decimal.Decimal | int | str,
+        fees: _types.Fees | None,
+        tax: _types.TaxRates | None,
+    ) -> _types.RebalanceOptions:
+        return _types.RebalanceOptions(
+            lot_method=lot_method,
+            whole_units=whole_units,
+            minimum_trade=decimal.Decimal(str(minimum_trade)),
+            fees=fees or _types.Fees(),
+            tax=tax,
         )
-        text = call(self._native.rebalance, _arrays.date(date), account, dumps(pairs), dumps(options))
-        return loads(_types.Rebalance, text)
 
     def __repr__(self) -> str:
         return (

@@ -374,3 +374,116 @@ fn resampled_solution_matches_the_reference() {
         found.weights
     );
 }
+
+#[test]
+fn quadratic_costs_match_the_reference() {
+    let fixture = fixture();
+    let base = problem(&fixture);
+    for case in fixture["costs"].as_array().unwrap() {
+        let name = case["name"].as_str().unwrap();
+        let objective: Objective = serde_json::from_value(case["problem"].clone()).unwrap();
+        let constraints: Constraints = serde_json::from_value(case["constraints"].clone()).unwrap();
+        let solution = base
+            .clone()
+            .with_constraints(constraints)
+            .solve(&objective)
+            .unwrap();
+        assert_eq!(solution.status, SolveStatus::Optimal, "{name}");
+        let value = solution.objective_value.unwrap();
+        let reference = case["objective_value"].as_f64().unwrap();
+        assert!(
+            (value - reference).abs() <= 1e-7 * reference.abs().max(1.0),
+            "{name}: objective {value} against the reference {reference}"
+        );
+        let weights = solution.weights.unwrap();
+        for (k, (w, r)) in weights.iter().zip(floats(&case["weights"])).enumerate() {
+            assert!(
+                (w - r).abs() < 1e-4,
+                "{name}: weight {k} is {w}, the reference {r}"
+            );
+        }
+    }
+}
+
+fn trade_problem(limits: TradeLimits) -> (Problem, Vec<f64>) {
+    let current = vec![0.125; 8];
+    let problem = problem(&fixture()).with_constraints(Constraints {
+        turnover: Some(Turnover {
+            current: current.clone(),
+            limit: None,
+            costs: None,
+            quadratic_costs: None,
+        }),
+        trades: Some(limits),
+        ..Default::default()
+    });
+    (problem, current)
+}
+
+#[test]
+fn trade_limits_hold_after_elimination() {
+    let objective = Objective::MeanVariance { risk_aversion: 4.0 };
+    for limits in [
+        TradeLimits {
+            minimum: Some(0.05),
+            maximum_count: None,
+        },
+        TradeLimits {
+            minimum: None,
+            maximum_count: Some(3),
+        },
+        TradeLimits {
+            minimum: Some(0.03),
+            maximum_count: Some(4),
+        },
+    ] {
+        let (problem, current) = trade_problem(limits.clone());
+        let solution = problem.solve(&objective).unwrap();
+        assert_eq!(solution.method, Method::TradeElimination);
+        assert_eq!(solution.status, SolveStatus::Optimal, "{limits:?}");
+        assert!(solution.max_violation.unwrap() < 1e-7, "{limits:?}");
+        let weights = solution.weights.unwrap();
+        let trades: Vec<f64> = weights
+            .iter()
+            .zip(&current)
+            .map(|(w, c)| (w - c).abs())
+            .filter(|d| *d > 1e-7)
+            .collect();
+        if let Some(m) = limits.minimum {
+            assert!(
+                trades.iter().all(|d| *d >= m - 1e-7),
+                "{limits:?}: {trades:?}"
+            );
+        }
+        if let Some(most) = limits.maximum_count {
+            assert!(trades.len() <= most, "{limits:?}: {trades:?}");
+        }
+        assert!((weights.iter().sum::<f64>() - 1.0).abs() < 1e-7);
+    }
+}
+
+#[test]
+fn loose_trade_limits_change_nothing() {
+    let objective = Objective::MeanVariance { risk_aversion: 4.0 };
+    let (limited, _) = trade_problem(TradeLimits {
+        minimum: Some(1e-6),
+        maximum_count: Some(8),
+    });
+    let mut free = limited.clone();
+    free.constraints.trades = None;
+    let a = limited.solve(&objective).unwrap();
+    let b = free.solve(&objective).unwrap();
+    assert_eq!(a.method, Method::TradeElimination);
+    assert_eq!(a.weights, b.weights);
+    let error = Problem::new(free.covariance.clone().unwrap())
+        .with_constraints(Constraints {
+            trades: Some(TradeLimits {
+                minimum: Some(0.01),
+                maximum_count: None,
+            }),
+            ..Default::default()
+        })
+        .solve(&objective)
+        .unwrap_err();
+    assert!(error.to_string().contains("turnover.current"), "{error}");
+}

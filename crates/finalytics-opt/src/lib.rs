@@ -14,7 +14,8 @@
 //! | Target volatility, tracking-error limit | Second-order cone programme |
 //! | Maximum Sharpe ratio, maximum diversification | Quadratic programme after the Charnes–Cooper transformation |
 //! | Minimum CVaR | Linear programme (Rockafellar and Uryasev) |
-//! | Turnover limits and trading costs | Linear constraints on absolute trades |
+//! | Turnover limits and trading costs | Linear constraints on absolute trades; quadratic costs in the objective |
+//! | Minimum trade sizes, number of trades | A heuristic: trades are left out and the rest re-optimised, round by round |
 //! | Factor models | Variance in factor form, `y' F y + sum d w^2` with `y = B' w`; exposure limits as linear constraints on `y` |
 //! | Risk budgeting | Newton's method on Spinu's convex formulation, with an exponential-cone programme as a fallback |
 //! | Hierarchical risk parity | Clustering and recursive bisection, without a solver |
@@ -28,7 +29,9 @@
 //! estimation error.
 //!
 //! [`rebalance`] turns target weights into trades from an account's current holdings, choosing
-//! the lots each sale closes and the currency conversions that fund purchases.
+//! the lots each sale closes (by tax, when tax rates are given), the fees it pays and the currency
+//! conversions that fund purchases; [`rebalance_accounts`] does the same for several accounts
+//! together.
 //!
 //! Most users should depend on the [`finalytics`](https://docs.rs/finalytics) crate, which re-exports
 //! the public API of every layer.
@@ -51,10 +54,11 @@ pub use black_litterman::{
 pub use frontier::FrontierPoint;
 pub use problem::{
     AssetBound, Bound, Constraints, FactorExposureLimit, GroupLimit, Linkage, Objective, Problem,
-    ReturnUncertainty, TrackingErrorLimit, Turnover,
+    ReturnUncertainty, TrackingErrorLimit, TradeLimits, Turnover,
 };
 pub use rebalance::{
-    ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side, rebalance,
+    CombinedRebalance, Fees, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side,
+    TaxRates, rebalance, rebalance_accounts,
 };
 pub use resample::{ResampledSolution, Resampling};
 pub use solution::{Method, Solution, SolveStatus};

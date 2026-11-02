@@ -16,6 +16,8 @@ methods of their own.
 | Leverage | $\sum_i \lvert w_i \rvert \le L$ | none |
 | Turnover | $\sum_i \lvert w_i - w^0_i \rvert \le T$ from current weights $w^0$ | none |
 | Trading costs | $c^\top \lvert w - w^0 \rvert$ subtracted from the expected return | none |
+| Quadratic costs | $\sum_i k_i (w_i - w^0_i)^2$, such as market impact, subtracted from the expected return of mean–variance, robust mean–variance and target volatility | none |
+| Trade limits | Each $\lvert w_i - w^0_i \rvert$ either 0 or at least $m$; at most $K$ assets traded; a heuristic, below | none |
 | Tracking error | $\sqrt{(w - b)^\top \Sigma (w - b)} \le \text{TE}$ against benchmark weights $b$ | none |
 | Factor exposures | $m_k \le (B^\top w)_k \le M_k$, or on active exposures $(B^\top (w - b))_k$; needs a factor model | none |
 
@@ -86,6 +88,16 @@ Following López de Prado (2016):
 Risk budgeting and hierarchical risk parity give fully invested, long-only portfolios and take no
 other constraints; assets with no variance must be removed first.
 
+### Trade limits
+
+A minimum trade size and a maximum number of trades are not convex, so they are met by a
+heuristic, reported as the method `trade_elimination`. The problem is solved without them; then
+every trade below the minimum and, beyond the largest number allowed, the smallest of the
+remaining trades are left out by fixing those assets at their current weights, and the rest is
+re-optimised. This repeats until the limits hold. The result satisfies the limits, but it is not
+guaranteed to be the best portfolio that does, and fixing assets can make the other constraints
+infeasible. A change in weight below $10^{-7}$ counts as no trade.
+
 ### Resampling and Black–Litterman
 
 `Problem.resampled` solves any of the covariance-based objectives above for estimates re-made from
@@ -105,7 +117,9 @@ Every solution reports its **status** (`optimal`, `nearly_optimal`, `infeasible`
 `iteration_limit` or `numerical_difficulty`), the weights when there is a solution, the
 objective's value, the expected return and volatility, the **largest constraint violation** of
 the weights returned, the method, the iterations and the time taken. A problem whose constraints
-cannot all hold is not an error: its solution has the status `infeasible` and no weights.
+cannot all hold is not an error: its solution has the status `infeasible` and no weights. The
+objective's value and the expected return are before trading costs, linear or quadratic; the
+costs shape the weights but are not subtracted from the reported figures.
 
 Clarabel runs at its default tolerances ($10^{-8}$ on the duality gap and feasibility), so
 interior-point weights are accurate to about $10^{-5}$.

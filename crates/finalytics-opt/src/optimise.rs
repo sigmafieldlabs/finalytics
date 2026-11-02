@@ -4,7 +4,10 @@ use web_time::Instant;
 
 use finalytics_core::Result;
 
-use crate::problem::{Objective, Prepared, Problem, ReturnUncertainty, RiskModel, Turnover};
+use crate::problem::{
+    AssetBound, Objective, Prepared, Problem, ReturnUncertainty, RiskModel, TRADED, TradeLimits,
+    Turnover,
+};
 use crate::program::{Program, Row};
 use crate::solution::{Method, Solution, SolveStatus};
 use crate::{hrp, risk_budget};
@@ -197,25 +200,112 @@ impl Problem {
                     0,
                 )
             }
-            _ => {
-                let (program, layout) = formulate(&prepared, objective);
-                let outcome = program.solve();
-                let weights = outcome
-                    .status
-                    .has_solution()
-                    .then(|| decode(&outcome.x, &layout, prepared.n))
-                    .flatten();
-                let status = if outcome.status.has_solution() && weights.is_none() {
-                    SolveStatus::NumericalDifficulty
-                } else {
-                    outcome.status
-                };
-                (status, weights, Method::InteriorPoint, outcome.iterations)
-            }
+            _ => match &self.constraints.trades {
+                Some(limits) => self.eliminate_trades(objective, limits)?,
+                None => {
+                    let (status, weights, iterations) = solve_conic(&prepared, objective);
+                    (status, weights, Method::InteriorPoint, iterations)
+                }
+            },
         };
         Ok(report(
             &prepared, objective, status, weights, method, iterations, started,
         ))
+    }
+}
+
+/// Solves one of the solver-based objectives: the status, the weights and the iterations.
+fn solve_conic(
+    prepared: &Prepared<'_>,
+    objective: &Objective,
+) -> (SolveStatus, Option<Vec<f64>>, u32) {
+    let (program, layout) = formulate(prepared, objective);
+    let outcome = program.solve();
+    let weights = outcome
+        .status
+        .has_solution()
+        .then(|| decode(&outcome.x, &layout, prepared.n))
+        .flatten();
+    let status = if outcome.status.has_solution() && weights.is_none() {
+        SolveStatus::NumericalDifficulty
+    } else {
+        outcome.status
+    };
+    (status, weights, outcome.iterations)
+}
+
+impl Problem {
+    /// The trade-limit heuristic: solve without the limits, then leave out every trade below
+    /// the minimum and, beyond the largest number of trades, the smallest of the rest, by fixing
+    /// those assets at their current weights; re-optimise, and repeat until the limits hold.
+    fn eliminate_trades(
+        &self,
+        objective: &Objective,
+        limits: &TradeLimits,
+    ) -> Result<(SolveStatus, Option<Vec<f64>>, Method, u32)> {
+        // `prepare` checks that trade limits come with the current weights.
+        let current = self
+            .constraints
+            .turnover
+            .as_ref()
+            .map(|t| t.current.clone())
+            .unwrap_or_default();
+        let mut fixed = vec![false; self.labels.len()];
+        let mut problem = self.clone();
+        problem.constraints.trades = None;
+        let mut iterations = 0;
+        loop {
+            let prepared = problem.prepare(objective)?;
+            let (status, weights, used) = solve_conic(&prepared, objective);
+            iterations += used;
+            let Some(mut w) = weights.filter(|_| status.has_solution()) else {
+                return Ok((status, None, Method::TradeElimination, iterations));
+            };
+            // The solver holds a fixed asset at its current weight only to its tolerance.
+            for (i, w) in w.iter_mut().enumerate() {
+                if fixed[i] {
+                    *w = current[i];
+                }
+            }
+            let mut trades: Vec<(usize, f64)> = w
+                .iter()
+                .zip(&current)
+                .enumerate()
+                .filter(|(i, _)| !fixed[*i])
+                .map(|(i, (w, c))| (i, (w - c).abs()))
+                .filter(|(_, d)| *d > TRADED)
+                .collect();
+            trades.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+            let mut leave_out: Vec<usize> = trades
+                .iter()
+                .filter(|(_, d)| limits.minimum.is_some_and(|m| *d < m))
+                .map(|(i, _)| *i)
+                .collect();
+            let kept = trades.len() - leave_out.len();
+            if let Some(most) = limits.maximum_count
+                && kept > most
+            {
+                let excess = kept - most;
+                let extra: Vec<usize> = trades
+                    .iter()
+                    .filter(|(i, _)| !leave_out.contains(i))
+                    .take(excess)
+                    .map(|(i, _)| *i)
+                    .collect();
+                leave_out.extend(extra);
+            }
+            if leave_out.is_empty() {
+                return Ok((status, Some(w), Method::TradeElimination, iterations));
+            }
+            for i in leave_out {
+                fixed[i] = true;
+                problem.constraints.asset_bounds.push(AssetBound {
+                    asset: self.labels[i].clone(),
+                    min: current[i],
+                    max: current[i],
+                });
+            }
+        }
     }
 }
 
@@ -244,6 +334,7 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
         Objective::MeanVariance { risk_aversion } => {
             add_variance(&mut program, &layout, prepared, *risk_aversion);
             add_return_to_objective(&mut program, &layout, mu, costs);
+            add_quadratic_costs(&mut program, &layout, prepared);
         }
         Objective::RobustMeanVariance {
             risk_aversion,
@@ -251,10 +342,12 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
         } => {
             add_variance(&mut program, &layout, prepared, *risk_aversion);
             add_return_to_objective(&mut program, &layout, mu, costs);
+            add_quadratic_costs(&mut program, &layout, prepared);
             add_worst_case(&mut program, &layout, prepared, uncertainty);
         }
         Objective::TargetVolatility { target } => {
             add_return_to_objective(&mut program, &layout, mu, costs);
+            add_quadratic_costs(&mut program, &layout, prepared);
             let mut rows = vec![Row::new(Vec::new(), *target)];
             rows.extend(risk_rows(prepared, &layout, None));
             program.second_order_cone(rows);
@@ -354,6 +447,17 @@ fn worst_case_shortfall(
         } => Some(size * prepared.risk.as_ref()?.variance(w).sqrt()),
         ReturnUncertainty::Box { half_widths } => {
             Some(half_widths.iter().zip(w).map(|(h, w)| h * w.abs()).sum())
+        }
+    }
+}
+
+/// Adds `sum k_i (w_i - c_i)^2` to the objective, as `1/2 w' (2 diag k) w - (2 k c)' w` plus a
+/// constant.
+fn add_quadratic_costs(program: &mut Program, layout: &Layout, prepared: &Prepared<'_>) {
+    if let Some((k, current)) = prepared.quadratic_costs() {
+        program.quadratic_diagonal(layout.weights, k, 2.0);
+        for (i, (k, c)) in k.iter().zip(current).enumerate() {
+            program.linear[layout.weights + i] -= 2.0 * k * c;
         }
     }
 }

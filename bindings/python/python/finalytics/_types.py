@@ -52,7 +52,7 @@ Linkage = Literal["single", "complete", "average", "ward"]
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
-Method = Literal["interior_point", "newton", "recursive_bisection"]
+Method = Literal["interior_point", "newton", "recursive_bisection", "trade_elimination"]
 """The method that produced a solution."""
 
 Severity = Literal["warning", "error"]
@@ -260,6 +260,37 @@ class CashValue:
 
 
 @dataclass(frozen=True, kw_only=True)
+class CombinedRebalance:
+    """The trades that move several accounts together to target weights of their combined value, one
+    proposal per account.
+    """
+
+    accounts: list[Rebalance]
+    """The proposal for each account with value, in the order given."""
+
+    value_base: decimal.Decimal
+    """The accounts' combined value in the base currency."""
+
+    weights_before: list[tuple[HoldingKey, float]]
+    """Each holding's weight in the combined value before the trades."""
+
+    weights_after: list[tuple[HoldingKey, float]]
+    """Each holding's weight in the combined value after the trades."""
+
+    turnover: float
+    """The value traded in all the accounts, as a share of their combined value."""
+
+    realised_gain_base: decimal.Decimal
+    """The gain the sales would realise in the base currency, after fees."""
+
+    fees_base: decimal.Decimal
+    """The fees of all the trades, in the base currency."""
+
+    tax_base: decimal.Decimal | None = None
+    """With tax rates, the estimated tax on the sales' gains in the base currency."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Constraints:
     """The constraints on a portfolio. The default is fully invested and long-only."""
 
@@ -286,6 +317,9 @@ class Constraints:
 
     factor_exposures: list[FactorExposureLimit] = field(default_factory=list)
     """Limits on factor exposures; they need a factor model."""
+
+    trades: TradeLimits | None = None
+    """Limits on the size and number of trades; they need the turnover's current weights."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -642,6 +676,23 @@ class FactorRisk:
 
     assets: list[RiskContribution]
     """Each asset's contribution under the model's covariance matrix, in the model's order."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Fees:
+    """The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,
+    rounded to the currency's minor units. Purchases are sized so that the purchase and its fee
+    fit the target; sales pay the fee from their proceeds.
+    """
+
+    rate: decimal.Decimal = field(default_factory=lambda: decimal.Decimal("0"))
+    """A share of the trade's value, such as 0.001 for 10 basis points."""
+
+    per_trade: decimal.Decimal = field(default_factory=lambda: decimal.Decimal("0"))
+    """A fixed amount per trade."""
+
+    minimum: decimal.Decimal = field(default_factory=lambda: decimal.Decimal("0"))
+    """The smallest fee a trade pays."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1323,7 +1374,7 @@ class Problem:
     scenarios: ReturnsTable | None = None
     """Scenario returns, one column per asset, for minimum CVaR."""
 
-    constraints: Constraints = field(default_factory=lambda: Constraints(budget=1.0, bounds=Bound(min=0.0, max=1.0), asset_bounds=[], groups=[], leverage=None, turnover=None, tracking_error=None, factor_exposures=[]))
+    constraints: Constraints = field(default_factory=lambda: Constraints(budget=1.0, bounds=Bound(min=0.0, max=1.0), asset_bounds=[], groups=[], leverage=None, turnover=None, tracking_error=None, factor_exposures=[], trades=None))
     """The constraints."""
 
 
@@ -1366,8 +1417,18 @@ class ProposedTrade:
     lots: list[LotSale]
     """For a sale, the lots it closes."""
 
+    fees: decimal.Decimal
+    """The fee, in the instrument's currency."""
+
     realised_gain_base: decimal.Decimal | None = None
-    """For a sale, the gain it would realise in the base currency, before fees."""
+    """For a sale, the gain it would realise in the base currency, after fees, as the books would
+    record it.
+    """
+
+    tax_base: decimal.Decimal | None = None
+    """For a sale with tax rates, the estimated tax on its gains in the base currency; negative when
+    its losses save tax.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1443,7 +1504,13 @@ class Rebalance:
     """The value traded, sales and purchases, as a share of the account's value."""
 
     realised_gain_base: decimal.Decimal
-    """The gain the sales would realise in the base currency."""
+    """The gain the sales would realise in the base currency, after fees."""
+
+    fees_base: decimal.Decimal
+    """The fees of all the trades, in the base currency."""
+
+    tax_base: decimal.Decimal | None = None
+    """With tax rates, the estimated tax on the sales' gains in the base currency."""
 
     warnings: ValidationReport
     """Carried prices, a shortfall of cash, and trades left out by rounding."""
@@ -1454,13 +1521,23 @@ class RebalanceOptions:
     """Choices for `rebalance`."""
 
     lot_method: LotMethod = "fifo"
-    """How sales choose lots; first in, first out by default. Highest cost first defers gains."""
+    """How sales choose lots; first in, first out by default. Highest cost first defers gains.
+    Ignored when `tax` is given.
+    """
 
     whole_units: bool = False
     """Trade whole units only, rounding each trade towards zero."""
 
     minimum_trade: decimal.Decimal = field(default_factory=lambda: decimal.Decimal("0"))
     """Leave out trades worth less than this in the base currency."""
+
+    fees: Fees = field(default_factory=lambda: Fees(rate=decimal.Decimal("0"), per_trade=decimal.Decimal("0"), minimum=decimal.Decimal("0")))
+    """The fees each trade pays; none by default."""
+
+    tax: TaxRates | None = None
+    """Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,
+    losses first, and the tax is estimated.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1775,6 +1852,23 @@ class TailRisk:
 
 
 @dataclass(frozen=True, kw_only=True)
+class TaxRates:
+    """Tax rates on realised gains, for tax-aware sales. A lot held for more than
+    `long_term_after_days` days is long-term. The rates apply to gains in the base currency,
+    after fees; a loss saves tax at its rate.
+    """
+
+    short_term: decimal.Decimal
+    """The rate on gains from lots held for at most `long_term_after_days` days."""
+
+    long_term: decimal.Decimal
+    """The rate on gains from lots held for longer."""
+
+    long_term_after_days: int = 365
+    """The holding period, in days, beyond which a gain is long-term."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class TimeSeries:
     """Values indexed by strictly increasing dates.
 
@@ -1798,6 +1892,22 @@ class TrackingErrorLimit:
     """The largest tracking error allowed, `sqrt((w - b)' C (w - b))`, in the units of the
     covariance matrix's volatility.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class TradeLimits:
+    """Limits on the trades from the current portfolio (the turnover's current weights). They are
+    not convex, so the solver's portfolio is adjusted by a heuristic, reported as the method
+    `trade_elimination`, which is not guaranteed to find the best portfolio within the limits.
+    """
+
+    minimum: float | None = None
+    """The smallest trade allowed, as a weight: each asset is either not traded or traded by at
+    least this much.
+    """
+
+    maximum_count: int | None = None
+    """The largest number of assets traded."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2107,7 +2217,7 @@ class Transaction:
 
 @dataclass(frozen=True, kw_only=True)
 class Turnover:
-    """Trading from the current portfolio: a limit on turnover, costs per unit traded, or both."""
+    """Trading from the current portfolio: a limit on turnover, costs of trading, or both."""
 
     current: list[float]
     """The current weights, one per asset."""
@@ -2120,6 +2230,13 @@ class Turnover:
     costs: list[float] | None = None
     """Costs per unit of weight traded, one per asset, in the units of the expected returns. They
     reduce the expected return of objectives that use one.
+    """
+
+    quadratic_costs: list[float] | None = None
+    """Costs that grow with the square of the weight traded, one per asset, such as the market
+    impact of large trades: `sum k_i (w_i - current_i)^2`, in the units of the expected returns.
+    They reduce the expected return of mean–variance, robust mean–variance and target volatility
+    objectives.
     """
 
 
@@ -2265,6 +2382,7 @@ __all__ = [
     "CashChange",
     "CashHolding",
     "CashValue",
+    "CombinedRebalance",
     "Confidence",
     "Constraints",
     "Contribution",
@@ -2289,6 +2407,7 @@ __all__ = [
     "FactorModelEstimate",
     "FactorRisk",
     "Fee",
+    "Fees",
     "Flow",
     "FlowKind",
     "FlowTiming",
@@ -2375,9 +2494,11 @@ __all__ = [
     "TargetReturn",
     "TargetVolatility",
     "Tax",
+    "TaxRates",
     "TimeSeries",
     "TrackingErrorLimit",
     "TradeAllocation",
+    "TradeLimits",
     "Transaction",
     "TransactionId",
     "TransactionKind",

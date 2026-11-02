@@ -80,11 +80,12 @@ pub mod risk {
 /// ```
 pub mod opt {
     pub use finalytics_opt::{
-        AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, Constraints,
-        FactorExposureLimit, FrontierPoint, GroupLimit, Linkage, Method, Objective, Prior, Problem,
-        ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, ResampledSolution,
-        Resampling, ReturnUncertainty, Side, Solution, SolveStatus, TrackingErrorLimit, Turnover,
-        View, ViewUncertainty, implied_risk_aversion, rebalance,
+        AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, CombinedRebalance, Constraints,
+        FactorExposureLimit, Fees, FrontierPoint, GroupLimit, Linkage, Method, Objective, Prior,
+        Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, ResampledSolution,
+        Resampling, ReturnUncertainty, Side, Solution, SolveStatus, TaxRates, TrackingErrorLimit,
+        TradeLimits, Turnover, View, ViewUncertainty, implied_risk_aversion, rebalance,
+        rebalance_accounts,
     };
 }
 

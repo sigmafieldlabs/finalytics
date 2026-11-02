@@ -387,6 +387,28 @@ impl NativeBooks {
         .map_err(engine)?;
         to_json(&plan)
     }
+
+    fn rebalance_accounts(
+        &self,
+        on: &str,
+        accounts: &str,
+        targets: &str,
+        options: &str,
+    ) -> PyResult<String> {
+        let accounts: Vec<finalytics::AccountId> = from_json(accounts, "accounts")?;
+        let targets: Vec<(HoldingKey, f64)> = from_json(targets, "targets")?;
+        let options: RebalanceOptions = from_json(options, "options")?;
+        let plan = finalytics::opt::rebalance_accounts(
+            &self.books,
+            &self.market,
+            date(on)?,
+            &accounts,
+            &targets,
+            &options,
+        )
+        .map_err(engine)?;
+        to_json(&plan)
+    }
 }
 
 /// Time-weighted performance, and the holding series for contribution when built from books.

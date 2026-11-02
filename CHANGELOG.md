@@ -65,6 +65,12 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   Rebalancing proposes the trades that move an account to target weights, with the lots each
   sale closes, its realised gain, and the currency conversions that fund purchases, as
   transactions ready to apply to the books.
+- Trading costs and limits: quadratic costs (such as market impact) in mean–variance, robust
+  mean–variance and target volatility objectives; a minimum trade size and a maximum number of
+  trades, met by a heuristic that is reported as such; fees in rebalancing proposals, which size
+  purchases to fit and report gains after fees exactly as the books record them; tax-aware sales
+  that take the lots costing the least tax and estimate it, from short- and long-term rates; and
+  rebalancing several accounts together to targets for their combined value.
 - Factor models: estimation by time-series regression on factor returns, from the principal
   components of the sample covariance, or by cross-sectional regression on given exposures, with
   each asset's fit; models built from exposures and risk estimates supplied by the caller; the

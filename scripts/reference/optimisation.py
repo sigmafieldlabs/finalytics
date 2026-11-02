@@ -144,6 +144,46 @@ def factor_model_cases(labels, mu, model):
     return cases
 
 
+def cost_cases(labels, cov, mu):
+    """Problems with quadratic trading costs, alone and with linear costs."""
+    n = len(labels)
+    w = cp.Variable(n)
+    psd = cp.psd_wrap(cov)
+    long_only = [cp.sum(w) == 1, w >= 0, w <= 1]
+    current = np.zeros(n)
+    current[0], current[3], current[6] = 0.4, 0.4, 0.2
+    impact = np.linspace(0.05, 0.4, n)
+    linear = np.full(n, 0.003)
+    cases = []
+    for name, turnover, extra in [
+        (
+            "mean-variance with quadratic costs",
+            {"current": current.tolist(), "quadratic_costs": impact.tolist()},
+            lambda x: impact @ cp.square(x - current),
+        ),
+        (
+            "mean-variance with linear and quadratic costs",
+            {"current": current.tolist(), "costs": linear.tolist(), "quadratic_costs": impact.tolist()},
+            lambda x: impact @ cp.square(x - current) + linear @ cp.abs(x - current),
+        ),
+    ]:
+        problem = cp.Problem(cp.Maximize(mu @ w - extra(w) - 2.0 * cp.quad_form(w, psd)), long_only)
+        problem.solve(solver=cp.CLARABEL, **TIGHT)
+        assert problem.status == cp.OPTIMAL, problem.status
+        x = w.value
+        cases.append(
+            {
+                "name": name,
+                "problem": {"objective": "mean_variance", "risk_aversion": 4.0},
+                "constraints": {"turnover": turnover},
+                "weights": x.tolist(),
+                # The engine reports the objective before trading costs, as for linear costs.
+                "objective_value": float(mu @ x - 2.0 * x @ cov @ x),
+            }
+        )
+    return cases
+
+
 def robust_cases(labels, cov, mu):
     """Robust mean-variance problems, with the worst-case expected return written out."""
     n = len(labels)
@@ -406,6 +446,7 @@ def main():
 
     factor_cases = factor_model_cases(labels, mu, model)
     robust = robust_cases(labels, cov, mu)
+    costs = cost_cases(labels, cov, mu)
     resampled = resampled_case(labels, cov, mu)
 
     fixture = {
@@ -423,6 +464,7 @@ def main():
             "cases": factor_cases,
         },
         "robust": robust,
+        "costs": costs,
         "resampled": resampled,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

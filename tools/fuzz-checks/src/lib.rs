@@ -133,6 +133,7 @@ fn books(portfolio: &Portfolio, market: &MarketData) {
     if let Some(&last) = dates.last() {
         let _ = books.holdings_on(last);
         let _ = books.value_on(last, market);
+        rebalancing(portfolio, &books, market, last);
     }
     if let (Ok(values), Ok(holdings)) = (
         books.value_series(&dates, market),
@@ -149,6 +150,46 @@ fn books(portfolio: &Portfolio, market: &MarketData) {
             }
         }
     }
+}
+
+/// Rebalances the first account, and all of them together, to equal weights in every instrument,
+/// with fees and tax rates. A proposal must turn into transactions, and a sale must report its
+/// tax.
+fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: Date) {
+    let Some(first) = portfolio.accounts.first() else {
+        return;
+    };
+    let n = portfolio.instruments.len().max(1) as f64;
+    let targets: Vec<(finalytics::HoldingKey, f64)> = portfolio
+        .instruments
+        .iter()
+        .map(|i| (finalytics::HoldingKey::Instrument(i.id.clone()), 0.9 / n))
+        .collect();
+    let options = finalytics::opt::RebalanceOptions {
+        fees: finalytics::opt::Fees {
+            rate: finalytics::Decimal::new(1, 3),
+            per_trade: finalytics::Decimal::ZERO,
+            minimum: finalytics::Decimal::ONE,
+        },
+        tax: Some(finalytics::opt::TaxRates {
+            short_term: finalytics::Decimal::new(3, 1),
+            long_term: finalytics::Decimal::new(15, 2),
+            long_term_after_days: 365,
+        }),
+        ..Default::default()
+    };
+    if let Ok(plan) = finalytics::opt::rebalance(books, market, date, &first.id, &targets, &options)
+    {
+        assert!(
+            plan.trades
+                .iter()
+                .all(|t| (t.side == finalytics::opt::Side::Sell) == t.tax_base.is_some()),
+            "a sale without its tax, or a purchase with one"
+        );
+        let _ = plan.transactions("fuzz-");
+    }
+    let accounts: Vec<_> = portfolio.accounts.iter().map(|a| a.id.clone()).collect();
+    let _ = finalytics::opt::rebalance_accounts(books, market, date, &accounts, &targets, &options);
 }
 
 /// Numbers from bytes, eight at a time.
@@ -299,6 +340,16 @@ pub fn optimisation(data: &[u8]) {
             max: 1.0,
         },
         leverage: Some(2.0),
+        turnover: (control & 0x80 != 0).then(|| finalytics::opt::Turnover {
+            current: vec![1.0 / n as f64; n],
+            limit: None,
+            costs: None,
+            quadratic_costs: Some(vec![bound.abs().min(10.0); n]),
+        }),
+        trades: (control & 0x80 != 0).then_some(finalytics::opt::TradeLimits {
+            minimum: Some(0.01),
+            maximum_count: Some(n.div_ceil(2)),
+        }),
         ..Default::default()
     });
     let mut problem = Problem::new(matrix).with_expected_returns(expected.clone());
@@ -333,12 +384,21 @@ pub fn optimisation(data: &[u8]) {
         _ => Objective::TargetReturn { target: 0.05 },
     };
     if let Ok(solution) = problem.solve(&objective)
-        && solution.weights.is_some()
+        && let Some(weights) = &solution.weights
     {
         assert!(
             solution.max_violation.is_some(),
             "a solution without its violation"
         );
+        if let Some(limits) = problem.constraints.trades.as_ref()
+            && let Some(most) = limits.maximum_count
+        {
+            let traded = weights
+                .iter()
+                .filter(|w| (**w - 1.0 / n as f64).abs() > 1e-7)
+                .count();
+            assert!(traded <= most, "{traded} trades, more than {most}");
+        }
     }
     // A small resampling run, which must account for every simulated problem.
     let resampling = finalytics::opt::Resampling {

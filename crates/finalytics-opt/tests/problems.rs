@@ -192,6 +192,7 @@ fn invalid_problems_list_every_problem() {
             current: vec![0.25; 3],
             limit: Some(0.1),
             costs: Some(vec![0.001; 4]),
+            quadratic_costs: None,
         }),
         ..Default::default()
     };

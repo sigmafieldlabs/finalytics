@@ -43,6 +43,11 @@ pub enum Method {
     Newton,
     /// Hierarchical clustering and recursive bisection, without a solver.
     RecursiveBisection,
+    /// The interior-point solver, followed by a heuristic for trade limits: trades below the
+    /// minimum, and the smallest trades beyond the largest number allowed, are left out and the
+    /// rest re-optimised, round by round. Not guaranteed to find the best portfolio within the
+    /// limits.
+    TradeElimination,
 }
 
 /// The result of an optimisation, with what is needed to judge it: the status, the objective,

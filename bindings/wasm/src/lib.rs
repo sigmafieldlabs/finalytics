@@ -536,6 +536,51 @@ impl Books {
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
         let targets: Vec<(HoldingKey, f64)> = from_js(targets, "targets")?;
+        let (on, options) = self.rebalance_choices(choices)?;
+        let plan = finalytics::opt::rebalance(
+            &self.books,
+            &self.market,
+            on,
+            &parse_account(account)?,
+            &targets,
+            &options,
+        )
+        .map_err(error)?;
+        to_js(&plan)
+    }
+
+    /// The trades that move several accounts together to `targets`, as shares of their combined
+    /// value: one proposal per account.
+    #[wasm_bindgen(js_name = rebalanceAccounts, unchecked_return_type = "CombinedRebalance")]
+    pub fn rebalance_accounts(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "string[]")] accounts: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "[HoldingKey, number][]")] targets: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let accounts: Vec<String> = from_js(accounts, "accounts")?;
+        let accounts = accounts
+            .iter()
+            .map(|a| parse_account(a))
+            .collect::<Result<Vec<_>, _>>()?;
+        let targets: Vec<(HoldingKey, f64)> = from_js(targets, "targets")?;
+        let (on, options) = self.rebalance_choices(choices)?;
+        let plan = finalytics::opt::rebalance_accounts(
+            &self.books,
+            &self.market,
+            on,
+            &accounts,
+            &targets,
+            &options,
+        )
+        .map_err(error)?;
+        to_js(&plan)
+    }
+}
+
+impl Books {
+    /// The date and options of `Books.rebalance` and `Books.rebalanceAccounts`.
+    fn rebalance_choices(&self, choices: JsValue) -> Result<(Date, RebalanceOptions), JsValue> {
         let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
         let on = match choices.remove("date") {
             Some(serde_json::Value::String(d)) => parse_date(&d)?,
@@ -549,18 +594,12 @@ impl Books {
                 }
             },
         };
-        let options: RebalanceOptions = serde_json::from_value(serde_json::Value::Object(choices))
-            .map_err(|e| invalid("choices", e.to_string()))?;
-        let plan = finalytics::opt::rebalance(
-            &self.books,
-            &self.market,
-            on,
-            &parse_account(account)?,
-            &targets,
-            &options,
+        let options = finalytics::formats::from_json(
+            &serde_json::Value::Object(choices).to_string(),
+            "choices",
         )
         .map_err(error)?;
-        to_js(&plan)
+        Ok((on, options))
     }
 }
 

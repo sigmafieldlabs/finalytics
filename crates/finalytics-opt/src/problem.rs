@@ -46,7 +46,7 @@ pub struct GroupLimit {
     pub max: f64,
 }
 
-/// Trading from the current portfolio: a limit on turnover, costs per unit traded, or both.
+/// Trading from the current portfolio: a limit on turnover, costs of trading, or both.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Turnover {
@@ -60,6 +60,27 @@ pub struct Turnover {
     /// They reduce the expected return of objectives that use one.
     #[serde(default)]
     pub costs: Option<Vec<f64>>,
+    /// Costs that grow with the square of the weight traded, one per asset, such as the market
+    /// impact of large trades: `sum k_i (w_i - current_i)^2`, in the units of the expected
+    /// returns. They reduce the expected return of mean–variance, robust mean–variance and
+    /// target volatility objectives.
+    #[serde(default)]
+    pub quadratic_costs: Option<Vec<f64>>,
+}
+
+/// Limits on the trades from the current portfolio (the turnover's current weights). They are
+/// not convex, so the solver's portfolio is adjusted by a heuristic, reported as the method
+/// `trade_elimination`, which is not guaranteed to find the best portfolio within the limits.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct TradeLimits {
+    /// The smallest trade allowed, as a weight: each asset is either not traded or traded by at
+    /// least this much.
+    #[serde(default)]
+    pub minimum: Option<f64>,
+    /// The largest number of assets traded.
+    #[serde(default)]
+    pub maximum_count: Option<usize>,
 }
 
 /// A limit on ex-ante tracking error against a benchmark.
@@ -111,6 +132,8 @@ pub struct Constraints {
     pub tracking_error: Option<TrackingErrorLimit>,
     /// Limits on factor exposures; they need a factor model.
     pub factor_exposures: Vec<FactorExposureLimit>,
+    /// Limits on the size and number of trades; they need the turnover's current weights.
+    pub trades: Option<TradeLimits>,
 }
 
 impl Default for Constraints {
@@ -124,6 +147,7 @@ impl Default for Constraints {
             turnover: None,
             tracking_error: None,
             factor_exposures: Vec::new(),
+            trades: None,
         }
     }
 }
@@ -141,6 +165,7 @@ impl Constraints {
             && self.turnover.is_none()
             && self.tracking_error.is_none()
             && self.factor_exposures.is_empty()
+            && self.trades.is_none()
     }
 }
 
@@ -569,6 +594,26 @@ impl Problem {
             {
                 report.error("constraints.turnover.limit", "must not be negative");
             }
+            if let Some(costs) = &t.quadratic_costs {
+                check_vector(costs, n, "constraints.turnover.quadratic_costs", report);
+                if costs.iter().any(|x| *x < 0.0) {
+                    report.error(
+                        "constraints.turnover.quadratic_costs",
+                        "must not be negative",
+                    );
+                }
+                if !matches!(
+                    objective,
+                    Objective::MeanVariance { .. }
+                        | Objective::RobustMeanVariance { .. }
+                        | Objective::TargetVolatility { .. }
+                ) {
+                    report.error(
+                        "constraints.turnover.quadratic_costs",
+                        "apply only to mean–variance, robust mean–variance and target volatility",
+                    );
+                }
+            }
             if let Some(costs) = &t.costs {
                 check_vector(costs, n, "constraints.turnover.costs", report);
                 if costs.iter().any(|x| *x < 0.0) {
@@ -593,6 +638,28 @@ impl Problem {
                 report.error(
                     "constraints.tracking_error.limit",
                     "must be greater than zero",
+                );
+            }
+        }
+        if let Some(limits) = &c.trades {
+            if c.turnover.is_none() {
+                report.error(
+                    "constraints.trades",
+                    "need the current weights, given as constraints.turnover.current",
+                );
+            }
+            if let Some(m) = limits.minimum
+                && !(m.is_finite() && m >= 0.0)
+            {
+                report.error(
+                    "constraints.trades.minimum",
+                    "must be a finite number, not negative",
+                );
+            }
+            if matches!(objective, Objective::MinimumCvar { .. }) {
+                report.error(
+                    "constraints.trades",
+                    "are not supported for minimum CVaR, whose optimum need not be unique",
                 );
             }
         }
@@ -721,6 +788,11 @@ impl Prepared<'_> {
         self.constraints().turnover.as_ref()?.costs.as_deref()
     }
 
+    pub(crate) fn quadratic_costs(&self) -> Option<(&[f64], &[f64])> {
+        let t = self.constraints().turnover.as_ref()?;
+        Some((t.quadratic_costs.as_deref()?, &t.current))
+    }
+
     /// The largest amount by which `weights` break a constraint, 0 if they satisfy all of them.
     pub(crate) fn violation(&self, weights: &[f64]) -> f64 {
         let c = self.constraints();
@@ -748,6 +820,20 @@ impl Prepared<'_> {
                 .sum();
             worst = worst.max(traded - limit);
         }
+        if let (
+            Some(TradeLimits {
+                minimum: Some(m), ..
+            }),
+            Some(t),
+        ) = (&c.trades, &c.turnover)
+        {
+            for (w, now) in weights.iter().zip(&t.current) {
+                let traded = (w - now).abs();
+                if traded > TRADED {
+                    worst = worst.max(m - traded);
+                }
+            }
+        }
         if let Some(te) = &c.tracking_error {
             let active: Vec<f64> = weights
                 .iter()
@@ -774,6 +860,10 @@ fn check_bound(min: f64, max: f64, path: &str, report: &mut ValidationReport) {
         report.error(path, format!("min {min} is above max {max}"));
     }
 }
+
+/// A change in weight below this counts as no trade: well above the solver's tolerance, so that
+/// an asset held at its current weight is not mistaken for a small trade.
+pub(crate) const TRADED: f64 = 1e-7;
 
 pub(crate) fn check_vector(values: &[f64], n: usize, path: &str, report: &mut ValidationReport) {
     if values.len() != n {

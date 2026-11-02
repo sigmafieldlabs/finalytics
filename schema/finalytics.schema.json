@@ -332,6 +332,92 @@
       ],
       "description": "A cash balance valued on a date."
     },
+    "CombinedRebalance": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Rebalance"
+          },
+          "description": "The proposal for each account with value, in the order given."
+        },
+        "value_base": {
+          "description": "The accounts' combined value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "weights_before": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/HoldingKey"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Each holding's weight in the combined value before the trades."
+        },
+        "weights_after": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/HoldingKey"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Each holding's weight in the combined value after the trades."
+        },
+        "turnover": {
+          "type": "number",
+          "format": "double",
+          "description": "The value traded in all the accounts, as a share of their combined value."
+        },
+        "realised_gain_base": {
+          "description": "The gain the sales would realise in the base currency, after fees.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "fees_base": {
+          "description": "The fees of all the trades, in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "tax_base": {
+          "description": "With tax rates, the estimated tax on the sales' gains in the base currency.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "accounts",
+        "value_base",
+        "weights_before",
+        "weights_after",
+        "turnover",
+        "realised_gain_base",
+        "fees_base"
+      ],
+      "description": "The trades that move several accounts together to target weights of their combined value,\none proposal per account."
+    },
     "Constraints": {
       "type": "object",
       "properties": {
@@ -405,6 +491,18 @@
           },
           "description": "Limits on factor exposures; they need a factor model.",
           "default": []
+        },
+        "trades": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TradeLimits"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Limits on the size and number of trades; they need the turnover's current weights.",
+          "default": null
         }
       },
       "description": "The constraints on a portfolio. The default is fully invested and long-only."
@@ -1096,6 +1194,27 @@
       ],
       "description": "A portfolio's volatility under a factor model, split into each factor's contribution and the\nspecific (stock-specific) part, and into each asset's contribution (Euler allocation)."
     },
+    "Fees": {
+      "type": "object",
+      "properties": {
+        "rate": {
+          "description": "A share of the trade's value, such as 0.001 for 10 basis points.",
+          "default": "0",
+          "$ref": "#/$defs/Decimal"
+        },
+        "per_trade": {
+          "description": "A fixed amount per trade.",
+          "default": "0",
+          "$ref": "#/$defs/Decimal"
+        },
+        "minimum": {
+          "description": "The smallest fee a trade pays.",
+          "default": "0",
+          "$ref": "#/$defs/Decimal"
+        }
+      },
+      "description": "The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,\nrounded to the currency's minor units. Purchases are sized so that the purchase and its fee\nfit the target; sales pay the fee from their proceeds."
+    },
     "Flow": {
       "type": "object",
       "properties": {
@@ -1782,6 +1901,11 @@
           "type": "string",
           "const": "recursive_bisection",
           "description": "Hierarchical clustering and recursive bisection, without a solver."
+        },
+        {
+          "type": "string",
+          "const": "trade_elimination",
+          "description": "The interior-point solver, followed by a heuristic for trade limits: trades below the\nminimum, and the smallest trades beyond the largest number allowed, are left out and the\nrest re-optimised, round by round. Not guaranteed to find the best portfolio within the\nlimits."
         }
       ],
       "description": "The method that produced a solution."
@@ -2438,7 +2562,8 @@
             "leverage": null,
             "turnover": null,
             "tracking_error": null,
-            "factor_exposures": []
+            "factor_exposures": [],
+            "trades": null
           }
         }
       },
@@ -2503,8 +2628,23 @@
           },
           "description": "For a sale, the lots it closes."
         },
+        "fees": {
+          "description": "The fee, in the instrument's currency.",
+          "$ref": "#/$defs/Decimal"
+        },
         "realised_gain_base": {
-          "description": "For a sale, the gain it would realise in the base currency, before fees.",
+          "description": "For a sale, the gain it would realise in the base currency, after fees, as the books\nwould record it.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tax_base": {
+          "description": "For a sale with tax rates, the estimated tax on its gains in the base currency; negative\nwhen its losses save tax.",
           "anyOf": [
             {
               "$ref": "#/$defs/Decimal"
@@ -2523,7 +2663,8 @@
         "currency",
         "value_local",
         "value_base",
-        "lots"
+        "lots",
+        "fees"
       ],
       "description": "A proposed trade in one instrument."
     },
@@ -2671,8 +2812,23 @@
           "description": "The value traded, sales and purchases, as a share of the account's value."
         },
         "realised_gain_base": {
-          "description": "The gain the sales would realise in the base currency.",
+          "description": "The gain the sales would realise in the base currency, after fees.",
           "$ref": "#/$defs/Decimal"
+        },
+        "fees_base": {
+          "description": "The fees of all the trades, in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "tax_base": {
+          "description": "With tax rates, the estimated tax on the sales' gains in the base currency.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "warnings": {
           "$ref": "#/$defs/ValidationReport",
@@ -2689,6 +2845,7 @@
         "weights_after",
         "turnover",
         "realised_gain_base",
+        "fees_base",
         "warnings"
       ],
       "description": "The trades that move an account to target weights, and their effects."
@@ -2698,7 +2855,7 @@
       "properties": {
         "lot_method": {
           "$ref": "#/$defs/LotMethod",
-          "description": "How sales choose lots; first in, first out by default. Highest cost first defers gains.",
+          "description": "How sales choose lots; first in, first out by default. Highest cost first defers gains.\nIgnored when `tax` is given.",
           "default": "fifo"
         },
         "whole_units": {
@@ -2710,6 +2867,27 @@
           "description": "Leave out trades worth less than this in the base currency.",
           "default": "0",
           "$ref": "#/$defs/Decimal"
+        },
+        "fees": {
+          "$ref": "#/$defs/Fees",
+          "description": "The fees each trade pays; none by default.",
+          "default": {
+            "rate": "0",
+            "per_trade": "0",
+            "minimum": "0"
+          }
+        },
+        "tax": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaxRates"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,\nlosses first, and the tax is estimated.",
+          "default": null
         }
       },
       "description": "Choices for `rebalance`."
@@ -3360,6 +3538,30 @@
       ],
       "description": "Value at risk and expected shortfall over one period of the returns.\n\nBoth are losses, reported as positive returns: a value at risk of 0.021 at 95% confidence\nmeans that one period in twenty is expected to lose 2.1% or more."
     },
+    "TaxRates": {
+      "type": "object",
+      "properties": {
+        "short_term": {
+          "description": "The rate on gains from lots held for at most `long_term_after_days` days.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "long_term": {
+          "description": "The rate on gains from lots held for longer.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "long_term_after_days": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The holding period, in days, beyond which a gain is long-term.",
+          "default": 365
+        }
+      },
+      "required": [
+        "short_term",
+        "long_term"
+      ],
+      "description": "Tax rates on realised gains, for tax-aware sales. A lot held for more than\n`long_term_after_days` days is long-term. The rates apply to gains in the base currency,\nafter fees; a loss saves tax at its rate."
+    },
     "TimeSeries": {
       "type": "object",
       "properties": {
@@ -3404,6 +3606,31 @@
         "limit"
       ],
       "description": "A limit on ex-ante tracking error against a benchmark."
+    },
+    "TradeLimits": {
+      "type": "object",
+      "properties": {
+        "minimum": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest trade allowed, as a weight: each asset is either not traded or traded by at\nleast this much.",
+          "default": null
+        },
+        "maximum_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "The largest number of assets traded.",
+          "default": null
+        }
+      },
+      "description": "Limits on the trades from the current portfolio (the turnover's current weights). They are\nnot convex, so the solver's portfolio is adjusted by a heuristic, reported as the method\n`trade_elimination`, which is not guaranteed to find the best portfolio within the limits."
     },
     "Transaction": {
       "type": "object",
@@ -3950,12 +4177,24 @@
           },
           "description": "Costs per unit of weight traded, one per asset, in the units of the expected returns.\nThey reduce the expected return of objectives that use one.",
           "default": null
+        },
+        "quadratic_costs": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Costs that grow with the square of the weight traded, one per asset, such as the market\nimpact of large trades: `sum k_i (w_i - current_i)^2`, in the units of the expected\nreturns. They reduce the expected return of mean–variance, robust mean–variance and\ntarget volatility objectives.",
+          "default": null
         }
       },
       "required": [
         "current"
       ],
-      "description": "Trading from the current portfolio: a limit on turnover, costs per unit traded, or both."
+      "description": "Trading from the current portfolio: a limit on turnover, costs of trading, or both."
     },
     "ValidationReport": {
       "type": "object",

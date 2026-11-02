@@ -76,6 +76,7 @@ fn api() -> Value {
     add::<opt::FrontierPoint>(&mut g);
     add::<opt::RebalanceOptions>(&mut g);
     add::<opt::Rebalance>(&mut g);
+    add::<opt::CombinedRebalance>(&mut g);
     add::<opt::BlackLitterman>(&mut g);
     add::<opt::BlackLittermanEstimate>(&mut g);
     add::<opt::Resampling>(&mut g);

@@ -269,8 +269,8 @@ impl Holdings {
     /// The lots a sale of `quantity` units of `instrument` from `account` would close, chosen by
     /// `method`, without changing the holdings. Each lot's cost is the part the sale would take.
     ///
-    /// [`LotMethod::SpecificId`] needs the lots named, so it is refused here; name the lots in
-    /// the sale instead.
+    /// [`LotMethod::SpecificId`] needs the lots named, so it is refused here; use
+    /// [`Holdings::lots_for_picks`] for named lots.
     pub fn lots_for_sale(
         &self,
         account: &AccountId,
@@ -291,8 +291,40 @@ impl Holdings {
         if report.has_errors() {
             return Err(Error::Validation(report));
         }
+        self.relieved(account, instrument, quantity, method, &[])
+    }
+
+    /// The lots a sale of the named `picks` from `account` would close, as the books would relieve
+    /// them by specific identification, without changing the holdings.
+    pub fn lots_for_picks(
+        &self,
+        account: &AccountId,
+        instrument: &InstrumentId,
+        picks: &[LotPick],
+    ) -> Result<Vec<LotSale>> {
+        let quantity: Decimal = picks.iter().map(|p| p.quantity).sum();
+        if picks.is_empty() || picks.iter().any(|p| p.quantity <= Decimal::ZERO) {
+            let mut report = ValidationReport::new();
+            report.error(
+                "picks",
+                "must name lots, each with a quantity greater than zero",
+            );
+            return Err(Error::Validation(report));
+        }
+        self.relieved(account, instrument, quantity, LotMethod::SpecificId, picks)
+    }
+
+    fn relieved(
+        &self,
+        account: &AccountId,
+        instrument: &InstrumentId,
+        quantity: Decimal,
+        method: LotMethod,
+        picks: &[LotPick],
+    ) -> Result<Vec<LotSale>> {
+        let mut report = ValidationReport::new();
         let mut lots = self.lots_of(account, instrument).to_vec();
-        match relieve(&mut lots, quantity, method, &[]) {
+        match relieve(&mut lots, quantity, method, picks) {
             Ok(relief) => Ok(relief
                 .into_iter()
                 .map(|r| LotSale {

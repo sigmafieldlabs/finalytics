@@ -142,6 +142,29 @@ export interface CashValue {
   value_base: Decimal;
 }
 
+/**
+ * The trades that move several accounts together to target weights of their combined value,
+ * one proposal per account.
+ */
+export interface CombinedRebalance {
+  /** The proposal for each account with value, in the order given. */
+  accounts: Rebalance[];
+  /** The accounts' combined value in the base currency. */
+  value_base: Decimal;
+  /** Each holding's weight in the combined value before the trades. */
+  weights_before: [HoldingKey, number][];
+  /** Each holding's weight in the combined value after the trades. */
+  weights_after: [HoldingKey, number][];
+  /** The value traded in all the accounts, as a share of their combined value. */
+  turnover: number;
+  /** The gain the sales would realise in the base currency, after fees. */
+  realised_gain_base: Decimal;
+  /** The fees of all the trades, in the base currency. */
+  fees_base: Decimal;
+  /** With tax rates, the estimated tax on the sales' gains in the base currency. */
+  tax_base?: Decimal | null;
+}
+
 /** The constraints on a portfolio. The default is fully invested and long-only. */
 export interface Constraints {
   /** The sum of the weights; 1 by default. */
@@ -160,6 +183,8 @@ export interface Constraints {
   tracking_error?: TrackingErrorLimit | null;
   /** Limits on factor exposures; they need a factor model. */
   factor_exposures?: FactorExposureLimit[];
+  /** Limits on the size and number of trades; they need the turnover's current weights. */
+  trades?: TradeLimits | null;
 }
 
 /** What one holding added to the portfolio's return over a period. */
@@ -417,6 +442,20 @@ export interface FactorRisk {
   specific_share?: number | null;
   /** Each asset's contribution under the model's covariance matrix, in the model's order. */
   assets: RiskContribution[];
+}
+
+/**
+ * The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,
+ * rounded to the currency's minor units. Purchases are sized so that the purchase and its fee
+ * fit the target; sales pay the fee from their proceeds.
+ */
+export interface Fees {
+  /** A share of the trade's value, such as 0.001 for 10 basis points. */
+  rate?: Decimal;
+  /** A fixed amount per trade. */
+  per_trade?: Decimal;
+  /** The smallest fee a trade pays. */
+  minimum?: Decimal;
 }
 
 /** Value entering (positive) or leaving (negative) the portfolio, in `currency`. */
@@ -679,7 +718,7 @@ export interface Matrix {
 }
 
 /** The method that produced a solution. */
-export type Method = "interior_point" | "newton" | "recursive_bisection";
+export type Method = "interior_point" | "newton" | "recursive_bisection" | "trade_elimination";
 
 /**
  * An exact decimal amount in one currency.
@@ -930,8 +969,18 @@ export interface ProposedTrade {
   value_base: Decimal;
   /** For a sale, the lots it closes. */
   lots: LotSale[];
-  /** For a sale, the gain it would realise in the base currency, before fees. */
+  /** The fee, in the instrument's currency. */
+  fees: Decimal;
+  /**
+   * For a sale, the gain it would realise in the base currency, after fees, as the books
+   * would record it.
+   */
   realised_gain_base?: Decimal | null;
+  /**
+   * For a sale with tax rates, the estimated tax on its gains in the base currency; negative
+   * when its losses save tax.
+   */
+  tax_base?: Decimal | null;
 }
 
 /** A gain or loss realised by a sale, a return of capital or a cash merger, for one lot. */
@@ -982,20 +1031,34 @@ export interface Rebalance {
   weights_after: [HoldingKey, number][];
   /** The value traded, sales and purchases, as a share of the account's value. */
   turnover: number;
-  /** The gain the sales would realise in the base currency. */
+  /** The gain the sales would realise in the base currency, after fees. */
   realised_gain_base: Decimal;
+  /** The fees of all the trades, in the base currency. */
+  fees_base: Decimal;
+  /** With tax rates, the estimated tax on the sales' gains in the base currency. */
+  tax_base?: Decimal | null;
   /** Carried prices, a shortfall of cash, and trades left out by rounding. */
   warnings: ValidationReport;
 }
 
 /** Choices for `rebalance`. */
 export interface RebalanceOptions {
-  /** How sales choose lots; first in, first out by default. Highest cost first defers gains. */
+  /**
+   * How sales choose lots; first in, first out by default. Highest cost first defers gains.
+   * Ignored when `tax` is given.
+   */
   lot_method?: LotMethod;
   /** Trade whole units only, rounding each trade towards zero. */
   whole_units?: boolean;
   /** Leave out trades worth less than this in the base currency. */
   minimum_trade?: Decimal;
+  /** The fees each trade pays; none by default. */
+  fees?: Fees;
+  /**
+   * Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,
+   * losses first, and the tax is estimated.
+   */
+  tax?: TaxRates | null;
 }
 
 /** Statistics of a returns series against a benchmark's returns over the same periods. */
@@ -1255,6 +1318,20 @@ export interface TailRisk {
 }
 
 /**
+ * Tax rates on realised gains, for tax-aware sales. A lot held for more than
+ * `long_term_after_days` days is long-term. The rates apply to gains in the base currency,
+ * after fees; a loss saves tax at its rate.
+ */
+export interface TaxRates {
+  /** The rate on gains from lots held for at most `long_term_after_days` days. */
+  short_term: Decimal;
+  /** The rate on gains from lots held for longer. */
+  long_term: Decimal;
+  /** The holding period, in days, beyond which a gain is long-term. */
+  long_term_after_days?: number;
+}
+
+/**
  * Values indexed by strictly increasing dates.
  *
  * Construction checks the ordering, so every `TimeSeries` can be searched by date. A series is
@@ -1274,6 +1351,21 @@ export interface TrackingErrorLimit {
    * covariance matrix's volatility.
    */
   limit: number;
+}
+
+/**
+ * Limits on the trades from the current portfolio (the turnover's current weights). They are
+ * not convex, so the solver's portfolio is adjusted by a heuristic, reported as the method
+ * `trade_elimination`, which is not guaranteed to find the best portfolio within the limits.
+ */
+export interface TradeLimits {
+  /**
+   * The smallest trade allowed, as a weight: each asset is either not traded or traded by at
+   * least this much.
+   */
+  minimum?: number | null;
+  /** The largest number of assets traded. */
+  maximum_count?: number | null;
 }
 
 /**
@@ -1446,7 +1538,7 @@ export type Transaction = {
  */
 export type TransactionId = string;
 
-/** Trading from the current portfolio: a limit on turnover, costs per unit traded, or both. */
+/** Trading from the current portfolio: a limit on turnover, costs of trading, or both. */
 export interface Turnover {
   /** The current weights, one per asset. */
   current: number[];
@@ -1460,6 +1552,13 @@ export interface Turnover {
    * They reduce the expected return of objectives that use one.
    */
   costs?: number[] | null;
+  /**
+   * Costs that grow with the square of the weight traded, one per asset, such as the market
+   * impact of large trades: `sum k_i (w_i - current_i)^2`, in the units of the expected
+   * returns. They reduce the expected return of mean–variance, robust mean–variance and
+   * target volatility objectives.
+   */
+  quadratic_costs?: number[] | null;
 }
 
 /**
