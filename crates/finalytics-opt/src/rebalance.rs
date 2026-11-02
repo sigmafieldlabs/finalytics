@@ -123,6 +123,41 @@ pub enum Side {
     Sell,
 }
 
+impl RebalanceOptions {
+    /// The same options trading whole units only.
+    pub fn with_whole_units(mut self, whole_units: bool) -> Self {
+        self.whole_units = whole_units;
+        self
+    }
+
+    /// The same options choosing lots by `method`.
+    pub fn with_lot_method(mut self, method: LotMethod) -> Self {
+        self.lot_method = method;
+        self
+    }
+
+    /// The same options with `fees` on every trade.
+    pub fn with_fees(mut self, fees: Fees) -> Self {
+        self.fees = fees;
+        self
+    }
+
+    /// The same options with tax rates, for tax-aware lot selection.
+    pub fn with_tax(mut self, tax: TaxRates) -> Self {
+        self.tax = Some(tax);
+        self
+    }
+}
+
+impl std::fmt::Display for Side {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Side::Buy => "buy",
+            Side::Sell => "sell",
+        })
+    }
+}
+
 /// A proposed trade in one instrument.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]

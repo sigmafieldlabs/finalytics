@@ -85,6 +85,46 @@ pub struct ReportOptions {
     pub scenarios: Vec<NamedScenario>,
 }
 
+impl ReportOptions {
+    /// The same options with `benchmark`: an instrument, such as an index, whose prices in the
+    /// market data are the benchmark's levels.
+    pub fn with_benchmark(mut self, benchmark: InstrumentId) -> Self {
+        self.benchmark = Some(benchmark);
+        self
+    }
+
+    /// The same options breaking holdings, contribution and risk down by each classification
+    /// scheme in `schemes`, such as `asset_class` or `region`.
+    pub fn with_group_by<S: Into<String>>(mut self, schemes: impl IntoIterator<Item = S>) -> Self {
+        self.group_by = schemes.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// The same options with an annual risk-free rate, for Sharpe ratios.
+    pub fn with_risk_free_rate(mut self, rate: f64) -> Self {
+        self.risk_free_rate = rate;
+        self
+    }
+
+    /// The same options reporting on `date` rather than the last price date.
+    pub fn with_as_of(mut self, date: Date) -> Self {
+        self.as_of = Some(date);
+        self
+    }
+
+    /// The same options with the benchmark's segments, for the attribution report.
+    pub fn with_attribution(mut self, inputs: AttributionInputs) -> Self {
+        self.attribution = Some(inputs);
+        self
+    }
+
+    /// The same options with `scenarios`, for the scenarios report.
+    pub fn with_scenarios(mut self, scenarios: impl IntoIterator<Item = NamedScenario>) -> Self {
+        self.scenarios = scenarios.into_iter().collect();
+        self
+    }
+}
+
 impl Default for ReportOptions {
     fn default() -> Self {
         ReportOptions {

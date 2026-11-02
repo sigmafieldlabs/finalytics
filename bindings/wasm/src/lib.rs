@@ -1170,7 +1170,8 @@ impl Assets {
     }
 
     /// The weights of the risky assets that best meet the objective of `options` (the largest
-    /// Sharpe ratio by default), fully invested, within its bounds and group limits.
+    /// Sharpe ratio by default), fully invested, within its bounds and group limits. The
+    /// weights are in the order of the assets.
     #[wasm_bindgen(unchecked_return_type = "OptimisationResult")]
     pub fn optimise(
         &self,
@@ -1178,7 +1179,19 @@ impl Assets {
         options: JsValue,
     ) -> Result<JsValue, JsValue> {
         let options: finalytics::OptimiseOptions = optional(options, "options")?;
-        to_js(&self.inner.optimise(&options).map_err(error)?)
+        let result = self.inner.optimise(&options).map_err(error)?;
+        let value = to_js(&result)?;
+        if let Some(weights) = &result.weights {
+            // In the order of the assets, rather than of their names.
+            let ordered = js_sys::Object::new();
+            for asset in self.inner.risky_assets() {
+                if let Some(weight) = weights.get(asset) {
+                    js_sys::Reflect::set(&ordered, &asset.into(), &(*weight).into())?;
+                }
+            }
+            js_sys::Reflect::set(&value, &"weights".into(), &ordered)?;
+        }
+        Ok(value)
     }
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under

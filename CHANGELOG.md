@@ -9,6 +9,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The READMEs open with one workflow in each language: review the portfolio dataset with every
+  report, find the holdings that carry its risk, choose the least risky mix of the same funds,
+  and get each account's trades. The Rust programs in the README are the crate's examples
+  (`cargo run --example workflow`), and the tests run every README program in each language and
+  check that it prints the output shown.
+- Builders for options in Rust: `ReportOptions::default().with_benchmark(...)`,
+  `.with_group_by(...)`, `.with_risk_free_rate(...)` and the rest, and
+  `RebalanceOptions::default().with_whole_units(true)`, `.with_fees(...)`, `.with_tax(...)` and
+  `.with_lot_method(...)`. Identifiers implement `FromStr` (`"BENCH".parse::<InstrumentId>()`),
+  `OptimisationResult::holdings` gives an optimisation's weights by holding, ready for
+  `Portfolio::rebalance`, and a trade's `Side` displays as `buy` or `sell`.
 - A data guide (`docs/data.md`): every input, column by column, with the dataset files as
   examples and advice on bringing data from brokers and data providers; its examples run as
   tests.
@@ -55,6 +66,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- JavaScript: `Assets.optimise` gives the weights in the order of the assets, as Python does,
+  rather than in the order of their names.
 - Rust: the result types, the option types and the enumerations that may grow are
   `#[non_exhaustive]`, so that 1.x releases can add fields and variants without breaking code.
   Options start from `Default::default()` and have their fields set; `match` on an enumeration

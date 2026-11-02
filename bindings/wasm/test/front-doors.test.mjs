@@ -20,7 +20,7 @@ test("assets from the asset-class dataset", () => {
   });
   const weights = Object.values(result.weights);
   close(weights.reduce((a, b) => a + b, 0), 1, 1e-6, "weights");
-  assert.ok(!("T-Bills" in result.weights));
+  assert.deepEqual(Object.keys(result.weights), ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]);
   assert.equal(assets.frontier(5, { bounds: { min: 0, max: 0.5 } }).length, 5);
   assert.throws(() => assets.optimise({ objective: "target_return" }), (e) => {
     assert.equal(e.name, "ValidationError");

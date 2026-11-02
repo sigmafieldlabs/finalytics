@@ -27,8 +27,11 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: python3 scripts/check-consistency.py
+      - run: cargo clippy --workspace --lib --bins --tests --benches -- -D warnings
+      - name: Lint the examples, which print their results
+        run: cargo clippy --workspace --examples -- -D warnings -A clippy::print_stdout
+      - name: Check versions, licences and the READMEs, and run the README's Rust examples
+        run: python3 scripts/check-consistency.py --run-examples
       - name: Check that the schema and the generated types are current
         run: |
           cargo run -p finalytics-codegen -- --check

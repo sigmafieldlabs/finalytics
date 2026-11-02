@@ -25,7 +25,8 @@ Run these before opening a pull request. CI runs the same checks.
 
 ```sh
 cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --workspace --lib --bins --tests --benches -- -D warnings
+cargo clippy --workspace --examples -- -D warnings -A clippy::print_stdout
 cargo test --workspace --exclude finalytics-py
 
 # WebAssembly
@@ -99,6 +100,11 @@ pull requests that change the engine, and for longer every week.
 - Examples in the documentation of the library crates use the paths of the `finalytics` crate,
   as users write them, since docs.rs shows them under `finalytics`. A hidden first line maps
   those paths to the crate being tested; copy it from an example in the same crate.
+- The READMEs' code fits 80 columns, and every README program prints the output shown after
+  it. A Rust program in `README.md` is a file in `crates/finalytics/examples`, copied as it is;
+  `python3 scripts/check-consistency.py --run-examples` checks both. The Python and JavaScript
+  READMEs are run by `bindings/python/tests/test_readme.py` and
+  `bindings/wasm/test/readme.test.mjs`.
 - Public APIs follow semantic versioning: breaking changes wait for a major release.
 
 ## Licence

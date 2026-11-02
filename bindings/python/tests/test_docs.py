@@ -1,5 +1,5 @@
-"""Runs the Python examples in docs/methods, the migration guide and the package's README, so that
-every output shown there is the engine's."""
+"""Runs the Python examples in docs/methods, the data guide and the migration guide, so that every
+output shown there is the engine's. The package's README is run by test_readme.py."""
 
 import doctest
 import pathlib
@@ -11,7 +11,6 @@ from conftest import ROOT
 
 PAGES = [
     *sorted(p for p in (ROOT / "docs" / "methods").glob("*.md") if p.name != "README.md"),
-    ROOT / "bindings" / "python" / "README.md",
     ROOT / "docs" / "migrating-from-0.9.md",
     ROOT / "docs" / "data.md",
 ]

@@ -120,13 +120,20 @@ month-end closes, and the defensive assets must make up 60% to 90% of the portfo
 ```
 
 `Assets` detects the monthly frequency from the dates, annualises the mean returns and the
-Ledoit–Wolf covariance by 12, and optimises over them. The defensive group's limit binds: without
-it, the same returns give 44% in SPY, as in the README's quick start.
+Ledoit–Wolf covariance by 12, and optimises over them. The defensive group's limit binds; without
+it, more goes to SPY:
 
-The same steps work in Rust and JavaScript; the READMEs of the
-[Rust crate](https://github.com/sigmafieldlabs/finalytics#quick-start) and the
-[npm package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#quick-start)
-show them.
+```python
+>>> without = assets.optimise(objective="maximum_sharpe", bounds=(0.1, 0.6))
+>>> round(without.weights["SPY"], 3)
+0.445
+
+```
+
+The same steps work in Rust and JavaScript, as "From prices to a portfolio" in the READMEs of the
+[Rust crate](https://github.com/sigmafieldlabs/finalytics#from-prices-to-a-portfolio) and the
+[npm package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#from-prices-to-a-portfolio)
+shows.
 
 ## Staying on 0.9
 

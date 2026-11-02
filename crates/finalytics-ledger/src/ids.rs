@@ -57,6 +57,25 @@ macro_rules! identifier {
             }
         }
 
+        impl std::str::FromStr for $name {
+            type Err = finalytics_core::Error;
+
+            /// Parses an identifier: non-empty, without leading or trailing spaces.
+            fn from_str(text: &str) -> finalytics_core::Result<Self> {
+                $name::new(text).ok_or_else(|| {
+                    let mut report = finalytics_core::ValidationReport::new();
+                    report.error(
+                        "id",
+                        format!(
+                            "{text:?} is not a valid identifier: it must be non-empty, without \
+                             leading or trailing spaces"
+                        ),
+                    );
+                    finalytics_core::Error::Validation(report)
+                })
+            }
+        }
+
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let text = String::deserialize(deserializer)?;

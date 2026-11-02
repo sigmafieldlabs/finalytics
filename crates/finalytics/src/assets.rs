@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use finalytics_core::{Date, Decimal, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, price_columns_from_csv};
+use finalytics_ledger::HoldingKey;
 use finalytics_opt::{
     AssetBound, Bound, Constraints, FrontierPoint, GroupLimit, Linkage, Objective, Problem,
     ReturnUncertainty, Solution, SolveStatus,
@@ -155,6 +156,18 @@ pub struct OptimisationResult {
     pub risk_free_rate: f64,
     /// The solver's solution, with the objective, its value and the work done.
     pub solution: Solution,
+}
+
+impl OptimisationResult {
+    /// The weights as holdings, for [`Portfolio::rebalance`](crate::Portfolio::rebalance): each
+    /// asset as the instrument of the same name. Empty when there is no solution.
+    pub fn holdings(&self) -> BTreeMap<HoldingKey, f64> {
+        self.weights
+            .iter()
+            .flatten()
+            .filter_map(|(asset, w)| asset.parse().ok().map(|key| (key, *w)))
+            .collect()
+    }
 }
 
 impl Assets {

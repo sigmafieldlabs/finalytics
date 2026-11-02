@@ -53,8 +53,10 @@ venv_python() {
 stage_lint() {
   venv_python || return
   run cargo fmt --all --check
-  run cargo clippy --workspace --all-targets -- -D warnings
-  run .venv/bin/python scripts/check-consistency.py
+  run cargo clippy --workspace --lib --bins --tests --benches -- -D warnings
+  # The examples print their results.
+  run cargo clippy --workspace --examples -- -D warnings -A clippy::print_stdout
+  run .venv/bin/python scripts/check-consistency.py --run-examples
   run cargo run --quiet -p finalytics-codegen -- --check
   run .venv/bin/python scripts/generate-types.py --check
 }

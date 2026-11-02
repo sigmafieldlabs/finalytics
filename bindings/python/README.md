@@ -11,8 +11,9 @@
 [![Homepage](https://img.shields.io/badge/homepage-sigmafield.app-0b7a75)](https://sigmafield.app/libraries/finalytics)
 
 Finalytics is a portfolio analytics engine: it keeps the books of a multi-currency portfolio from
-its transactions, measures performance and risk, and optimises portfolios under real-world
-constraints. The engine is written in Rust; this package is a typed Python layer over it.
+its transactions, measures performance and risk, explains returns against a benchmark, and
+optimises portfolios under real-world constraints. The engine is written in Rust; this package is
+a typed Python layer over it.
 
 > **Status:** 1.0 is in active development. Until 1.0.0 is released, `pip install finalytics`
 > gives 0.9; install a 1.0 pre-release with `pip install --pre finalytics`. Coming from 0.9? See
@@ -20,65 +21,154 @@ constraints. The engine is written in Rust; this package is a typed Python layer
 
 ```sh
 pip install finalytics            # with NumPy
-pip install "finalytics[pandas]"  # with pandas conversions
+pip install "finalytics[pandas]"  # with pandas
 ```
 
-## Quick start
+## A portfolio in four steps
 
-Estimate risk and return from a year of monthly returns, then find the portfolio with the highest
-Sharpe ratio that holds between 10% and 60% of each asset. This example uses pandas
-(`pip install "finalytics[pandas]"`); NumPy arrays work as well.
-
-```python
->>> import pandas as pd
->>> import finalytics as fl
->>> from finalytics import opt
->>> returns = pd.DataFrame({  # twelve months of returns for three assets
-...     "Equities": [-0.028, 0.021, -0.044, 0.043, -0.021, 0.020, 0.055, -0.028, -0.009, 0.017, 0.044, 0.014],
-...     "Bonds":    [-0.009, 0.020, 0.002, 0.021, -0.013, 0.005, 0.014, 0.002, -0.001, -0.011, -0.028, 0.032],
-...     "Gold":     [-0.013, -0.029, 0.004, 0.069, -0.009, 0.000, 0.017, 0.005, -0.030, 0.003, 0.057, -0.001],
-... })
->>> estimate = fl.risk.covariance(returns, method="ledoit_wolf")
->>> problem = opt.Problem.from_covariance(
-...     fl.risk.scaled(estimate.matrix, 12),  # annualised
-...     expected_returns=returns.mean() * 12,
-...     constraints=opt.Constraints(bounds=opt.Bound(min=0.1, max=0.6)),
-... )
->>> solution = problem.solve(opt.MaximumSharpe(risk_free_rate=0.02))
->>> dict(zip(solution.labels, [round(w, 3) for w in solution.weights]))
-{'Equities': 0.444, 'Bonds': 0.18, 'Gold': 0.375}
->>> round(solution.expected_return, 4), round(solution.volatility, 4)
-(0.0709, 0.067)
-
-```
-
-The same example is in the READMEs of the
-[Rust crate](https://github.com/sigmafieldlabs/finalytics#quick-start) and the
-[npm package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#quick-start), and it runs as a test, so the
-results shown are the engine's.
-
-## Portfolios, performance and risk
+Review a portfolio, find where its risk comes from, choose a better mix of the same funds, and
+get the trades that reach it, in each account. The portfolio is one of the datasets that come with
+the package: three years of a brokerage and a retirement account, in dollars and euros.
 
 ```python
 import finalytics as fl
 
+# Three years of a two-account portfolio, in dollars and euros.
+portfolio = fl.datasets.portfolio()
+
+# 1. Review: every report, from one set of options.
+report = portfolio.report(
+    benchmark="BENCH",
+    group_by=["asset_class", "region"],
+    risk_free_rate=0.03,
+)
+report.save_html("report.html", name="Morgan family portfolio")
+since = report.performance.periods[-1]
+print(f"Return {since.cumulative:+.1%}, benchmark {since.benchmark:+.1%}")
+
+# 2. Diagnose: which holdings carry the risk?
+for part in report.risk.holdings.decomposition.contributions:
+    if part.share > 0.10:
+        print(f"{part.label}: {part.weight:.0%} of value, "
+              f"{part.share:.0%} of risk")
+
+# 3. Decide: the least risky mix of the same funds, 5% to 40% each.
+target = portfolio.assets().optimise(
+    objective="minimum_variance",
+    bounds=(0.05, 0.40),
+)
+for name, mix in [("Now", report.overview.current), ("After", target)]:
+    print(f"{name}: volatility {mix.volatility:.1%}, "
+          f"expected return {mix.expected_return:.1%}")
+
+# 4. Trade: what each account buys and sells, in whole units.
+proposal = portfolio.rebalance(target.weights, whole_units=True)
+for account in proposal.accounts:
+    for trade in account.trades:
+        print(account.account, trade.side, trade.quantity, trade.instrument)
+```
+
+It prints:
+
+```text
+Return +21.7%, benchmark +24.3%
+INTL: 8% of value, 13% of risk
+USEQ: 44% of value, 74% of risk
+Now: volatility 9.0%, expected return 5.0%
+After: volatility 7.7%, expected return 5.9%
+brokerage sell 152 INTL
+brokerage sell 156 USEQ
+brokerage buy 214 BOND
+brokerage buy 343 GOLD
+brokerage buy 86 REIT
+ira sell 95 USEQ
+ira buy 105 BOND
+ira buy 168 GOLD
+ira buy 42 REIT
+```
+
+`report.html` is one self-contained page: every report, with charts, in light and dark, ready to
+print. `print(report)` shows the same reports as text, 80 columns wide.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/report-overview-dark.png">
+  <img src="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/report-overview.png" alt="The overview of the HTML report: value, returns, volatility, drawdown and value at risk, and the growth of 100 against the benchmark" width="760">
+</picture>
+
+Give the report options the benchmark's segments and some scenarios, as
+`fl.datasets.report_options()` does, and the report adds attribution against the benchmark and
+the effect of each scenario.
+
+## Your own portfolio
+
+A portfolio needs its transactions and the prices that value them:
+
+```python
 portfolio = fl.Portfolio.from_csv(
     transactions="transactions.csv",
     prices="prices.csv",
-    fx="fx.csv",
 )
-
-portfolio.valuation()                  # positions and cash, in local and base currency
-performance = portfolio.performance()  # daily time-weighted returns
-performance.period("YTD")              # cumulative and, for a year or more, annualised
-performance.contributions()            # by holding; they add up to the return
-
-fl.risk.statistics(performance.returns, risk_free_rate=0.03)
-portfolio.report(benchmark="SPY")      # all six reports, ready for charts
 ```
 
-Results are frozen dataclasses with documented fields (see `finalytics.types`). Invalid input
-raises `finalytics.ValidationError`, whose `issues` list every problem with where it is.
+```csv
+date,type,instrument,quantity,price,amount,currency
+2026-01-02,deposit,,,,20000,USD
+2026-01-02,buy,VOO,20,500,,
+2026-01-02,buy,AGG,100,98,,
+```
+
+Add `fx=` for other currencies, `instruments=` to classify holdings by asset class or region,
+and `accounts=` to name accounts. The
+[data guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md) describes every
+file, column by column, and `fl.datasets.file("portfolio/transactions.csv")` returns a complete
+example of each. Invalid input raises `fl.ValidationError`, which lists every problem with its
+file, line and column.
+
+## From prices to a portfolio
+
+`Assets` takes prices, from a pandas DataFrame or a CSV file, for statistics, covariance and
+optimisation. Here, the mix of six asset classes with the highest Sharpe ratio, with at most 40%
+in any one and 15% in real assets, against the return on T-bills:
+
+```python
+import finalytics as fl
+
+# Thirty years of month-end levels of six asset-class indices.
+prices = fl.datasets.asset_class_prices()
+
+assets = fl.Assets(prices, risk_free_asset="T-Bills")
+result = assets.optimise(
+    objective="maximum_sharpe",
+    bounds=(0.0, 0.4),
+    groups={"Real assets": (["Gold", "Real Estate"], 0.0, 0.15)},
+)
+for asset, weight in result.weights.items():
+    print(f"{asset:12} {weight:4.0%}")
+print(f"Sharpe ratio {result.sharpe_ratio:.2f}")
+```
+
+```text
+US Equity     40%
+Intl Equity    5%
+Bonds         40%
+Gold          15%
+Real Estate    0%
+Sharpe ratio 0.55
+```
+
+The other objectives are `minimum_variance`, `mean_variance`, `robust_mean_variance`,
+`target_return`, `target_volatility`, `maximum_diversification`, `minimum_cvar`,
+`risk_budgeting` and `hierarchical_risk_parity`; `assets.frontier(points=20)` gives the
+efficient frontier.
+
+## Beneath the front doors
+
+`fl.risk`, `fl.opt` and `fl.performance` give each method on its own: statistics, covariance
+estimators, factor models, risk decomposition, scenarios, Black–Litterman, resampled
+optimisation, attribution and more. The
+[methods pages](https://github.com/sigmafieldlabs/finalytics/tree/main/docs/methods) define every
+model, with examples. Results are frozen dataclasses with documented fields (see
+`finalytics.types`).
 
 Wheels are published for Linux, macOS and Windows and work with Python 3.10 and later.
 

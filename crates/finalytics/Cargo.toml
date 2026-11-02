@@ -12,8 +12,8 @@ keywords.workspace = true
 categories.workspace = true
 readme = "../../README.md"
 # The tests are left out: they read the shared test data elsewhere in the repository. The
-# datasets are included.
-include = ["/src", "/data", "/LICENSE-*"]
+# datasets and the examples are included.
+include = ["/src", "/data", "/examples", "/LICENSE-*"]
 
 [features]
 # JSON Schema descriptions of the public types, for the bindings and documentation.
