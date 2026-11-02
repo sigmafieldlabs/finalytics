@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A guide to migrating from 0.9 (`docs/migrating-from-0.9.md`): what changed, what replaces
+  each part of 0.9, and a 0.9 optimisation worked through in 1.0, run as a test.
+
 ### Changed
 
 - Rust: the result types, the option types and the enumerations that may grow are

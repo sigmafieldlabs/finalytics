@@ -15,7 +15,8 @@ constraints. This package runs the engine as WebAssembly in browsers, workers an
 TypeScript types included.
 
 > **Status:** 1.0 is in active development. Until 1.0.0 is released, `npm install finalytics`
-> gives 0.2; install a 1.0 pre-release with `npm install finalytics@next`.
+> gives 0.2; install a 1.0 pre-release with `npm install finalytics@next`. Coming from 0.2? See
+> the [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md).
 
 ```sh
 npm install finalytics

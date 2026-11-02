@@ -15,7 +15,8 @@ its transactions, measures performance and risk, and optimises portfolios under 
 constraints. The engine is written in Rust; this package is a typed Python layer over it.
 
 > **Status:** 1.0 is in active development. Until 1.0.0 is released, `pip install finalytics`
-> gives 0.9; install a 1.0 pre-release with `pip install --pre finalytics`.
+> gives 0.9; install a 1.0 pre-release with `pip install --pre finalytics`. Coming from 0.9? See
+> the [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md).
 
 ```sh
 pip install finalytics            # with NumPy

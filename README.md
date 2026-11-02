@@ -18,7 +18,8 @@ from its transactions, measures performance and risk, and optimises portfolios u
 constraints.
 
 > **Status:** Finalytics 1.0 is in active development. It is a redesign of the 0.x series; the
-> 0.9 release remains available on the `0.9.x` branch.
+> 0.9 release remains available on the `0.9.x` branch, and the
+> [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) explains what replaces each part of it.
 
 ## Design
 
