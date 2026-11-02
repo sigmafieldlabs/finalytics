@@ -236,10 +236,8 @@ fn tridiagonalise(v: &mut [Vec<f64>], d: &mut [f64], e: &mut [f64]) {
             row[i + 1] = 0.0;
         }
     }
-    for j in 0..n {
-        d[j] = v[n - 1][j];
-        v[n - 1][j] = 0.0;
-    }
+    d.copy_from_slice(&v[n - 1]);
+    v[n - 1].fill(0.0);
     v[n - 1][n - 1] = 1.0;
     e[0] = 0.0;
 }
