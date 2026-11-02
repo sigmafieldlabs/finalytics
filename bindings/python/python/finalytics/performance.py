@@ -16,6 +16,16 @@ from finalytics._arrays import DateArray, DateLike, FloatArray
 from finalytics._convert import dumps, loads
 from finalytics._errors import call
 
+__all__ = [
+    "Performance",
+    "PeriodLike",
+    "attribution_period",
+    "brinson_fachler",
+    "group_contributions",
+    "karnosky_singer",
+    "period",
+]
+
 PeriodLike = str | _types.Period
 """A reporting period: ``"MTD"``, ``"QTD"``, ``"YTD"``, ``"ITD"`` (since inception), ``"1Y"``,
 ``"3Y"`` and so on, or a :data:`~finalytics.types.Period`."""

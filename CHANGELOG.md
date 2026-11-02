@@ -30,6 +30,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - JavaScript: the valuation dates of a `Performance` are its `dates` property; they were
   published as `parse_dates`.
+- Python: `finalytics.performance` is listed in the package's `__all__`, and lists its own
+  public names.
 
 ## [1.0.0-alpha.0] - 2026-11-02
 

@@ -34,3 +34,10 @@ def test_unions_dispatch_on_their_tags():
 def test_the_public_module_lists_every_type():
     assert set(types.__all__) >= {"Statistics", "Solution", "Transaction", "Objective", "HoldingKey"}
     assert typing.get_type_hints(types.Solution)["weights"] == typing.Optional[list[float]]
+
+
+def test_every_public_module_exports_what_it_lists():
+    for module in (fl, fl.opt, fl.performance, fl.reports, fl.risk, fl.types):
+        missing = [name for name in module.__all__ if not hasattr(module, name)]
+        assert not missing, (module.__name__, missing)
+    assert "performance" in fl.__all__
