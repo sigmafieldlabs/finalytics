@@ -645,9 +645,8 @@ pub fn scenarios(data: &[u8]) {
 
 /// Numbers from bytes, eight at a time.
 fn numbers(data: &[u8]) -> Vec<f64> {
-    data.chunks_exact(8)
-        .map(|c| f64::from_le_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]))
-        .collect()
+    let (chunks, _) = data.as_chunks::<8>();
+    chunks.iter().map(|c| f64::from_le_bytes(*c)).collect()
 }
 
 /// A Black–Litterman model from bytes: the first byte picks the number of assets and views; the

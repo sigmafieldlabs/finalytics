@@ -77,22 +77,18 @@ fn floats(bytes: &[u8], name: &str) -> PyResult<Vec<f64>> {
     if !bytes.len().is_multiple_of(8) {
         return Err(invalid(name, "must be a buffer of float64 values"));
     }
-    Ok(bytes
-        .chunks_exact(8)
-        .map(|c| f64::from_le_bytes([c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]))
-        .collect())
+    let (chunks, _) = bytes.as_chunks::<8>();
+    Ok(chunks.iter().map(|c| f64::from_le_bytes(*c)).collect())
 }
 
 fn dates(bytes: &[u8], name: &str) -> PyResult<Vec<Date>> {
     if !bytes.len().is_multiple_of(4) {
         return Err(invalid(name, "must be a buffer of int32 day numbers"));
     }
-    bytes
-        .chunks_exact(4)
-        .map(|c| {
-            Date::from_days_since_epoch(i32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-                .map_err(engine)
-        })
+    let (chunks, _) = bytes.as_chunks::<4>();
+    chunks
+        .iter()
+        .map(|c| Date::from_days_since_epoch(i32::from_le_bytes(*c)).map_err(engine))
         .collect()
 }
 
