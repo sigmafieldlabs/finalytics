@@ -10,13 +10,14 @@ use crate::{Date, Error, Result};
 /// serialised as `{"dates": [...], "values": [...]}`, and deserialising checks it again.
 ///
 /// ```
-/// use finalytics_core::{Date, TimeSeries};
+/// # mod finalytics { pub use finalytics_core::*; }
+/// use finalytics::{Date, TimeSeries};
 ///
 /// let d = |s: &str| s.parse::<Date>().unwrap();
 /// let prices = TimeSeries::new(vec![d("2026-10-30"), d("2026-11-02")], vec![101.5, 102.0])?;
 /// assert_eq!(prices.get(d("2026-11-02")), Some(&102.0));
 /// assert_eq!(prices.as_of(d("2026-11-01")), Some((d("2026-10-30"), &101.5)));
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]

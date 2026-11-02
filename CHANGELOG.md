@@ -25,6 +25,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The holdings report counts a lot or a gain as long-term when it has been held for more than
   `long_term_after_days` days, as tax-aware rebalancing does. A lot held for exactly that many
   days was long-term in the report and short-term for rebalancing.
+- Rust documentation examples use the paths of the `finalytics` crate.
 
 ### Fixed
 

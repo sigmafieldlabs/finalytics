@@ -49,7 +49,8 @@ pub struct CovarianceEstimate {
 /// Estimates the covariance matrix of the assets in `returns`.
 ///
 /// ```
-/// use finalytics_risk::{CovarianceMethod, ReturnsTable, covariance};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{CovarianceMethod, ReturnsTable, covariance};
 ///
 /// let returns = ReturnsTable::new(
 ///     vec!["equity".into(), "bonds".into()],
@@ -58,7 +59,7 @@ pub struct CovarianceEstimate {
 /// let estimate = covariance(&returns, CovarianceMethod::LedoitWolf)?;
 /// let annual = estimate.matrix.scaled(252.0);
 /// assert!(annual.get(0, 0) > annual.get(1, 1));
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn covariance(returns: &ReturnsTable, method: CovarianceMethod) -> Result<CovarianceEstimate> {
     let t = returns.observations();

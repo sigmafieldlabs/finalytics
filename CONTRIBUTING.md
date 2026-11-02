@@ -96,6 +96,9 @@ pull requests that change the engine, and for longer every week.
 - Update `CHANGELOG.md` under "Unreleased" for any user-facing change.
 - New models need a validation test against an independent reference and a methods page in
   `docs/methods/`, whose Python examples are run by `bindings/python/tests/test_docs.py`.
+- Examples in the documentation of the library crates use the paths of the `finalytics` crate,
+  as users write them, since docs.rs shows them under `finalytics`. A hidden first line maps
+  those paths to the crate being tested; copy it from an example in the same crate.
 - Public APIs follow semantic versioning: breaking changes wait for a major release.
 
 ## Licence

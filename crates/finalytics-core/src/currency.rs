@@ -14,12 +14,13 @@ use crate::{Error, Result};
 /// [`Currency::with_minor_units`] to set another number. A currency is serialised as its code.
 ///
 /// ```
-/// use finalytics_core::Currency;
+/// # mod finalytics { pub use finalytics_core::*; }
+/// use finalytics::Currency;
 ///
 /// let yen: Currency = "JPY".parse()?;
 /// assert_eq!(yen.minor_units(), 0);
 /// assert_eq!(Currency::USD.code(), "USD");
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Currency {

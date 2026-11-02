@@ -363,7 +363,8 @@ pub struct FactorModelEstimate {
 /// periods than factors plus one.
 ///
 /// ```
-/// use finalytics_risk::{ReturnsTable, regression_model};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{ReturnsTable, regression_model};
 ///
 /// let market = vec![0.010, -0.020, 0.015, 0.005, -0.010, 0.020];
 /// let asset: Vec<f64> = market.iter().enumerate()
@@ -374,7 +375,7 @@ pub struct FactorModelEstimate {
 /// let estimate = regression_model(&returns, &factors)?;
 /// let beta = estimate.model.exposures()[0][0];
 /// assert!((beta - 1.2).abs() < 0.1);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn regression_model(
     returns: &ReturnsTable,
@@ -742,7 +743,8 @@ pub struct FactorRisk {
 /// components. To split the ex-ante tracking error instead, use [`factor_tracking_error`].
 ///
 /// ```
-/// use finalytics_risk::{FactorModel, Matrix, factor_risk};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{FactorModel, Matrix, factor_risk};
 ///
 /// let model = FactorModel::new(
 ///     vec!["a".into(), "b".into()],
@@ -753,7 +755,7 @@ pub struct FactorRisk {
 /// let risk = factor_risk(&[0.5, 0.5], &model)?;
 /// let total = risk.factors[0].component + risk.specific_component;
 /// assert!((total - risk.volatility).abs() < 1e-15);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn factor_risk(weights: &[f64], model: &FactorModel) -> Result<FactorRisk> {
     model.check_weights(weights, "weights")?;

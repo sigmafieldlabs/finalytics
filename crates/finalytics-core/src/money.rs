@@ -41,12 +41,13 @@ impl Rounding {
 /// Amounts keep their full precision until they are rounded.
 ///
 /// ```
-/// use finalytics_core::{Currency, Decimal, Money, Rounding};
+/// # mod finalytics { pub use finalytics_core::*; }
+/// use finalytics::{Currency, Decimal, Money, Rounding};
 ///
 /// let price = Money::new(Decimal::new(10_125, 3), Currency::USD); // 10.125 USD
 /// let cost = price.multiply(Decimal::from(3))?;                   // 30.375 USD
 /// assert_eq!(cost.round(Rounding::HalfEven).to_string(), "30.38 USD");
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]

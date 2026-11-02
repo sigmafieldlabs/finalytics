@@ -51,12 +51,13 @@ impl Weekday {
 /// are cheap. It is written and read as ISO 8601 (`2026-11-02`), including in serialised form.
 ///
 /// ```
-/// use finalytics_core::Date;
+/// # mod finalytics { pub use finalytics_core::*; }
+/// use finalytics::Date;
 ///
 /// let date: Date = "2024-02-29".parse()?;
 /// assert_eq!(date.add_days(1)?, Date::from_ymd(2024, 3, 1)?);
 /// assert_eq!(date.add_months(12)?.to_string(), "2025-02-28");
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Date(i32);

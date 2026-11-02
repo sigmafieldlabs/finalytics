@@ -120,13 +120,14 @@ pub struct RelativeStatistics {
 /// Computes the statistics of a returns series of at least two periods.
 ///
 /// ```
-/// use finalytics_risk::{StatisticsOptions, statistics};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{StatisticsOptions, statistics};
 ///
 /// let returns = [0.010, -0.004, 0.007, -0.012, 0.003];
 /// let stats = statistics(&returns, &StatisticsOptions::default())?;
 /// assert_eq!(stats.observations, 5);
 /// assert!(stats.max_drawdown < 0.0);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn statistics(returns: &[f64], options: &StatisticsOptions) -> Result<Statistics> {
     options.validate()?;

@@ -129,7 +129,8 @@ pub struct Attribution {
 /// the compounded returns.
 ///
 /// ```
-/// use finalytics_perf::{AttributionPeriod, Linking, Segment, brinson_fachler};
+/// # mod finalytics { pub use finalytics_core::*; pub use finalytics_perf::*; }
+/// use finalytics::{AttributionPeriod, Linking, Segment, brinson_fachler};
 ///
 /// let segment = |name: &str, w: f64, r: f64, b: f64, s: f64| Segment {
 ///     name: name.into(),
@@ -149,7 +150,7 @@ pub struct Attribution {
 /// let attribution = brinson_fachler(&[period], Linking::Carino)?;
 /// let effects = attribution.allocation + attribution.selection + attribution.interaction;
 /// assert!((effects - attribution.excess_return).abs() < 1e-15);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn brinson_fachler(periods: &[AttributionPeriod], linking: Linking) -> Result<Attribution> {
     let mut report = ValidationReport::new();

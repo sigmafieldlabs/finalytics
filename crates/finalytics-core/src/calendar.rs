@@ -26,13 +26,14 @@ pub enum BusinessDayConvention {
 /// keeps the engine free of data that goes out of date.
 ///
 /// ```
-/// use finalytics_core::{Calendar, Date};
+/// # mod finalytics { pub use finalytics_core::*; }
+/// use finalytics::{Calendar, Date};
 ///
 /// let christmas = Date::from_ymd(2026, 12, 25)?;
 /// let calendar = Calendar::weekends_only().with_holidays([christmas]);
 /// let thursday = Date::from_ymd(2026, 12, 24)?;
 /// assert_eq!(calendar.add_business_days(thursday, 1)?, Date::from_ymd(2026, 12, 28)?);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]

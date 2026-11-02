@@ -57,7 +57,8 @@ pub struct GroupRisk {
 /// Splits the volatility of a portfolio with `weights` into each asset's contribution.
 ///
 /// ```
-/// use finalytics_risk::{Matrix, risk_decomposition};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{Matrix, risk_decomposition};
 ///
 /// let covariance = Matrix::new(
 ///     vec!["equity".into(), "bonds".into()],
@@ -66,7 +67,7 @@ pub struct GroupRisk {
 /// let risk = risk_decomposition(&[0.6, 0.4], &covariance)?;
 /// let total: f64 = risk.contributions.iter().map(|c| c.component).sum();
 /// assert!((total - risk.volatility).abs() < 1e-15);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn risk_decomposition(weights: &[f64], covariance: &Matrix) -> Result<RiskDecomposition> {
     let product = covariance.times(weights)?;

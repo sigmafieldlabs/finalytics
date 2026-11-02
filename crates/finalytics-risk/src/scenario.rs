@@ -688,13 +688,14 @@ pub fn historical_scenario(
 /// matrices, the result is positive semidefinite when `covariance` is.
 ///
 /// ```
-/// use finalytics_risk::{CorrelationStress, Matrix, stressed_covariance};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{CorrelationStress, Matrix, stressed_covariance};
 ///
 /// let covariance = Matrix::new(vec!["a".into(), "b".into()], vec![0.04, 0.0, 0.0, 0.09])?;
 /// let stress = CorrelationStress { volatility_scale: 1.0, correlation_shift: 1.0 };
 /// let stressed = stressed_covariance(&covariance, &stress)?;
 /// assert!((stressed.get(0, 1) - 0.2 * 0.3).abs() < 1e-15);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn stressed_covariance(covariance: &Matrix, stress: &CorrelationStress) -> Result<Matrix> {
     let mut report = ValidationReport::new();

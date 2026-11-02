@@ -13,8 +13,9 @@ use finalytics_core::{Error, Result, ValidationReport};
 /// `problem.factor_model.specific_variances[3]`.
 ///
 /// ```
-/// use finalytics_formats::from_json;
-/// use finalytics_core::Error;
+/// # mod finalytics { pub use finalytics_core::*; pub mod formats { pub use finalytics_formats::*; } }
+/// use finalytics::formats::from_json;
+/// use finalytics::Error;
 ///
 /// let Err(Error::Validation(report)) = from_json::<Vec<f64>>("[1.0, \"x\"]", "weights") else {
 ///     panic!("expected a validation error");

@@ -46,12 +46,13 @@ pub struct TailRisk {
 /// Estimates value at risk and expected shortfall from at least two returns.
 ///
 /// ```
-/// use finalytics_risk::{TailMethod, tail_risk};
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::risk::{TailMethod, tail_risk};
 ///
 /// let returns = [0.004, -0.011, 0.007, -0.002, 0.013, -0.019, 0.001, 0.006];
 /// let tail = tail_risk(&returns, 0.95, TailMethod::Parametric)?;
 /// assert!(tail.expected_shortfall > tail.value_at_risk);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn tail_risk(returns: &[f64], confidence: f64, method: TailMethod) -> Result<TailRisk> {
     if !(confidence > 0.0 && confidence < 1.0) {

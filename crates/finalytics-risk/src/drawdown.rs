@@ -36,8 +36,9 @@ impl Drawdown {
 /// To list the worst first, sort by depth:
 ///
 /// ```
-/// use finalytics_core::{Date, TimeSeries};
-/// use finalytics_risk::drawdowns;
+/// # mod finalytics { pub use finalytics_core::*; pub mod risk { pub use finalytics_risk::*; } }
+/// use finalytics::{Date, TimeSeries};
+/// use finalytics::risk::drawdowns;
 ///
 /// let dates: Vec<Date> = ["2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08"]
 ///     .iter()
@@ -48,7 +49,7 @@ impl Drawdown {
 /// found.sort_by(|a, b| a.depth.total_cmp(&b.depth));
 /// assert_eq!(found[0].peak.to_string(), "2026-01-06");
 /// assert_eq!(found[0].recovery, None);
-/// # Ok::<(), finalytics_core::Error>(())
+/// # Ok::<(), finalytics::Error>(())
 /// ```
 pub fn drawdowns(levels: &TimeSeries<f64>) -> Result<Vec<Drawdown>> {
     check_levels(levels)?;

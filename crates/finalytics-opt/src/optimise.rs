@@ -169,8 +169,13 @@ impl Problem {
     /// status says why.
     ///
     /// ```
-    /// use finalytics_opt::{Objective, Problem};
-    /// use finalytics_risk::Matrix;
+    /// # mod finalytics {
+    /// #     pub use finalytics_core::*;
+    /// #     pub mod risk { pub use finalytics_risk::*; }
+    /// #     pub mod opt { pub use finalytics_opt::*; }
+    /// # }
+    /// use finalytics::opt::{Objective, Problem};
+    /// use finalytics::risk::Matrix;
     ///
     /// let covariance = Matrix::new(
     ///     vec!["equity".into(), "bonds".into()],
@@ -179,7 +184,7 @@ impl Problem {
     /// let solution = Problem::new(covariance).solve(&Objective::MinimumVariance)?;
     /// let weights = solution.weights.unwrap();
     /// assert!(weights[1] > weights[0]);
-    /// # Ok::<(), finalytics_core::Error>(())
+    /// # Ok::<(), finalytics::Error>(())
     /// ```
     pub fn solve(&self, objective: &Objective) -> Result<Solution> {
         let started = Instant::now();

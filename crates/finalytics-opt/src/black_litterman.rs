@@ -133,9 +133,14 @@ impl BlackLitterman {
     /// - posterior covariance `C + tau C - tau C P' (P tau C P' + Omega)^-1 P tau C`.
     ///
     /// ```
+    /// # mod finalytics {
+    /// #     pub use finalytics_core::*;
+    /// #     pub mod risk { pub use finalytics_risk::*; }
+    /// #     pub mod opt { pub use finalytics_opt::*; }
+    /// # }
     /// use std::collections::BTreeMap;
-    /// use finalytics_opt::{BlackLitterman, Prior, View};
-    /// use finalytics_risk::Matrix;
+    /// use finalytics::opt::{BlackLitterman, Prior, View};
+    /// use finalytics::risk::Matrix;
     ///
     /// let covariance = Matrix::new(
     ///     vec!["equity".into(), "bonds".into()],
@@ -154,7 +159,7 @@ impl BlackLitterman {
     /// let estimate = model.estimate()?;
     /// // The view lifts bonds above their equilibrium return.
     /// assert!(estimate.posterior_returns[1] > estimate.prior_returns[1]);
-    /// # Ok::<(), finalytics_core::Error>(())
+    /// # Ok::<(), finalytics::Error>(())
     /// ```
     pub fn estimate(&self) -> Result<BlackLittermanEstimate> {
         let c = &self.covariance;

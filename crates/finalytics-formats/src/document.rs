@@ -124,7 +124,8 @@ impl MarketRepr {
 /// reading and writing market data on its own.
 ///
 /// ```
-/// use finalytics_formats::MarketDocument;
+/// # mod finalytics { pub use finalytics_core::*; pub mod formats { pub use finalytics_formats::*; } }
+/// use finalytics::formats::MarketDocument;
 ///
 /// let text = r#"{"prices": {"AAPL": {"dates": ["2026-11-02"], "values": ["201.50"]}}}"#;
 /// let MarketDocument(market) = serde_json::from_str(text)?;
