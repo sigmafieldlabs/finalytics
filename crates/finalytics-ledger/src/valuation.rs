@@ -140,7 +140,9 @@ impl AccountSeries {
 impl Books {
     /// Each account's value at the end of each of `dates` (strictly increasing), with its
     /// external flows in between, in one pass over the transactions. Added up over every
-    /// account, the lines give [`Books::value_series`].
+    /// account, the lines give [`Books::value_series`]: exactly, unless a value needs more than
+    /// the 28 significant digits of [`Decimal`], as one at an inverted rate can, when the two
+    /// differ by rounding in the last digits.
     pub fn account_series(&self, dates: &[Date], market: &MarketData) -> Result<AccountSeries> {
         if let Some(pair) = dates.windows(2).find(|p| p[1] <= p[0]) {
             return Err(Error::UnorderedDates {

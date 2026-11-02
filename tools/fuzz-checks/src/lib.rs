@@ -12,7 +12,7 @@ use finalytics::formats::{
 };
 use finalytics::opt::{Constraints, Objective, Problem};
 use finalytics::risk::{self, Matrix, ReturnsTable, StatisticsOptions, TailMethod};
-use finalytics::{Books, Currency, Date, FlowTiming, MarketData, Performance, Portfolio};
+use finalytics::{Books, Currency, Date, Decimal, FlowTiming, MarketData, Performance, Portfolio};
 
 /// A check: it takes any bytes and panics if what must hold does not.
 pub type Check = fn(&[u8]);
@@ -211,11 +211,48 @@ fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, da
         books.value_series(dates, market),
     ) {
         let all = accounts.combined(|_| true);
-        assert_eq!(
-            all.values, whole.values,
-            "the accounts' values do not add up"
-        );
-        assert_eq!(all.flows, whole.flows, "the accounts' flows do not add up");
+        // The accounts add up to the portfolio exactly unless a value needs more than the 28
+        // significant digits of decimal arithmetic, as one at an inverted rate can; they may
+        // then differ by rounding, which is small next to the gross amounts added up.
+        let size = |x: Decimal| f64::try_from(x).map_or(f64::INFINITY, f64::abs);
+        let close = |a: Decimal, b: Decimal, gross: f64| {
+            a == b
+                || a.checked_sub(b)
+                    .is_some_and(|d| size(d) <= 1e-20 * (1.0 + gross))
+        };
+        let base = books.base_currency();
+        let mut events = books.events().iter().peekable();
+        for (t, &date) in dates.iter().enumerate() {
+            let mut gross_flows = 0.0;
+            while let Some(event) = events.next_if(|e| e.date <= date) {
+                for flow in &event.flows {
+                    let rate = market
+                        .fx_rate(flow.currency, base, event.date)
+                        .value()
+                        .copied();
+                    gross_flows += size(flow.amount) * rate.map_or(1.0, size);
+                }
+            }
+            let gross_values = books.value_on(date, market).map_or(0.0, |v| {
+                v.positions
+                    .iter()
+                    .map(|p| size(p.market_value_base))
+                    .sum::<f64>()
+                    + v.cash.iter().map(|c| size(c.value_base)).sum::<f64>()
+            });
+            assert!(
+                close(all.values[t], whole.values[t], gross_values),
+                "the accounts' values on {date} add up to {}, not the portfolio's {}",
+                all.values[t],
+                whole.values[t]
+            );
+            assert!(
+                close(all.flows[t], whole.flows[t], gross_flows),
+                "the accounts' flows on {date} add up to {}, not the portfolio's {}",
+                all.flows[t],
+                whole.flows[t]
+            );
+        }
     }
     let schemes: Vec<String> = portfolio
         .accounts

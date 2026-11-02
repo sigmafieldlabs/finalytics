@@ -19,7 +19,10 @@ transaction in any other account is an error.
 The books value each account at the end of each date, in the base currency, and record its
 external flows: deposits and transfers in, positive; withdrawals and transfers out, negative;
 each converted at the rate of its own date. Added up over every account, the values and flows
-are the portfolio's.
+are the portfolio's. They are equal exactly unless a value needs more than the 28 significant
+digits of decimal arithmetic, as one at a rate inverted from its quoted direction can: the
+portfolio values each instrument's whole quantity once and each account values its own, so the
+two can then differ by rounding in the last digits.
 
 A group's values and flows are its accounts' added up. Money moved between two accounts, as a
 withdrawal from one and a deposit into the other, is a flow for each account, and nets to zero
@@ -104,8 +107,8 @@ and a withdrawal, and computes each account's and each group's values, flows, ti
 return, money-weighted return (`scipy.optimize.brentq`) and contribution. The engine agrees to
 $10^{-12}$ relative, and to $10^{-10}$ for money-weighted returns, the reference's root-finding
 tolerance, in Rust, Python and JavaScript. The tests also work a three-account household by hand,
-and check that the accounts' series add up to the portfolio's exactly and that their
-contributions add up to the household's return.
+and check that the accounts' series add up to the portfolio's, exactly for the shared portfolio,
+and that their contributions add up to the household's return.
 
 ## References
 
