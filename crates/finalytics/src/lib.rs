@@ -37,8 +37,8 @@ pub mod formats {
 }
 
 /// Risk analytics: statistics, drawdowns, value at risk and expected shortfall, covariance
-/// estimation, factor models, and the decomposition of a portfolio's risk by holding, by group
-/// and by factor.
+/// estimation, factor models, the decomposition of a portfolio's risk by holding, by group and
+/// by factor, and scenarios: shocks and historical replays, with their effect on value and risk.
 ///
 /// ```
 /// let returns = [0.010, -0.004, 0.007, -0.012, 0.003];
@@ -48,15 +48,19 @@ pub mod formats {
 /// ```
 pub mod risk {
     pub use finalytics_risk::{
-        AssetFit, CovarianceEstimate, CovarianceMethod, Drawdown, FactorContribution, FactorMethod,
-        FactorModel, FactorModelEstimate, FactorRisk, GroupRisk, HoldingReturns, Matrix,
-        RelativeStatistics, ReturnsTable, RiskContribution, RiskDecomposition, Statistics,
+        AssetFit, CorrelationStress, CovarianceEstimate, CovarianceMethod, Drawdown,
+        FactorContribution, FactorMethod, FactorModel, FactorModelEstimate, FactorRisk,
+        FactorShocks, GroupImpact, GroupRisk, GroupShock, HistoricalWindow, HoldingImpact,
+        HoldingReturns, Matrix, RelativeStatistics, ReturnsTable, RiskContribution,
+        RiskDecomposition, ScenarioOptions, ScenarioPath, ScenarioResult, ScenarioRisk,
+        ScenarioRiskModel, SchemeImpact, SchemeRisk, ShockSource, Shocks, Statistics,
         StatisticsOptions, TailMethod, TailRisk, covariance, drawdown_series, drawdowns,
-        factor_risk, factor_tracking_error, fundamental_model, group_risk, holding_returns,
-        holding_weights, max_drawdown, normal_cdf, normal_pdf, normal_quantile, regression_model,
-        relative_statistics, risk_decomposition, rolling, rolling_relative_statistics,
-        rolling_statistics, rolling_tail_risk, statistical_model, statistics, tail_risk,
-        total_return, tracking_error_decomposition,
+        factor_risk, factor_tracking_error, fundamental_model, group_risk, historical_scenario,
+        holding_returns, holding_weights, max_drawdown, normal_cdf, normal_pdf, normal_quantile,
+        regression_model, relative_statistics, risk_decomposition, rolling,
+        rolling_relative_statistics, rolling_statistics, rolling_tail_risk, shock_scenario,
+        statistical_model, statistics, stressed_covariance, tail_risk, total_return,
+        tracking_error_decomposition,
     };
 }
 

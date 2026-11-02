@@ -1,6 +1,7 @@
 //! Risk analytics: return statistics, drawdowns, value at risk and expected shortfall,
-//! covariance estimation, factor models, and the decomposition of a portfolio's risk by holding,
-//! by group and by factor.
+//! covariance estimation, factor models, the decomposition of a portfolio's risk by holding, by
+//! group and by factor, and scenarios: shocks and historical replays, with their effect on value
+//! and risk.
 //!
 //! The statistics take returns as plain slices, one per period, so they serve both a portfolio's
 //! returns from [`finalytics_perf`](https://docs.rs/finalytics-perf) and returns supplied
@@ -21,6 +22,7 @@ mod input;
 mod linalg;
 mod matrix;
 mod rolling;
+mod scenario;
 mod statistics;
 mod tail;
 
@@ -38,6 +40,11 @@ pub use factor::{
 pub use holdings::{HoldingReturns, holding_returns, holding_weights};
 pub use matrix::{Matrix, ReturnsTable};
 pub use rolling::{rolling, rolling_relative_statistics, rolling_statistics, rolling_tail_risk};
+pub use scenario::{
+    CorrelationStress, FactorShocks, GroupImpact, GroupShock, HistoricalWindow, HoldingImpact,
+    ScenarioOptions, ScenarioPath, ScenarioResult, ScenarioRisk, ScenarioRiskModel, SchemeImpact,
+    SchemeRisk, ShockSource, Shocks, historical_scenario, shock_scenario, stressed_covariance,
+};
 pub use statistics::{
     RelativeStatistics, Statistics, StatisticsOptions, max_drawdown, relative_statistics,
     statistics, total_return,

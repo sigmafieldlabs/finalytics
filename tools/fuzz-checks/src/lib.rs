@@ -30,6 +30,7 @@ pub const CHECKS: &[(&str, Check)] = &[
     ("optimisation", optimisation),
     ("views", views),
     ("attribution", attribution),
+    ("scenarios", scenarios),
 ];
 
 fn text(data: &[u8]) -> Option<&str> {
@@ -135,6 +136,7 @@ fn books(portfolio: &Portfolio, market: &MarketData) {
         let _ = books.holdings_on(last);
         let _ = books.value_on(last, market);
         rebalancing(portfolio, &books, market, last);
+        portfolio_scenarios(portfolio, &books, market, last);
     }
     if let (Ok(values), Ok(holdings)) = (
         books.value_series(&dates, market),
@@ -191,6 +193,293 @@ fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: 
     }
     let accounts: Vec<_> = portfolio.accounts.iter().map(|a| a.id.clone()).collect();
     let _ = finalytics::opt::rebalance_accounts(books, market, date, &accounts, &targets, &options);
+}
+
+/// Shocks every instrument, every classification and every foreign currency of the portfolio,
+/// replays the period of its prices, and checks what holds for any scenario that runs.
+fn portfolio_scenarios(portfolio: &Portfolio, books: &Books, market: &MarketData, date: Date) {
+    use finalytics::risk::{GroupShock, HistoricalWindow, ScenarioOptions, Shocks};
+    let mut groups: Vec<GroupShock> = Vec::new();
+    for i in &portfolio.instruments {
+        for (scheme, value) in &i.classifications {
+            if !groups
+                .iter()
+                .any(|g| &g.scheme == scheme && &g.value == value)
+            {
+                groups.push(GroupShock {
+                    scheme: scheme.clone(),
+                    value: value.clone(),
+                    shock: -0.2,
+                });
+            }
+        }
+    }
+    let mut currencies: Vec<(Currency, f64)> = Vec::new();
+    for i in &portfolio.instruments {
+        if i.currency != portfolio.base_currency
+            && !currencies.iter().any(|(c, _)| *c == i.currency)
+        {
+            currencies.push((i.currency, -0.1));
+        }
+    }
+    let shocks = Shocks {
+        instruments: portfolio
+            .instruments
+            .iter()
+            .step_by(2)
+            .map(|i| (i.id.clone(), 0.05))
+            .collect(),
+        groups,
+        currencies,
+        factors: None,
+    };
+    let schemes: Vec<String> = portfolio
+        .instruments
+        .iter()
+        .flat_map(|i| i.classifications.keys().cloned())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let options = ScenarioOptions {
+        group_by: schemes,
+        risk: None,
+    };
+    if let Ok(result) = risk::shock_scenario(books, market, date, &shocks, &options) {
+        scenario_holds(&result);
+    }
+    let mut dates: Vec<Date> = market
+        .all_prices()
+        .flat_map(|(_, s)| s.dates().iter().copied())
+        .collect();
+    dates.sort();
+    if let (Some(&start), Some(&end)) = (dates.first(), dates.last())
+        && start < end
+    {
+        let window = HistoricalWindow {
+            start,
+            end,
+            proxies: Vec::new(),
+        };
+        if let Ok(result) = risk::historical_scenario(books, market, date, &window, &options) {
+            scenario_holds(&result);
+        }
+    }
+}
+
+/// What holds for any scenario's result: the holdings add up to the portfolio, the groups'
+/// contributions to its return, the risk contributions to the volatility, and the result reads
+/// back equal from JSON.
+fn scenario_holds(result: &finalytics::risk::ScenarioResult) {
+    let scale: f64 = 1.0
+        + result
+            .holdings
+            .iter()
+            .map(|h| h.value_before.abs() + h.value_after.abs())
+            .sum::<f64>();
+    let after: f64 = result.holdings.iter().map(|h| h.value_after).sum();
+    assert!(
+        (after - result.value_after).abs() <= 1e-9 * scale,
+        "the holdings add up to {after}, not {}",
+        result.value_after
+    );
+    for scheme in &result.groups {
+        let total: f64 = scheme.groups.iter().map(|g| g.contribution).sum();
+        assert!(
+            (total - result.portfolio_return).abs() <= 1e-9 * scale / result.value_before.abs(),
+            "the {} groups' contributions add up to {total}, not {}",
+            scheme.scheme,
+            result.portfolio_return
+        );
+    }
+    for risk in result.risk_before.iter().chain(&result.risk_after) {
+        let total: f64 = risk.contributions.iter().map(|c| c.component).sum();
+        assert!(
+            (total - risk.volatility).abs() <= 1e-9 * (1.0 + risk.volatility),
+            "risk contributions add up to {total}, not {}",
+            risk.volatility
+        );
+    }
+    if let Some(path) = &result.path {
+        let last = path.values.last().copied().unwrap_or(f64::NAN);
+        assert!(
+            (last - result.value_after).abs() <= 1e-9 * scale,
+            "the path ends at {last}, not {}",
+            result.value_after
+        );
+    }
+    let text = serde_json::to_string(result).unwrap_or_else(|e| panic!("{e}"));
+    let back: finalytics::risk::ScenarioResult =
+        serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+    assert_eq!(&back, result, "a scenario that does not read back equal");
+}
+
+/// A fixed portfolio of three instruments in two currencies, kept once.
+fn scenario_books() -> &'static (Books, MarketData) {
+    static BOOKS: std::sync::OnceLock<(Books, MarketData)> = std::sync::OnceLock::new();
+    BOOKS.get_or_init(|| {
+        let options = CsvOptions::default();
+        let portfolio = portfolio_from_csv(
+            Currency::USD,
+            "id,kind,currency,class.asset_class\nA,equity,USD,Equity\nB,equity,EUR,Equity\n\
+             C,bond,USD,Bonds\n",
+            "id,account,trade_date,type,instrument,quantity,price,amount,currency,sell_amount,\
+             sell_currency,buy_amount,buy_currency\n\
+             t1,main,2026-01-02,deposit,,,,100000,USD,,,,\n\
+             t2,main,2026-01-02,buy,A,100,300,,,,,,\n\
+             t3,main,2026-01-02,fx_conversion,,,,,,33000,USD,30000,EUR\n\
+             t4,main,2026-01-02,buy,B,100,250,,,,,,\n\
+             t5,main,2026-01-02,buy,C,300,100,,,,,,\n",
+            options,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        let market = prices_from_csv(
+            "date,A,B,C\n2026-01-02,300,250,100\n2026-01-05,290,255,100.2\n\
+             2026-01-06,280,240,100.5\n2026-01-07,295,245,100.1\n",
+            options,
+        )
+        .unwrap_or_else(|e| panic!("{e}"))
+        .into_iter()
+        .fold(MarketData::new(), |m, (id, p)| m.with_prices(id, p));
+        let market = fx_from_csv(
+            "date,EUR/USD\n2026-01-02,1.10\n2026-01-05,1.12\n2026-01-06,1.09\n2026-01-07,1.11\n",
+            options,
+        )
+        .unwrap_or_else(|e| panic!("{e}"))
+        .into_iter()
+        .fold(market, |m, fx| m.with_fx(fx.base, fx.quote, fx.rates));
+        let books = Books::build(&portfolio, &market).unwrap_or_else(|e| panic!("{e}"));
+        (books, market)
+    })
+}
+
+/// Scenarios from bytes on a fixed portfolio: the first byte picks shocks or a historical
+/// period, factor propagation, a factor model as the risk model, and a stress; the rest are
+/// numbers for the shocks, a factor model, a covariance and the stress. Whatever runs must
+/// satisfy what holds for any scenario, with finite factor returns.
+pub fn scenarios(data: &[u8]) {
+    use finalytics::risk::{
+        CorrelationStress, FactorModel, FactorShocks, GroupShock, HistoricalWindow,
+        ScenarioOptions, ScenarioRiskModel, Shocks,
+    };
+    let Some((&control, rest)) = data.split_first() else {
+        return;
+    };
+    let v = numbers(rest);
+    if v.len() < 40 {
+        return;
+    }
+    let (books, market) = scenario_books();
+    let labels = ["A", "B", "C"];
+    let factor = &v[11..15];
+    let factor_covariance = Matrix::new(
+        vec!["f0".into(), "f1".into()],
+        vec![
+            factor[0] * factor[0] + factor[1] * factor[1],
+            factor[0] * factor[2] + factor[1] * factor[3],
+            factor[0] * factor[2] + factor[1] * factor[3],
+            factor[2] * factor[2] + factor[3] * factor[3],
+        ],
+    );
+    let model = factor_covariance.ok().and_then(|f| {
+        FactorModel::new(
+            labels.iter().map(|s| s.to_string()).collect(),
+            vec![v[5..7].to_vec(), v[7..9].to_vec(), v[9..11].to_vec()],
+            f,
+            v[15..18].iter().map(|x| x.abs()).collect(),
+        )
+        .ok()
+    });
+    let risk_labels = ["A", "B", "C", "EUR cash"];
+    let root = &v[18..34];
+    let mut covariance = vec![0.0; 16];
+    for i in 0..4 {
+        for j in 0..4 {
+            covariance[i * 4 + j] = (0..4).map(|k| root[i * 4 + k] * root[j * 4 + k]).sum();
+        }
+    }
+    let covariance = Matrix::new(
+        risk_labels.iter().map(|s| s.to_string()).collect(),
+        covariance,
+    )
+    .ok();
+    let stress = (control & 0x10 != 0).then_some(CorrelationStress {
+        volatility_scale: v[34],
+        correlation_shift: v[35],
+    });
+    let risk = if control & 0x08 != 0 {
+        model.clone().map(|m| {
+            // The covariance the model implies, extended to the euro cash with a variance of its
+            // own.
+            let implied = m.covariance();
+            let mut values = vec![0.0; 16];
+            for i in 0..3 {
+                for j in 0..3 {
+                    values[i * 4 + j] = implied.get(i, j);
+                }
+            }
+            values[15] = v[36].abs();
+            ScenarioRiskModel {
+                covariance: Matrix::new(
+                    risk_labels.iter().map(|s| s.to_string()).collect(),
+                    values,
+                )
+                .ok(),
+                factor_model: None,
+                confidence: v[37],
+                stress,
+            }
+        })
+    } else {
+        covariance.map(|c| ScenarioRiskModel {
+            covariance: Some(c),
+            factor_model: None,
+            confidence: v[37],
+            stress,
+        })
+    };
+    let options = ScenarioOptions {
+        group_by: vec!["asset_class".into()],
+        risk,
+    };
+    let date = Date::from_ymd(2026, 1, 7).unwrap_or_else(|e| panic!("{e}"));
+    let result = if control & 0x01 == 0 {
+        let shocks = Shocks {
+            instruments: vec![(
+                finalytics::InstrumentId::new("A").unwrap_or_else(|| unreachable!()),
+                v[0],
+            )],
+            groups: vec![GroupShock {
+                scheme: "asset_class".into(),
+                value: "Bonds".into(),
+                shock: v[1],
+            }],
+            currencies: vec![(Currency::EUR, v[2])],
+            factors: model.map(|model| FactorShocks {
+                model,
+                shocks: vec![("f0".into(), v[3]), ("f1".into(), v[4])]
+                    .into_iter()
+                    .take(1 + usize::from(control & 0x02 != 0))
+                    .collect(),
+                propagate: control & 0x04 != 0,
+            }),
+        };
+        risk::shock_scenario(books, market, date, &shocks, &options)
+    } else {
+        let start = Date::from_ymd(2026, 1, 2).unwrap_or_else(|e| panic!("{e}"));
+        let window = HistoricalWindow {
+            start,
+            end: start.add_days(i32::from(control >> 5) + 1).unwrap_or(date),
+            proxies: Vec::new(),
+        };
+        risk::historical_scenario(books, market, date, &window, &options)
+    };
+    if let Ok(result) = result {
+        assert!(
+            result.factor_returns.iter().all(|(_, f)| f.is_finite()),
+            "non-finite factor returns"
+        );
+        scenario_holds(&result);
+    }
 }
 
 /// Numbers from bytes, eight at a time.

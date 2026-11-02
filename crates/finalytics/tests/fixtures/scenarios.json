@@ -1,0 +1,706 @@
+{
+ "generated_by": "scripts/reference/scenarios.py",
+ "shocks": {
+  "as_of": "2026-10-30",
+  "shocks": {
+   "instruments": [
+    [
+     "SAP",
+     -0.35
+    ]
+   ],
+   "groups": [
+    {
+     "scheme": "asset_class",
+     "value": "Equity",
+     "shock": -0.25
+    },
+    {
+     "scheme": "asset_class",
+     "value": "Fixed income",
+     "shock": 0.02
+    }
+   ],
+   "currencies": [
+    [
+     "EUR",
+     -0.08
+    ]
+   ]
+  },
+  "options": {
+   "group_by": [
+    "asset_class",
+    "region"
+   ],
+   "risk": {
+    "covariance": {
+     "labels": [
+      "SPY",
+      "SAP",
+      "BOND",
+      "EUR cash"
+     ],
+     "values": [
+      0.0001386894891422925,
+      7.614499154157613e-05,
+      -5.86293801574327e-07,
+      8.61575516123312e-06,
+      7.614499154157613e-05,
+      0.00022450286686687699,
+      -1.2746353368481348e-05,
+      2.886689176195351e-05,
+      -5.86293801574327e-07,
+      -1.2746353368481348e-05,
+      1.185732943480716e-05,
+      -2.722523496387456e-06,
+      8.61575516123312e-06,
+      2.886689176195351e-05,
+      -2.722523496387456e-06,
+      1.2452919108825493e-05
+     ]
+    },
+    "confidence": 0.99,
+    "stress": {
+     "volatility_scale": 1.5,
+     "correlation_shift": 0.5
+    }
+   }
+  },
+  "expected": {
+   "value_before": 110349.905054,
+   "value_after": 94359.554306592,
+   "holdings": [
+    {
+     "label": "BOND",
+     "local_return": 0.02,
+     "currency_return": 0.0,
+     "total_return": 0.020000000000000018,
+     "value_after": 30781.7691
+    },
+    {
+     "label": "SAP",
+     "local_return": -0.35,
+     "currency_return": -0.08,
+     "total_return": -0.4019999999999999,
+     "value_after": 8443.291708592
+    },
+    {
+     "label": "SPY",
+     "local_return": -0.25,
+     "currency_return": 0.0,
+     "total_return": -0.25,
+     "value_after": 31540.725
+    },
+    {
+     "label": "EUR cash",
+     "local_return": 0.0,
+     "currency_return": -0.08,
+     "total_return": -0.07999999999999996,
+     "value_after": 4650.768498
+    },
+    {
+     "label": "USD cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 18943.0
+    }
+   ],
+   "groups": {
+    "asset_class": [
+     {
+      "group": "Equity",
+      "change": -16189.500195407993,
+      "contribution": -0.14671059469861455
+     },
+     {
+      "group": "Fixed income",
+      "change": 603.5640999999996,
+      "contribution": 0.0054695479774508554
+     },
+     {
+      "group": "cash",
+      "change": -404.4146519999995,
+      "contribution": -0.0036648391478189143
+     }
+    ],
+    "region": [
+     {
+      "group": "Europe",
+      "change": -5675.925195407997,
+      "contribution": -0.051435705292455565
+     },
+     {
+      "group": "North America",
+      "change": -9910.010900000008,
+      "contribution": -0.08980534142870825
+     },
+     {
+      "group": "cash",
+      "change": -404.4146519999995,
+      "contribution": -0.0036648391478189143
+     }
+    ]
+   },
+   "risk_before": {
+    "volatility": 0.005631500686854621,
+    "value_at_risk": 1445.6753080639273,
+    "components": [
+     6.136622437372413e-05,
+     0.001262805163249967,
+     0.004251989917807816,
+     5.533938142311408e-05,
+     0.0
+    ]
+   },
+   "risk_after": {
+    "volatility": 0.008613093773017442,
+    "value_at_risk": 1890.6873329281457,
+    "components": [
+     0.0010667620032513328,
+     0.0016515872247411865,
+     0.005711984802668587,
+     0.0001827597423563373,
+     0.0
+    ]
+   }
+  }
+ },
+ "factors_one": {
+  "as_of": "2026-10-30",
+  "shocks": {
+   "factors": {
+    "model": {
+     "assets": [
+      "SPY",
+      "SAP",
+      "BOND"
+     ],
+     "exposures": [
+      [
+       1.0,
+       0.0,
+       0.0
+      ],
+      [
+       1.1,
+       0.8,
+       0.0
+      ],
+      [
+       0.0,
+       0.0,
+       -6.5
+      ]
+     ],
+     "factor_covariance": {
+      "labels": [
+       "equity",
+       "europe",
+       "rates"
+      ],
+      "values": [
+       0.04,
+       0.006,
+       -0.0016,
+       0.006,
+       0.009,
+       -0.0003,
+       -0.0016,
+       -0.0003,
+       0.0001
+      ]
+     },
+     "specific_variances": [
+      0.01,
+      0.02,
+      0.0001
+     ]
+    },
+    "shocks": [
+     [
+      "equity",
+      -0.2
+     ]
+    ],
+    "propagate": true
+   }
+  },
+  "options": {},
+  "expected": {
+   "value_before": 110349.905054,
+   "value_after": 96924.68946942399,
+   "holdings": [
+    {
+     "label": "BOND",
+     "local_return": -0.052000000000000005,
+     "currency_return": 0.0,
+     "total_return": -0.052000000000000046,
+     "value_after": 28608.93834
+    },
+    {
+     "label": "SAP",
+     "local_return": -0.24400000000000002,
+     "currency_return": 0.0,
+     "total_return": -0.244,
+     "value_after": 10674.127979423998
+    },
+    {
+     "label": "SPY",
+     "local_return": -0.2,
+     "currency_return": 0.0,
+     "total_return": -0.19999999999999996,
+     "value_after": 33643.439999999995
+    },
+    {
+     "label": "EUR cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 5055.18315
+    },
+    {
+     "label": "USD cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 18943.0
+    }
+   ],
+   "groups": {},
+   "factor_returns": [
+    -0.2,
+    -0.03,
+    0.008
+   ]
+  }
+ },
+ "factors_two": {
+  "as_of": "2026-10-30",
+  "shocks": {
+   "factors": {
+    "model": {
+     "assets": [
+      "SPY",
+      "SAP",
+      "BOND"
+     ],
+     "exposures": [
+      [
+       1.0,
+       0.0,
+       0.0
+      ],
+      [
+       1.1,
+       0.8,
+       0.0
+      ],
+      [
+       0.0,
+       0.0,
+       -6.5
+      ]
+     ],
+     "factor_covariance": {
+      "labels": [
+       "equity",
+       "europe",
+       "rates"
+      ],
+      "values": [
+       0.04,
+       0.006,
+       -0.0016,
+       0.006,
+       0.009,
+       -0.0003,
+       -0.0016,
+       -0.0003,
+       0.0001
+      ]
+     },
+     "specific_variances": [
+      0.01,
+      0.02,
+      0.0001
+     ]
+    },
+    "shocks": [
+     [
+      "equity",
+      -0.2
+     ],
+     [
+      "europe",
+      -0.05
+     ]
+    ],
+    "propagate": true
+   }
+  },
+  "options": {},
+  "expected": {
+   "value_before": 110349.905054,
+   "value_after": 96669.72150525628,
+   "holdings": [
+    {
+     "label": "BOND",
+     "local_return": -0.05296296296296299,
+     "currency_return": 0.0,
+     "total_return": -0.05296296296296299,
+     "value_after": 28579.8778462963
+    },
+    {
+     "label": "SAP",
+     "local_return": -0.26,
+     "currency_return": 0.0,
+     "total_return": -0.26,
+     "value_after": 10448.220508959997
+    },
+    {
+     "label": "SPY",
+     "local_return": -0.2,
+     "currency_return": 0.0,
+     "total_return": -0.19999999999999996,
+     "value_after": 33643.439999999995
+    },
+    {
+     "label": "EUR cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 5055.18315
+    },
+    {
+     "label": "USD cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 18943.0
+    }
+   ],
+   "groups": {},
+   "factor_returns": [
+    -0.2,
+    -0.05,
+    0.008148148148148153
+   ]
+  }
+ },
+ "factors_alone": {
+  "as_of": "2026-10-30",
+  "shocks": {
+   "factors": {
+    "model": {
+     "assets": [
+      "SPY",
+      "SAP",
+      "BOND"
+     ],
+     "exposures": [
+      [
+       1.0,
+       0.0,
+       0.0
+      ],
+      [
+       1.1,
+       0.8,
+       0.0
+      ],
+      [
+       0.0,
+       0.0,
+       -6.5
+      ]
+     ],
+     "factor_covariance": {
+      "labels": [
+       "equity",
+       "europe",
+       "rates"
+      ],
+      "values": [
+       0.04,
+       0.006,
+       -0.0016,
+       0.006,
+       0.009,
+       -0.0003,
+       -0.0016,
+       -0.0003,
+       0.0001
+      ]
+     },
+     "specific_variances": [
+      0.01,
+      0.02,
+      0.0001
+     ]
+    },
+    "shocks": [
+     [
+      "equity",
+      -0.2
+     ]
+    ],
+    "propagate": false
+   }
+  },
+  "options": {},
+  "expected": {
+   "value_before": 110349.905054,
+   "value_after": 98832.81733512,
+   "holdings": [
+    {
+     "label": "BOND",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 30178.205
+    },
+    {
+     "label": "SAP",
+     "local_return": -0.22000000000000003,
+     "currency_return": 0.0,
+     "total_return": -0.21999999999999997,
+     "value_after": 11012.989185119997
+    },
+    {
+     "label": "SPY",
+     "local_return": -0.2,
+     "currency_return": 0.0,
+     "total_return": -0.19999999999999996,
+     "value_after": 33643.439999999995
+    },
+    {
+     "label": "EUR cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 5055.18315
+    },
+    {
+     "label": "USD cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 18943.0
+    }
+   ],
+   "groups": {},
+   "factor_returns": [
+    -0.2,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "historical": {
+  "as_of": "2026-10-30",
+  "window": {
+   "start": "2026-09-03",
+   "end": "2026-09-30",
+   "proxies": []
+  },
+  "options": {},
+  "expected": {
+   "value_before": 110349.905054,
+   "value_after": 106858.85215226997,
+   "holdings": [
+    {
+     "label": "BOND",
+     "local_return": -0.011629168598285777,
+     "currency_return": 0.0,
+     "total_return": -0.011629168598285777,
+     "value_after": 29827.25756606137
+    },
+    {
+     "label": "SAP",
+     "local_return": -0.005520332313074028,
+     "currency_return": -0.008125256767243516,
+     "total_return": -0.013600734962833316,
+     "value_after": 13927.185177005937
+    },
+    {
+     "label": "SPY",
+     "local_return": -0.06912489518784382,
+     "currency_return": 0.0,
+     "total_return": -0.06912489518784382,
+     "value_after": 39147.30092030186
+    },
+    {
+     "label": "EUR cash",
+     "local_return": 0.0,
+     "currency_return": -0.008125256767243516,
+     "total_return": -0.008125256767243516,
+     "value_after": 5014.108488900807
+    },
+    {
+     "label": "USD cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 18943.0
+    }
+   ],
+   "groups": {},
+   "path": {
+    "dates": [
+     "2026-09-03",
+     "2026-09-04",
+     "2026-09-07",
+     "2026-09-08",
+     "2026-09-09",
+     "2026-09-10",
+     "2026-09-11",
+     "2026-09-14",
+     "2026-09-15",
+     "2026-09-16",
+     "2026-09-17",
+     "2026-09-18",
+     "2026-09-21",
+     "2026-09-22",
+     "2026-09-23",
+     "2026-09-24",
+     "2026-09-25",
+     "2026-09-28",
+     "2026-09-29",
+     "2026-09-30"
+    ],
+    "values": [
+     110349.905054,
+     108756.58209254347,
+     107862.91657014449,
+     106474.66981444196,
+     106294.80581278545,
+     106695.34754230322,
+     106341.8653880871,
+     107292.24878254127,
+     107379.65337579352,
+     108512.71870944982,
+     108258.7482822816,
+     108693.97788777725,
+     108856.42609712464,
+     108300.91024126588,
+     108110.8125669974,
+     107635.41188297843,
+     107700.3008058075,
+     107842.32929298672,
+     107715.52073087326,
+     106858.85215226997
+    ],
+    "peak": "2026-09-03",
+    "trough": "2026-09-09",
+    "depth": -0.03674764594704616
+   }
+  }
+ },
+ "historical_proxy": {
+  "as_of": "2026-10-30",
+  "window": {
+   "start": "2026-09-03",
+   "end": "2026-09-30",
+   "proxies": [
+    [
+     "SAP",
+     "SPY"
+    ]
+   ]
+  },
+  "options": {},
+  "expected": {
+   "value_before": 110349.905054,
+   "value_after": 105968.10239232787,
+   "holdings": [
+    {
+     "label": "BOND",
+     "local_return": -0.011629168598285777,
+     "currency_return": 0.0,
+     "total_return": -0.011629168598285777,
+     "value_after": 29827.25756606137
+    },
+    {
+     "label": "SAP",
+     "local_return": -0.06912489518784382,
+     "currency_return": -0.008125256767243516,
+     "total_return": -0.07668849443267733,
+     "value_after": 13036.435417063829
+    },
+    {
+     "label": "SPY",
+     "local_return": -0.06912489518784382,
+     "currency_return": 0.0,
+     "total_return": -0.06912489518784382,
+     "value_after": 39147.30092030186
+    },
+    {
+     "label": "EUR cash",
+     "local_return": 0.0,
+     "currency_return": -0.008125256767243516,
+     "total_return": -0.008125256767243516,
+     "value_after": 5014.108488900807
+    },
+    {
+     "label": "USD cash",
+     "local_return": 0.0,
+     "currency_return": 0.0,
+     "total_return": 0.0,
+     "value_after": 18943.0
+    }
+   ],
+   "groups": {},
+   "path": {
+    "dates": [
+     "2026-09-03",
+     "2026-09-04",
+     "2026-09-07",
+     "2026-09-08",
+     "2026-09-09",
+     "2026-09-10",
+     "2026-09-11",
+     "2026-09-14",
+     "2026-09-15",
+     "2026-09-16",
+     "2026-09-17",
+     "2026-09-18",
+     "2026-09-21",
+     "2026-09-22",
+     "2026-09-23",
+     "2026-09-24",
+     "2026-09-25",
+     "2026-09-28",
+     "2026-09-29",
+     "2026-09-30"
+    ],
+    "values": [
+     110349.905054,
+     108492.870886563,
+     107298.04079708886,
+     105830.31071980257,
+     105867.99215686327,
+     106144.16993126382,
+     105816.85652295827,
+     107022.64328849544,
+     107062.03124518563,
+     108113.09073916868,
+     107502.85334379504,
+     108062.02939974124,
+     108284.92690670046,
+     107759.86480114453,
+     107523.6826101259,
+     107106.90212341705,
+     107033.42708001878,
+     107176.79199242397,
+     106953.78394105403,
+     105968.10239232787
+    ],
+    "peak": "2026-09-03",
+    "trough": "2026-09-11",
+    "depth": -0.04107886208713518
+   }
+  }
+ }
+}

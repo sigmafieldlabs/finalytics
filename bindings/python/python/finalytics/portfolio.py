@@ -407,7 +407,7 @@ class Books:
         """
         options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
         pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
-        text = call(self._native.rebalance, self._rebalance_date(date), account, dumps(pairs), dumps(options))
+        text = call(self._native.rebalance, self._date_or_last_price(date), account, dumps(pairs), dumps(options))
         return loads(_types.Rebalance, text)
 
     def rebalance_accounts(
@@ -431,14 +431,108 @@ class Books:
         pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
         text = call(
             self._native.rebalance_accounts,
-            self._rebalance_date(date),
+            self._date_or_last_price(date),
             json.dumps(list(accounts)),
             dumps(pairs),
             dumps(options),
         )
         return loads(_types.CombinedRebalance, text)
 
-    def _rebalance_date(self, date: DateLike | None) -> str:
+    def shock_scenario(
+        self,
+        *,
+        instruments: Mapping[str, float] | None = None,
+        groups: Mapping[tuple[str, str], float] | None = None,
+        currencies: Mapping[str, float] | None = None,
+        factors: Mapping[str, float] | None = None,
+        factor_model: _types.FactorModel | _types.FactorModelEstimate | None = None,
+        propagate: bool = False,
+        date: DateLike | None = None,
+        group_by: Sequence[str] = (),
+        risk: _types.Matrix | _types.FactorModel | _types.FactorModelEstimate | None = None,
+        confidence: float = 0.95,
+        stress: _types.CorrelationStress | None = None,
+    ) -> _types.ScenarioResult:
+        """What shocks would do to the holdings on `date` (by default the last price date).
+
+        `instruments` and `currencies` map identifiers and currency codes to returns, and
+        `groups` maps `(scheme, value)` pairs, such as `("asset_class", "Equity")`, to the return
+        of every instrument in the group. `factors` maps factor names of `factor_model` to
+        returns; with `propagate`, the other factors move by their expected return given them.
+        An instrument's own shock comes first, then the one group that matches it (more than one
+        is an error), then the factors; an instrument none of them reaches is listed as not
+        shocked. Currency shocks compound with an instrument's return and move cash.
+
+        With `risk` (a covariance matrix or factor model of the holdings' returns, labelled by
+        instrument and "EUR cash" style labels), the result has the risk before and after, the
+        latter with the covariance stressed by `stress`.
+        """
+        factor_shocks = None
+        if factors:
+            if factor_model is None:
+                raise ValueError("factor shocks need a factor_model")
+            model = factor_model.model if isinstance(factor_model, _types.FactorModelEstimate) else factor_model
+            factor_shocks = _types.FactorShocks(
+                model=model, shocks=[(k, float(v)) for k, v in factors.items()], propagate=propagate
+            )
+        shocks = _types.Shocks(
+            instruments=[(k, float(v)) for k, v in (instruments or {}).items()],
+            groups=[
+                _types.GroupShock(scheme=scheme, value=value, shock=float(v))
+                for (scheme, value), v in (groups or {}).items()
+            ],
+            currencies=[(k, float(v)) for k, v in (currencies or {}).items()],
+            factors=factor_shocks,
+        )
+        options = self._scenario_options(group_by, risk, confidence, stress)
+        text = call(self._native.shock_scenario, self._date_or_last_price(date), dumps(shocks), dumps(options))
+        return loads(_types.ScenarioResult, text)
+
+    def historical_scenario(
+        self,
+        start: DateLike,
+        end: DateLike,
+        *,
+        proxies: Mapping[str, str] | None = None,
+        date: DateLike | None = None,
+        group_by: Sequence[str] = (),
+        risk: _types.Matrix | _types.FactorModel | _types.FactorModelEstimate | None = None,
+        confidence: float = 0.95,
+        stress: _types.CorrelationStress | None = None,
+    ) -> _types.ScenarioResult:
+        """What the price and exchange-rate changes from `start` to `end` would do to the
+        holdings on `date` (by default the last price date), with the holdings' value on each
+        date in between. `proxies` maps instruments with no prices then to instruments whose
+        prices stand in for them; their own currency's rate still applies. `group_by`, `risk`,
+        `confidence` and `stress` are as for :meth:`shock_scenario`."""
+        window = _types.HistoricalWindow(
+            start=datetime.date.fromisoformat(_arrays.date(start)),
+            end=datetime.date.fromisoformat(_arrays.date(end)),
+            proxies=list((proxies or {}).items()),
+        )
+        options = self._scenario_options(group_by, risk, confidence, stress)
+        text = call(self._native.historical_scenario, self._date_or_last_price(date), dumps(window), dumps(options))
+        return loads(_types.ScenarioResult, text)
+
+    @staticmethod
+    def _scenario_options(
+        group_by: Sequence[str],
+        risk: _types.Matrix | _types.FactorModel | _types.FactorModelEstimate | None,
+        confidence: float,
+        stress: _types.CorrelationStress | None,
+    ) -> _types.ScenarioOptions:
+        model = None
+        if isinstance(risk, _types.FactorModelEstimate):
+            risk = risk.model
+        if isinstance(risk, _types.Matrix):
+            model = _types.ScenarioRiskModel(covariance=risk, confidence=confidence, stress=stress)
+        elif isinstance(risk, _types.FactorModel):
+            model = _types.ScenarioRiskModel(factor_model=risk, confidence=confidence, stress=stress)
+        elif risk is not None:
+            raise TypeError("risk must be a covariance matrix or a factor model")
+        return _types.ScenarioOptions(group_by=list(group_by), risk=model)
+
+    def _date_or_last_price(self, date: DateLike | None) -> str:
         if date is None:
             dates = self.market.price_dates
             if len(dates) == 0:

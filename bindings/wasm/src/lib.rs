@@ -63,6 +63,12 @@ export interface RebalanceChoices extends Partial<RebalanceOptions> {
   date?: Date;
 }
 
+/** Choices for `Books.shockScenario` and `Books.historicalScenario`, all optional. */
+export interface ScenarioChoices extends Partial<ScenarioOptions> {
+  /** The date of the holdings; the last price date by default. */
+  date?: Date;
+}
+
 /** A validation error: every problem found, with where it is. */
 export interface ValidationError extends Error {
   name: "ValidationError";
@@ -576,11 +582,55 @@ impl Books {
         .map_err(error)?;
         to_js(&plan)
     }
+
+    /// What `shocks` would do to the holdings, with their risk before and after if the choices
+    /// give a risk model.
+    #[wasm_bindgen(js_name = shockScenario, unchecked_return_type = "ScenarioResult")]
+    pub fn shock_scenario(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Shocks")] shocks: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "ScenarioChoices")] choices: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let shocks: finalytics::risk::Shocks = from_js(shocks, "shocks")?;
+        let (on, options) = self.scenario_choices(choices)?;
+        let result =
+            finalytics::risk::shock_scenario(&self.books, &self.market, on, &shocks, &options)
+                .map_err(error)?;
+        to_js(&result)
+    }
+
+    /// What the price and exchange-rate changes over a historical period would do to the
+    /// holdings, with their value on each date of the period.
+    #[wasm_bindgen(js_name = historicalScenario, unchecked_return_type = "ScenarioResult")]
+    pub fn historical_scenario(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "HistoricalWindow")] window: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "ScenarioChoices")] choices: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let window: finalytics::risk::HistoricalWindow = from_js(window, "window")?;
+        let (on, options) = self.scenario_choices(choices)?;
+        let result =
+            finalytics::risk::historical_scenario(&self.books, &self.market, on, &window, &options)
+                .map_err(error)?;
+        to_js(&result)
+    }
 }
 
 impl Books {
     /// The date and options of `Books.rebalance` and `Books.rebalanceAccounts`.
     fn rebalance_choices(&self, choices: JsValue) -> Result<(Date, RebalanceOptions), JsValue> {
+        self.dated_choices(choices)
+    }
+
+    fn scenario_choices(
+        &self,
+        choices: JsValue,
+    ) -> Result<(Date, finalytics::risk::ScenarioOptions), JsValue> {
+        self.dated_choices(choices)
+    }
+
+    /// Options with an optional `date` among them, by default the last price date.
+    fn dated_choices<T: DeserializeOwned>(&self, choices: JsValue) -> Result<(Date, T), JsValue> {
         let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
         let on = match choices.remove("date") {
             Some(serde_json::Value::String(d)) => parse_date(&d)?,
@@ -1067,6 +1117,18 @@ pub fn factor_model(
 ) -> Result<JsValue, JsValue> {
     let model: FactorModel = from_js(model, "model")?;
     to_js(&model)
+}
+
+/// `covariance` with every volatility scaled and every correlation moved toward one by
+/// `stress`: `s^2 ((1 - a) C + a v v')`, with `v` the volatilities.
+#[wasm_bindgen(js_name = stressedCovariance, unchecked_return_type = "Matrix")]
+pub fn stressed_covariance(
+    #[wasm_bindgen(unchecked_param_type = "Matrix")] covariance: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "CorrelationStress")] stress: JsValue,
+) -> Result<JsValue, JsValue> {
+    let covariance: Matrix = from_js(covariance, "covariance")?;
+    let stress: finalytics::risk::CorrelationStress = from_js(stress, "stress")?;
+    to_js(&finalytics::risk::stressed_covariance(&covariance, &stress).map_err(error)?)
 }
 
 /// The covariance matrix of the assets that a factor model implies, `B F B' + diag(d)`.

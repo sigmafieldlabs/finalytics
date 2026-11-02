@@ -48,6 +48,15 @@ VARIANT_NAMES = {
     "Effect": {"set_lot": "LotSet", "close_lot": "LotClosed", "cash": "CashChange"},
     "Allocation": {"trade": "TradeAllocation", "income": "IncomeAllocation", "exchange": "ExchangeAllocation"},
     "Prior": {"market": "MarketPrior", "returns": "ReturnsPrior"},
+    "ShockSource": {
+        "instrument": "InstrumentSource",
+        "group": "GroupSource",
+        "factor": "FactorSource",
+        "history": "HistorySource",
+        "proxy": "ProxySource",
+        "cash": "CashSource",
+        "none": "NoSource",
+    },
 }
 
 # For a type whose own fields are flattened together with a tagged union, the name of the Python

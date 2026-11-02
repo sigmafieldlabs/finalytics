@@ -647,6 +647,24 @@
       ],
       "description": "What one holding added to the portfolio's return over a period."
     },
+    "CorrelationStress": {
+      "type": "object",
+      "properties": {
+        "volatility_scale": {
+          "type": "number",
+          "format": "double",
+          "description": "The factor every volatility is multiplied by. The default is 1.",
+          "default": 1.0
+        },
+        "correlation_shift": {
+          "type": "number",
+          "format": "double",
+          "description": "How far every correlation moves toward one, from 0 (not at all, the default) to 1 (all\nthe way).",
+          "default": 0.0
+        }
+      },
+      "description": "A stress of a covariance matrix: volatilities scaled and correlations moved toward one."
+    },
     "CovarianceEstimate": {
       "type": "object",
       "properties": {
@@ -1604,6 +1622,43 @@
       ],
       "description": "A portfolio's volatility under a factor model, split into each factor's contribution and the\nspecific (stock-specific) part, and into each asset's contribution (Euler allocation)."
     },
+    "FactorShocks": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "$ref": "#/$defs/FactorModel",
+          "description": "The model. Its assets are instrument identifiers; assets that are not held are ignored."
+        },
+        "shocks": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "The return of each shocked factor, by factor name."
+        },
+        "propagate": {
+          "type": "boolean",
+          "description": "Whether the factors that are not shocked move too, by their expected return given the\nshocked ones under the model's factor covariance. Without it, they return zero.",
+          "default": false
+        }
+      },
+      "required": [
+        "model",
+        "shocks"
+      ],
+      "description": "Returns of a factor model's factors, which give each instrument in the model the return its\nexposures imply."
+    },
     "Fees": {
       "type": "object",
       "properties": {
@@ -1747,6 +1802,57 @@
       ],
       "description": "What a group of holdings (an asset class, a region) added to the portfolio's return."
     },
+    "GroupImpact": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "The group."
+        },
+        "value_before": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value before, in the base currency."
+        },
+        "value_after": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value after."
+        },
+        "change": {
+          "type": "number",
+          "format": "double",
+          "description": "`value_after - value_before`."
+        },
+        "weight_before": {
+          "type": "number",
+          "format": "double",
+          "description": "Its share of the portfolio's value before."
+        },
+        "weight_after": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "Its share of the portfolio's value after, or `None` if the portfolio is worth nothing\nafter."
+        },
+        "contribution": {
+          "type": "number",
+          "format": "double",
+          "description": "`change` as a share of the portfolio's value before: the groups' contributions add up to\nthe portfolio's return."
+        }
+      },
+      "required": [
+        "group",
+        "value_before",
+        "value_after",
+        "change",
+        "weight_before",
+        "contribution"
+      ],
+      "description": "What a scenario does to one group of holdings."
+    },
     "GroupLimit": {
       "type": "object",
       "properties": {
@@ -1812,6 +1918,134 @@
         "component"
       ],
       "description": "A group's share of a portfolio's volatility."
+    },
+    "GroupShock": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The classification scheme, such as `asset_class`."
+        },
+        "value": {
+          "type": "string",
+          "description": "The classification, such as `equity`."
+        },
+        "shock": {
+          "type": "number",
+          "format": "double",
+          "description": "The return of each instrument in the group, in its own currency: -0.2 for a fall of 20%."
+        }
+      },
+      "required": [
+        "scheme",
+        "value",
+        "shock"
+      ],
+      "description": "A return for every instrument with a classification, such as all equities."
+    },
+    "HistoricalWindow": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period."
+        },
+        "proxies": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/InstrumentId"
+              },
+              {
+                "$ref": "#/$defs/InstrumentId"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Instruments whose prices stand in for others' over the period, such as an index for a\nfund that did not exist then: `(instrument, proxy)` pairs.",
+          "default": []
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "description": "A historical period to replay on today's holdings."
+    },
+    "HoldingImpact": {
+      "type": "object",
+      "properties": {
+        "holding": {
+          "$ref": "#/$defs/HoldingKey",
+          "description": "The holding."
+        },
+        "value_before": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value before, in the base currency."
+        },
+        "weight_before": {
+          "type": "number",
+          "format": "double",
+          "description": "Its share of the portfolio's value before."
+        },
+        "local_return": {
+          "type": "number",
+          "format": "double",
+          "description": "Its return in its own currency."
+        },
+        "currency_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The change in its currency's value in the base currency."
+        },
+        "total_return": {
+          "type": "number",
+          "format": "double",
+          "description": "Its return in the base currency, `(1 + local)(1 + currency) - 1`."
+        },
+        "value_after": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value after, in the base currency."
+        },
+        "weight_after": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "Its share of the portfolio's value after, or `None` if the portfolio is worth nothing\nafter."
+        },
+        "change": {
+          "type": "number",
+          "format": "double",
+          "description": "`value_after - value_before`."
+        },
+        "source": {
+          "$ref": "#/$defs/ShockSource",
+          "description": "How its return was set."
+        }
+      },
+      "required": [
+        "holding",
+        "value_before",
+        "weight_before",
+        "local_return",
+        "currency_return",
+        "total_return",
+        "value_after",
+        "change",
+        "source"
+      ],
+      "description": "What a scenario does to one holding: an instrument, or cash in one currency, added up across\naccounts."
     },
     "HoldingKey": {
       "oneOf": [
@@ -3683,6 +3917,317 @@
       ],
       "description": "A portfolio's volatility split into each asset's contribution (Euler allocation)."
     },
+    "ScenarioOptions": {
+      "type": "object",
+      "properties": {
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classification schemes to add the effect up by, such as `asset_class`. Instruments\nwithout the classification are in the group \"unclassified\", and cash in \"cash\".",
+          "default": []
+        },
+        "risk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioRiskModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The risk model for the risk before and after; without one, no risk is reported.",
+          "default": null
+        }
+      },
+      "description": "What to report beyond the effect on each holding."
+    },
+    "ScenarioPath": {
+      "type": "object",
+      "properties": {
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "Every date in the period with a price for a holding, and its start and end."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The holdings' value on each date, in the base currency."
+        },
+        "worst_drawdown": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Drawdown"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The largest fall from a peak over the period, `None` if the value never falls or is not\nalways above zero."
+        }
+      },
+      "required": [
+        "dates",
+        "values"
+      ],
+      "description": "The hypothetical value of today's holdings over a historical period."
+    },
+    "ScenarioResult": {
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "$ref": "#/$defs/Date",
+          "description": "The date of the holdings."
+        },
+        "base_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency values are in."
+        },
+        "value_before": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's value before."
+        },
+        "value_after": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's value after."
+        },
+        "change": {
+          "type": "number",
+          "format": "double",
+          "description": "`value_after - value_before`."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "`change / value_before`."
+        },
+        "holdings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HoldingImpact"
+          },
+          "description": "Each holding, in holding order: instruments by identifier, then cash by currency."
+        },
+        "not_shocked": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InstrumentId"
+          },
+          "description": "The instruments held whose return in their own currency no shock set."
+        },
+        "factor_returns": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "The factor returns applied, given and propagated, in the order of the model's factors;\nempty without factor shocks."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SchemeImpact"
+          },
+          "description": "The effect by each classification scheme the options group by."
+        },
+        "risk_before": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioRisk"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The risk before, with a risk model."
+        },
+        "risk_after": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioRisk"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The risk after, with the stressed covariance if the risk model has a stress; `None`\nwithout a risk model or if the portfolio is worth nothing after."
+        },
+        "path": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioPath"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a historical scenario, the holdings' value over the period."
+        },
+        "warnings": {
+          "$ref": "#/$defs/ValidationReport",
+          "description": "Prices and rates carried forward from earlier dates, and shocks that matched nothing."
+        }
+      },
+      "required": [
+        "as_of",
+        "base_currency",
+        "value_before",
+        "value_after",
+        "change",
+        "portfolio_return",
+        "holdings",
+        "not_shocked",
+        "factor_returns",
+        "groups",
+        "warnings"
+      ],
+      "description": "What a scenario does to a portfolio."
+    },
+    "ScenarioRisk": {
+      "type": "object",
+      "properties": {
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The volatility of the portfolio's return, in the units of the risk model (scale the\nmodel to annualise)."
+        },
+        "value_at_risk": {
+          "type": "number",
+          "format": "double",
+          "description": "The parametric value at risk of the portfolio's value at the model's confidence, a loss\nin the base currency: `z * volatility * value`."
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RiskContribution"
+          },
+          "description": "Each holding's contribution to the volatility, in the order of the holdings."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SchemeRisk"
+          },
+          "description": "The contributions added up by each classification scheme the options group by."
+        }
+      },
+      "required": [
+        "volatility",
+        "value_at_risk",
+        "contributions",
+        "groups"
+      ],
+      "description": "A portfolio's risk before or after a scenario."
+    },
+    "ScenarioRiskModel": {
+      "type": "object",
+      "properties": {
+        "covariance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Matrix"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The covariance of the holdings' returns, labelled with instrument identifiers and, for\ncash, the currency code followed by \" cash\" (as holding returns are). Give this or\n`factor_model`.",
+          "default": null
+        },
+        "factor_model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactorModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A factor model of the holdings' returns, labelled in the same way.",
+          "default": null
+        },
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "description": "The confidence of the value at risk. The default is 0.95.",
+          "default": 0.95
+        },
+        "stress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CorrelationStress"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A stress of the covariance for the risk after the scenario, as in a crisis.",
+          "default": null
+        }
+      },
+      "description": "The risk model for the risk before and after a scenario."
+    },
+    "SchemeImpact": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The classification scheme."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GroupImpact"
+          },
+          "description": "Each group, in name order."
+        }
+      },
+      "required": [
+        "scheme",
+        "groups"
+      ],
+      "description": "The effect of a scenario by the groups of one classification scheme."
+    },
+    "SchemeRisk": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The classification scheme."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GroupRisk"
+          },
+          "description": "Each group's share of the volatility, in name order."
+        }
+      },
+      "required": [
+        "scheme",
+        "groups"
+      ],
+      "description": "Risk by the groups of one classification scheme."
+    },
     "Segment": {
       "type": "object",
       "properties": {
@@ -3771,6 +4316,181 @@
         }
       ],
       "description": "How serious a validation issue is."
+    },
+    "ShockSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "instrument"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "description": "Its own shock."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "group"
+            },
+            "scheme": {
+              "type": "string",
+              "description": "The group's classification scheme."
+            },
+            "value": {
+              "type": "string",
+              "description": "The group's classification."
+            }
+          },
+          "required": [
+            "source",
+            "scheme",
+            "value"
+          ],
+          "description": "A group shock."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "factor"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "description": "The factor shocks and its exposures."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "history"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "description": "Its prices over a historical period."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "proxy"
+            },
+            "instrument": {
+              "$ref": "#/$defs/InstrumentId",
+              "description": "The instrument whose prices were used."
+            }
+          },
+          "required": [
+            "source",
+            "instrument"
+          ],
+          "description": "Another instrument's prices over a historical period."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "cash"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "description": "Cash: only a change in its currency's value moves it."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "none"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "description": "Nothing: its return in its own currency is zero."
+        }
+      ],
+      "description": "How a holding's return in a scenario was set."
+    },
+    "Shocks": {
+      "type": "object",
+      "properties": {
+        "instruments": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/InstrumentId"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Returns of single instruments, by identifier.",
+          "default": []
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GroupShock"
+          },
+          "description": "Returns of every instrument in a group. An instrument without its own shock may match at\nmost one of them.",
+          "default": []
+        },
+        "currencies": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Currency"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%.",
+          "default": []
+        },
+        "factors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactorShocks"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Returns of factors.",
+          "default": null
+        }
+      },
+      "description": "The shocks of a scenario. An instrument's return in its own currency comes from its own\nshock, or else from the one group shock that matches it, or else from the factor shocks; an\ninstrument none of them reaches returns zero and is listed as not shocked. A currency shock\ncompounds with the instrument's return, and applies to cash in that currency."
     },
     "Side": {
       "oneOf": [

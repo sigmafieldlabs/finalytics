@@ -1,6 +1,6 @@
 [package]
 name = "finalytics-risk"
-description = "Risk analytics for Finalytics: statistics, drawdowns, covariance estimation, VaR and expected shortfall, risk decomposition."
+description = "Risk analytics for Finalytics: statistics, drawdowns, covariance estimation, factor models, VaR and expected shortfall, risk decomposition and scenarios."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

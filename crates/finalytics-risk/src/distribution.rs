@@ -80,6 +80,11 @@ fn lower_quantile(p: f64) -> f64 {
     for _ in 0..2 {
         let e = normal_cdf(x) - p;
         let u = e * (2.0 * PI).sqrt() * (0.5 * x * x).exp();
+        // Far in the tail (p below about 1e-308) the density underflows and the correction
+        // cannot be computed; the rational approximation is kept.
+        if !u.is_finite() {
+            break;
+        }
         x -= u / (1.0 + 0.5 * x * u);
     }
     x
@@ -98,6 +103,16 @@ mod tests {
         assert!((normal_pdf(0.0) - 0.398_942_280_401_432_7).abs() < 1e-16);
         assert_eq!(normal_quantile(0.0), f64::NEG_INFINITY);
         assert!(normal_quantile(1.5).is_nan());
+    }
+
+    #[test]
+    fn quantiles_far_in_the_tail_are_finite() {
+        let mut previous = f64::NEG_INFINITY;
+        for p in [5e-324, 8.0646e-320, 1e-310, 2.3e-308, 1e-300] {
+            let x = normal_quantile(p);
+            assert!(x.is_finite() && x > previous && x < -37.0, "{p}: {x}");
+            previous = x;
+        }
     }
 
     #[test]

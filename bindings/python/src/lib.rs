@@ -409,6 +409,23 @@ impl NativeBooks {
         .map_err(engine)?;
         to_json(&plan)
     }
+
+    fn shock_scenario(&self, on: &str, shocks: &str, options: &str) -> PyResult<String> {
+        let shocks: risk::Shocks = from_json(shocks, "shocks")?;
+        let options: risk::ScenarioOptions = from_json(options, "options")?;
+        let result = risk::shock_scenario(&self.books, &self.market, date(on)?, &shocks, &options)
+            .map_err(engine)?;
+        to_json(&result)
+    }
+
+    fn historical_scenario(&self, on: &str, window: &str, options: &str) -> PyResult<String> {
+        let window: risk::HistoricalWindow = from_json(window, "window")?;
+        let options: risk::ScenarioOptions = from_json(options, "options")?;
+        let result =
+            risk::historical_scenario(&self.books, &self.market, date(on)?, &window, &options)
+                .map_err(engine)?;
+        to_json(&result)
+    }
 }
 
 /// Time-weighted performance, and the holding series for contribution when built from books.
@@ -729,6 +746,13 @@ fn factor_model(model: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+fn stressed_covariance(covariance: &str, stress: &str) -> PyResult<String> {
+    let covariance: Matrix = from_json(covariance, "covariance")?;
+    let stress: risk::CorrelationStress = from_json(stress, "stress")?;
+    to_json(&risk::stressed_covariance(&covariance, &stress).map_err(engine)?)
+}
+
+#[pyfunction]
 fn implied_covariance(model: &str) -> PyResult<String> {
     let model: FactorModel = from_json(model, "model")?;
     to_json(&model.covariance())
@@ -893,6 +917,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(normal_pdf, m)?)?;
     m.add_function(wrap_pyfunction!(normal_quantile, m)?)?;
     m.add_function(wrap_pyfunction!(solve, m)?)?;
+    m.add_function(wrap_pyfunction!(stressed_covariance, m)?)?;
     m.add_function(wrap_pyfunction!(brinson_fachler, m)?)?;
     m.add_function(wrap_pyfunction!(karnosky_singer, m)?)?;
     m.add_function(wrap_pyfunction!(frontier, m)?)?;

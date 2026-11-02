@@ -96,3 +96,10 @@ path = "fuzz_targets/attribution.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "scenarios"
+path = "fuzz_targets/scenarios.rs"
+test = false
+doc = false
+bench = false

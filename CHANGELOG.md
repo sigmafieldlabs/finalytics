@@ -94,12 +94,19 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   market effects on returns in excess of cash, currency effects that include interest-rate
   differences, and given currency exposures for hedged portfolios. Validated against an
   independent NumPy implementation.
+- Scenarios: shocks to instruments, groups of instruments, currencies and factors (with the
+  factors not shocked moved by their conditional expectation, optionally), and historical
+  periods replayed on current holdings, with proxies for instruments that had no prices then;
+  the effect on value by holding and by group, the path of value over a historical period, and
+  the volatility, risk decomposition and value at risk before and after, with volatilities and
+  correlations optionally stressed. Validated against an independent implementation in pandas,
+  NumPy and SciPy.
 - A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
   with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,
   `Performance`, `MarketData` and functions for risk and optimisation), `Float64Array`s for
   series, TypeScript declarations for every data type, and a worker with a promise-based client
-  for running the engine off the main thread. The engine is about 0.7 MB gzipped.
+  for running the engine off the main thread. The engine is about 0.8 MB gzipped.
 - Methods and validation pages (`docs/methods/`) for every model: definitions, conventions,
   references, how each is checked against independent implementations, and examples that run as
   tests.

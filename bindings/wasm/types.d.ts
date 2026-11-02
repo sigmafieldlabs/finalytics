@@ -244,6 +244,17 @@ export interface Contribution {
   average_weight: number;
 }
 
+/** A stress of a covariance matrix: volatilities scaled and correlations moved toward one. */
+export interface CorrelationStress {
+  /** The factor every volatility is multiplied by. The default is 1. */
+  volatility_scale?: number;
+  /**
+   * How far every correlation moves toward one, from 0 (not at all, the default) to 1 (all
+   * the way).
+   */
+  correlation_shift?: number;
+}
+
 /** An estimated covariance matrix, per period of the returns. */
 export interface CovarianceEstimate {
   /** The estimator used. */
@@ -597,6 +608,22 @@ export interface FactorRisk {
 }
 
 /**
+ * Returns of a factor model's factors, which give each instrument in the model the return its
+ * exposures imply.
+ */
+export interface FactorShocks {
+  /** The model. Its assets are instrument identifiers; assets that are not held are ignored. */
+  model: FactorModel;
+  /** The return of each shocked factor, by factor name. */
+  shocks: [string, number][];
+  /**
+   * Whether the factors that are not shocked move too, by their expected return given the
+   * shocked ones under the model's factor covariance. Without it, they return zero.
+   */
+  propagate?: boolean;
+}
+
+/**
  * The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,
  * rounded to the currency's minor units. Purchases are sized so that the purchase and its fee
  * fit the target; sales pay the fee from their proceeds.
@@ -651,6 +678,30 @@ export interface GroupContribution {
   average_weight: number;
 }
 
+/** What a scenario does to one group of holdings. */
+export interface GroupImpact {
+  /** The group. */
+  group: string;
+  /** Its value before, in the base currency. */
+  value_before: number;
+  /** Its value after. */
+  value_after: number;
+  /** `value_after - value_before`. */
+  change: number;
+  /** Its share of the portfolio's value before. */
+  weight_before: number;
+  /**
+   * Its share of the portfolio's value after, or `None` if the portfolio is worth nothing
+   * after.
+   */
+  weight_after?: number | null;
+  /**
+   * `change` as a share of the portfolio's value before: the groups' contributions add up to
+   * the portfolio's return.
+   */
+  contribution: number;
+}
+
 /** Limits on the total weight of a group of assets, such as an asset class or a region. */
 export interface GroupLimit {
   /** The group's name, used in messages. */
@@ -673,6 +724,59 @@ export interface GroupRisk {
   component: number;
   /** The sum of its assets' shares, `None` when the portfolio has no volatility. */
   share?: number | null;
+}
+
+/** A return for every instrument with a classification, such as all equities. */
+export interface GroupShock {
+  /** The classification scheme, such as `asset_class`. */
+  scheme: string;
+  /** The classification, such as `equity`. */
+  value: string;
+  /** The return of each instrument in the group, in its own currency: -0.2 for a fall of 20%. */
+  shock: number;
+}
+
+/** A historical period to replay on today's holdings. */
+export interface HistoricalWindow {
+  /** The start of the period. */
+  start: Date;
+  /** The end of the period. */
+  end: Date;
+  /**
+   * Instruments whose prices stand in for others' over the period, such as an index for a
+   * fund that did not exist then: `(instrument, proxy)` pairs.
+   */
+  proxies?: [InstrumentId, InstrumentId][];
+}
+
+/**
+ * What a scenario does to one holding: an instrument, or cash in one currency, added up across
+ * accounts.
+ */
+export interface HoldingImpact {
+  /** The holding. */
+  holding: HoldingKey;
+  /** Its value before, in the base currency. */
+  value_before: number;
+  /** Its share of the portfolio's value before. */
+  weight_before: number;
+  /** Its return in its own currency. */
+  local_return: number;
+  /** The change in its currency's value in the base currency. */
+  currency_return: number;
+  /** Its return in the base currency, `(1 + local)(1 + currency) - 1`. */
+  total_return: number;
+  /** Its value after, in the base currency. */
+  value_after: number;
+  /**
+   * Its share of the portfolio's value after, or `None` if the portfolio is worth nothing
+   * after.
+   */
+  weight_after?: number | null;
+  /** `value_after - value_before`. */
+  change: number;
+  /** How its return was set. */
+  source: ShockSource;
 }
 
 /**
@@ -1358,6 +1462,118 @@ export interface RiskDecomposition {
   contributions: RiskContribution[];
 }
 
+/** What to report beyond the effect on each holding. */
+export interface ScenarioOptions {
+  /**
+   * Classification schemes to add the effect up by, such as `asset_class`. Instruments
+   * without the classification are in the group "unclassified", and cash in "cash".
+   */
+  group_by?: string[];
+  /** The risk model for the risk before and after; without one, no risk is reported. */
+  risk?: ScenarioRiskModel | null;
+}
+
+/** The hypothetical value of today's holdings over a historical period. */
+export interface ScenarioPath {
+  /** Every date in the period with a price for a holding, and its start and end. */
+  dates: Date[];
+  /** The holdings' value on each date, in the base currency. */
+  values: number[];
+  /**
+   * The largest fall from a peak over the period, `None` if the value never falls or is not
+   * always above zero.
+   */
+  worst_drawdown?: Drawdown | null;
+}
+
+/** What a scenario does to a portfolio. */
+export interface ScenarioResult {
+  /** The date of the holdings. */
+  as_of: Date;
+  /** The currency values are in. */
+  base_currency: Currency;
+  /** The portfolio's value before. */
+  value_before: number;
+  /** The portfolio's value after. */
+  value_after: number;
+  /** `value_after - value_before`. */
+  change: number;
+  /** `change / value_before`. */
+  portfolio_return: number;
+  /** Each holding, in holding order: instruments by identifier, then cash by currency. */
+  holdings: HoldingImpact[];
+  /** The instruments held whose return in their own currency no shock set. */
+  not_shocked: InstrumentId[];
+  /**
+   * The factor returns applied, given and propagated, in the order of the model's factors;
+   * empty without factor shocks.
+   */
+  factor_returns: [string, number][];
+  /** The effect by each classification scheme the options group by. */
+  groups: SchemeImpact[];
+  /** The risk before, with a risk model. */
+  risk_before?: ScenarioRisk | null;
+  /**
+   * The risk after, with the stressed covariance if the risk model has a stress; `None`
+   * without a risk model or if the portfolio is worth nothing after.
+   */
+  risk_after?: ScenarioRisk | null;
+  /** For a historical scenario, the holdings' value over the period. */
+  path?: ScenarioPath | null;
+  /** Prices and rates carried forward from earlier dates, and shocks that matched nothing. */
+  warnings: ValidationReport;
+}
+
+/** A portfolio's risk before or after a scenario. */
+export interface ScenarioRisk {
+  /**
+   * The volatility of the portfolio's return, in the units of the risk model (scale the
+   * model to annualise).
+   */
+  volatility: number;
+  /**
+   * The parametric value at risk of the portfolio's value at the model's confidence, a loss
+   * in the base currency: `z * volatility * value`.
+   */
+  value_at_risk: number;
+  /** Each holding's contribution to the volatility, in the order of the holdings. */
+  contributions: RiskContribution[];
+  /** The contributions added up by each classification scheme the options group by. */
+  groups: SchemeRisk[];
+}
+
+/** The risk model for the risk before and after a scenario. */
+export interface ScenarioRiskModel {
+  /**
+   * The covariance of the holdings' returns, labelled with instrument identifiers and, for
+   * cash, the currency code followed by " cash" (as holding returns are). Give this or
+   * `factor_model`.
+   */
+  covariance?: Matrix | null;
+  /** A factor model of the holdings' returns, labelled in the same way. */
+  factor_model?: FactorModel | null;
+  /** The confidence of the value at risk. The default is 0.95. */
+  confidence?: number;
+  /** A stress of the covariance for the risk after the scenario, as in a crisis. */
+  stress?: CorrelationStress | null;
+}
+
+/** The effect of a scenario by the groups of one classification scheme. */
+export interface SchemeImpact {
+  /** The classification scheme. */
+  scheme: string;
+  /** Each group, in name order. */
+  groups: GroupImpact[];
+}
+
+/** Risk by the groups of one classification scheme. */
+export interface SchemeRisk {
+  /** The classification scheme. */
+  scheme: string;
+  /** Each group's share of the volatility, in name order. */
+  groups: GroupRisk[];
+}
+
 /**
  * A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a
  * region or any other grouping.
@@ -1397,6 +1613,56 @@ export interface SegmentEffects {
 
 /** How serious a validation issue is. */
 export type Severity = "warning" | "error";
+
+/** How a holding's return in a scenario was set. */
+export type ShockSource =
+  | {
+    source: "instrument";
+  }
+  | {
+    source: "group";
+    /** The group's classification scheme. */
+    scheme: string;
+    /** The group's classification. */
+    value: string;
+  }
+  | {
+    source: "factor";
+  }
+  | {
+    source: "history";
+  }
+  | {
+    source: "proxy";
+    /** The instrument whose prices were used. */
+    instrument: InstrumentId;
+  }
+  | {
+    source: "cash";
+  }
+  | {
+    source: "none";
+  };
+
+/**
+ * The shocks of a scenario. An instrument's return in its own currency comes from its own
+ * shock, or else from the one group shock that matches it, or else from the factor shocks; an
+ * instrument none of them reaches returns zero and is listed as not shocked. A currency shock
+ * compounds with the instrument's return, and applies to cash in that currency.
+ */
+export interface Shocks {
+  /** Returns of single instruments, by identifier. */
+  instruments?: [InstrumentId, number][];
+  /**
+   * Returns of every instrument in a group. An instrument without its own shock may match at
+   * most one of them.
+   */
+  groups?: GroupShock[];
+  /** Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%. */
+  currencies?: [Currency, number][];
+  /** Returns of factors. */
+  factors?: FactorShocks | null;
+}
 
 /** Buy or sell. */
 export type Side = "buy" | "sell";

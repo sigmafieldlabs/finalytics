@@ -45,6 +45,7 @@ jobs:
           - optimisation
           - views
           - attribution
+          - scenarios
     env:
       TARGET: ${{ matrix.target }}
       # One minute per target on pull requests, half an hour on the weekly run.

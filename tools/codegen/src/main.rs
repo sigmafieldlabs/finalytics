@@ -58,6 +58,11 @@ fn api() -> Value {
     add::<finalytics::Attribution>(&mut g);
     add::<finalytics::CurrencyAttributionPeriod>(&mut g);
     add::<finalytics::CurrencyAttribution>(&mut g);
+    add::<finalytics::risk::Shocks>(&mut g);
+    add::<finalytics::risk::HistoricalWindow>(&mut g);
+    add::<finalytics::risk::ScenarioOptions>(&mut g);
+    add::<finalytics::risk::CorrelationStress>(&mut g);
+    add::<finalytics::risk::ScenarioResult>(&mut g);
     // Risk.
     add::<risk::StatisticsOptions>(&mut g);
     add::<risk::Statistics>(&mut g);

@@ -12,6 +12,7 @@ import init, {
   resampled,
   solve,
   statisticalModel,
+  stressedCovariance,
   statistics,
   tailRisk,
   type Attribution,
@@ -21,6 +22,7 @@ import init, {
   type Matrix,
   type Objective,
   type Problem,
+  type ScenarioResult,
   type ReturnsTable,
   type Solution,
   type Statistics,
@@ -123,3 +125,15 @@ const byCurrency: CurrencyAttribution = karnoskySinger([
 brinsonFachler([], "geometric");
 void attribution.segments[0].allocation;
 void byCurrency.residual;
+
+// Scenarios.
+declare const books: Books;
+const shocked: ScenarioResult = books.shockScenario(
+  { groups: [{ scheme: "asset_class", value: "Equity", shock: -0.2 }], currencies: [["EUR", -0.1]] },
+  { date: "2026-10-30", group_by: ["asset_class"], risk: { covariance, stress: { correlation_shift: 0.5 } } },
+);
+const replayed: ScenarioResult = books.historicalScenario({ start: "2026-09-01", end: "2026-09-30", proxies: [["SAP", "SPY"]] });
+const stressedMatrix: Matrix = stressedCovariance(covariance, { volatility_scale: 1.5 });
+void shocked.holdings[0].weight_after;
+void replayed.path?.worst_drawdown?.depth;
+void stressedMatrix;

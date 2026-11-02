@@ -1,5 +1,6 @@
 """Risk analytics on returns: statistics, drawdowns, value at risk and expected shortfall,
-covariance estimation, factor models and risk decomposition.
+covariance estimation, factor models and risk decomposition. Scenarios on a portfolio's holdings
+are methods of :class:`~finalytics.Books`; their types are here.
 
 Every function takes returns as any one-dimensional sequence of numbers (a list, a NumPy array or
 a pandas Series), one return per period::
@@ -25,6 +26,7 @@ from finalytics._convert import dumps, loads
 from finalytics._errors import call
 from finalytics._types import (
     AssetFit,
+    CorrelationStress,
     CovarianceEstimate,
     CovarianceMethod,
     Drawdown,
@@ -34,13 +36,27 @@ from finalytics._types import (
     FactorModel,
     FactorModelEstimate,
     FactorRisk,
+    FactorShocks,
+    GroupImpact,
     GroupRisk,
+    GroupShock,
+    HistoricalWindow,
+    HoldingImpact,
     LedoitWolf,
     Matrix,
     Oas,
     RelativeStatistics,
     RiskDecomposition,
     Sample,
+    ScenarioOptions,
+    ScenarioPath,
+    ScenarioResult,
+    ScenarioRisk,
+    ScenarioRiskModel,
+    SchemeImpact,
+    SchemeRisk,
+    ShockSource,
+    Shocks,
     Statistics,
     StatisticsOptions,
     TailMethod,
@@ -49,6 +65,7 @@ from finalytics._types import (
 
 __all__ = [
     "AssetFit",
+    "CorrelationStress",
     "CovarianceEstimate",
     "CovarianceMethod",
     "Drawdown",
@@ -58,13 +75,27 @@ __all__ = [
     "FactorModel",
     "FactorModelEstimate",
     "FactorRisk",
+    "FactorShocks",
+    "GroupImpact",
     "GroupRisk",
+    "GroupShock",
+    "HistoricalWindow",
+    "HoldingImpact",
     "LedoitWolf",
     "Matrix",
     "Oas",
     "RelativeStatistics",
     "RiskDecomposition",
     "Sample",
+    "ScenarioOptions",
+    "ScenarioPath",
+    "ScenarioResult",
+    "ScenarioRisk",
+    "ScenarioRiskModel",
+    "SchemeImpact",
+    "SchemeRisk",
+    "ShockSource",
+    "Shocks",
     "Statistics",
     "StatisticsOptions",
     "TailMethod",
@@ -92,6 +123,7 @@ __all__ = [
     "scaled",
     "statistical_model",
     "statistics",
+    "stressed_covariance",
     "tail_risk",
     "to_array",
     "tracking_error_decomposition",
@@ -328,6 +360,14 @@ def factor_model(
 
 def _model(value: FactorModel | FactorModelEstimate) -> FactorModel:
     return value.model if isinstance(value, FactorModelEstimate) else value
+
+
+def stressed_covariance(covariance: Matrix, volatility_scale: float = 1.0, correlation_shift: float = 0.0) -> Matrix:
+    """`covariance` with every volatility multiplied by `volatility_scale` and every correlation
+    moved toward one by `correlation_shift` (from 0 to 1): ``s^2 ((1 - a) C + a v v')``, with
+    ``v`` the volatilities. The result is positive semidefinite when `covariance` is."""
+    stress = CorrelationStress(volatility_scale=volatility_scale, correlation_shift=correlation_shift)
+    return loads(Matrix, call(_finalytics.stressed_covariance, dumps(covariance), dumps(stress)))
 
 
 def implied_covariance(model: FactorModel | FactorModelEstimate) -> Matrix:

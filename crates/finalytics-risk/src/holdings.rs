@@ -137,7 +137,7 @@ pub fn holding_returns(
     })
 }
 
-fn observe(
+pub(crate) fn observe(
     observation: Observation<Decimal>,
     path: &str,
     date: Date,

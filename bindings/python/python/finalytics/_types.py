@@ -402,6 +402,19 @@ class Contribution:
 
 
 @dataclass(frozen=True, kw_only=True)
+class CorrelationStress:
+    """A stress of a covariance matrix: volatilities scaled and correlations moved toward one."""
+
+    volatility_scale: float = 1.0
+    """The factor every volatility is multiplied by. The default is 1."""
+
+    correlation_shift: float = 0.0
+    """How far every correlation moves toward one, from 0 (not at all, the default) to 1 (all the
+    way).
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class CovarianceEstimate:
     """An estimated covariance matrix, per period of the returns."""
 
@@ -888,6 +901,24 @@ class FactorRisk:
 
 
 @dataclass(frozen=True, kw_only=True)
+class FactorShocks:
+    """Returns of a factor model's factors, which give each instrument in the model the return its
+    exposures imply.
+    """
+
+    model: FactorModel
+    """The model. Its assets are instrument identifiers; assets that are not held are ignored."""
+
+    shocks: list[tuple[str, float]]
+    """The return of each shocked factor, by factor name."""
+
+    propagate: bool = False
+    """Whether the factors that are not shocked move too, by their expected return given the shocked
+    ones under the model's factor covariance. Without it, they return zero.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class Fees:
     """The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,
     rounded to the currency's minor units. Purchases are sized so that the purchase and its fee
@@ -950,6 +981,35 @@ class GroupContribution:
 
 
 @dataclass(frozen=True, kw_only=True)
+class GroupImpact:
+    """What a scenario does to one group of holdings."""
+
+    group: str
+    """The group."""
+
+    value_before: float
+    """Its value before, in the base currency."""
+
+    value_after: float
+    """Its value after."""
+
+    change: float
+    """`value_after - value_before`."""
+
+    weight_before: float
+    """Its share of the portfolio's value before."""
+
+    weight_after: float | None = None
+    """Its share of the portfolio's value after, or `None` if the portfolio is worth nothing after.
+    """
+
+    contribution: float
+    """`change` as a share of the portfolio's value before: the groups' contributions add up to the
+    portfolio's return.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class GroupLimit:
     """Limits on the total weight of a group of assets, such as an asset class or a region."""
 
@@ -981,6 +1041,74 @@ class GroupRisk:
 
     share: float | None = None
     """The sum of its assets' shares, `None` when the portfolio has no volatility."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class GroupShock:
+    """A return for every instrument with a classification, such as all equities."""
+
+    scheme: str
+    """The classification scheme, such as `asset_class`."""
+
+    value: str
+    """The classification, such as `equity`."""
+
+    shock: float
+    """The return of each instrument in the group, in its own currency: -0.2 for a fall of 20%."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HistoricalWindow:
+    """A historical period to replay on today's holdings."""
+
+    start: datetime.date
+    """The start of the period."""
+
+    end: datetime.date
+    """The end of the period."""
+
+    proxies: list[tuple[str, str]] = field(default_factory=list)
+    """Instruments whose prices stand in for others' over the period, such as an index for a fund
+    that did not exist then: `(instrument, proxy)` pairs.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class HoldingImpact:
+    """What a scenario does to one holding: an instrument, or cash in one currency, added up across
+    accounts.
+    """
+
+    holding: HoldingKey
+    """The holding."""
+
+    value_before: float
+    """Its value before, in the base currency."""
+
+    weight_before: float
+    """Its share of the portfolio's value before."""
+
+    local_return: float
+    """Its return in its own currency."""
+
+    currency_return: float
+    """The change in its currency's value in the base currency."""
+
+    total_return: float
+    """Its return in the base currency, `(1 + local)(1 + currency) - 1`."""
+
+    value_after: float
+    """Its value after, in the base currency."""
+
+    weight_after: float | None = None
+    """Its share of the portfolio's value after, or `None` if the portfolio is worth nothing after.
+    """
+
+    change: float
+    """`value_after - value_before`."""
+
+    source: ShockSource
+    """How its return was set."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1941,6 +2069,148 @@ class RiskDecomposition:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ScenarioOptions:
+    """What to report beyond the effect on each holding."""
+
+    group_by: list[str] = field(default_factory=list)
+    """Classification schemes to add the effect up by, such as `asset_class`. Instruments without
+    the classification are in the group "unclassified", and cash in "cash".
+    """
+
+    risk: ScenarioRiskModel | None = None
+    """The risk model for the risk before and after; without one, no risk is reported."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScenarioPath:
+    """The hypothetical value of today's holdings over a historical period."""
+
+    dates: list[datetime.date]
+    """Every date in the period with a price for a holding, and its start and end."""
+
+    values: list[float]
+    """The holdings' value on each date, in the base currency."""
+
+    worst_drawdown: Drawdown | None = None
+    """The largest fall from a peak over the period, `None` if the value never falls or is not
+    always above zero.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScenarioResult:
+    """What a scenario does to a portfolio."""
+
+    as_of: datetime.date
+    """The date of the holdings."""
+
+    base_currency: str
+    """The currency values are in."""
+
+    value_before: float
+    """The portfolio's value before."""
+
+    value_after: float
+    """The portfolio's value after."""
+
+    change: float
+    """`value_after - value_before`."""
+
+    portfolio_return: float
+    """`change / value_before`."""
+
+    holdings: list[HoldingImpact]
+    """Each holding, in holding order: instruments by identifier, then cash by currency."""
+
+    not_shocked: list[str]
+    """The instruments held whose return in their own currency no shock set."""
+
+    factor_returns: list[tuple[str, float]]
+    """The factor returns applied, given and propagated, in the order of the model's factors; empty
+    without factor shocks.
+    """
+
+    groups: list[SchemeImpact]
+    """The effect by each classification scheme the options group by."""
+
+    risk_before: ScenarioRisk | None = None
+    """The risk before, with a risk model."""
+
+    risk_after: ScenarioRisk | None = None
+    """The risk after, with the stressed covariance if the risk model has a stress; `None` without a
+    risk model or if the portfolio is worth nothing after.
+    """
+
+    path: ScenarioPath | None = None
+    """For a historical scenario, the holdings' value over the period."""
+
+    warnings: ValidationReport
+    """Prices and rates carried forward from earlier dates, and shocks that matched nothing."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScenarioRisk:
+    """A portfolio's risk before or after a scenario."""
+
+    volatility: float
+    """The volatility of the portfolio's return, in the units of the risk model (scale the model to
+    annualise).
+    """
+
+    value_at_risk: float
+    """The parametric value at risk of the portfolio's value at the model's confidence, a loss in
+    the base currency: `z * volatility * value`.
+    """
+
+    contributions: list[RiskContribution]
+    """Each holding's contribution to the volatility, in the order of the holdings."""
+
+    groups: list[SchemeRisk]
+    """The contributions added up by each classification scheme the options group by."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScenarioRiskModel:
+    """The risk model for the risk before and after a scenario."""
+
+    covariance: Matrix | None = None
+    """The covariance of the holdings' returns, labelled with instrument identifiers and, for cash,
+    the currency code followed by " cash" (as holding returns are). Give this or `factor_model`.
+    """
+
+    factor_model: FactorModel | None = None
+    """A factor model of the holdings' returns, labelled in the same way."""
+
+    confidence: float = 0.95
+    """The confidence of the value at risk. The default is 0.95."""
+
+    stress: CorrelationStress | None = None
+    """A stress of the covariance for the risk after the scenario, as in a crisis."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SchemeImpact:
+    """The effect of a scenario by the groups of one classification scheme."""
+
+    scheme: str
+    """The classification scheme."""
+
+    groups: list[GroupImpact]
+    """Each group, in name order."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SchemeRisk:
+    """Risk by the groups of one classification scheme."""
+
+    scheme: str
+    """The classification scheme."""
+
+    groups: list[GroupRisk]
+    """Each group's share of the volatility, in name order."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Segment:
     """A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a
     region or any other grouping.
@@ -1982,6 +2252,98 @@ class SegmentEffects:
 
     total: float
     """The sum of the three."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class InstrumentSource:
+    """Its own shock."""
+
+    SOURCE: ClassVar[str] = "instrument"
+    """The value of the `source` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class GroupSource:
+    """A group shock."""
+
+    SOURCE: ClassVar[str] = "group"
+    """The value of the `source` tag that identifies this variant."""
+
+    scheme: str
+    """The group's classification scheme."""
+
+    value: str
+    """The group's classification."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FactorSource:
+    """The factor shocks and its exposures."""
+
+    SOURCE: ClassVar[str] = "factor"
+    """The value of the `source` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HistorySource:
+    """Its prices over a historical period."""
+
+    SOURCE: ClassVar[str] = "history"
+    """The value of the `source` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProxySource:
+    """Another instrument's prices over a historical period."""
+
+    SOURCE: ClassVar[str] = "proxy"
+    """The value of the `source` tag that identifies this variant."""
+
+    instrument: str
+    """The instrument whose prices were used."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CashSource:
+    """Cash: only a change in its currency's value moves it."""
+
+    SOURCE: ClassVar[str] = "cash"
+    """The value of the `source` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class NoSource:
+    """Nothing: its return in its own currency is zero."""
+
+    SOURCE: ClassVar[str] = "none"
+    """The value of the `source` tag that identifies this variant."""
+
+
+ShockSource = Union[InstrumentSource, GroupSource, FactorSource, HistorySource, ProxySource, CashSource, NoSource]
+"""How a holding's return in a scenario was set."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Shocks:
+    """The shocks of a scenario. An instrument's return in its own currency comes from its own
+    shock, or else from the one group shock that matches it, or else from the factor shocks; an
+    instrument none of them reaches returns zero and is listed as not shocked. A currency shock
+    compounds with the instrument's return, and applies to cash in that currency.
+    """
+
+    instruments: list[tuple[str, float]] = field(default_factory=list)
+    """Returns of single instruments, by identifier."""
+
+    groups: list[GroupShock] = field(default_factory=list)
+    """Returns of every instrument in a group. An instrument without its own shock may match at most
+    one of them.
+    """
+
+    currencies: list[tuple[str, float]] = field(default_factory=list)
+    """Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%."""
+
+    factors: FactorShocks | None = None
+    """Returns of factors."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2636,6 +2998,7 @@ UNIONS = {
     "Period": ("period", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
     "Prior": ("prior", {"market": MarketPrior, "returns": ReturnsPrior}),
     "ReturnUncertainty": ("set", {"box": Box, "ellipsoid": Ellipsoid}),
+    "ShockSource": ("source", {"cash": CashSource, "factor": FactorSource, "group": GroupSource, "history": HistorySource, "instrument": InstrumentSource, "none": NoSource, "proxy": ProxySource}),
     "TransactionKind": ("type", {"buy": Buy, "deposit": Deposit, "dividend": Dividend, "fee": Fee, "fx_conversion": FxConversion, "interest": Interest, "merger": Merger, "return_of_capital": ReturnOfCapital, "sell": Sell, "spin_off": SpinOff, "split": Split, "symbol_change": SymbolChange, "tax": Tax, "transfer_in": TransferIn, "transfer_out": TransferOut, "withdrawal": Withdrawal}),
     "ViewUncertainty": ("method", {"confidence": Confidence, "proportional": Proportional, "variance": Variance}),
 }
@@ -2661,11 +3024,13 @@ __all__ = [
     "CashBalance",
     "CashChange",
     "CashHolding",
+    "CashSource",
     "CashValue",
     "CombinedRebalance",
     "Confidence",
     "Constraints",
     "Contribution",
+    "CorrelationStress",
     "CovarianceEstimate",
     "CovarianceMethod",
     "Currency",
@@ -2692,6 +3057,8 @@ __all__ = [
     "FactorModel",
     "FactorModelEstimate",
     "FactorRisk",
+    "FactorShocks",
+    "FactorSource",
     "Fee",
     "Fees",
     "Flow",
@@ -2700,9 +3067,15 @@ __all__ = [
     "FrontierPoint",
     "FxConversion",
     "GroupContribution",
+    "GroupImpact",
     "GroupLimit",
     "GroupRisk",
+    "GroupShock",
+    "GroupSource",
     "HierarchicalRiskParity",
+    "HistoricalWindow",
+    "HistorySource",
+    "HoldingImpact",
     "HoldingKey",
     "HoldingLine",
     "HoldingReturns",
@@ -2712,6 +3085,7 @@ __all__ = [
     "InstrumentHolding",
     "InstrumentId",
     "InstrumentKind",
+    "InstrumentSource",
     "Interest",
     "Issue",
     "LedoitWolf",
@@ -2735,6 +3109,7 @@ __all__ = [
     "MinimumVariance",
     "Money",
     "MonthToDate",
+    "NoSource",
     "Oas",
     "Objective",
     "Period",
@@ -2749,6 +3124,7 @@ __all__ = [
     "Proportional",
     "ProposedConversion",
     "ProposedTrade",
+    "ProxySource",
     "QuarterToDate",
     "RealisedGain",
     "Rebalance",
@@ -2765,10 +3141,19 @@ __all__ = [
     "RiskDecomposition",
     "RobustMeanVariance",
     "Sample",
+    "ScenarioOptions",
+    "ScenarioPath",
+    "ScenarioResult",
+    "ScenarioRisk",
+    "ScenarioRiskModel",
+    "SchemeImpact",
+    "SchemeRisk",
     "Segment",
     "SegmentEffects",
     "Sell",
     "Severity",
+    "ShockSource",
+    "Shocks",
     "Side",
     "Since",
     "SinceInception",
