@@ -887,6 +887,18 @@ impl NativePerformance {
                 .map_err(engine)?,
         )
     }
+
+    fn expenses(&self, start: &str, end: &str) -> PyResult<f64> {
+        let Some(holdings) = &self.holdings else {
+            return Err(invalid(
+                "performance",
+                "expenses need performance measured from the books",
+            ));
+        };
+        self.inner
+            .expenses(holdings, date(start)?, date(end)?)
+            .map_err(engine)
+    }
 }
 
 #[pyfunction]

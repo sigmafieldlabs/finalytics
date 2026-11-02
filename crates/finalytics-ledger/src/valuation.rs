@@ -429,9 +429,12 @@ pub struct HoldingSeries {
 
 /// One holding's values, trades and income on each date of a [`HoldingSeries`].
 ///
-/// Trades and income are those since the previous date. Value moved between holdings (a
-/// purchase moves cash into a share) appears as a trade out of one line and into another, so
-/// trades across all lines add up to the portfolio's external flows plus its income.
+/// Trades, income and expenses are those since the previous date. Value moved between holdings
+/// (a purchase moves cash into a share) appears as a trade out of one line and into another, so
+/// trades across all lines add up to the portfolio's external flows plus its income. Fees and
+/// taxes charged to an account rather than to a holding are expenses of its cash: they lower the
+/// cash's value without being a loss on it, so a holding's gain on a date is its change in value
+/// less its trades, plus its income and its expenses.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
@@ -452,6 +455,11 @@ pub struct HoldingLine {
     pub income_local: Vec<Decimal>,
     /// The income earned since the previous date, in the base currency.
     pub income_base: Vec<Decimal>,
+    /// The fees and taxes paid out of the holding since the previous date, in `currency`.
+    pub expenses_local: Vec<Decimal>,
+    /// The fees and taxes paid out of the holding since the previous date, in the base
+    /// currency.
+    pub expenses_base: Vec<Decimal>,
 }
 
 impl HoldingLine {
@@ -465,9 +473,19 @@ impl HoldingLine {
             trades_local: zeros.clone(),
             trades_base: zeros.clone(),
             income_local: zeros.clone(),
-            income_base: zeros,
+            income_base: zeros.clone(),
+            expenses_local: zeros.clone(),
+            expenses_base: zeros,
         }
     }
+}
+
+/// What an allocation moved into a holding line.
+#[derive(Clone, Copy)]
+enum Moved {
+    Trade,
+    Income,
+    Expense,
 }
 
 /// Quantities by instrument and cash by currency, added up across accounts, kept up to date from
@@ -618,7 +636,7 @@ impl Books {
                     let mut add = |key: HoldingKey,
                                    currency: Currency,
                                    amount: Decimal,
-                                   income: bool,
+                                   kind: Moved,
                                    look: &mut Lookup<'_>| {
                         let line_currency = currency_of(&key);
                         let local = amount * look.fx(currency, line_currency, event.date);
@@ -626,25 +644,38 @@ impl Books {
                         let line = lines
                             .entry(key.clone())
                             .or_insert_with(|| HoldingLine::new(key, line_currency, dates.len()));
-                        if income {
-                            line.income_local[i] += local;
-                            line.income_base[i] += in_base;
-                        } else {
-                            line.trades_local[i] += local;
-                            line.trades_base[i] += in_base;
-                        }
+                        let (local_of, base_of) = match kind {
+                            Moved::Trade => (&mut line.trades_local, &mut line.trades_base),
+                            Moved::Income => (&mut line.income_local, &mut line.income_base),
+                            Moved::Expense => (&mut line.expenses_local, &mut line.expenses_base),
+                        };
+                        local_of[i] += local;
+                        base_of[i] += in_base;
                     };
                     match allocation {
                         Allocation::Trade {
                             holding,
                             currency,
                             amount,
-                        } => add(holding.clone(), *currency, *amount, false, &mut look),
+                        } => add(holding.clone(), *currency, *amount, Moved::Trade, &mut look),
                         Allocation::Income {
                             holding,
                             currency,
                             amount,
-                        } => add(holding.clone(), *currency, *amount, true, &mut look),
+                        } => add(
+                            holding.clone(),
+                            *currency,
+                            *amount,
+                            Moved::Income,
+                            &mut look,
+                        ),
+                        Allocation::Expense { currency, amount } => add(
+                            HoldingKey::Cash(*currency),
+                            *currency,
+                            *amount,
+                            Moved::Expense,
+                            &mut look,
+                        ),
                         Allocation::Exchange { from, to, quantity } => {
                             let Some(instrument) = self.instrument(to) else {
                                 continue;
@@ -655,14 +686,14 @@ impl Books {
                                 HoldingKey::Instrument(to.clone()),
                                 instrument.currency,
                                 value,
-                                false,
+                                Moved::Trade,
                                 &mut look,
                             );
                             add(
                                 HoldingKey::Instrument(from.clone()),
                                 instrument.currency,
                                 -value,
-                                false,
+                                Moved::Trade,
                                 &mut look,
                             );
                         }

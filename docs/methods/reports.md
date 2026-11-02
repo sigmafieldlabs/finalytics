@@ -69,12 +69,21 @@ holdings that would be as concentrated.
 **Holdings' risk.** The covariance of the current holdings' returns in the base currency (see
 [covariance](covariance.md)), from the first valuation date on which every current holding has a
 price, so that a recent purchase does not shorten the history of the others more than it must;
-annualised by the number of valuation periods in a year.
+annualised by the number of valuation periods in a year. Cash in the base currency is riskless:
+it is left out of the estimate, so that a shrinkage estimator does not lend it part of the
+average variance, and its variance and covariances are zero. Cash in other currencies carries
+its exchange rate's risk.
 
-**Frontier.** The long-only, fully invested efficient frontier of the current holdings (see
-[optimisation](optimisation.md)), with the expected returns given in the options or, for
-holdings without one, their annualised mean return over the same history; each holding says
-which it has. The current portfolio is shown on the same axes.
+**Frontier.** The long-only efficient frontier of the current holdings other than base-currency
+cash, fully invested in them (see [optimisation](optimisation.md)), with the expected returns
+given in the options or, for holdings without one, their annualised mean return over the same
+history; each holding says which it has. Riskless cash is left out because the frontier's least
+risky point would otherwise be all cash. The current portfolio, with its cash, is shown on the
+same axes.
+
+**Fees and taxes.** Fees and taxes charged to an account rather than to a holding, such as an
+advisory fee, are shown as their own line in contribution (`expenses`), not as a loss on the cash
+that paid them; with the holdings' contributions, they add up to the time-weighted return.
 
 **Attribution segments.** A segment's weight is its share of the portfolio's value at the start
 of the period, and its return links its holdings' daily gains as a holding's own return does

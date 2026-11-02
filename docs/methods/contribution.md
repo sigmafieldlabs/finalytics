@@ -7,11 +7,12 @@ accounts.
 ## Definitions
 
 For each holding $k$ and day $t$, the books record its end-of-day value $V_{k,t}$, the value
-moved into it by trades $T_{k,t}$ (purchases positive, sales negative, including transfers), and
-the income it paid out $I_{k,t}$ (dividends and interest, net of tax withheld), all in the base
-currency. The holding's gain for the day is
+moved into it by trades $T_{k,t}$ (purchases positive, sales negative, including transfers), the
+income it paid out $I_{k,t}$ (dividends and interest, net of tax withheld), and the expenses
+paid out of it $E_{k,t}$ (fees and taxes charged to the account rather than to a holding, which
+are paid from cash), all in the base currency. The holding's gain for the day is
 
-$$g_{k,t} = V_{k,t} - V_{k,t-1} - T_{k,t} + I_{k,t}$$
+$$g_{k,t} = V_{k,t} - V_{k,t-1} - T_{k,t} + I_{k,t} + E_{k,t}$$
 
 A dividend is therefore income of the instrument that paid it, and a trade into cash for the cash
 holding. Value moved between holdings, such as a purchase paid from cash, adds to one holding's
@@ -23,8 +24,14 @@ are linked by the portfolio's growth up to each day:
 
 $$C_k = \sum_{t=i+1}^{j} \frac{g_{k,t}}{B_t} \cdot \frac{G_{t-1}}{G_i}$$
 
-Because $\sum_k g_{k,t} = B_t \, r_t$, the contributions add up to $G_j / G_i - 1$, the
-time-weighted return over the period, with no residual.
+The expenses are their own line, linked the same way:
+
+$$C_E = -\sum_{t=i+1}^{j} \frac{\sum_k E_{k,t}}{B_t} \cdot \frac{G_{t-1}}{G_i}$$
+
+Because $\sum_k g_{k,t} - \sum_k E_{k,t} = B_t \, r_t$, the holdings' contributions and the
+expenses add up to $G_j / G_i - 1$, the time-weighted return over the period, with no residual.
+An advisory fee is therefore a cost of the portfolio, and the cash it was paid from keeps a return
+of zero. Fees paid on a trade are part of the trade, and so of the holding's own return.
 
 ### A holding's own return
 

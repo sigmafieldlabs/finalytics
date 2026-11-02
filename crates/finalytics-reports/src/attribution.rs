@@ -141,10 +141,13 @@ pub fn attribution_report(
         for t in i + 1..=j {
             let mut gains: BTreeMap<&str, (f64, f64)> = BTreeMap::new();
             for (line, segment) in holdings.lines.iter().zip(&segment_of) {
+                // Fees and taxes charged to the accounts are not a loss on the cash that pays
+                // them: segments' returns are before them.
                 let gain = to_f64(line.values_base[t])
                     - to_f64(line.values_base[t - 1])
                     - to_f64(line.trades_base[t])
-                    + to_f64(line.income_base[t]);
+                    + to_f64(line.income_base[t])
+                    + to_f64(line.expenses_base[t]);
                 let base = to_f64(line.values_base[t - 1]) + to_f64(line.trades_base[t]).max(0.0);
                 let e = gains.entry(segment).or_default();
                 e.0 += gain;

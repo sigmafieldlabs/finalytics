@@ -179,12 +179,31 @@ fn contributions_add_up_to_the_time_weighted_return() {
         let contributions = performance
             .contributions(&holdings, dates[0], dates[4])
             .unwrap();
-        let total: f64 = contributions.iter().map(|c| c.contribution).sum();
+        let expenses = performance.expenses(&holdings, dates[0], dates[4]).unwrap();
+        let total: f64 = contributions.iter().map(|c| c.contribution).sum::<f64>() + expenses;
         let twr = performance.time_weighted(dates[0], dates[4]).unwrap();
         assert!(
             (total - twr).abs() < 1e-12,
             "{timing:?}: contributions {total} vs return {twr}"
         );
+        // The fee of 12 is an expense, not a loss on the dollars it was paid from.
+        let day = dates.iter().position(|x| *x == d("2026-03-06")).unwrap();
+        let start = values.values[day - 1].to_string().parse::<f64>().unwrap();
+        let flows = values.flows[day].to_string().parse::<f64>().unwrap();
+        let base = match timing {
+            FlowTiming::StartOfDay => start + flows,
+            FlowTiming::EndOfDay => start,
+        };
+        let growth = 1.0 + performance.time_weighted(dates[0], dates[day - 1]).unwrap();
+        assert!(
+            (expenses - (-12.0 / base * growth)).abs() < 1e-15,
+            "{timing:?}: {expenses}"
+        );
+        let usd = contributions
+            .iter()
+            .find(|c| c.holding == HoldingKey::Cash(Currency::USD))
+            .unwrap();
+        assert_eq!(usd.return_base, Some(0.0));
 
         // Every line's values add up to the portfolio's.
         for (t, value) in values.values.iter().enumerate() {
@@ -201,7 +220,7 @@ fn contributions_add_up_to_the_time_weighted_return() {
         let names: Vec<_> = groups.iter().map(|g| g.group.as_str()).collect();
         assert_eq!(names, ["Cash", "Equity", "Fixed income"]);
         let group_total: f64 = groups.iter().map(|g| g.contribution).sum();
-        assert!((group_total - twr).abs() < 1e-12);
+        assert!((group_total + expenses - twr).abs() < 1e-12);
     }
 }
 

@@ -242,6 +242,22 @@ class IncomeAllocation:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Expense:
+    """`amount` (in `currency`) paid out of cash for a fee or a tax charged to the account rather
+    than to a holding: a cost of the portfolio, not a loss on the cash.
+    """
+
+    TYPE: ClassVar[str] = "expense"
+    """The value of the `type` tag that identifies this variant."""
+
+    currency: str
+    """The currency of `amount`."""
+
+    amount: decimal.Decimal
+    """The amount paid."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class ExchangeAllocation:
     """`quantity` units of `to` replaced part of `from` (a spin-off, merger or symbol change); the
     value moved is the market value of the new units on the date.
@@ -260,9 +276,10 @@ class ExchangeAllocation:
     """The units of `to` received."""
 
 
-Allocation = Union[TradeAllocation, IncomeAllocation, ExchangeAllocation]
+Allocation = Union[TradeAllocation, IncomeAllocation, Expense, ExchangeAllocation]
 """How a transaction moved value between holdings, used to measure each holding's contribution.
-Value moved between holdings nets to zero; only external flows change the portfolio's total.
+Value moved between holdings nets to zero; only external flows and expenses change the
+portfolio's total.
 """
 
 
@@ -751,8 +768,9 @@ class Contribution:
     """The holding."""
 
     contribution: float
-    """Its contribution to the portfolio's time-weighted return. Contributions of all holdings add
-    up to the portfolio's return over the period.
+    """Its contribution to the portfolio's time-weighted return. Contributions of all holdings, with
+    what fees and taxes charged to the accounts took (see `Performance::expenses`), add up to the
+    portfolio's return over the period.
     """
 
     return_base: float | None = None
@@ -1555,9 +1573,12 @@ class HoldingImpact:
 class HoldingLine:
     """One holding's values, trades and income on each date of a `HoldingSeries`.
 
-    Trades and income are those since the previous date. Value moved between holdings (a purchase
-    moves cash into a share) appears as a trade out of one line and into another, so trades
-    across all lines add up to the portfolio's external flows plus its income.
+    Trades, income and expenses are those since the previous date. Value moved between holdings
+    (a purchase moves cash into a share) appears as a trade out of one line and into another, so
+    trades across all lines add up to the portfolio's external flows plus its income. Fees and
+    taxes charged to an account rather than to a holding are expenses of its cash: they lower the
+    cash's value without being a loss on it, so a holding's gain on a date is its change in value
+    less its trades, plus its income and its expenses.
     """
 
     holding: str
@@ -1583,6 +1604,12 @@ class HoldingLine:
 
     income_base: list[decimal.Decimal]
     """The income earned since the previous date, in the base currency."""
+
+    expenses_local: list[decimal.Decimal]
+    """The fees and taxes paid out of the holding since the previous date, in `currency`."""
+
+    expenses_base: list[decimal.Decimal]
+    """The fees and taxes paid out of the holding since the previous date, in the base currency."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2243,8 +2270,10 @@ class OverviewReport:
     """Each holding's weight, expected return and risk."""
 
     frontier: list[FrontierPoint] | None = None
-    """The efficient frontier of the holdings, long only and fully invested, from the expected
-    returns and the covariance; absent (with a warning) when it cannot be found.
+    """The efficient frontier of the holdings other than base-currency cash, which is riskless: long
+    only and fully invested in them, from the expected returns and the covariance. Each point's
+    weights are in the order of `holdings`, with none in base-currency cash. Absent (with a
+    warning) when it cannot be found.
     """
 
     current: PortfolioPoint | None = None
@@ -2284,6 +2313,12 @@ class PerformanceReport:
 
     contributions: list[Contribution]
     """Each holding's contribution to the return from the first valuation to the last."""
+
+    expenses: float
+    """What fees and taxes charged to the accounts rather than to a holding took from the return
+    over the same period: negative, or zero without them. With the holdings' contributions, it
+    adds up to the time-weighted return.
+    """
 
     groups: list[SchemeContributions]
     """Contributions by each scheme of the options."""
@@ -4357,7 +4392,7 @@ class YearReturn:
 
 # The tag property and the class of each variant, by union.
 UNIONS = {
-    "Allocation": ("type", {"exchange": ExchangeAllocation, "income": IncomeAllocation, "trade": TradeAllocation}),
+    "Allocation": ("type", {"exchange": ExchangeAllocation, "expense": Expense, "income": IncomeAllocation, "trade": TradeAllocation}),
     "ColumnKind": ("type", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
     "CovarianceMethod": ("type", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
     "Effect": ("type", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
@@ -4439,6 +4474,7 @@ __all__ = [
     "Ewma",
     "ExcessReturn",
     "ExchangeAllocation",
+    "Expense",
     "FactorContribution",
     "FactorExposureLimit",
     "FactorMethod",

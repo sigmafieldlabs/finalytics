@@ -106,8 +106,8 @@ export interface AccountsPerformance {
 
 /**
  * How a transaction moved value between holdings, used to measure each holding's
- * contribution. Value moved between holdings nets to zero; only external flows change the
- * portfolio's total.
+ * contribution. Value moved between holdings nets to zero; only external flows and expenses
+ * change the portfolio's total.
  */
 export type Allocation =
   | {
@@ -126,6 +126,13 @@ export type Allocation =
     /** The currency of `amount`. */
     currency: Currency;
     /** The amount, net of tax withheld. */
+    amount: Decimal;
+  }
+  | {
+    type: "expense";
+    /** The currency of `amount`. */
+    currency: Currency;
+    /** The amount paid. */
     amount: Decimal;
   }
   | {
@@ -485,8 +492,9 @@ export interface Contribution {
   /** The holding. */
   holding: HoldingKey;
   /**
-   * Its contribution to the portfolio's time-weighted return. Contributions of all holdings
-   * add up to the portfolio's return over the period.
+   * Its contribution to the portfolio's time-weighted return. Contributions of all holdings,
+   * with what fees and taxes charged to the accounts took (see `Performance::expenses`), add
+   * up to the portfolio's return over the period.
    */
   contribution: number;
   /** The holding's own return in the base currency, when it can be measured. */
@@ -1092,9 +1100,12 @@ export type HoldingKey = string;
 /**
  * One holding's values, trades and income on each date of a `HoldingSeries`.
  *
- * Trades and income are those since the previous date. Value moved between holdings (a
- * purchase moves cash into a share) appears as a trade out of one line and into another, so
- * trades across all lines add up to the portfolio's external flows plus its income.
+ * Trades, income and expenses are those since the previous date. Value moved between holdings
+ * (a purchase moves cash into a share) appears as a trade out of one line and into another, so
+ * trades across all lines add up to the portfolio's external flows plus its income. Fees and
+ * taxes charged to an account rather than to a holding are expenses of its cash: they lower the
+ * cash's value without being a loss on it, so a holding's gain on a date is its change in value
+ * less its trades, plus its income and its expenses.
  */
 export interface HoldingLine {
   /** The holding. */
@@ -1113,6 +1124,13 @@ export interface HoldingLine {
   income_local: Decimal[];
   /** The income earned since the previous date, in the base currency. */
   income_base: Decimal[];
+  /** The fees and taxes paid out of the holding since the previous date, in `currency`. */
+  expenses_local: Decimal[];
+  /**
+   * The fees and taxes paid out of the holding since the previous date, in the base
+   * currency.
+   */
+  expenses_base: Decimal[];
 }
 
 /** Returns of holdings in the base currency between consecutive dates. */
@@ -1603,8 +1621,10 @@ export interface OverviewReport {
   /** Each holding's weight, expected return and risk. */
   holdings: HoldingRiskReturn[];
   /**
-   * The efficient frontier of the holdings, long only and fully invested, from the expected
-   * returns and the covariance; absent (with a warning) when it cannot be found.
+   * The efficient frontier of the holdings other than base-currency cash, which is riskless:
+   * long only and fully invested in them, from the expected returns and the covariance. Each
+   * point's weights are in the order of `holdings`, with none in base-currency cash. Absent
+   * (with a warning) when it cannot be found.
    */
   frontier?: FrontierPoint[] | null;
   /** The current portfolio on the same axes as the frontier. */
@@ -1633,6 +1653,12 @@ export interface PerformanceReport {
   calendar_years: YearReturn[];
   /** Each holding's contribution to the return from the first valuation to the last. */
   contributions: Contribution[];
+  /**
+   * What fees and taxes charged to the accounts rather than to a holding took from the
+   * return over the same period: negative, or zero without them. With the holdings'
+   * contributions, it adds up to the time-weighted return.
+   */
+  expenses: number;
   /** Contributions by each scheme of the options. */
   groups: SchemeContributions[];
   /** The holdings that contributed most, largest first. */

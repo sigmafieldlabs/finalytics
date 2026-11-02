@@ -291,6 +291,29 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "expense"
+            },
+            "currency": {
+              "$ref": "#/$defs/Currency",
+              "description": "The currency of `amount`."
+            },
+            "amount": {
+              "description": "The amount paid.",
+              "$ref": "#/$defs/Decimal"
+            }
+          },
+          "required": [
+            "type",
+            "currency",
+            "amount"
+          ],
+          "description": "`amount` (in `currency`) paid out of cash for a fee or a tax charged to the account\nrather than to a holding: a cost of the portfolio, not a loss on the cash."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "exchange"
             },
             "from": {
@@ -315,7 +338,7 @@
           "description": "`quantity` units of `to` replaced part of `from` (a spin-off, merger or symbol change);\nthe value moved is the market value of the new units on the date."
         }
       ],
-      "description": "How a transaction moved value between holdings, used to measure each holding's\ncontribution. Value moved between holdings nets to zero; only external flows change the\nportfolio's total."
+      "description": "How a transaction moved value between holdings, used to measure each holding's\ncontribution. Value moved between holdings nets to zero; only external flows and expenses\nchange the portfolio's total."
     },
     "Amount": {
       "type": "object",
@@ -1220,7 +1243,7 @@
         "contribution": {
           "type": "number",
           "format": "double",
-          "description": "Its contribution to the portfolio's time-weighted return. Contributions of all holdings\nadd up to the portfolio's return over the period."
+          "description": "Its contribution to the portfolio's time-weighted return. Contributions of all holdings,\nwith what fees and taxes charged to the accounts took (see `Performance::expenses`), add\nup to the portfolio's return over the period."
         },
         "return_base": {
           "type": [
@@ -2861,6 +2884,20 @@
             "$ref": "#/$defs/Decimal"
           },
           "description": "The income earned since the previous date, in the base currency."
+        },
+        "expenses_local": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Decimal"
+          },
+          "description": "The fees and taxes paid out of the holding since the previous date, in `currency`."
+        },
+        "expenses_base": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Decimal"
+          },
+          "description": "The fees and taxes paid out of the holding since the previous date, in the base\ncurrency."
         }
       },
       "required": [
@@ -2871,9 +2908,11 @@
         "trades_local",
         "trades_base",
         "income_local",
-        "income_base"
+        "income_base",
+        "expenses_local",
+        "expenses_base"
       ],
-      "description": "One holding's values, trades and income on each date of a `HoldingSeries`.\n\nTrades and income are those since the previous date. Value moved between holdings (a\npurchase moves cash into a share) appears as a trade out of one line and into another, so\ntrades across all lines add up to the portfolio's external flows plus its income."
+      "description": "One holding's values, trades and income on each date of a `HoldingSeries`.\n\nTrades, income and expenses are those since the previous date. Value moved between holdings\n(a purchase moves cash into a share) appears as a trade out of one line and into another, so\ntrades across all lines add up to the portfolio's external flows plus its income. Fees and\ntaxes charged to an account rather than to a holding are expenses of its cash: they lower the\ncash's value without being a loss on it, so a holding's gain on a date is its change in value\nless its trades, plus its income and its expenses."
     },
     "HoldingReturns": {
       "type": "object",
@@ -4292,7 +4331,7 @@
           "items": {
             "$ref": "#/$defs/FrontierPoint"
           },
-          "description": "The efficient frontier of the holdings, long only and fully invested, from the expected\nreturns and the covariance; absent (with a warning) when it cannot be found."
+          "description": "The efficient frontier of the holdings other than base-currency cash, which is riskless:\nlong only and fully invested in them, from the expected returns and the covariance. Each\npoint's weights are in the order of `holdings`, with none in base-currency cash. Absent\n(with a warning) when it cannot be found."
         },
         "current": {
           "anyOf": [
@@ -4382,6 +4421,11 @@
           },
           "description": "Each holding's contribution to the return from the first valuation to the last."
         },
+        "expenses": {
+          "type": "number",
+          "format": "double",
+          "description": "What fees and taxes charged to the accounts rather than to a holding took from the\nreturn over the same period: negative, or zero without them. With the holdings'\ncontributions, it adds up to the time-weighted return."
+        },
         "groups": {
           "type": "array",
           "items": {
@@ -4431,6 +4475,7 @@
         "monthly",
         "calendar_years",
         "contributions",
+        "expenses",
         "groups",
         "top_contributors",
         "top_detractors",

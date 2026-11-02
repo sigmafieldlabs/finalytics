@@ -9,7 +9,7 @@ use finalytics_core::{Result, ValidationReport};
 use finalytics_ledger::{Books, HoldingKey, MarketData};
 use finalytics_opt::{FrontierPoint, Problem};
 use finalytics_perf::{Performance, Period};
-use finalytics_risk::{TailMethod, statistics, tail_risk};
+use finalytics_risk::{Matrix, TailMethod, statistics, tail_risk};
 
 use crate::context::{
     Context, Provenance, ReportKind, ReportOptions, Source, group_of, label, to_f64,
@@ -99,8 +99,10 @@ pub struct OverviewReport {
     pub risk: Option<HoldingsRisk>,
     /// Each holding's weight, expected return and risk.
     pub holdings: Vec<HoldingRiskReturn>,
-    /// The efficient frontier of the holdings, long only and fully invested, from the expected
-    /// returns and the covariance; absent (with a warning) when it cannot be found.
+    /// The efficient frontier of the holdings other than base-currency cash, which is riskless:
+    /// long only and fully invested in them, from the expected returns and the covariance. Each
+    /// point's weights are in the order of `holdings`, with none in base-currency cash. Absent
+    /// (with a warning) when it cannot be found.
     pub frontier: Option<Vec<FrontierPoint>>,
     /// The current portfolio on the same axes as the frontier.
     pub current: Option<PortfolioPoint>,
@@ -253,11 +255,35 @@ pub fn overview_report(
                 expected_return: weights.iter().zip(&mu).map(|(w, r)| w * r).sum(),
                 volatility: risk.decomposition.volatility,
             };
-            let frontier = match Problem::from_covariance(risk.covariance.clone())
-                .with_expected_returns(mu)
-                .frontier(options.frontier_points)
-            {
-                Ok(points) => Some(points),
+            // The frontier of the invested holdings: base-currency cash is riskless, and with
+            // it the frontier's least risky point would be all cash.
+            let invested: Vec<usize> = (0..keys.len())
+                .filter(|&i| keys[i] != HoldingKey::Cash(cx.base))
+                .collect();
+            let sub = |i: usize, j: usize| risk.covariance.get(invested[i], invested[j]);
+            let m = invested.len();
+            let problem = Matrix::new(
+                invested.iter().map(|&i| label(&keys[i])).collect(),
+                (0..m * m).map(|k| sub(k / m, k % m)).collect(),
+            )
+            .map(|matrix| {
+                Problem::from_covariance(matrix)
+                    .with_expected_returns(invested.iter().map(|&i| mu[i]).collect())
+            });
+            let frontier = match problem.and_then(|p| p.frontier(options.frontier_points)) {
+                Ok(points) => Some(
+                    points
+                        .into_iter()
+                        .map(|mut point| {
+                            let mut weights = vec![0.0; keys.len()];
+                            for (k, &i) in invested.iter().enumerate() {
+                                weights[i] = point.weights[k];
+                            }
+                            point.weights = weights;
+                            point
+                        })
+                        .collect(),
+                ),
                 Err(e) => {
                     warnings.warning(
                         "frontier",

@@ -164,9 +164,16 @@ class Performance:
         return None if text is None else loads(_types.ExcessReturn, text)
 
     def contributions(self, start: DateLike | None = None, end: DateLike | None = None) -> list[_types.Contribution]:
-        """Each holding's contribution to the time-weighted return from `start` to `end`; the
-        contributions add up to the return. Needs performance measured from the books."""
+        """Each holding's contribution to the time-weighted return from `start` to `end`; with
+        :meth:`expenses`, the contributions add up to the return. Needs performance measured from
+        a portfolio."""
         return loads(list[_types.Contribution], call(self._native.contributions, *self._range(start, end)))
+
+    def expenses(self, start: DateLike | None = None, end: DateLike | None = None) -> float:
+        """What fees and taxes charged to the accounts rather than to a holding took from the
+        time-weighted return from `start` to `end`: negative, or zero without them. Needs
+        performance measured from a portfolio."""
+        return call(self._native.expenses, *self._range(start, end))
 
     def __repr__(self) -> str:
         dates = self.dates

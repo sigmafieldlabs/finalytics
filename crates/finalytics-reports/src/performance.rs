@@ -120,6 +120,10 @@ pub struct PerformanceReport {
     pub calendar_years: Vec<YearReturn>,
     /// Each holding's contribution to the return from the first valuation to the last.
     pub contributions: Vec<Contribution>,
+    /// What fees and taxes charged to the accounts rather than to a holding took from the
+    /// return over the same period: negative, or zero without them. With the holdings'
+    /// contributions, it adds up to the time-weighted return.
+    pub expenses: f64,
     /// Contributions by each scheme of the options.
     pub groups: Vec<SchemeContributions>,
     /// The holdings that contributed most, largest first.
@@ -245,6 +249,7 @@ pub fn performance_report(
 
     let (first, last) = (cx.dates[0], cx.dates[cx.dates.len() - 1]);
     let contributions = performance.contributions(&holdings, first, last)?;
+    let expenses = performance.expenses(&holdings, first, last)?;
     let groups = options
         .group_by
         .iter()
@@ -305,6 +310,7 @@ pub fn performance_report(
         benchmark_monthly: benchmark_monthly.map(|(g, _)| g),
         calendar_years,
         contributions,
+        expenses,
         groups,
         top_contributors,
         top_detractors,

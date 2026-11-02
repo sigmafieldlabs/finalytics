@@ -90,6 +90,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `portfolioFromCsv`; `rebalance(targets, { accounts })` replaces `rebalance` and
   `rebalanceAccounts`, and `dates()` replaces `defaultDates()`. The worker client's `books` is
   `portfolio`.
+- Cash in the base currency is riskless in the reports: it is left out of the holdings'
+  covariance estimate, so that Ledoit–Wolf shrinkage no longer lends it part of the average
+  variance, and its variance and covariances are zero. The overview's efficient frontier is that
+  of the invested holdings, so its least risky point is no longer nearly all cash; each point's
+  weights still follow the holdings, with none in base-currency cash.
+- Fees and taxes charged to an account rather than to a holding are expenses: a new allocation,
+  `expense`, records them, holding lines carry `expenses_local` and `expenses_base`, and they are
+  no longer a loss on the cash that paid them. Their share of the return is their own line:
+  `Performance::expenses` (`performance.expenses()` in Python and JavaScript), the performance
+  report's `expenses`, and a "Fees and taxes" row in its contribution table. With the holdings'
+  contributions they add up to the time-weighted return. Attribution segments' returns are
+  before them.
 - `formats::portfolio_from_csv` takes the base currency and the instruments file as options.
 - Rebalancing one account through `rebalance_accounts` gives exactly `rebalance`'s proposal.
 - Rust: the performance types and functions are in `finalytics::performance` rather than at the

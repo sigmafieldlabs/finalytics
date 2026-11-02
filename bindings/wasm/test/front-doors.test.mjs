@@ -50,6 +50,17 @@ test("the portfolio dataset, from report to trades", () => {
   }
 });
 
+test("fees are an expense, not a loss on cash", () => {
+  const performance = fl.datasets.portfolio().performance();
+  const contributions = performance.contributions();
+  const expenses = performance.expenses();
+  assert.ok(expenses < 0);
+  const total = contributions.reduce((sum, c) => sum + c.contribution, 0) + expenses;
+  close(total, performance.timeWeighted(), 1e-12, "contributions and expenses");
+  const usd = contributions.find((c) => c.holding === "USD cash");
+  assert.ok(Math.abs(usd.return_base) < 1e-12);
+});
+
 test("a portfolio from its transactions alone", () => {
   const portfolio = fl.Portfolio.fromCsv({
     transactions: "date,type,instrument,quantity,price,amount,currency\n2026-01-02,deposit,,,,20000,USD\n" +

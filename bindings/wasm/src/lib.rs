@@ -1401,7 +1401,8 @@ impl Performance {
         }
     }
 
-    /// Each holding's contribution to the time-weighted return; they add up to the return.
+    /// Each holding's contribution to the time-weighted return; with `expenses`, they add up to
+    /// the return.
     #[wasm_bindgen(unchecked_return_type = "Contribution[]")]
     pub fn contributions(
         &self,
@@ -1416,6 +1417,19 @@ impl Performance {
         };
         let (s, e) = self.range(start, end)?;
         to_js(&self.inner.contributions(holdings, s, e).map_err(error)?)
+    }
+
+    /// What fees and taxes charged to the accounts rather than to a holding took from the
+    /// time-weighted return: negative, or zero without them.
+    pub fn expenses(&self, start: Option<String>, end: Option<String>) -> Result<f64, JsValue> {
+        let Some(holdings) = &self.holdings else {
+            return Err(invalid(
+                "performance",
+                "expenses need performance measured from the books",
+            ));
+        };
+        let (s, e) = self.range(start, end)?;
+        self.inner.expenses(holdings, s, e).map_err(error)
     }
 }
 

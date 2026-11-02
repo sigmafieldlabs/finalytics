@@ -15,8 +15,9 @@ use crate::{FlowTiming, Performance};
 pub struct Contribution {
     /// The holding.
     pub holding: HoldingKey,
-    /// Its contribution to the portfolio's time-weighted return. Contributions of all holdings
-    /// add up to the portfolio's return over the period.
+    /// Its contribution to the portfolio's time-weighted return. Contributions of all holdings,
+    /// with what fees and taxes charged to the accounts took (see `Performance::expenses`), add
+    /// up to the portfolio's return over the period.
     pub contribution: f64,
     /// The holding's own return in the base currency, when it can be measured.
     pub return_base: Option<f64>,
@@ -50,33 +51,29 @@ impl Performance {
     /// `start` to the one on or before `end`.
     ///
     /// Each day's contribution is the holding's gain (change in value, less value moved in, plus
-    /// income) over the portfolio's starting value for the day. Days are linked by the
-    /// portfolio's growth up to each day, so the contributions add up exactly to the period's
-    /// time-weighted return. `holdings` must cover the same dates as this performance.
+    /// income and expenses paid out of it) over the portfolio's starting value for the day. Days
+    /// are linked by the portfolio's growth up to each day, so the contributions, with
+    /// [`Performance::expenses`], add up exactly to the period's time-weighted return.
+    /// `holdings` must cover the same dates as this performance.
     pub fn contributions(
         &self,
         holdings: &HoldingSeries,
         start: Date,
         end: Date,
     ) -> Result<Vec<Contribution>> {
-        if holdings.dates != self.dates {
-            let mut report = ValidationReport::new();
-            report.error(
-                "holdings.dates",
-                "must be the dates the performance was measured on",
-            );
-            return Err(Error::Validation(report));
-        }
-        let idx = |date: Date| self.dates.partition_point(|&d| d <= date).checked_sub(1);
-        let (Some(i), Some(j)) = (idx(start), idx(end)) else {
+        let Some((i, j)) = self.span(holdings, start, end)? else {
             return Ok(Vec::new());
         };
         let mut out = Vec::with_capacity(holdings.lines.len());
         for line in &holdings.lines {
             let value_base: Vec<f64> = line.values_base.iter().copied().map(f).collect();
             let value_local: Vec<f64> = line.values_local.iter().copied().map(f).collect();
-            let gain = |values: &[f64], trades: &[Decimal], income: &[Decimal], t: usize| {
-                values[t] - values[t - 1] - f(trades[t]) + f(income[t])
+            let gain = |values: &[f64],
+                        trades: &[Decimal],
+                        income: &[Decimal],
+                        spent: &[Decimal],
+                        t: usize| {
+                values[t] - values[t - 1] - f(trades[t]) + f(income[t]) + f(spent[t])
             };
             let mut contribution = 0.0;
             let mut growth_base = Some(1.0);
@@ -84,15 +81,21 @@ impl Performance {
             let mut weights = 0.0;
             let mut days = 0u32;
             for t in i + 1..=j {
-                let gain_base = gain(&value_base, &line.trades_base, &line.income_base, t);
-                let gain_local = gain(&value_local, &line.trades_local, &line.income_local, t);
-                let denominator = match self.timing {
-                    FlowTiming::StartOfDay => self.values[t - 1] + self.flows[t],
-                    FlowTiming::EndOfDay => self.values[t - 1],
-                };
-                if denominator > 0.0 {
-                    contribution += gain_base / denominator * self.growth[t - 1] / self.growth[i];
-                }
+                let gain_base = gain(
+                    &value_base,
+                    &line.trades_base,
+                    &line.income_base,
+                    &line.expenses_base,
+                    t,
+                );
+                let gain_local = gain(
+                    &value_local,
+                    &line.trades_local,
+                    &line.income_local,
+                    &line.expenses_local,
+                    t,
+                );
+                contribution += self.linked(gain_base, i, t);
                 growth_base = link(
                     growth_base,
                     value_base[t - 1],
@@ -126,6 +129,57 @@ impl Performance {
             });
         }
         Ok(out)
+    }
+
+    /// What fees and taxes charged to the accounts rather than to a holding took from the
+    /// portfolio's return from the valuation on or before `start` to the one on or before `end`:
+    /// negative, or zero when there were none. Each day's expenses are taken over the
+    /// portfolio's starting value and linked as [`Performance::contributions`] are, so the two
+    /// add up exactly to the period's time-weighted return.
+    pub fn expenses(&self, holdings: &HoldingSeries, start: Date, end: Date) -> Result<f64> {
+        let Some((i, j)) = self.span(holdings, start, end)? else {
+            return Ok(0.0);
+        };
+        Ok((i + 1..=j)
+            .map(|t| {
+                let spent: f64 = holdings.lines.iter().map(|l| f(l.expenses_base[t])).sum();
+                self.linked(-spent, i, t)
+            })
+            .sum())
+    }
+
+    /// The positions of the valuations on or before `start` and `end`, after checking that
+    /// `holdings` cover this performance's dates.
+    fn span(
+        &self,
+        holdings: &HoldingSeries,
+        start: Date,
+        end: Date,
+    ) -> Result<Option<(usize, usize)>> {
+        if holdings.dates != self.dates {
+            let mut report = ValidationReport::new();
+            report.error(
+                "holdings.dates",
+                "must be the dates the performance was measured on",
+            );
+            return Err(Error::Validation(report));
+        }
+        let idx = |date: Date| self.dates.partition_point(|&d| d <= date).checked_sub(1);
+        Ok(idx(start).zip(idx(end)))
+    }
+
+    /// A gain on day `t` as a share of the portfolio's starting value for the day, linked by the
+    /// portfolio's growth since day `i`.
+    fn linked(&self, gain: f64, i: usize, t: usize) -> f64 {
+        let denominator = match self.timing {
+            FlowTiming::StartOfDay => self.values[t - 1] + self.flows[t],
+            FlowTiming::EndOfDay => self.values[t - 1],
+        };
+        if denominator > 0.0 {
+            gain / denominator * self.growth[t - 1] / self.growth[i]
+        } else {
+            0.0
+        }
     }
 }
 

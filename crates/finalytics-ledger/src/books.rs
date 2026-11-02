@@ -178,8 +178,8 @@ impl schemars::JsonSchema for HoldingKey {
 }
 
 /// How a transaction moved value between holdings, used to measure each holding's
-/// contribution. Value moved between holdings nets to zero; only external flows change the
-/// portfolio's total.
+/// contribution. Value moved between holdings nets to zero; only external flows and expenses
+/// change the portfolio's total.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -201,6 +201,14 @@ pub enum Allocation {
         /// The currency of `amount`.
         currency: Currency,
         /// The amount, net of tax withheld.
+        amount: Decimal,
+    },
+    /// `amount` (in `currency`) paid out of cash for a fee or a tax charged to the account
+    /// rather than to a holding: a cost of the portfolio, not a loss on the cash.
+    Expense {
+        /// The currency of `amount`.
+        currency: Currency,
+        /// The amount paid.
         amount: Decimal,
     },
     /// `quantity` units of `to` replaced part of `from` (a spin-off, merger or symbol change);
@@ -1186,11 +1194,13 @@ fn allocations(
             instrument: Some(instrument),
             ..
         } => income(instrument, cash),
+        Fee { amount } | Tax { amount } => vec![Allocation::Expense {
+            currency: amount.currency(),
+            amount: amount.amount(),
+        }],
         Interest {
             instrument: None, ..
         }
-        | Fee { .. }
-        | Tax { .. }
         | Split { .. } => Vec::new(),
         FxConversion { sell, buy } => vec![
             trade(

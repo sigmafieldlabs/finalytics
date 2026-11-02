@@ -421,6 +421,16 @@ impl PerformanceReport {
                         n(c.average_weight),
                     ]
                 })
+                .chain((self.expenses != 0.0).then(|| {
+                    vec![
+                        t("Fees and taxes"),
+                        n(self.expenses),
+                        Cell::Missing,
+                        Cell::Missing,
+                        Cell::Missing,
+                        Cell::Missing,
+                    ]
+                }))
                 .collect(),
         );
         let mut value_columns = vec![

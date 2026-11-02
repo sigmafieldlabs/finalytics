@@ -253,3 +253,57 @@ fn a_portfolio_from_its_transactions_alone() {
     ));
     assert_eq!(found.len(), 2, "{found:?}");
 }
+
+#[test]
+fn base_currency_cash_is_riskless() {
+    let portfolio = datasets::portfolio();
+    let report = portfolio
+        .overview_report(&datasets::report_options())
+        .unwrap();
+    let risk = report.risk.unwrap();
+    let labels = risk.covariance.labels();
+    let position = |name: &str| labels.iter().position(|l| l == name).unwrap();
+    let (usd, eur) = (position("USD cash"), position("EUR cash"));
+    for j in 0..labels.len() {
+        assert_eq!(risk.covariance.get(usd, j), 0.0);
+        assert_eq!(risk.covariance.get(j, usd), 0.0);
+    }
+    // Cash in another currency carries the exchange rate's risk.
+    assert!(risk.covariance.get(eur, eur) > 0.0);
+    let frontier = report.frontier.unwrap();
+    assert!(frontier.iter().all(|p| p.weights[usd] == 0.0));
+    let invested: f64 = frontier[0].weights.iter().sum();
+    assert!((invested - 1.0).abs() < 1e-6);
+    // The least risky invested portfolio still has risk: it is not all cash.
+    assert!(frontier[0].volatility > 0.01);
+}
+
+#[test]
+fn fees_are_their_own_line_in_contribution() {
+    let portfolio = datasets::portfolio();
+    let report = portfolio
+        .performance_report(&datasets::report_options())
+        .unwrap();
+    assert!(report.expenses < 0.0);
+    let usd = report
+        .contributions
+        .iter()
+        .find(|c| c.holding.to_string() == "USD cash")
+        .unwrap();
+    // The advisory fee is not a loss on the dollars it was paid from.
+    assert!(usd.return_base.unwrap().abs() < 1e-12);
+    let total: f64 = report.contributions.iter().map(|c| c.contribution).sum();
+    let itd = report.periods.iter().find(|p| p.label == "ITD").unwrap();
+    let twr = itd.cumulative.unwrap();
+    assert!(
+        (total + report.expenses - twr).abs() < 1e-12,
+        "{total} {twr}"
+    );
+    let tables = report.tables();
+    let table = tables.iter().find(|t| t.name == "contributions").unwrap();
+    let last = table.rows.last().unwrap();
+    assert_eq!(
+        last[0],
+        finalytics::reports::Cell::Text("Fees and taxes".into())
+    );
+}

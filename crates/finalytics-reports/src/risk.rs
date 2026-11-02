@@ -280,11 +280,37 @@ pub(crate) fn holdings_risk(cx: &Context<'_>, valuation: &Valuation) -> Result<E
         }
     }
     let dates: Vec<Date> = cx.dates.iter().copied().filter(|d| *d >= start).collect();
-    let returns = holding_returns(cx.books, &keys, &dates, cx.market)?;
-    let estimate = covariance(&returns.table, cx.options.covariance)?;
-    let annual = estimate.matrix.scaled(cx.options.periods_per_year);
+    // Cash in the base currency is riskless. It is left out of the estimate, so that shrinkage
+    // towards the average variance does not lend it risk, and its row and column are zero.
+    let riskless = HoldingKey::Cash(cx.base);
+    let risky: Vec<HoldingKey> = keys.iter().filter(|k| **k != riskless).cloned().collect();
+    let periods = cx.options.periods_per_year;
+    let (estimated, observations, columns) = if risky.is_empty() {
+        (Vec::new(), dates.len().saturating_sub(1), Vec::new())
+    } else {
+        let returns = holding_returns(cx.books, &risky, &dates, cx.market)?;
+        let estimate = covariance(&returns.table, cx.options.covariance)?;
+        (
+            estimate.matrix.scaled(periods).values().to_vec(),
+            estimate.observations,
+            returns.table.columns().to_vec(),
+        )
+    };
+    let place: Vec<Option<usize>> = keys
+        .iter()
+        .map(|k| risky.iter().position(|r| r == k))
+        .collect();
+    let (n, m) = (keys.len(), risky.len());
+    let mut values = vec![0.0; n * n];
+    for (i, a) in place.iter().enumerate() {
+        for (j, b) in place.iter().enumerate() {
+            if let (Some(a), Some(b)) = (a, b) {
+                values[i * n + j] = estimated[a * m + b];
+            }
+        }
+    }
     let labels: Vec<String> = keys.iter().map(label).collect();
-    let annual = Matrix::new(labels.clone(), annual.values().to_vec())?;
+    let annual = Matrix::new(labels.clone(), values)?;
     let decomposition = risk_decomposition(&w, &annual)?;
     let groups = cx
         .options
@@ -336,16 +362,16 @@ pub(crate) fn holdings_risk(cx: &Context<'_>, valuation: &Valuation) -> Result<E
                 .collect()
         }
     };
-    let periods = cx.options.periods_per_year;
-    let means = returns
-        .table
-        .columns()
+    let means = place
         .iter()
-        .map(|c| c.iter().sum::<f64>() / c.len().max(1) as f64 * periods)
+        .map(|p| match p {
+            Some(a) => columns[*a].iter().sum::<f64>() / columns[*a].len().max(1) as f64 * periods,
+            None => 0.0,
+        })
         .collect();
     let risk = HoldingsRisk {
         start,
-        observations: estimate.observations,
+        observations,
         method: cx.options.covariance,
         covariance: annual,
         correlation: Grid {

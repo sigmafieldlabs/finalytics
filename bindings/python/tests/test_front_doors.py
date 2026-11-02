@@ -125,3 +125,18 @@ def test_dataset_files_show_each_layout():
     assert header.startswith("id,account,trade_date,type,instrument,quantity,price")
     with pytest.raises(fl.ValidationError):
         fl.datasets.file("nothing.csv")
+
+
+def test_fees_are_an_expense_and_cash_is_riskless():
+    portfolio = fl.datasets.portfolio()
+    performance = portfolio.performance()
+    contributions = performance.contributions()
+    expenses = performance.expenses()
+    assert expenses < 0
+    assert sum(c.contribution for c in contributions) + expenses == pytest.approx(performance.time_weighted(), abs=1e-12)
+    usd = next(c for c in contributions if c.holding == "USD cash")
+    assert usd.return_base == pytest.approx(0.0, abs=1e-12)
+    risk = portfolio.risk_report().holdings
+    usd_row = risk.covariance.labels.index("USD cash")
+    n = len(risk.covariance.labels)
+    assert all(v == 0.0 for v in risk.covariance.values[usd_row * n : (usd_row + 1) * n])
