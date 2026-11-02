@@ -43,13 +43,20 @@ pub use finalytics_ledger::{
 };
 
 pub use finalytics_formats::PortfolioDocument;
-pub use finalytics_perf::{
-    AccountsPerformance, Attribution, AttributionPeriod, Contribution, CurrencyAttribution,
-    CurrencyAttributionPeriod, CurrencyEffect, CurrencyPeriodAttribution, CurrencyReturn,
-    CurrencySegment, ExcessReturn, FlowTiming, GroupContribution, Household, HouseholdOptions,
-    Linking, Performance, Period, PeriodAttribution, PeriodReturn, SchemePerformance, Segment,
-    SegmentEffects, brinson_fachler, group_contributions, household, karnosky_singer,
-};
+
+/// Performance measurement: time- and money-weighted returns over reporting periods,
+/// contribution by holding and by group, households of accounts, and attribution against a
+/// benchmark (Brinson–Fachler, linked over periods, and currency attribution by Karnosky and
+/// Singer).
+pub mod performance {
+    pub use finalytics_perf::{
+        AccountsPerformance, Attribution, AttributionPeriod, Contribution, CurrencyAttribution,
+        CurrencyAttributionPeriod, CurrencyEffect, CurrencyPeriodAttribution, CurrencyReturn,
+        CurrencySegment, ExcessReturn, FlowTiming, GroupContribution, Household, HouseholdOptions,
+        Linking, Performance, Period, PeriodAttribution, PeriodReturn, SchemePerformance, Segment,
+        SegmentEffects, brinson_fachler, group_contributions, household, karnosky_singer,
+    };
+}
 
 /// Reading and writing portfolios: CSV import with validation reports, the versioned portfolio
 /// document in JSON, and a JSON reader for any of the engine's types.
@@ -110,7 +117,7 @@ pub mod reports {
 ///     vec!["equity".into(), "bonds".into()],
 ///     vec![0.0400, 0.0020, 0.0020, 0.0049],
 /// )?;
-/// let problem = Problem::new(covariance).with_expected_returns(vec![0.07, 0.03]);
+/// let problem = Problem::from_covariance(covariance).with_expected_returns(vec![0.07, 0.03]);
 /// let solution = problem.solve(&Objective::MaximumSharpe { risk_free_rate: 0.02 })?;
 /// assert!(solution.status.has_solution());
 /// # Ok::<(), finalytics::Error>(())
@@ -118,17 +125,12 @@ pub mod reports {
 pub mod opt {
     pub use finalytics_opt::{
         AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, CombinedRebalance, Constraints,
-        FactorExposureLimit, Fees, FrontierPoint, GroupLimit, Linkage, Method, Objective, Prior,
-        Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, ResampledSolution,
-        Resampling, ReturnUncertainty, Side, Solution, SolveStatus, TaxRates, TrackingErrorLimit,
-        TradeLimits, Turnover, View, ViewUncertainty, implied_risk_aversion, rebalance,
-        rebalance_accounts,
+        FactorExposureLimit, Fees, FrontierPoint, GroupLimit, Linkage, Objective, Prior, Problem,
+        ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, ResampledSolution,
+        Resampling, ReturnUncertainty, Side, Solution, SolveMethod, SolveStatus, TaxRates,
+        TrackingErrorLimit, TradeLimits, Turnover, View, ViewUncertainty, implied_risk_aversion,
+        rebalance, rebalance_accounts,
     };
-}
-
-/// Numerical helpers: compensated summation and tolerance checks.
-pub mod numeric {
-    pub use finalytics_core::numeric::{CompensatedSum, approx_eq, compensated_sum};
 }
 
 /// The version of this release of Finalytics.

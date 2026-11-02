@@ -32,7 +32,6 @@ from finalytics.portfolio import (
     Observed,
     Portfolio,
     cash,
-    holding,
     read_document,
     write_document,
 )
@@ -53,7 +52,6 @@ __all__ = [
     "__version__",
     "cash",
     "group_contributions",
-    "holding",
     "opt",
     "performance",
     "period",

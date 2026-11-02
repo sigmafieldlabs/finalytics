@@ -1,12 +1,15 @@
 //! Reporting periods.
 
-use finalytics_core::{Date, Result};
+use std::fmt;
+use std::str::FromStr;
+
+use finalytics_core::{Date, Error, Result, ValidationReport};
 use serde::{Deserialize, Serialize};
 
 /// A reporting period ending on an as-of date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(rename_all = "snake_case", tag = "period")]
+#[serde(rename_all = "snake_case", tag = "type")]
 #[non_exhaustive]
 pub enum Period {
     /// From the end of the previous month.
@@ -63,12 +66,77 @@ impl Period {
     }
 }
 
+impl fmt::Display for Period {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.label())
+    }
+}
+
+impl FromStr for Period {
+    type Err = Error;
+
+    /// Reads a period's short label: `MTD`, `QTD`, `YTD`, `ITD` (since inception), a number of
+    /// years such as `3Y`, or `since 2026-01-31`. Case and surrounding spaces do not matter.
+    fn from_str(text: &str) -> Result<Self> {
+        let label = text.trim().to_uppercase();
+        let found = match label.as_str() {
+            "MTD" => Some(Period::MonthToDate),
+            "QTD" => Some(Period::QuarterToDate),
+            "YTD" => Some(Period::YearToDate),
+            "ITD" => Some(Period::SinceInception),
+            _ => match label.strip_prefix("SINCE ") {
+                Some(date) => date
+                    .trim()
+                    .parse()
+                    .ok()
+                    .map(|start| Period::Since { start }),
+                None => label
+                    .strip_suffix('Y')
+                    .and_then(|n| n.parse().ok())
+                    .filter(|years| *years > 0)
+                    .map(|years| Period::Years { years }),
+            },
+        };
+        found.ok_or_else(|| {
+            let mut report = ValidationReport::new();
+            report.error(
+                "period",
+                format!(
+                    "unknown period {text:?}: use MTD, QTD, YTD, ITD, a number of years such as \
+                     3Y, or since a date, such as \"since 2026-01-31\""
+                ),
+            );
+            Error::Validation(report)
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn d(s: &str) -> Date {
         s.parse().unwrap()
+    }
+
+    #[test]
+    fn labels_read_back() {
+        for period in [
+            Period::MonthToDate,
+            Period::QuarterToDate,
+            Period::YearToDate,
+            Period::Years { years: 3 },
+            Period::SinceInception,
+            Period::Since {
+                start: d("2026-01-31"),
+            },
+        ] {
+            assert_eq!(period.label().parse::<Period>().unwrap(), period);
+        }
+        assert_eq!(" ytd ".parse::<Period>().unwrap(), Period::YearToDate);
+        for bad in ["", "0Y", "Y", "3M", "since soon"] {
+            assert!(bad.parse::<Period>().is_err(), "{bad}");
+        }
     }
 
     #[test]

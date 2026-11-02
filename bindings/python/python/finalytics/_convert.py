@@ -70,8 +70,8 @@ def from_json(tp: Any, value: Any) -> Any:
     if origin is tuple:
         return tuple(from_json(t, v) for t, v in zip(typing.get_args(tp), value))
     if origin is dict:
-        _, item = typing.get_args(tp)
-        return {k: from_json(item, v) for k, v in value.items()}
+        key, item = typing.get_args(tp)
+        return {(int(k) if key is int else k): from_json(item, v) for k, v in value.items()}
     if origin is typing.Literal:
         return value
     if tp is datetime.date:

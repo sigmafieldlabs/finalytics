@@ -7,12 +7,12 @@ use finalytics_risk::Matrix;
 use crate::invalid;
 use crate::linalg::cholesky_solve;
 use crate::program::{Program, Row};
-use crate::solution::{Method, SolveStatus};
+use crate::solution::{SolveMethod, SolveStatus};
 
 pub(crate) struct Found {
     pub(crate) status: SolveStatus,
     pub(crate) weights: Option<Vec<f64>>,
-    pub(crate) method: Method,
+    pub(crate) method: SolveMethod,
     pub(crate) iterations: u32,
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn solve(covariance: &Matrix, budgets: &[f64]) -> Result<Found> {
         return Ok(Found {
             status: SolveStatus::Optimal,
             weights: Some(normalise(&x)),
-            method: Method::Newton,
+            method: SolveMethod::Newton,
             iterations,
         });
     }
@@ -52,7 +52,7 @@ pub(crate) fn solve(covariance: &Matrix, budgets: &[f64]) -> Result<Found> {
     Ok(Found {
         status: outcome.status,
         weights,
-        method: Method::InteriorPoint,
+        method: SolveMethod::InteriorPoint,
         iterations: outcome.iterations,
     })
 }

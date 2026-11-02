@@ -76,8 +76,8 @@ Contributions add up by any grouping, such as asset class or region, with
 >>> round(performance.time_weighted(), 6)
 0.01738
 >>> for c in performance.contributions():
-...     if isinstance(c.holding, fl.types.InstrumentHolding):
-...         print(c.holding.id, round(c.contribution, 6), round(c.return_local, 6),
+...     if not c.holding.endswith(" cash"):
+...         print(c.holding, round(c.contribution, 6), round(c.return_local, 6),
 ...               round(c.return_base, 6), round(c.currency_effect, 6))
 AAPL 0.0045 0.01 0.01 0.0
 SAP 0.01288 0.02 0.029273 0.009273

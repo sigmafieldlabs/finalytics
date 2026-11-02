@@ -66,13 +66,13 @@ fn compare(result: &ScenarioResult, expected: &Value) {
     for (h, e) in result.holdings.iter().zip(holdings) {
         let name = label(&h.holding);
         assert_eq!(name, e["label"].as_str().unwrap());
-        close(h.local_return, &e["local_return"], &format!("{name} local"));
+        close(h.return_local, &e["return_local"], &format!("{name} local"));
         close(
             h.currency_return,
             &e["currency_return"],
             &format!("{name} currency"),
         );
-        close(h.total_return, &e["total_return"], &format!("{name} total"));
+        close(h.return_base, &e["return_base"], &format!("{name} base"));
         close(h.value_after, &e["value_after"], &format!("{name} after"));
     }
     for scheme in &result.groups {
@@ -107,7 +107,7 @@ fn shocks_match_the_reference() {
         let risk = risk.as_ref().unwrap();
         let e = &expected[key];
         close(risk.volatility, &e["volatility"], key);
-        close(risk.value_at_risk, &e["value_at_risk"], key);
+        close(risk.value_at_risk_base, &e["value_at_risk"], key);
         for (c, x) in risk
             .contributions
             .iter()

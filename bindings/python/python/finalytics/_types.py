@@ -27,6 +27,11 @@ TransactionId = str
 LotId = str
 """A tax lot's identifier."""
 
+HoldingKey = str
+"""A holding: an instrument's identifier, such as "SPY", or a currency's code followed by " cash",
+such as "USD cash".
+"""
+
 
 FactorMethod = Literal["regression", "statistical", "fundamental"]
 """How a factor model was estimated."""
@@ -57,9 +62,6 @@ of them.
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
-Method = Literal["interior_point", "newton", "recursive_bisection", "trade_elimination"]
-"""The method that produced a solution."""
-
 ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
 """Which report a report is."""
 
@@ -68,6 +70,9 @@ Severity = Literal["warning", "error"]
 
 Side = Literal["buy", "sell"]
 """Buy or sell."""
+
+SolveMethod = Literal["interior_point", "newton", "recursive_bisection", "trade_elimination"]
+"""The method that produced a solution."""
 
 SolveStatus = Literal["optimal", "nearly_optimal", "infeasible", "unbounded", "iteration_limit", "numerical_difficulty"]
 """How an optimisation ended."""
@@ -201,10 +206,10 @@ class AccountsPerformance:
 class TradeAllocation:
     """`amount` (in `currency`) moved into `holding` (negative: out of it)."""
 
-    ALLOCATION: ClassVar[str] = "trade"
-    """The value of the `allocation` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "trade"
+    """The value of the `type` tag that identifies this variant."""
 
-    holding: HoldingKey
+    holding: str
     """The holding."""
 
     currency: str
@@ -218,10 +223,10 @@ class TradeAllocation:
 class IncomeAllocation:
     """`amount` (in `currency`) earned by `holding` and paid out to cash, such as a dividend."""
 
-    ALLOCATION: ClassVar[str] = "income"
-    """The value of the `allocation` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "income"
+    """The value of the `type` tag that identifies this variant."""
 
-    holding: HoldingKey
+    holding: str
     """The holding that earned it."""
 
     currency: str
@@ -237,8 +242,8 @@ class ExchangeAllocation:
     value moved is the market value of the new units on the date.
     """
 
-    ALLOCATION: ClassVar[str] = "exchange"
-    """The value of the `allocation` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "exchange"
+    """The value of the `type` tag that identifies this variant."""
 
     from_: str
     """The instrument given up, wholly or in part."""
@@ -457,7 +462,8 @@ class BlackLitterman:
     """The views; without any, the posterior returns are the prior."""
 
     tau: float = 0.05
-    """The uncertainty of the prior relative to the covariance, greater than zero."""
+    """The uncertainty of the prior relative to the covariance, greater than zero: 0.05 by default.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -560,48 +566,48 @@ class Column:
 class TextColumn:
     """Text."""
 
-    KIND: ClassVar[str] = "text"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "text"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class DateColumn:
     """An ISO 8601 date, as text."""
 
-    KIND: ClassVar[str] = "date"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "date"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class NumberColumn:
     """A number."""
 
-    KIND: ClassVar[str] = "number"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "number"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class IntegerColumn:
     """A whole number."""
 
-    KIND: ClassVar[str] = "integer"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "integer"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class FractionColumn:
     """A fraction, to show as a percentage: 0.05 is 5%."""
 
-    KIND: ClassVar[str] = "fraction"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "fraction"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class MoneyColumn:
     """An amount of money in a currency."""
 
-    KIND: ClassVar[str] = "money"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "money"
+    """The value of the `type` tag that identifies this variant."""
 
     currency: str
     """The currency."""
@@ -611,8 +617,8 @@ class MoneyColumn:
 class BooleanColumn:
     """Yes or no."""
 
-    KIND: ClassVar[str] = "boolean"
-    """The value of the `kind` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "boolean"
+    """The value of the `type` tag that identifies this variant."""
 
 
 ColumnKind = Union[TextColumn, DateColumn, NumberColumn, IntegerColumn, FractionColumn, MoneyColumn, BooleanColumn]
@@ -631,10 +637,10 @@ class CombinedRebalance:
     value_base: decimal.Decimal
     """The accounts' combined value in the base currency."""
 
-    weights_before: list[tuple[HoldingKey, float]]
+    weights_before: dict[str, float]
     """Each holding's weight in the combined value before the trades."""
 
-    weights_after: list[tuple[HoldingKey, float]]
+    weights_after: dict[str, float]
     """Each holding's weight in the combined value after the trades."""
 
     turnover: float
@@ -708,7 +714,7 @@ class Constraints:
 class Contribution:
     """What one holding added to the portfolio's return over a period."""
 
-    holding: HoldingKey
+    holding: str
     """The holding."""
 
     contribution: float
@@ -765,8 +771,8 @@ class CovarianceEstimate:
 class Sample:
     """The sample covariance, with divisor n - 1."""
 
-    METHOD: ClassVar[str] = "sample"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "sample"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -776,8 +782,8 @@ class Ewma:
     mean. A decay of 0.94 for daily returns follows RiskMetrics.
     """
 
-    METHOD: ClassVar[str] = "ewma"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "ewma"
+    """The value of the `type` tag that identifies this variant."""
 
     decay: float
     """The decay factor, between 0 and 1."""
@@ -789,8 +795,8 @@ class LedoitWolf:
     intensity of Ledoit and Wolf (2004).
     """
 
-    METHOD: ClassVar[str] = "ledoit_wolf"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "ledoit_wolf"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -799,8 +805,8 @@ class Oas:
     oracle approximating shrinkage intensity of Chen, Wiesel, Eldar and Hero (2010).
     """
 
-    METHOD: ClassVar[str] = "oas"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "oas"
+    """The value of the `type` tag that identifies this variant."""
 
 
 CovarianceMethod = Union[Sample, Ewma, LedoitWolf, Oas]
@@ -864,12 +870,12 @@ class CurrencyAttributionPeriod:
     currencies: list[CurrencyReturn]
     """The returns of every currency of the segments, and of the base currency."""
 
-    portfolio_exposures: list[tuple[str, float]] | None = None
+    portfolio_exposures: dict[str, float] | None = None
     """The portfolio's exposure to each currency after any hedging, adding up to one; without it,
     each currency's share of the portfolio's segment weights (no hedging).
     """
 
-    benchmark_exposures: list[tuple[str, float]] | None = None
+    benchmark_exposures: dict[str, float] | None = None
     """The benchmark's exposure to each currency, as for the portfolio."""
 
 
@@ -1020,8 +1026,8 @@ class Drawdown:
 class LotSet:
     """A lot was opened or changed; this is its new state."""
 
-    EFFECT: ClassVar[str] = "set_lot"
-    """The value of the `effect` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "set_lot"
+    """The value of the `type` tag that identifies this variant."""
 
     lot: Lot
     """The lot after the transaction."""
@@ -1031,8 +1037,8 @@ class LotSet:
 class LotClosed:
     """A lot was closed."""
 
-    EFFECT: ClassVar[str] = "close_lot"
-    """The value of the `effect` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "close_lot"
+    """The value of the `type` tag that identifies this variant."""
 
     account: str
     """The account that held it."""
@@ -1048,8 +1054,8 @@ class LotClosed:
 class CashChange:
     """Cash in one currency changed by `amount` (negative for a payment)."""
 
-    EFFECT: ClassVar[str] = "cash"
-    """The value of the `effect` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "cash"
+    """The value of the `type` tag that identifies this variant."""
 
     account: str
     """The account."""
@@ -1237,7 +1243,7 @@ class FactorShocks:
     model: FactorModel
     """The model. Its assets are instrument identifiers; assets that are not held are ignored."""
 
-    shocks: list[tuple[str, float]]
+    shocks: dict[str, float]
     """The return of each shocked factor, by factor name."""
 
     propagate: bool = False
@@ -1469,9 +1475,9 @@ class HistoricalWindow:
     end: datetime.date
     """The end of the period."""
 
-    proxies: list[tuple[str, str]] = field(default_factory=list)
+    proxies: dict[str, str] = field(default_factory=dict)
     """Instruments whose prices stand in for others' over the period, such as an index for a fund
-    that did not exist then: `(instrument, proxy)` pairs.
+    that did not exist then: the proxy of each instrument, by instrument.
     """
 
 
@@ -1481,7 +1487,7 @@ class HoldingImpact:
     accounts.
     """
 
-    holding: HoldingKey
+    holding: str
     """The holding."""
 
     value_before: float
@@ -1490,14 +1496,14 @@ class HoldingImpact:
     weight_before: float
     """Its share of the portfolio's value before."""
 
-    local_return: float
+    return_local: float
     """Its return in its own currency."""
 
     currency_return: float
     """The change in its currency's value in the base currency."""
 
-    total_return: float
-    """Its return in the base currency, `(1 + local)(1 + currency) - 1`."""
+    return_base: float
+    """Its return in the base currency, `(1 + return_local)(1 + currency_return) - 1`."""
 
     value_after: float
     """Its value after, in the base currency."""
@@ -1513,32 +1519,6 @@ class HoldingImpact:
 
 
 @dataclass(frozen=True, kw_only=True)
-class InstrumentHolding:
-    """An instrument."""
-
-    HOLDING: ClassVar[str] = "instrument"
-    """The value of the `holding` tag that identifies this variant."""
-
-    id: str
-
-
-@dataclass(frozen=True, kw_only=True)
-class CashHolding:
-    """Cash in one currency."""
-
-    HOLDING: ClassVar[str] = "cash"
-    """The value of the `holding` tag that identifies this variant."""
-
-    id: str
-
-
-HoldingKey = Union[InstrumentHolding, CashHolding]
-"""A holding for performance attribution: an instrument, or cash in one currency, added up across
-accounts.
-"""
-
-
-@dataclass(frozen=True, kw_only=True)
 class HoldingLine:
     """One holding's values, trades and income on each date of a `HoldingSeries`.
 
@@ -1547,7 +1527,7 @@ class HoldingLine:
     across all lines add up to the portfolio's external flows plus its income.
     """
 
-    holding: HoldingKey
+    holding: str
     """The holding."""
 
     currency: str
@@ -1576,7 +1556,7 @@ class HoldingLine:
 class HoldingReturns:
     """Returns of holdings in the base currency between consecutive dates."""
 
-    holdings: list[HoldingKey]
+    holdings: list[str]
     """The holdings, in the order of the table's columns."""
 
     dates: list[datetime.date]
@@ -1595,7 +1575,7 @@ class HoldingReturns:
 class HoldingRiskReturn:
     """One holding's weight, expected return and risk."""
 
-    holding: HoldingKey
+    holding: str
     """The holding."""
 
     weight: float
@@ -1618,7 +1598,7 @@ class HoldingRiskReturn:
 class HoldingRow:
     """One holding, added up across accounts."""
 
-    holding: HoldingKey
+    holding: str
     """The holding."""
 
     name: str | None = None
@@ -1793,10 +1773,10 @@ class IncomeSummary:
     total: decimal.Decimal
     """All income."""
 
-    by_year: list[tuple[int, decimal.Decimal]]
+    by_year: dict[int, decimal.Decimal]
     """By calendar year."""
 
-    by_holding: list[tuple[HoldingKey, decimal.Decimal]]
+    by_holding: dict[str, decimal.Decimal]
     """By holding: the instrument that paid it, or cash for interest on cash."""
 
 
@@ -2009,16 +1989,16 @@ class NamedScenario:
 class MinimumVariance:
     """The smallest variance."""
 
-    OBJECTIVE: ClassVar[str] = "minimum_variance"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "minimum_variance"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class MeanVariance:
     """The largest `expected return - risk_aversion / 2 * variance`."""
 
-    OBJECTIVE: ClassVar[str] = "mean_variance"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "mean_variance"
+    """The value of the `type` tag that identifies this variant."""
 
     risk_aversion: float
     """The weight on variance, greater than zero."""
@@ -2031,8 +2011,8 @@ class RobustMeanVariance:
     error in the estimates of expected return.
     """
 
-    OBJECTIVE: ClassVar[str] = "robust_mean_variance"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "robust_mean_variance"
+    """The value of the `type` tag that identifies this variant."""
 
     risk_aversion: float
     """The weight on variance, greater than zero."""
@@ -2045,8 +2025,8 @@ class RobustMeanVariance:
 class TargetReturn:
     """The smallest variance with an expected return of at least `target`."""
 
-    OBJECTIVE: ClassVar[str] = "target_return"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "target_return"
+    """The value of the `type` tag that identifies this variant."""
 
     target: float
     """The expected return required."""
@@ -2056,8 +2036,8 @@ class TargetReturn:
 class TargetVolatility:
     """The largest expected return with a volatility of at most `target`."""
 
-    OBJECTIVE: ClassVar[str] = "target_volatility"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "target_volatility"
+    """The value of the `type` tag that identifies this variant."""
 
     target: float
     """The volatility allowed, greater than zero."""
@@ -2067,8 +2047,8 @@ class TargetVolatility:
 class MaximumSharpe:
     """The largest Sharpe ratio, `(expected return - risk_free_rate) / volatility`."""
 
-    OBJECTIVE: ClassVar[str] = "maximum_sharpe"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "maximum_sharpe"
+    """The value of the `type` tag that identifies this variant."""
 
     risk_free_rate: float
     """The risk-free rate, in the units of the expected returns."""
@@ -2080,8 +2060,8 @@ class MaximumDiversification:
     portfolio's volatility (Choueifaty and Coignard, 2008).
     """
 
-    OBJECTIVE: ClassVar[str] = "maximum_diversification"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "maximum_diversification"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2090,8 +2070,8 @@ class MinimumCvar:
     linear programme of Rockafellar and Uryasev (2000).
     """
 
-    OBJECTIVE: ClassVar[str] = "minimum_cvar"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "minimum_cvar"
+    """The value of the `type` tag that identifies this variant."""
 
     confidence: float
     """The confidence level, for example 0.95."""
@@ -2104,8 +2084,8 @@ class RiskBudgeting:
     constraints apply.
     """
 
-    OBJECTIVE: ClassVar[str] = "risk_budgeting"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "risk_budgeting"
+    """The value of the `type` tag that identifies this variant."""
 
     budgets: list[float] | None = None
     """The risk budgets, one per asset, each greater than zero; they are scaled to sum to one."""
@@ -2118,8 +2098,8 @@ class HierarchicalRiskParity:
     the default constraints apply.
     """
 
-    OBJECTIVE: ClassVar[str] = "hierarchical_risk_parity"
-    """The value of the `objective` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "hierarchical_risk_parity"
+    """The value of the `type` tag that identifies this variant."""
 
     linkage: Linkage = "single"
     """How clusters are joined."""
@@ -2222,32 +2202,32 @@ class PerformanceReport:
 class MonthToDate:
     """From the end of the previous month."""
 
-    PERIOD: ClassVar[str] = "month_to_date"
-    """The value of the `period` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "month_to_date"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class QuarterToDate:
     """From the end of the previous calendar quarter."""
 
-    PERIOD: ClassVar[str] = "quarter_to_date"
-    """The value of the `period` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "quarter_to_date"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class YearToDate:
     """From the end of the previous calendar year."""
 
-    PERIOD: ClassVar[str] = "year_to_date"
-    """The value of the `period` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "year_to_date"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class Years:
     """The `years` years before the as-of date (1, 3, 5 …)."""
 
-    PERIOD: ClassVar[str] = "years"
-    """The value of the `period` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "years"
+    """The value of the `type` tag that identifies this variant."""
 
     years: int
     """The number of years."""
@@ -2257,16 +2237,16 @@ class Years:
 class SinceInception:
     """From the first valuation."""
 
-    PERIOD: ClassVar[str] = "since_inception"
-    """The value of the `period` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "since_inception"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class Since:
     """From `start` to the as-of date."""
 
-    PERIOD: ClassVar[str] = "since"
-    """The value of the `period` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "since"
+    """The value of the `type` tag that identifies this variant."""
 
     start: datetime.date
     """The start of the period."""
@@ -2477,8 +2457,8 @@ class MarketPrior:
     returns at which the market portfolio is optimal for an investor with that risk aversion.
     """
 
-    PRIOR: ClassVar[str] = "market"
-    """The value of the `prior` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "market"
+    """The value of the `type` tag that identifies this variant."""
 
     weights: list[float]
     """Each asset's market capitalisation or weight, one per asset; they are scaled to sum to one.
@@ -2497,8 +2477,8 @@ class MarketPrior:
 class ReturnsPrior:
     """Given prior returns, one per asset."""
 
-    PRIOR: ClassVar[str] = "returns"
-    """The value of the `prior` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "returns"
+    """The value of the `type` tag that identifies this variant."""
 
     returns: list[float]
     """The prior expected returns."""
@@ -2579,7 +2559,7 @@ class ProposedTrade:
     lots: list[LotSale]
     """For a sale, the lots it closes."""
 
-    fees: decimal.Decimal
+    fees_local: decimal.Decimal
     """The fee, in the instrument's currency."""
 
     realised_gain_base: decimal.Decimal | None = None
@@ -2683,10 +2663,10 @@ class RealisedSummary:
     long_term: decimal.Decimal
     """Gains on lots held for longer than the long-term period."""
 
-    by_year: list[tuple[int, decimal.Decimal]]
+    by_year: dict[int, decimal.Decimal]
     """By calendar year of disposal."""
 
-    by_instrument: list[tuple[str, decimal.Decimal]]
+    by_instrument: dict[str, decimal.Decimal]
     """By instrument."""
 
 
@@ -2709,10 +2689,10 @@ class Rebalance:
     conversions: list[ProposedConversion]
     """Conversions that fund purchases in other currencies and reach the target cash balances."""
 
-    weights_before: list[tuple[HoldingKey, float]]
+    weights_before: dict[str, float]
     """Each holding's weight before the trades."""
 
-    weights_after: list[tuple[HoldingKey, float]]
+    weights_after: dict[str, float]
     """Each holding's weight after the trades."""
 
     turnover: float
@@ -2814,7 +2794,7 @@ class ReportOptions:
     timing: FlowTiming = "start_of_day"
     """When external flows happen within the day: at the start (the default) or the end."""
 
-    covariance: CovarianceMethod = field(default_factory=lambda: {'method': 'ledoit_wolf'})
+    covariance: CovarianceMethod = field(default_factory=lambda: {'type': 'ledoit_wolf'})
     """How the covariance of the holdings' returns is estimated: Ledoit–Wolf by default."""
 
     confidences: list[float] = field(default_factory=lambda: [0.95, 0.99])
@@ -2836,7 +2816,7 @@ class ReportOptions:
     than this many days is long-term, as in rebalancing's tax rates. 365 by default.
     """
 
-    expected_returns: list[tuple[str, float]] = field(default_factory=list)
+    expected_returns: dict[str, float] = field(default_factory=dict)
     """Annual expected returns by instrument for the efficient frontier; instruments not listed, and
     every instrument when none is, take their historical mean return.
     """
@@ -2844,7 +2824,7 @@ class ReportOptions:
     frontier_points: int = 25
     """The number of portfolios on the efficient frontier: 25 by default."""
 
-    benchmark_weights: list[tuple[HoldingKey, float]] = field(default_factory=list)
+    benchmark_weights: dict[str, float] = field(default_factory=dict)
     """Benchmark weights by holding, for the ex-ante tracking error."""
 
     attribution: AttributionInputs | None = None
@@ -2905,7 +2885,7 @@ class ResampledSolution:
     """The number of simulated problems the solver could not solve, left out of the average."""
 
     solve_time: float
-    """The time taken, in seconds."""
+    """The time taken, in seconds. It varies from run to run and is left out of comparisons."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2932,8 +2912,8 @@ class Ellipsoid:
     with as many degrees of freedom as assets.
     """
 
-    SET: ClassVar[str] = "ellipsoid"
-    """The value of the `set` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "ellipsoid"
+    """The value of the `type` tag that identifies this variant."""
 
     size: float
     """The size of the ellipsoid, not negative."""
@@ -2950,8 +2930,8 @@ class Box:
     portfolio's expected return by `sum half_widths_i |w_i|`.
     """
 
-    SET: ClassVar[str] = "box"
-    """The value of the `set` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "box"
+    """The value of the `type` tag that identifies this variant."""
 
     half_widths: list[float]
     """The half-width for each asset, not negative."""
@@ -3145,7 +3125,7 @@ class ScenarioResult:
     not_shocked: list[str]
     """The instruments held whose return in their own currency no shock set."""
 
-    factor_returns: list[tuple[str, float]]
+    factor_returns: dict[str, float]
     """The factor returns applied, given and propagated, in the order of the model's factors; empty
     without factor shocks.
     """
@@ -3177,7 +3157,7 @@ class ScenarioRisk:
     annualise).
     """
 
-    value_at_risk: float
+    value_at_risk_base: float
     """The parametric value at risk of the portfolio's value at the model's confidence, a loss in
     the base currency: `z * volatility * value`.
     """
@@ -3224,10 +3204,10 @@ class ScenarioSummary:
     volatility_after: float | None = None
     """The annualised volatility after."""
 
-    value_at_risk_after: float | None = None
-    """The value at risk after, at the first confidence of the options."""
+    value_at_risk_after_base: float | None = None
+    """The value at risk after, in the base currency, at the first confidence of the options."""
 
-    worst: HoldingKey | None = None
+    worst: str | None = None
     """The holding that lost most."""
 
     worst_change: float | None = None
@@ -3369,16 +3349,16 @@ class Series:
 class InstrumentSource:
     """Its own shock."""
 
-    SOURCE: ClassVar[str] = "instrument"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "instrument"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class GroupSource:
     """A group shock."""
 
-    SOURCE: ClassVar[str] = "group"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "group"
+    """The value of the `type` tag that identifies this variant."""
 
     scheme: str
     """The group's classification scheme."""
@@ -3391,24 +3371,24 @@ class GroupSource:
 class FactorSource:
     """The factor shocks and its exposures."""
 
-    SOURCE: ClassVar[str] = "factor"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "factor"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class HistorySource:
     """Its prices over a historical period."""
 
-    SOURCE: ClassVar[str] = "history"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "history"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class ProxySource:
     """Another instrument's prices over a historical period."""
 
-    SOURCE: ClassVar[str] = "proxy"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "proxy"
+    """The value of the `type` tag that identifies this variant."""
 
     instrument: str
     """The instrument whose prices were used."""
@@ -3418,16 +3398,16 @@ class ProxySource:
 class CashSource:
     """Cash: only a change in its currency's value moves it."""
 
-    SOURCE: ClassVar[str] = "cash"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "cash"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class NoSource:
     """Nothing: its return in its own currency is zero."""
 
-    SOURCE: ClassVar[str] = "none"
-    """The value of the `source` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "none"
+    """The value of the `type` tag that identifies this variant."""
 
 
 ShockSource = Union[InstrumentSource, GroupSource, FactorSource, HistorySource, ProxySource, CashSource, NoSource]
@@ -3442,7 +3422,7 @@ class Shocks:
     compounds with the instrument's return, and applies to cash in that currency.
     """
 
-    instruments: list[tuple[str, float]] = field(default_factory=list)
+    instruments: dict[str, float] = field(default_factory=dict)
     """Returns of single instruments, by identifier."""
 
     groups: list[GroupShock] = field(default_factory=list)
@@ -3450,7 +3430,7 @@ class Shocks:
     one of them.
     """
 
-    currencies: list[tuple[str, float]] = field(default_factory=list)
+    currencies: dict[str, float] = field(default_factory=dict)
     """Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%."""
 
     factors: FactorShocks | None = None
@@ -3475,6 +3455,9 @@ class Slice:
 class Solution:
     """The result of an optimisation, with what is needed to judge it: the status, the objective,
     how closely the constraints hold, and the work done.
+
+    Two solutions are equal when everything but the time taken is equal, so that solving the same
+    problem twice gives equal solutions.
     """
 
     objective: Objective
@@ -3508,14 +3491,14 @@ class Solution:
     exactly).
     """
 
-    method: Method
+    method: SolveMethod
     """The method used."""
 
     iterations: int
     """Iterations of the solver or of Newton's method."""
 
     solve_time: float
-    """The time taken, in seconds."""
+    """The time taken, in seconds. It varies from run to run and is left out of comparisons."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3668,7 +3651,7 @@ class TaxRates:
     """The rate on gains from lots held for longer."""
 
     long_term_after_days: int = 365
-    """The holding period, in days, beyond which a gain is long-term."""
+    """The holding period, in days, beyond which a gain is long-term: 365 by default."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4047,8 +4030,8 @@ class Turnover:
 class MoneyUnit:
     """An amount of money in a currency."""
 
-    UNIT: ClassVar[str] = "money"
-    """The value of the `unit` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "money"
+    """The value of the `type` tag that identifies this variant."""
 
     currency: str
     """The currency."""
@@ -4058,32 +4041,32 @@ class MoneyUnit:
 class FractionUnit:
     """A return, weight or share as a fraction: 0.05 is 5%."""
 
-    UNIT: ClassVar[str] = "fraction"
-    """The value of the `unit` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "fraction"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class RatioUnit:
     """A ratio, such as a Sharpe ratio or a beta."""
 
-    UNIT: ClassVar[str] = "ratio"
-    """The value of the `unit` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "ratio"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class LevelUnit:
     """The level of an index, such as the growth of 100."""
 
-    UNIT: ClassVar[str] = "level"
-    """The value of the `unit` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "level"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class CountUnit:
     """A count."""
 
-    UNIT: ClassVar[str] = "count"
-    """The value of the `unit` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "count"
+    """The value of the `type` tag that identifies this variant."""
 
 
 Unit = Union[MoneyUnit, FractionUnit, RatioUnit, LevelUnit, CountUnit]
@@ -4156,7 +4139,7 @@ class View:
     expected_return: float
     """The expected return of the view portfolio, in the units of the covariance matrix."""
 
-    uncertainty: ViewUncertainty = field(default_factory=lambda: {'method': 'proportional'})
+    uncertainty: ViewUncertainty = field(default_factory=lambda: {'type': 'proportional'})
     """How uncertain the view is."""
 
 
@@ -4165,8 +4148,8 @@ class Proportional:
     """Proportional to the variance of the view portfolio, `tau * p' C p` (He and Litterman, 1999).
     """
 
-    METHOD: ClassVar[str] = "proportional"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "proportional"
+    """The value of the `type` tag that identifies this variant."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4176,8 +4159,8 @@ class Confidence:
     posterior less.
     """
 
-    METHOD: ClassVar[str] = "confidence"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "confidence"
+    """The value of the `type` tag that identifies this variant."""
 
     confidence: float
     """The confidence, greater than 0 and at most 1."""
@@ -4187,8 +4170,8 @@ class Confidence:
 class Variance:
     """The variance of the view, given directly."""
 
-    METHOD: ClassVar[str] = "variance"
-    """The value of the `method` tag that identifies this variant."""
+    TYPE: ClassVar[str] = "variance"
+    """The value of the `type` tag that identifies this variant."""
 
     variance: float
     """The variance, not negative."""
@@ -4228,20 +4211,19 @@ class YearReturn:
 
 # The tag property and the class of each variant, by union.
 UNIONS = {
-    "Allocation": ("allocation", {"exchange": ExchangeAllocation, "income": IncomeAllocation, "trade": TradeAllocation}),
-    "ColumnKind": ("kind", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
-    "CovarianceMethod": ("method", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
-    "Effect": ("effect", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
-    "HoldingKey": ("holding", {"cash": CashHolding, "instrument": InstrumentHolding}),
-    "Objective": ("objective", {"hierarchical_risk_parity": HierarchicalRiskParity, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
-    "Period": ("period", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
-    "Prior": ("prior", {"market": MarketPrior, "returns": ReturnsPrior}),
-    "ReturnUncertainty": ("set", {"box": Box, "ellipsoid": Ellipsoid}),
+    "Allocation": ("type", {"exchange": ExchangeAllocation, "income": IncomeAllocation, "trade": TradeAllocation}),
+    "ColumnKind": ("type", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
+    "CovarianceMethod": ("type", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
+    "Effect": ("type", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
+    "Objective": ("type", {"hierarchical_risk_parity": HierarchicalRiskParity, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
+    "Period": ("type", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
+    "Prior": ("type", {"market": MarketPrior, "returns": ReturnsPrior}),
+    "ReturnUncertainty": ("type", {"box": Box, "ellipsoid": Ellipsoid}),
     "ScenarioDefinition": ("type", {"historical": HistoricalScenario, "shocks": ShockScenario}),
-    "ShockSource": ("source", {"cash": CashSource, "factor": FactorSource, "group": GroupSource, "history": HistorySource, "instrument": InstrumentSource, "none": NoSource, "proxy": ProxySource}),
+    "ShockSource": ("type", {"cash": CashSource, "factor": FactorSource, "group": GroupSource, "history": HistorySource, "instrument": InstrumentSource, "none": NoSource, "proxy": ProxySource}),
     "TransactionKind": ("type", {"buy": Buy, "deposit": Deposit, "dividend": Dividend, "fee": Fee, "fx_conversion": FxConversion, "interest": Interest, "merger": Merger, "return_of_capital": ReturnOfCapital, "sell": Sell, "spin_off": SpinOff, "split": Split, "symbol_change": SymbolChange, "tax": Tax, "transfer_in": TransferIn, "transfer_out": TransferOut, "withdrawal": Withdrawal}),
-    "Unit": ("unit", {"count": CountUnit, "fraction": FractionUnit, "level": LevelUnit, "money": MoneyUnit, "ratio": RatioUnit}),
-    "ViewUncertainty": ("method", {"confidence": Confidence, "proportional": Proportional, "variance": Variance}),
+    "Unit": ("type", {"count": CountUnit, "fraction": FractionUnit, "level": LevelUnit, "money": MoneyUnit, "ratio": RatioUnit}),
+    "ViewUncertainty": ("type", {"confidence": Confidence, "proportional": Proportional, "variance": Variance}),
 }
 
 
@@ -4276,7 +4258,6 @@ __all__ = [
     "Buy",
     "CashBalance",
     "CashChange",
-    "CashHolding",
     "CashSource",
     "CashValue",
     "Cell",
@@ -4354,7 +4335,6 @@ __all__ = [
     "IncomeAllocation",
     "IncomeSummary",
     "Instrument",
-    "InstrumentHolding",
     "InstrumentId",
     "InstrumentKind",
     "InstrumentSource",
@@ -4379,7 +4359,6 @@ __all__ = [
     "MaximumSharpe",
     "MeanVariance",
     "Merger",
-    "Method",
     "MinimumCvar",
     "MinimumVariance",
     "Money",
@@ -4458,6 +4437,7 @@ __all__ = [
     "SinceInception",
     "Slice",
     "Solution",
+    "SolveMethod",
     "SolveStatus",
     "Source",
     "SpinOff",

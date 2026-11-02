@@ -224,7 +224,7 @@ pub fn overview_report(
             weights,
             means,
         }) => {
-            let given: BTreeMap<_, _> = options.expected_returns.iter().cloned().collect();
+            let given = &options.expected_returns;
             let expected: Vec<(f64, bool)> = keys
                 .iter()
                 .zip(&means)
@@ -253,7 +253,7 @@ pub fn overview_report(
                 expected_return: weights.iter().zip(&mu).map(|(w, r)| w * r).sum(),
                 volatility: risk.decomposition.volatility,
             };
-            let frontier = match Problem::new(risk.covariance.clone())
+            let frontier = match Problem::from_covariance(risk.covariance.clone())
                 .with_expected_returns(mu)
                 .frontier(options.frontier_points)
             {

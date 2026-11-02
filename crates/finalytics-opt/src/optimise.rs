@@ -9,7 +9,7 @@ use crate::problem::{
     Turnover,
 };
 use crate::program::{Program, Row};
-use crate::solution::{Method, Solution, SolveStatus};
+use crate::solution::{Solution, SolveMethod, SolveStatus};
 use crate::{hrp, risk_budget};
 
 /// Where the weights and auxiliary variables are in a programme.
@@ -181,7 +181,7 @@ impl Problem {
     ///     vec!["equity".into(), "bonds".into()],
     ///     vec![0.0400, 0.0020, 0.0020, 0.0049],
     /// )?;
-    /// let solution = Problem::new(covariance).solve(&Objective::MinimumVariance)?;
+    /// let solution = Problem::from_covariance(covariance).solve(&Objective::MinimumVariance)?;
     /// let weights = solution.weights.unwrap();
     /// assert!(weights[1] > weights[0]);
     /// # Ok::<(), finalytics::Error>(())
@@ -201,7 +201,7 @@ impl Problem {
                 (
                     SolveStatus::Optimal,
                     Some(weights),
-                    Method::RecursiveBisection,
+                    SolveMethod::RecursiveBisection,
                     0,
                 )
             }
@@ -209,7 +209,7 @@ impl Problem {
                 Some(limits) => self.eliminate_trades(objective, limits)?,
                 None => {
                     let (status, weights, iterations) = solve_conic(&prepared, objective);
-                    (status, weights, Method::InteriorPoint, iterations)
+                    (status, weights, SolveMethod::InteriorPoint, iterations)
                 }
             },
         };
@@ -247,7 +247,7 @@ impl Problem {
         &self,
         objective: &Objective,
         limits: &TradeLimits,
-    ) -> Result<(SolveStatus, Option<Vec<f64>>, Method, u32)> {
+    ) -> Result<(SolveStatus, Option<Vec<f64>>, SolveMethod, u32)> {
         // `prepare` checks that trade limits come with the current weights.
         let current = self
             .constraints
@@ -264,7 +264,7 @@ impl Problem {
             let (status, weights, used) = solve_conic(&prepared, objective);
             iterations += used;
             let Some(mut w) = weights.filter(|_| status.has_solution()) else {
-                return Ok((status, None, Method::TradeElimination, iterations));
+                return Ok((status, None, SolveMethod::TradeElimination, iterations));
             };
             // The solver holds a fixed asset at its current weight only to its tolerance.
             for (i, w) in w.iter_mut().enumerate() {
@@ -300,7 +300,7 @@ impl Problem {
                 leave_out.extend(extra);
             }
             if leave_out.is_empty() {
-                return Ok((status, Some(w), Method::TradeElimination, iterations));
+                return Ok((status, Some(w), SolveMethod::TradeElimination, iterations));
             }
             for i in leave_out {
                 fixed[i] = true;
@@ -545,7 +545,7 @@ fn report(
     objective: &Objective,
     status: SolveStatus,
     weights: Option<Vec<f64>>,
-    method: Method,
+    method: SolveMethod,
     iterations: u32,
     started: Instant,
 ) -> Solution {

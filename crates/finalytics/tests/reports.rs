@@ -3,12 +3,13 @@
 
 #![allow(clippy::unwrap_used)]
 
+use std::collections::BTreeMap;
+
 use finalytics::formats::{CsvOptions, fx_from_csv, portfolio_from_csv, prices_from_csv};
+use finalytics::performance::{FlowTiming, Performance};
 use finalytics::reports::*;
 use finalytics::risk::{GroupShock, HistoricalWindow, Shocks};
-use finalytics::{
-    Books, Currency, Date, Decimal, FlowTiming, InstrumentId, MarketData, Performance, Portfolio,
-};
+use finalytics::{Books, Currency, Date, Decimal, InstrumentId, MarketData, Portfolio};
 
 const ACCOUNTS: &str = include_str!("../../../tests/scenario/accounts.csv");
 const INSTRUMENTS: &str = include_str!("../../../tests/scenario/instruments.csv");
@@ -327,11 +328,7 @@ fn scenarios_side_by_side() {
         NamedScenario {
             name: "September".into(),
             scenario: ScenarioDefinition::Historical {
-                window: HistoricalWindow {
-                    start: d("2026-09-01"),
-                    end: d("2026-09-30"),
-                    proxies: vec![],
-                },
+                window: HistoricalWindow::new(d("2026-09-01"), d("2026-09-30")),
             },
             stress: None,
         },
@@ -340,7 +337,7 @@ fn scenarios_side_by_side() {
             scenario: ScenarioDefinition::Shocks {
                 shocks: {
                     let mut shocks = Shocks::default();
-                    shocks.currencies = vec![(Currency::USD, -0.1)];
+                    shocks.currencies = BTreeMap::from([(Currency::USD, -0.1)]);
                     shocks
                 },
             },

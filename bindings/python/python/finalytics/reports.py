@@ -83,12 +83,9 @@ def _options(options: ReportOptions | None, keywords: dict[str, Any]) -> ReportO
     for name in ("as_of", "start"):
         if keywords.get(name) is not None:
             keywords[name] = datetime.date.fromisoformat(_arrays.date(keywords[name]))
-    if isinstance(keywords.get("expected_returns"), Mapping):
-        keywords["expected_returns"] = [(k, float(v)) for k, v in keywords["expected_returns"].items()]
-    if isinstance(keywords.get("benchmark_weights"), Mapping):
-        from finalytics.portfolio import _holding_key
-
-        keywords["benchmark_weights"] = [(_holding_key(k), float(v)) for k, v in keywords["benchmark_weights"].items()]
+    for name in ("expected_returns", "benchmark_weights"):
+        if isinstance(keywords.get(name), Mapping):
+            keywords[name] = {k: float(v) for k, v in keywords[name].items()}
     base = options or ReportOptions()
     return dataclasses.replace(base, **keywords) if keywords else base
 

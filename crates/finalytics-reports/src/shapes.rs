@@ -7,7 +7,7 @@ use finalytics_core::{Currency, Date};
 /// What the numbers of a series, grid or column measure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "unit", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Unit {
     /// An amount of money in a currency.

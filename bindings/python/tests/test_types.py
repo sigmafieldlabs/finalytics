@@ -20,14 +20,11 @@ def test_every_struct_matches_its_schema():
 
 
 def test_unions_dispatch_on_their_tags():
-    objective = fl._convert.from_json(types.Objective, {"objective": "maximum_sharpe", "risk_free_rate": 0.02})
+    objective = fl._convert.from_json(types.Objective, {"type": "maximum_sharpe", "risk_free_rate": 0.02})
     assert objective == types.MaximumSharpe(risk_free_rate=0.02)
-    assert fl._convert.to_json(objective) == {"objective": "maximum_sharpe", "risk_free_rate": 0.02}
-    key = fl._convert.from_json(types.HoldingKey, {"holding": "cash", "id": "EUR"})
-    assert key == fl.cash("EUR")
-    exchange = fl._convert.from_json(
-        types.Allocation, {"allocation": "exchange", "from": "A", "to": "B", "quantity": "2"}
-    )
+    assert fl._convert.to_json(objective) == {"type": "maximum_sharpe", "risk_free_rate": 0.02}
+    assert fl._convert.from_json(types.HoldingKey, "EUR cash") == fl.cash("EUR") == "EUR cash"
+    exchange = fl._convert.from_json(types.Allocation, {"type": "exchange", "from": "A", "to": "B", "quantity": "2"})
     assert exchange.from_ == "A" and fl._convert.to_json(exchange)["from"] == "A"
 
 

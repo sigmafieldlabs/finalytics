@@ -233,7 +233,7 @@
         {
           "type": "object",
           "properties": {
-            "allocation": {
+            "type": {
               "type": "string",
               "const": "trade"
             },
@@ -251,7 +251,7 @@
             }
           },
           "required": [
-            "allocation",
+            "type",
             "holding",
             "currency",
             "amount"
@@ -261,7 +261,7 @@
         {
           "type": "object",
           "properties": {
-            "allocation": {
+            "type": {
               "type": "string",
               "const": "income"
             },
@@ -279,7 +279,7 @@
             }
           },
           "required": [
-            "allocation",
+            "type",
             "holding",
             "currency",
             "amount"
@@ -289,7 +289,7 @@
         {
           "type": "object",
           "properties": {
-            "allocation": {
+            "type": {
               "type": "string",
               "const": "exchange"
             },
@@ -307,7 +307,7 @@
             }
           },
           "required": [
-            "allocation",
+            "type",
             "from",
             "to",
             "quantity"
@@ -659,7 +659,7 @@
         "tau": {
           "type": "number",
           "format": "double",
-          "description": "The uncertainty of the prior relative to the covariance, greater than zero.",
+          "description": "The uncertainty of the prior relative to the covariance, greater than zero: 0.05 by\ndefault.",
           "default": 0.05
         }
       },
@@ -864,72 +864,72 @@
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "text"
             }
           },
           "required": [
-            "kind"
+            "type"
           ],
           "description": "Text."
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "date"
             }
           },
           "required": [
-            "kind"
+            "type"
           ],
           "description": "An ISO 8601 date, as text."
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "number"
             }
           },
           "required": [
-            "kind"
+            "type"
           ],
           "description": "A number."
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "integer"
             }
           },
           "required": [
-            "kind"
+            "type"
           ],
           "description": "A whole number."
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "fraction"
             }
           },
           "required": [
-            "kind"
+            "type"
           ],
           "description": "A fraction, to show as a percentage: 0.05 is 5%."
         },
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "money"
             },
@@ -939,7 +939,7 @@
             }
           },
           "required": [
-            "kind",
+            "type",
             "currency"
           ],
           "description": "An amount of money in a currency."
@@ -947,13 +947,13 @@
         {
           "type": "object",
           "properties": {
-            "kind": {
+            "type": {
               "type": "string",
               "const": "boolean"
             }
           },
           "required": [
-            "kind"
+            "type"
           ],
           "description": "Yes or no."
         }
@@ -975,38 +975,18 @@
           "$ref": "#/$defs/Decimal"
         },
         "weights_before": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/HoldingKey"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Each holding's weight in the combined value before the trades."
         },
         "weights_after": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/HoldingKey"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Each holding's weight in the combined value after the trades."
         },
@@ -1284,20 +1264,20 @@
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "sample"
             }
           },
           "required": [
-            "method"
+            "type"
           ],
           "description": "The sample covariance, with divisor n - 1."
         },
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "ewma"
             },
@@ -1308,7 +1288,7 @@
             }
           },
           "required": [
-            "method",
+            "type",
             "decay"
           ],
           "description": "An exponentially weighted covariance: the return `k` periods before the latest has\nweight proportional to `decay^k`, the weights sum to one, and deviations are taken from\nthe weighted mean. A decay of 0.94 for daily returns follows RiskMetrics."
@@ -1316,26 +1296,26 @@
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "ledoit_wolf"
             }
           },
           "required": [
-            "method"
+            "type"
           ],
           "description": "The empirical covariance (divisor n) shrunk towards a multiple of the identity with the\nintensity of Ledoit and Wolf (2004)."
         },
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "oas"
             }
           },
           "required": [
-            "method"
+            "type"
           ],
           "description": "The empirical covariance (divisor n) shrunk towards a multiple of the identity with the\noracle approximating shrinkage intensity of Chen, Wiesel, Eldar and Hero (2010)."
         }
@@ -1459,44 +1439,30 @@
         },
         "portfolio_exposures": {
           "type": [
-            "array",
+            "object",
             "null"
           ],
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/Currency"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[A-Z]{3}$": {
+              "type": "number",
+              "format": "double"
+            }
           },
           "description": "The portfolio's exposure to each currency after any hedging, adding up to one; without\nit, each currency's share of the portfolio's segment weights (no hedging).",
           "default": null
         },
         "benchmark_exposures": {
           "type": [
-            "array",
+            "object",
             "null"
           ],
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/Currency"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[A-Z]{3}$": {
+              "type": "number",
+              "format": "double"
+            }
           },
           "description": "The benchmark's exposure to each currency, as for the portfolio.",
           "default": null
@@ -1796,7 +1762,7 @@
         {
           "type": "object",
           "properties": {
-            "effect": {
+            "type": {
               "type": "string",
               "const": "set_lot"
             },
@@ -1806,7 +1772,7 @@
             }
           },
           "required": [
-            "effect",
+            "type",
             "lot"
           ],
           "description": "A lot was opened or changed; this is its new state."
@@ -1814,7 +1780,7 @@
         {
           "type": "object",
           "properties": {
-            "effect": {
+            "type": {
               "type": "string",
               "const": "close_lot"
             },
@@ -1832,7 +1798,7 @@
             }
           },
           "required": [
-            "effect",
+            "type",
             "account",
             "instrument",
             "lot"
@@ -1842,7 +1808,7 @@
         {
           "type": "object",
           "properties": {
-            "effect": {
+            "type": {
               "type": "string",
               "const": "cash"
             },
@@ -1860,7 +1826,7 @@
             }
           },
           "required": [
-            "effect",
+            "type",
             "account",
             "currency",
             "amount"
@@ -2211,20 +2177,10 @@
           "description": "The model. Its assets are instrument identifiers; assets that are not held are ignored."
         },
         "shocks": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "The return of each shocked factor, by factor name."
         },
@@ -2715,22 +2671,12 @@
           "description": "The end of the period."
         },
         "proxies": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/InstrumentId"
-              },
-              {
-                "$ref": "#/$defs/InstrumentId"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/InstrumentId"
           },
-          "description": "Instruments whose prices stand in for others' over the period, such as an index for a\nfund that did not exist then: `(instrument, proxy)` pairs.",
-          "default": []
+          "description": "Instruments whose prices stand in for others' over the period, such as an index for a\nfund that did not exist then: the proxy of each instrument, by instrument.",
+          "default": {}
         }
       },
       "required": [
@@ -2756,7 +2702,7 @@
           "format": "double",
           "description": "Its share of the portfolio's value before."
         },
-        "local_return": {
+        "return_local": {
           "type": "number",
           "format": "double",
           "description": "Its return in its own currency."
@@ -2766,10 +2712,10 @@
           "format": "double",
           "description": "The change in its currency's value in the base currency."
         },
-        "total_return": {
+        "return_base": {
           "type": "number",
           "format": "double",
-          "description": "Its return in the base currency, `(1 + local)(1 + currency) - 1`."
+          "description": "Its return in the base currency, `(1 + return_local)(1 + currency_return) - 1`."
         },
         "value_after": {
           "type": "number",
@@ -2798,9 +2744,9 @@
         "holding",
         "value_before",
         "weight_before",
-        "local_return",
+        "return_local",
         "currency_return",
-        "total_return",
+        "return_base",
         "value_after",
         "change",
         "source"
@@ -2808,43 +2754,9 @@
       "description": "What a scenario does to one holding: an instrument, or cash in one currency, added up across\naccounts."
     },
     "HoldingKey": {
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "holding": {
-              "type": "string",
-              "const": "instrument"
-            },
-            "id": {
-              "$ref": "#/$defs/InstrumentId"
-            }
-          },
-          "required": [
-            "holding",
-            "id"
-          ],
-          "description": "An instrument."
-        },
-        {
-          "type": "object",
-          "properties": {
-            "holding": {
-              "type": "string",
-              "const": "cash"
-            },
-            "id": {
-              "$ref": "#/$defs/Currency"
-            }
-          },
-          "required": [
-            "holding",
-            "id"
-          ],
-          "description": "Cash in one currency."
-        }
-      ],
-      "description": "A holding for performance attribution: an instrument, or cash in one currency, added up\nacross accounts."
+      "type": "string",
+      "minLength": 1,
+      "description": "A holding: an instrument's identifier, such as \"SPY\", or a currency's code followed by \" cash\", such as \"USD cash\"."
     },
     "HoldingLine": {
       "type": "object",
@@ -3347,37 +3259,19 @@
           "$ref": "#/$defs/Decimal"
         },
         "by_year": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "type": "integer",
-                "format": "int32"
-              },
-              {
-                "$ref": "#/$defs/Decimal"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^-?\\d+$": {
+              "$ref": "#/$defs/Decimal"
+            }
           },
           "description": "By calendar year."
         },
         "by_holding": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/HoldingKey"
-              },
-              {
-                "$ref": "#/$defs/Decimal"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Decimal"
           },
           "description": "By holding: the instrument that paid it, or cash for interest on cash."
         }
@@ -3780,31 +3674,6 @@
       ],
       "description": "A square matrix with labelled rows and columns, stored row by row; a covariance or\ncorrelation matrix."
     },
-    "Method": {
-      "oneOf": [
-        {
-          "type": "string",
-          "const": "interior_point",
-          "description": "The Clarabel interior-point solver for convex conic programmes."
-        },
-        {
-          "type": "string",
-          "const": "newton",
-          "description": "Newton's method on the convex risk-budgeting problem."
-        },
-        {
-          "type": "string",
-          "const": "recursive_bisection",
-          "description": "Hierarchical clustering and recursive bisection, without a solver."
-        },
-        {
-          "type": "string",
-          "const": "trade_elimination",
-          "description": "The interior-point solver, followed by a heuristic for trade limits: trades below the\nminimum, and the smallest trades beyond the largest number allowed, are left out and the\nrest re-optimised, round by round. Not guaranteed to find the best portfolio within the\nlimits."
-        }
-      ],
-      "description": "The method that produced a solution."
-    },
     "Money": {
       "type": "object",
       "properties": {
@@ -3887,20 +3756,20 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "minimum_variance"
             }
           },
           "required": [
-            "objective"
+            "type"
           ],
           "description": "The smallest variance."
         },
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "mean_variance"
             },
@@ -3911,7 +3780,7 @@
             }
           },
           "required": [
-            "objective",
+            "type",
             "risk_aversion"
           ],
           "description": "The largest `expected return - risk_aversion / 2 * variance`."
@@ -3919,7 +3788,7 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "robust_mean_variance"
             },
@@ -3934,7 +3803,7 @@
             }
           },
           "required": [
-            "objective",
+            "type",
             "risk_aversion",
             "uncertainty"
           ],
@@ -3943,7 +3812,7 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "target_return"
             },
@@ -3954,7 +3823,7 @@
             }
           },
           "required": [
-            "objective",
+            "type",
             "target"
           ],
           "description": "The smallest variance with an expected return of at least `target`."
@@ -3962,7 +3831,7 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "target_volatility"
             },
@@ -3973,7 +3842,7 @@
             }
           },
           "required": [
-            "objective",
+            "type",
             "target"
           ],
           "description": "The largest expected return with a volatility of at most `target`."
@@ -3981,7 +3850,7 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "maximum_sharpe"
             },
@@ -3992,7 +3861,7 @@
             }
           },
           "required": [
-            "objective",
+            "type",
             "risk_free_rate"
           ],
           "description": "The largest Sharpe ratio, `(expected return - risk_free_rate) / volatility`."
@@ -4000,20 +3869,20 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "maximum_diversification"
             }
           },
           "required": [
-            "objective"
+            "type"
           ],
           "description": "The largest diversification ratio: the weighted average of the assets' volatilities over\nthe portfolio's volatility (Choueifaty and Coignard, 2008)."
         },
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "minimum_cvar"
             },
@@ -4024,7 +3893,7 @@
             }
           },
           "required": [
-            "objective",
+            "type",
             "confidence"
           ],
           "description": "The smallest conditional value at risk (expected shortfall) of the scenario returns, by\nthe linear programme of Rockafellar and Uryasev (2000)."
@@ -4032,7 +3901,7 @@
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "risk_budgeting"
             },
@@ -4050,14 +3919,14 @@
             }
           },
           "required": [
-            "objective"
+            "type"
           ],
           "description": "Weights at which each asset's share of the portfolio's volatility equals its budget\n(Spinu, 2013). Without budgets every asset contributes equally (risk parity). Only the\ndefault constraints apply."
         },
         {
           "type": "object",
           "properties": {
-            "objective": {
+            "type": {
               "type": "string",
               "const": "hierarchical_risk_parity"
             },
@@ -4068,7 +3937,7 @@
             }
           },
           "required": [
-            "objective"
+            "type"
           ],
           "description": "Hierarchical risk parity (López de Prado, 2016): assets are ordered by hierarchical\nclustering of their correlations and weighted by recursive bisection. Uses no solver;\nonly the default constraints apply."
         }
@@ -4289,46 +4158,46 @@
         {
           "type": "object",
           "properties": {
-            "period": {
+            "type": {
               "type": "string",
               "const": "month_to_date"
             }
           },
           "required": [
-            "period"
+            "type"
           ],
           "description": "From the end of the previous month."
         },
         {
           "type": "object",
           "properties": {
-            "period": {
+            "type": {
               "type": "string",
               "const": "quarter_to_date"
             }
           },
           "required": [
-            "period"
+            "type"
           ],
           "description": "From the end of the previous calendar quarter."
         },
         {
           "type": "object",
           "properties": {
-            "period": {
+            "type": {
               "type": "string",
               "const": "year_to_date"
             }
           },
           "required": [
-            "period"
+            "type"
           ],
           "description": "From the end of the previous calendar year."
         },
         {
           "type": "object",
           "properties": {
-            "period": {
+            "type": {
               "type": "string",
               "const": "years"
             },
@@ -4340,7 +4209,7 @@
             }
           },
           "required": [
-            "period",
+            "type",
             "years"
           ],
           "description": "The `years` years before the as-of date (1, 3, 5 …)."
@@ -4348,20 +4217,20 @@
         {
           "type": "object",
           "properties": {
-            "period": {
+            "type": {
               "type": "string",
               "const": "since_inception"
             }
           },
           "required": [
-            "period"
+            "type"
           ],
           "description": "From the first valuation."
         },
         {
           "type": "object",
           "properties": {
-            "period": {
+            "type": {
               "type": "string",
               "const": "since"
             },
@@ -4371,7 +4240,7 @@
             }
           },
           "required": [
-            "period",
+            "type",
             "start"
           ],
           "description": "From `start` to the as-of date."
@@ -4759,7 +4628,7 @@
         {
           "type": "object",
           "properties": {
-            "prior": {
+            "type": {
               "type": "string",
               "const": "market"
             },
@@ -4784,7 +4653,7 @@
             }
           },
           "required": [
-            "prior",
+            "type",
             "weights",
             "risk_aversion"
           ],
@@ -4793,7 +4662,7 @@
         {
           "type": "object",
           "properties": {
-            "prior": {
+            "type": {
               "type": "string",
               "const": "returns"
             },
@@ -4807,7 +4676,7 @@
             }
           },
           "required": [
-            "prior",
+            "type",
             "returns"
           ],
           "description": "Given prior returns, one per asset."
@@ -4953,7 +4822,7 @@
           },
           "description": "For a sale, the lots it closes."
         },
-        "fees": {
+        "fees_local": {
           "description": "The fee, in the instrument's currency.",
           "$ref": "#/$defs/Decimal"
         },
@@ -4989,7 +4858,7 @@
         "value_local",
         "value_base",
         "lots",
-        "fees"
+        "fees_local"
       ],
       "description": "A proposed trade in one instrument."
     },
@@ -5135,37 +5004,19 @@
           "$ref": "#/$defs/Decimal"
         },
         "by_year": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "type": "integer",
-                "format": "int32"
-              },
-              {
-                "$ref": "#/$defs/Decimal"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^-?\\d+$": {
+              "$ref": "#/$defs/Decimal"
+            }
           },
           "description": "By calendar year of disposal."
         },
         "by_instrument": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/InstrumentId"
-              },
-              {
-                "$ref": "#/$defs/Decimal"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Decimal"
           },
           "description": "By instrument."
         }
@@ -5209,38 +5060,18 @@
           "description": "Conversions that fund purchases in other currencies and reach the target cash balances."
         },
         "weights_before": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/HoldingKey"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Each holding's weight before the trades."
         },
         "weights_after": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/HoldingKey"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Each holding's weight after the trades."
         },
@@ -5492,7 +5323,7 @@
           "$ref": "#/$defs/CovarianceMethod",
           "description": "How the covariance of the holdings' returns is estimated: Ledoit–Wolf by default.",
           "default": {
-            "method": "ledoit_wolf"
+            "type": "ledoit_wolf"
           }
         },
         "confidences": {
@@ -5535,23 +5366,13 @@
           "default": 365
         },
         "expected_returns": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/InstrumentId"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Annual expected returns by instrument for the efficient frontier; instruments not listed,\nand every instrument when none is, take their historical mean return.",
-          "default": []
+          "default": {}
         },
         "frontier_points": {
           "type": "integer",
@@ -5561,23 +5382,13 @@
           "default": 25
         },
         "benchmark_weights": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/HoldingKey"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Benchmark weights by holding, for the ex-ante tracking error.",
-          "default": []
+          "default": {}
         },
         "attribution": {
           "anyOf": [
@@ -5714,7 +5525,7 @@
         "solve_time": {
           "type": "number",
           "format": "double",
-          "description": "The time taken, in seconds."
+          "description": "The time taken, in seconds. It varies from run to run and is left out of comparisons."
         }
       },
       "required": [
@@ -5760,7 +5571,7 @@
         {
           "type": "object",
           "properties": {
-            "set": {
+            "type": {
               "type": "string",
               "const": "ellipsoid"
             },
@@ -5783,7 +5594,7 @@
             }
           },
           "required": [
-            "set",
+            "type",
             "size"
           ],
           "description": "An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case\nlowers a portfolio's expected return by `size * sqrt(w' S w)`. For estimates that are\nsample means of `T` periods, `S` is the covariance divided by `T`, and `size^2` a\nchi-squared quantile with as many degrees of freedom as assets."
@@ -5791,7 +5602,7 @@
         {
           "type": "object",
           "properties": {
-            "set": {
+            "type": {
               "type": "string",
               "const": "box"
             },
@@ -5805,7 +5616,7 @@
             }
           },
           "required": [
-            "set",
+            "type",
             "half_widths"
           ],
           "description": "A box around the estimates, `|mu_i - m_i| <= half_widths_i`: the worst case lowers a\nportfolio's expected return by `sum half_widths_i |w_i|`."
@@ -6168,20 +5979,10 @@
           "description": "The instruments held whose return in their own currency no shock set."
         },
         "factor_returns": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "The factor returns applied, given and propagated, in the order of the model's factors;\nempty without factor shocks."
         },
@@ -6253,7 +6054,7 @@
           "format": "double",
           "description": "The volatility of the portfolio's return, in the units of the risk model (scale the\nmodel to annualise)."
         },
-        "value_at_risk": {
+        "value_at_risk_base": {
           "type": "number",
           "format": "double",
           "description": "The parametric value at risk of the portfolio's value at the model's confidence, a loss\nin the base currency: `z * volatility * value`."
@@ -6275,7 +6076,7 @@
       },
       "required": [
         "volatility",
-        "value_at_risk",
+        "value_at_risk_base",
         "contributions",
         "groups"
       ],
@@ -6354,13 +6155,13 @@
           "format": "double",
           "description": "The annualised volatility after."
         },
-        "value_at_risk_after": {
+        "value_at_risk_after_base": {
           "type": [
             "number",
             "null"
           ],
           "format": "double",
-          "description": "The value at risk after, at the first confidence of the options."
+          "description": "The value at risk after, in the base currency, at the first confidence of the options."
         },
         "worst": {
           "anyOf": [
@@ -6658,20 +6459,20 @@
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "instrument"
             }
           },
           "required": [
-            "source"
+            "type"
           ],
           "description": "Its own shock."
         },
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "group"
             },
@@ -6685,7 +6486,7 @@
             }
           },
           "required": [
-            "source",
+            "type",
             "scheme",
             "value"
           ],
@@ -6694,33 +6495,33 @@
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "factor"
             }
           },
           "required": [
-            "source"
+            "type"
           ],
           "description": "The factor shocks and its exposures."
         },
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "history"
             }
           },
           "required": [
-            "source"
+            "type"
           ],
           "description": "Its prices over a historical period."
         },
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "proxy"
             },
@@ -6730,7 +6531,7 @@
             }
           },
           "required": [
-            "source",
+            "type",
             "instrument"
           ],
           "description": "Another instrument's prices over a historical period."
@@ -6738,26 +6539,26 @@
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "cash"
             }
           },
           "required": [
-            "source"
+            "type"
           ],
           "description": "Cash: only a change in its currency's value moves it."
         },
         {
           "type": "object",
           "properties": {
-            "source": {
+            "type": {
               "type": "string",
               "const": "none"
             }
           },
           "required": [
-            "source"
+            "type"
           ],
           "description": "Nothing: its return in its own currency is zero."
         }
@@ -6768,23 +6569,13 @@
       "type": "object",
       "properties": {
         "instruments": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/InstrumentId"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
           },
           "description": "Returns of single instruments, by identifier.",
-          "default": []
+          "default": {}
         },
         "groups": {
           "type": "array",
@@ -6795,23 +6586,16 @@
           "default": []
         },
         "currencies": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "prefixItems": [
-              {
-                "$ref": "#/$defs/Currency"
-              },
-              {
-                "type": "number",
-                "format": "double"
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[A-Z]{3}$": {
+              "type": "number",
+              "format": "double"
+            }
           },
           "description": "Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%.",
-          "default": []
+          "default": {}
         },
         "factors": {
           "anyOf": [
@@ -6930,7 +6714,7 @@
           "description": "The largest amount by which the weights break a constraint (0 when every constraint\nholds exactly)."
         },
         "method": {
-          "$ref": "#/$defs/Method",
+          "$ref": "#/$defs/SolveMethod",
           "description": "The method used."
         },
         "iterations": {
@@ -6942,7 +6726,7 @@
         "solve_time": {
           "type": "number",
           "format": "double",
-          "description": "The time taken, in seconds."
+          "description": "The time taken, in seconds. It varies from run to run and is left out of comparisons."
         }
       },
       "required": [
@@ -6953,7 +6737,32 @@
         "iterations",
         "solve_time"
       ],
-      "description": "The result of an optimisation, with what is needed to judge it: the status, the objective,\nhow closely the constraints hold, and the work done."
+      "description": "The result of an optimisation, with what is needed to judge it: the status, the objective,\nhow closely the constraints hold, and the work done.\n\nTwo solutions are equal when everything but the time taken is equal, so that solving the\nsame problem twice gives equal solutions."
+    },
+    "SolveMethod": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "interior_point",
+          "description": "The Clarabel interior-point solver for convex conic programmes."
+        },
+        {
+          "type": "string",
+          "const": "newton",
+          "description": "Newton's method on the convex risk-budgeting problem."
+        },
+        {
+          "type": "string",
+          "const": "recursive_bisection",
+          "description": "Hierarchical clustering and recursive bisection, without a solver."
+        },
+        {
+          "type": "string",
+          "const": "trade_elimination",
+          "description": "The interior-point solver, followed by a heuristic for trade limits: trades below the\nminimum, and the smallest trades beyond the largest number allowed, are left out and the\nrest re-optimised, round by round. Not guaranteed to find the best portfolio within the\nlimits."
+        }
+      ],
+      "description": "The method that produced a solution."
     },
     "SolveStatus": {
       "oneOf": [
@@ -7239,7 +7048,7 @@
         "long_term_after_days": {
           "type": "integer",
           "format": "int32",
-          "description": "The holding period, in days, beyond which a gain is long-term.",
+          "description": "The holding period, in days, beyond which a gain is long-term: 365 by default.",
           "default": 365
         }
       },
@@ -7888,7 +7697,7 @@
         {
           "type": "object",
           "properties": {
-            "unit": {
+            "type": {
               "type": "string",
               "const": "money"
             },
@@ -7898,7 +7707,7 @@
             }
           },
           "required": [
-            "unit",
+            "type",
             "currency"
           ],
           "description": "An amount of money in a currency."
@@ -7906,52 +7715,52 @@
         {
           "type": "object",
           "properties": {
-            "unit": {
+            "type": {
               "type": "string",
               "const": "fraction"
             }
           },
           "required": [
-            "unit"
+            "type"
           ],
           "description": "A return, weight or share as a fraction: 0.05 is 5%."
         },
         {
           "type": "object",
           "properties": {
-            "unit": {
+            "type": {
               "type": "string",
               "const": "ratio"
             }
           },
           "required": [
-            "unit"
+            "type"
           ],
           "description": "A ratio, such as a Sharpe ratio or a beta."
         },
         {
           "type": "object",
           "properties": {
-            "unit": {
+            "type": {
               "type": "string",
               "const": "level"
             }
           },
           "required": [
-            "unit"
+            "type"
           ],
           "description": "The level of an index, such as the growth of 100."
         },
         {
           "type": "object",
           "properties": {
-            "unit": {
+            "type": {
               "type": "string",
               "const": "count"
             }
           },
           "required": [
-            "unit"
+            "type"
           ],
           "description": "A count."
         }
@@ -8074,7 +7883,7 @@
           "$ref": "#/$defs/ViewUncertainty",
           "description": "How uncertain the view is.",
           "default": {
-            "method": "proportional"
+            "type": "proportional"
           }
         }
       },
@@ -8089,20 +7898,20 @@
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "proportional"
             }
           },
           "required": [
-            "method"
+            "type"
           ],
           "description": "Proportional to the variance of the view portfolio, `tau * p' C p` (He and Litterman,\n1999)."
         },
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "confidence"
             },
@@ -8113,7 +7922,7 @@
             }
           },
           "required": [
-            "method",
+            "type",
             "confidence"
           ],
           "description": "From a confidence in the view (Idzorek, 2005), as `(1 - c) / c * tau * p' C p`: 1 holds the\nview with certainty, 0.5 is the proportional uncertainty, and lower confidences move the\nposterior less."
@@ -8121,7 +7930,7 @@
         {
           "type": "object",
           "properties": {
-            "method": {
+            "type": {
               "type": "string",
               "const": "variance"
             },
@@ -8132,7 +7941,7 @@
             }
           },
           "required": [
-            "method",
+            "type",
             "variance"
           ],
           "description": "The variance of the view, given directly."

@@ -27,7 +27,12 @@ test("Black-Litterman matches PyPortfolioOpt", () => {
     closeAll(estimate.posterior_covariance.values, c.posterior_covariance, 1e-13, `${c.name} covariance`);
   }
   const f = bl.implied_risk_aversion;
-  close(fl.impliedRiskAversion(f.returns, f.periods_per_year, f.risk_free_rate), f.risk_aversion, 1e-12, "risk aversion");
+  close(
+    fl.impliedRiskAversion(f.returns, { periods_per_year: f.periods_per_year, risk_free_rate: f.risk_free_rate }),
+    f.risk_aversion,
+    1e-12,
+    "risk aversion",
+  );
 });
 
 const base = {

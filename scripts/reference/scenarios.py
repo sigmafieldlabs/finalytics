@@ -89,7 +89,7 @@ def outcome(rows, local, currency, group_by, risk=None):
         "value_before": before.sum(),
         "value_after": after.sum(),
         "holdings": [
-            {"label": name, "local_return": l, "currency_return": c, "total_return": r, "value_after": a}
+            {"label": name, "return_local": l, "currency_return": c, "return_base": r, "value_after": a}
             for (name, _, _), l, c, r, a in zip(rows, local, currency, total, after)
         ],
         "groups": {},
@@ -150,12 +150,12 @@ def shock_case():
     labels = list(returns.columns)
     cov = returns.cov().to_numpy()
     shocks = {
-        "instruments": [["SAP", -0.35]],
+        "instruments": {"SAP": -0.35},
         "groups": [
             {"scheme": "asset_class", "value": "Equity", "shock": -0.25},
             {"scheme": "asset_class", "value": "Fixed income", "shock": 0.02},
         ],
-        "currencies": [["EUR", -0.08]],
+        "currencies": {"EUR": -0.08},
     }
     by_instrument = {"SAP": -0.35}
     by_group = {"Equity": -0.25, "Fixed income": 0.02}
@@ -209,7 +209,7 @@ def factor_case(given, propagate):
         "factor_covariance": {"labels": FACTORS, "values": FACTOR_COVARIANCE.ravel().tolist()},
         "specific_variances": [0.01, 0.02, 0.0001],
     }
-    shocks = {"factors": {"model": model, "shocks": [[k, v] for k, v in given.items()], "propagate": propagate}}
+    shocks = {"factors": {"model": model, "shocks": dict(given), "propagate": propagate}}
     expected = outcome(rows, local, currency, [])
     expected["factor_returns"] = f.tolist()
     return {"as_of": AS_OF, "shocks": shocks, "options": {}, "expected": expected}
@@ -239,7 +239,7 @@ def historical_case(start, end, proxies):
         "trough": trough,
         "depth": float(drawdown.min()),
     }
-    window_input = {"start": start, "end": end, "proxies": [[k, v] for k, v in proxies.items()]}
+    window_input = {"start": start, "end": end, "proxies": dict(proxies)}
     return {"as_of": AS_OF, "window": window_input, "options": {}, "expected": expected}
 
 

@@ -3,8 +3,9 @@
 //! benchmark, attribution of the excess return by segment and by currency, and households:
 //! performance by account and by group of accounts, with each account's contribution.
 //!
-//! Most users should depend on the [`finalytics`](https://docs.rs/finalytics) crate, which
-//! re-exports the public API of every layer.
+//! This crate is one layer of Finalytics. Depend on the [`finalytics`](https://docs.rs/finalytics)
+//! crate instead: it re-exports the public API of every layer, and it is the crate whose API
+//! follows semantic versioning. This crate's own API may change in any release.
 
 mod attribution;
 mod contribution;

@@ -49,6 +49,7 @@ pub struct GroupLimit {
 /// Trading from the current portfolio: a limit on turnover, costs of trading, or both.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Turnover {
     /// The current weights, one per asset.
     pub current: Vec<f64>,
@@ -68,11 +69,24 @@ pub struct Turnover {
     pub quadratic_costs: Option<Vec<f64>>,
 }
 
+impl Turnover {
+    /// Trading from the `current` weights, one per asset, with no limit and no costs yet.
+    pub fn new(current: Vec<f64>) -> Self {
+        Turnover {
+            current,
+            limit: None,
+            costs: None,
+            quadratic_costs: None,
+        }
+    }
+}
+
 /// Limits on the trades from the current portfolio (the turnover's current weights). They are
 /// not convex, so the solver's portfolio is adjusted by a heuristic, reported as the method
 /// `trade_elimination`, which is not guaranteed to find the best portfolio within the limits.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct TradeLimits {
     /// The smallest trade allowed, as a weight: each asset is either not traded or traded by at
     /// least this much.
@@ -174,7 +188,7 @@ impl Constraints {
 /// optimisation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "set", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ReturnUncertainty {
     /// An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case
@@ -217,7 +231,7 @@ pub enum Linkage {
 /// What an optimisation seeks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "objective", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Objective {
     /// The smallest variance.
@@ -304,6 +318,7 @@ impl Objective {
 /// period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Problem {
     /// The asset labels.
     pub labels: Vec<String>,
@@ -327,7 +342,7 @@ pub struct Problem {
 
 impl Problem {
     /// A problem over the assets of a covariance matrix, with the default constraints.
-    pub fn new(covariance: Matrix) -> Problem {
+    pub fn from_covariance(covariance: Matrix) -> Problem {
         Problem {
             labels: covariance.labels().to_vec(),
             covariance: Some(covariance),

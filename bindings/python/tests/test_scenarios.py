@@ -11,15 +11,11 @@ from conftest import FIXTURES
 SCENARIOS = json.loads((FIXTURES / "finalytics/tests/fixtures/scenarios.json").read_text())
 
 
-def label(key) -> str:
-    return key.id if isinstance(key, fl.types.InstrumentHolding) else f"{key.id} cash"
-
-
 def compare(result, expected):
     assert result.value_before == pytest.approx(expected["value_before"], rel=1e-12)
     assert result.value_after == pytest.approx(expected["value_after"], rel=1e-12)
-    assert [label(h.holding) for h in result.holdings] == [h["label"] for h in expected["holdings"]]
-    for name in ("local_return", "currency_return", "total_return", "value_after"):
+    assert [h.holding for h in result.holdings] == [h["label"] for h in expected["holdings"]]
+    for name in ("return_local", "currency_return", "return_base", "value_after"):
         np.testing.assert_allclose(
             [getattr(h, name) for h in result.holdings],
             [h[name] for h in expected["holdings"]],
@@ -48,10 +44,10 @@ def test_shocks_match_the_reference(books):
     assert by_region == pytest.approx({g["group"]: g["contribution"] for g in expected["groups"]["region"]}, rel=1e-12)
     for found, key in ((result.risk_before, "risk_before"), (result.risk_after, "risk_after")):
         assert found.volatility == pytest.approx(expected[key]["volatility"], rel=1e-12)
-        assert found.value_at_risk == pytest.approx(expected[key]["value_at_risk"], rel=1e-12)
-    sap = next(h for h in result.holdings if label(h.holding) == "SAP")
+        assert found.value_at_risk_base == pytest.approx(expected[key]["value_at_risk"], rel=1e-12)
+    sap = next(h for h in result.holdings if h.holding == "SAP")
     assert isinstance(sap.source, fl.types.InstrumentSource)
-    spy = next(h for h in result.holdings if label(h.holding) == "SPY")
+    spy = next(h for h in result.holdings if h.holding == "SPY")
     assert spy.source == fl.types.GroupSource(scheme="asset_class", value="Equity")
 
 
@@ -67,7 +63,7 @@ def test_factor_shocks_match_the_reference(books, key):
         date=case["as_of"],
     )
     compare(result, case["expected"])
-    np.testing.assert_allclose([f for _, f in result.factor_returns], case["expected"]["factor_returns"], rtol=1e-12)
+    np.testing.assert_allclose(list(result.factor_returns.values()), case["expected"]["factor_returns"], rtol=1e-12)
 
 
 @pytest.mark.parametrize("key", ["historical", "historical_proxy"])

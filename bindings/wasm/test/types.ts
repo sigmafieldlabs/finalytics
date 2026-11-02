@@ -36,7 +36,7 @@ export async function example(worker: Worker): Promise<void> {
   await init();
   const stats: Statistics = statistics(new Float64Array([0.01, -0.02, 0.005]));
   const sharpe: number | null | undefined = stats.sharpe_ratio;
-  const objective: Objective = { objective: "maximum_sharpe", risk_free_rate: 0.02 };
+  const objective: Objective = { type: "maximum_sharpe", risk_free_rate: 0.02 };
   const solution: Solution = solve(
     {
       labels: ["a", "b"],
@@ -53,7 +53,7 @@ export async function example(worker: Worker): Promise<void> {
   const returns: Float64Array = performance.returns;
   const dates: string[] = performance.dates;
   const threeYears = performance.period("3Y");
-  const plan = books.rebalance("main", [[{ holding: "instrument", id: "SPY" }, 1]], { lot_method: "highest_cost" });
+  const plan = books.rebalance("main", { SPY: 1 }, { lot_method: "highest_cost" });
 
   const engine = createEngine(worker);
   const remote = await engine.call("statistics", [0.01, 0.02]);
@@ -62,7 +62,7 @@ export async function example(worker: Worker): Promise<void> {
   const remoteReturns: Float64Array = await remotePerformance.get("returns");
 
   // @ts-expect-error: an unknown objective is rejected.
-  const unknown: Objective = { objective: "maximum_profit" };
+  const unknown: Objective = { type: "maximum_profit" };
 
   console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown);
 }
@@ -85,13 +85,13 @@ void factorProblem;
 declare const covariance: Matrix;
 const posterior: BlackLittermanEstimate = blackLitterman({
   covariance,
-  prior: { prior: "market", weights: [0.6, 0.4], risk_aversion: 2.5 },
-  views: [{ portfolio: { bonds: 1 }, expected_return: 0.05, uncertainty: { method: "confidence", confidence: 0.7 } }],
+  prior: { type: "market", weights: [0.6, 0.4], risk_aversion: 2.5 },
+  views: [{ portfolio: { bonds: 1 }, expected_return: 0.05, uncertainty: { type: "confidence", confidence: 0.7 } }],
 });
 const robust: Objective = {
-  objective: "robust_mean_variance",
+  type: "robust_mean_variance",
   risk_aversion: 3,
-  uncertainty: { set: "ellipsoid", size: 0.5 },
+  uncertainty: { type: "ellipsoid", size: 0.5 },
 };
 const average: number[] | null | undefined = resampled(
   { labels: posterior.labels, covariance: posterior.posterior_covariance, expected_returns: posterior.posterior_returns },
@@ -122,7 +122,7 @@ const byCurrency: CurrencyAttribution = karnoskySinger([
       { currency: "USD", spot_return: 0, cash_return: 0.04 },
       { currency: "EUR", spot_return: 0.03, cash_return: 0.025 },
     ],
-    portfolio_exposures: [["USD", 0.5], ["EUR", 0.5]],
+    portfolio_exposures: { USD: 0.5, EUR: 0.5 },
   },
 ]);
 // @ts-expect-error: an unknown linking method is rejected
@@ -133,10 +133,10 @@ void byCurrency.residual;
 // Scenarios.
 declare const books: Books;
 const shocked: ScenarioResult = books.shockScenario(
-  { groups: [{ scheme: "asset_class", value: "Equity", shock: -0.2 }], currencies: [["EUR", -0.1]] },
+  { groups: [{ scheme: "asset_class", value: "Equity", shock: -0.2 }], currencies: { EUR: -0.1 } },
   { date: "2026-10-30", group_by: ["asset_class"], risk: { covariance, stress: { correlation_shift: 0.5 } } },
 );
-const replayed: ScenarioResult = books.historicalScenario({ start: "2026-09-01", end: "2026-09-30", proxies: [["SAP", "SPY"]] });
+const replayed: ScenarioResult = books.historicalScenario({ start: "2026-09-01", end: "2026-09-30", proxies: { SAP: "SPY" } });
 const stressedMatrix: Matrix = stressedCovariance(covariance, { volatility_scale: 1.5 });
 void shocked.holdings[0].weight_after;
 void replayed.path?.worst_drawdown?.depth;

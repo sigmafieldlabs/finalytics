@@ -170,7 +170,7 @@ impl<T: Clone> TimeSeries<T> {
 /// How [`TimeSeries::reindex`] fills a date that has no observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(rename_all = "snake_case", tag = "method")]
+#[serde(rename_all = "snake_case", tag = "type")]
 #[non_exhaustive]
 pub enum Fill {
     /// Leave it missing.

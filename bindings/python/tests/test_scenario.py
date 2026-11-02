@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 import finalytics as fl
-from finalytics.pandas import label
 
 from conftest import SCENARIO
 
@@ -35,10 +34,10 @@ def results(market, books):
         "money_weighted": performance.money_weighted(),
         "modified_dietz": performance.modified_dietz(),
         "returns": returns.tolist(),
-        "contributions": {label(c.holding): c.contribution for c in performance.contributions()},
+        "contributions": {c.holding: c.contribution for c in performance.contributions()},
         "statistics": fl._convert.to_json(fl.risk.statistics(returns)),
         "tail_risk": [tail.value_at_risk, tail.expected_shortfall],
-        "weights": {label(k): w for k, w in weights.items()},
+        "weights": dict(weights),
         "shrinkage": estimate.shrinkage,
         "volatility": decomposition.volatility,
         "risk_shares": [c.share for c in decomposition.contributions],

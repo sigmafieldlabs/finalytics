@@ -33,15 +33,27 @@ pub struct GroupShock {
 /// exposures imply.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct FactorShocks {
     /// The model. Its assets are instrument identifiers; assets that are not held are ignored.
     pub model: FactorModel,
     /// The return of each shocked factor, by factor name.
-    pub shocks: Vec<(String, f64)>,
+    pub shocks: BTreeMap<String, f64>,
     /// Whether the factors that are not shocked move too, by their expected return given the
     /// shocked ones under the model's factor covariance. Without it, they return zero.
     #[serde(default)]
     pub propagate: bool,
+}
+
+impl FactorShocks {
+    /// The returns `shocks` of factors of `model`, by factor name, without propagation.
+    pub fn new(model: FactorModel, shocks: BTreeMap<String, f64>) -> Self {
+        FactorShocks {
+            model,
+            shocks,
+            propagate: false,
+        }
+    }
 }
 
 /// The shocks of a scenario. An instrument's return in its own currency comes from its own
@@ -54,14 +66,14 @@ pub struct FactorShocks {
 pub struct Shocks {
     /// Returns of single instruments, by identifier.
     #[serde(default)]
-    pub instruments: Vec<(InstrumentId, f64)>,
+    pub instruments: BTreeMap<InstrumentId, f64>,
     /// Returns of every instrument in a group. An instrument without its own shock may match at
     /// most one of them.
     #[serde(default)]
     pub groups: Vec<GroupShock>,
     /// Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%.
     #[serde(default)]
-    pub currencies: Vec<(Currency, f64)>,
+    pub currencies: BTreeMap<Currency, f64>,
     /// Returns of factors.
     #[serde(default)]
     pub factors: Option<FactorShocks>,
@@ -70,15 +82,27 @@ pub struct Shocks {
 /// A historical period to replay on today's holdings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HistoricalWindow {
     /// The start of the period.
     pub start: Date,
     /// The end of the period.
     pub end: Date,
     /// Instruments whose prices stand in for others' over the period, such as an index for a
-    /// fund that did not exist then: `(instrument, proxy)` pairs.
+    /// fund that did not exist then: the proxy of each instrument, by instrument.
     #[serde(default)]
-    pub proxies: Vec<(InstrumentId, InstrumentId)>,
+    pub proxies: BTreeMap<InstrumentId, InstrumentId>,
+}
+
+impl HistoricalWindow {
+    /// The period from `start` to `end`, without proxies.
+    pub fn new(start: Date, end: Date) -> Self {
+        HistoricalWindow {
+            start,
+            end,
+            proxies: BTreeMap::new(),
+        }
+    }
 }
 
 /// A stress of a covariance matrix: volatilities scaled and correlations moved toward one.
@@ -105,6 +129,7 @@ impl Default for CorrelationStress {
 /// The risk model for the risk before and after a scenario.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioRiskModel {
     /// The covariance of the holdings' returns, labelled with instrument identifiers and, for
     /// cash, the currency code followed by " cash" (as holding returns are). Give this or
@@ -126,6 +151,28 @@ fn default_confidence() -> f64 {
     0.95
 }
 
+impl ScenarioRiskModel {
+    /// A risk model from the covariance of the holdings' returns, at 95% confidence.
+    pub fn from_covariance(covariance: Matrix) -> Self {
+        ScenarioRiskModel {
+            covariance: Some(covariance),
+            factor_model: None,
+            confidence: default_confidence(),
+            stress: None,
+        }
+    }
+
+    /// A risk model from a factor model of the holdings' returns, at 95% confidence.
+    pub fn from_factor_model(factor_model: FactorModel) -> Self {
+        ScenarioRiskModel {
+            covariance: None,
+            factor_model: Some(factor_model),
+            confidence: default_confidence(),
+            stress: None,
+        }
+    }
+}
+
 /// What to report beyond the effect on each holding.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -143,7 +190,7 @@ pub struct ScenarioOptions {
 /// How a holding's return in a scenario was set.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "source", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ShockSource {
     /// Its own shock.
@@ -183,11 +230,11 @@ pub struct HoldingImpact {
     /// Its share of the portfolio's value before.
     pub weight_before: f64,
     /// Its return in its own currency.
-    pub local_return: f64,
+    pub return_local: f64,
     /// The change in its currency's value in the base currency.
     pub currency_return: f64,
-    /// Its return in the base currency, `(1 + local)(1 + currency) - 1`.
-    pub total_return: f64,
+    /// Its return in the base currency, `(1 + return_local)(1 + currency_return) - 1`.
+    pub return_base: f64,
     /// Its value after, in the base currency.
     pub value_after: f64,
     /// Its share of the portfolio's value after, absent if the portfolio is worth nothing
@@ -264,7 +311,7 @@ pub struct ScenarioRisk {
     pub volatility: f64,
     /// The parametric value at risk of the portfolio's value at the model's confidence, a loss
     /// in the base currency: `z * volatility * value`.
-    pub value_at_risk: f64,
+    pub value_at_risk_base: f64,
     /// Each holding's contribution to the volatility, in the order of the holdings.
     pub contributions: Vec<RiskContribution>,
     /// The contributions added up by each classification scheme the options group by.
@@ -308,7 +355,7 @@ pub struct ScenarioResult {
     pub not_shocked: Vec<InstrumentId>,
     /// The factor returns applied, given and propagated, in the order of the model's factors;
     /// empty without factor shocks.
-    pub factor_returns: Vec<(String, f64)>,
+    pub factor_returns: BTreeMap<String, f64>,
     /// The effect by each classification scheme the options group by.
     pub groups: Vec<SchemeImpact>,
     /// The risk before, with a risk model.
@@ -356,15 +403,13 @@ pub fn shock_scenario(
     check_options(options, &mut report);
 
     let mut instruments: BTreeMap<&InstrumentId, f64> = BTreeMap::new();
-    for (k, (id, shock)) in shocks.instruments.iter().enumerate() {
-        let path = format!("shocks.instruments[{k}]");
+    for (id, shock) in &shocks.instruments {
+        let path = format!("shocks.instruments.{id}");
         if books.instrument(id).is_none() {
             report.error(&path, format!("unknown instrument {id}"));
         }
         check_shock(*shock, &path, &mut report);
-        if instruments.insert(id, *shock).is_some() {
-            report.error(&path, format!("{id} is shocked twice"));
-        }
+        instruments.insert(id, *shock);
     }
     let mut groups: BTreeMap<(&str, &str), (usize, f64)> = BTreeMap::new();
     for (k, g) in shocks.groups.iter().enumerate() {
@@ -381,8 +426,8 @@ pub fn shock_scenario(
         }
     }
     let mut currencies: BTreeMap<Currency, f64> = BTreeMap::new();
-    for (k, (currency, shock)) in shocks.currencies.iter().enumerate() {
-        let path = format!("shocks.currencies[{k}]");
+    for (currency, shock) in &shocks.currencies {
+        let path = format!("shocks.currencies.{currency}");
         if *currency == base {
             report.error(
                 &path,
@@ -390,9 +435,7 @@ pub fn shock_scenario(
             );
         }
         check_shock(*shock, &path, &mut report);
-        if currencies.insert(*currency, *shock).is_some() {
-            report.error(&path, format!("{currency} is shocked twice"));
-        }
+        currencies.insert(*currency, *shock);
     }
     let factor_returns = match &shocks.factors {
         Some(factors) => factor_returns(factors, &mut report),
@@ -490,7 +533,7 @@ pub fn shock_scenario(
             .cloned()
             .zip(factor_returns)
             .collect(),
-        None => Vec::new(),
+        None => BTreeMap::new(),
     };
     finish(
         books,
@@ -527,16 +570,14 @@ pub fn historical_scenario(
         report.error("window", "must end after it starts");
     }
     let mut proxies: BTreeMap<&InstrumentId, &InstrumentId> = BTreeMap::new();
-    for (k, (id, proxy)) in window.proxies.iter().enumerate() {
-        let path = format!("window.proxies[{k}]");
+    for (id, proxy) in &window.proxies {
+        let path = format!("window.proxies.{id}");
         for x in [id, proxy] {
             if books.instrument(x).is_none() && market.prices(x).is_none() {
                 report.error(&path, format!("unknown instrument {x}"));
             }
         }
-        if proxies.insert(id, proxy).is_some() {
-            report.error(&path, format!("{id} has two proxies"));
-        }
+        proxies.insert(id, proxy);
     }
     report.into_result(())?;
 
@@ -675,7 +716,7 @@ pub fn historical_scenario(
         as_of,
         &held,
         moves,
-        Vec::new(),
+        BTreeMap::new(),
         Some(path),
         options,
         warnings,
@@ -826,16 +867,13 @@ fn held(books: &Books, valuation: &Valuation) -> Result<Vec<Held>> {
 fn factor_returns(factors: &FactorShocks, report: &mut ValidationReport) -> Vec<f64> {
     let names = factors.model.factors();
     let mut given: Vec<Option<f64>> = vec![None; names.len()];
-    for (k, (name, shock)) in factors.shocks.iter().enumerate() {
-        let path = format!("shocks.factors.shocks[{k}]");
+    for (name, shock) in &factors.shocks {
+        let path = format!("shocks.factors.shocks.{name}");
         if !shock.is_finite() {
             report.error(&path, "must be a finite return");
         }
         match names.iter().position(|n| n == name) {
             None => report.error(&path, format!("unknown factor {name}")),
-            Some(i) if given[i].is_some() => {
-                report.error(&path, format!("{name} is shocked twice"));
-            }
             Some(i) => given[i] = Some(*shock),
         }
     }
@@ -916,7 +954,7 @@ fn finish(
     as_of: Date,
     held: &[Held],
     moves: Vec<Move>,
-    factor_returns: Vec<(String, f64)>,
+    factor_returns: BTreeMap<String, f64>,
     path: Option<ScenarioPath>,
     options: &ScenarioOptions,
     mut warnings: ValidationReport,
@@ -942,9 +980,9 @@ fn finish(
                 holding: h.key.clone(),
                 value_before: h.value,
                 weight_before: h.value / value_before,
-                local_return: m.local,
+                return_local: m.local,
                 currency_return: m.currency,
-                total_return: (1.0 + m.local) * (1.0 + m.currency) - 1.0,
+                return_base: (1.0 + m.local) * (1.0 + m.currency) - 1.0,
                 value_after: after,
                 weight_after: weight_after(after),
                 change: after - h.value,
@@ -999,7 +1037,7 @@ fn finish(
         && risk_before
             .iter()
             .chain(&risk_after)
-            .all(|r| r.volatility.is_finite() && r.value_at_risk.is_finite()))
+            .all(|r| r.volatility.is_finite() && r.value_at_risk_base.is_finite()))
     {
         return Err(invalid(
             "shocks",
@@ -1078,7 +1116,7 @@ fn risk(
             .collect();
         Ok(ScenarioRisk {
             volatility: decomposition.volatility,
-            value_at_risk: z * decomposition.volatility * value,
+            value_at_risk_base: z * decomposition.volatility * value,
             contributions: decomposition.contributions,
             groups,
         })

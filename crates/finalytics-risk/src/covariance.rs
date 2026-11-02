@@ -10,7 +10,7 @@ use crate::matrix::{Matrix, ReturnsTable};
 /// How a covariance matrix is estimated from returns.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "method", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum CovarianceMethod {
     /// The sample covariance, with divisor n - 1.

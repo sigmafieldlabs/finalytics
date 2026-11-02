@@ -142,19 +142,13 @@ fn weights_add_up_across_accounts() {
     let (books, market) = setup();
     let valuation = books.value_on(d("2026-03-02"), &market).unwrap();
     let weights = holding_weights(&valuation).unwrap();
-    let total: f64 = weights.iter().map(|(_, w)| w).sum();
+    let total: f64 = weights.values().sum();
     assert!((total - 1.0).abs() < 1e-15);
-    let spy = weights
-        .iter()
-        .find(|(k, _)| *k == HoldingKey::Instrument(id("SPY")))
-        .unwrap();
+    let spy = weights[&HoldingKey::Instrument(id("SPY"))];
     // 80 shares at 500, bought in two accounts, out of 100,000.
-    assert!((spy.1 - 0.4).abs() < 1e-15);
-    let euro = weights
-        .iter()
-        .find(|(k, _)| *k == HoldingKey::Cash(Currency::EUR))
-        .unwrap();
-    assert!((euro.1 - 10_000.0 * 1.10 / 100_000.0).abs() < 1e-15);
+    assert!((spy - 0.4).abs() < 1e-15);
+    let euro = weights[&HoldingKey::Cash(Currency::EUR)];
+    assert!((euro - 10_000.0 * 1.10 / 100_000.0).abs() < 1e-15);
 }
 
 #[test]

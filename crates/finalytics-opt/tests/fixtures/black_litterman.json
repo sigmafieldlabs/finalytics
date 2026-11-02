@@ -50,7 +50,7 @@
   {
    "name": "absolute views, proportional uncertainty",
    "prior": {
-    "prior": "market",
+    "type": "market",
     "weights": [
      471.7111357885518,
      336.9709255467658,
@@ -139,7 +139,7 @@
   {
    "name": "relative and portfolio views",
    "prior": {
-    "prior": "market",
+    "type": "market",
     "weights": [
      471.7111357885518,
      336.9709255467658,
@@ -230,7 +230,7 @@
   {
    "name": "Idzorek confidences",
    "prior": {
-    "prior": "market",
+    "type": "market",
     "weights": [
      471.7111357885518,
      336.9709255467658,
@@ -249,7 +249,7 @@
      },
      "expected_return": 0.08,
      "uncertainty": {
-      "method": "confidence",
+      "type": "confidence",
       "confidence": 0.8
      }
     },
@@ -259,7 +259,7 @@
      },
      "expected_return": 0.03,
      "uncertainty": {
-      "method": "confidence",
+      "type": "confidence",
       "confidence": 0.3
      }
     }
@@ -327,7 +327,7 @@
   {
    "name": "given view variances and prior returns",
    "prior": {
-    "prior": "returns",
+    "type": "returns",
     "returns": [
      0.04,
      0.05,
@@ -344,7 +344,7 @@
      },
      "expected_return": 0.08,
      "uncertainty": {
-      "method": "variance",
+      "type": "variance",
       "variance": 0.0004
      }
     },
@@ -354,7 +354,7 @@
      },
      "expected_return": 0.03,
      "uncertainty": {
-      "method": "variance",
+      "type": "variance",
       "variance": 0.0025
      }
     }
@@ -422,7 +422,7 @@
   {
    "name": "a view held with certainty",
    "prior": {
-    "prior": "market",
+    "type": "market",
     "weights": [
      471.7111357885518,
      336.9709255467658,
@@ -441,7 +441,7 @@
      },
      "expected_return": 0.08,
      "uncertainty": {
-      "method": "confidence",
+      "type": "confidence",
       "confidence": 1.0
      }
     }

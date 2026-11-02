@@ -15,6 +15,7 @@ use crate::solution::SolveStatus;
 /// How to resample a problem's estimates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Resampling {
     /// The number of simulated histories, at least 2; 100 to 500 is usual.
     pub samples: usize,
@@ -26,8 +27,20 @@ pub struct Resampling {
     pub seed: u64,
 }
 
+impl Resampling {
+    /// `samples` simulated histories of `observations` periods each, from random numbers seeded
+    /// with `seed`.
+    pub fn new(samples: usize, observations: usize, seed: u64) -> Self {
+        Resampling {
+            samples,
+            observations,
+            seed,
+        }
+    }
+}
+
 /// The result of resampled optimisation.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct ResampledSolution {
@@ -50,8 +63,35 @@ pub struct ResampledSolution {
     pub solved: usize,
     /// The number of simulated problems the solver could not solve, left out of the average.
     pub failed: usize,
-    /// The time taken, in seconds.
+    /// The time taken, in seconds. It varies from run to run and is left out of comparisons.
     pub solve_time: f64,
+}
+
+impl PartialEq for ResampledSolution {
+    fn eq(&self, other: &Self) -> bool {
+        // Listing every field makes a new one a compile error here until it is compared.
+        let ResampledSolution {
+            objective,
+            labels,
+            weights,
+            weight_deviations,
+            expected_return,
+            volatility,
+            max_violation,
+            solved,
+            failed,
+            solve_time: _,
+        } = self;
+        *objective == other.objective
+            && *labels == other.labels
+            && *weights == other.weights
+            && *weight_deviations == other.weight_deviations
+            && *expected_return == other.expected_return
+            && *volatility == other.volatility
+            && *max_violation == other.max_violation
+            && *solved == other.solved
+            && *failed == other.failed
+    }
 }
 
 impl Problem {
@@ -304,7 +344,7 @@ mod tests {
             observations: 1,
             seed: 0,
         };
-        let error = Problem::new(c)
+        let error = Problem::from_covariance(c)
             .resampled(&Objective::MinimumVariance, &bad)
             .unwrap_err();
         assert!(error.to_string().contains("resampling.samples"), "{error}");

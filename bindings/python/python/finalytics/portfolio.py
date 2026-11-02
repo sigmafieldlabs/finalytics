@@ -35,18 +35,10 @@ def _text(source: TextOrPath) -> str:
     return source
 
 
-def holding(instrument: str) -> _types.InstrumentHolding:
-    """The holding of an instrument, added up across accounts."""
-    return _types.InstrumentHolding(id=instrument)
-
-
-def cash(currency: str) -> _types.CashHolding:
-    """The holding of cash in one currency, added up across accounts."""
-    return _types.CashHolding(id=currency)
-
-
-def _holding_key(key: str | _types.HoldingKey) -> _types.HoldingKey:
-    return holding(key) if isinstance(key, str) else key
+def cash(currency: str) -> _types.HoldingKey:
+    """The holding of cash in one currency, added up across accounts: ``cash("USD")`` is
+    ``"USD cash"``. An instrument's holding is its identifier."""
+    return f"{currency} cash"
 
 
 class Portfolio(_types.Portfolio):
@@ -388,15 +380,13 @@ class Books:
 
     def weights(self, date: DateLike) -> dict[_types.HoldingKey, float]:
         """Each holding's share of the portfolio's value on `date`, in the base currency."""
-        pairs = loads(list[tuple[_types.HoldingKey, float]], call(self._native.holding_weights, _arrays.date(date)))
-        return dict(pairs)
+        return loads(dict[str, float], call(self._native.holding_weights, _arrays.date(date)))
 
-    def holding_returns(self, holdings: Iterable[str | _types.HoldingKey], dates: Any = None) -> _types.HoldingReturns:
-        """Price returns of `holdings` in the base currency between consecutive `dates`, the
-        input to covariance estimation."""
+    def holding_returns(self, holdings: Iterable[_types.HoldingKey], dates: Any = None) -> _types.HoldingReturns:
+        """Price returns of `holdings` (instrument identifiers, or ``"USD cash"`` and the like) in
+        the base currency between consecutive `dates`, the input to covariance estimation."""
         dates = self.default_dates() if dates is None else dates
-        keys = [_holding_key(h) for h in holdings]
-        text = call(self._native.holding_returns, dumps(keys), _arrays.dates_to_buffer(dates))
+        text = call(self._native.holding_returns, dumps(list(holdings)), _arrays.dates_to_buffer(dates))
         return loads(_types.HoldingReturns, text)
 
     def lots_for_sale(
@@ -414,7 +404,7 @@ class Books:
     def rebalance(
         self,
         account: str,
-        targets: Mapping[str | _types.HoldingKey, float],
+        targets: Mapping[_types.HoldingKey, float],
         *,
         date: DateLike | None = None,
         lot_method: _types.LotMethod = "fifo",
@@ -423,9 +413,9 @@ class Books:
         fees: _types.Fees | None = None,
         tax: _types.TaxRates | None = None,
     ) -> _types.Rebalance:
-        """The trades that move `account` to `targets`: weights by instrument identifier (or by
-        holding, for cash), as shares of the account's value on `date` (by default the last
-        price date).
+        """The trades that move `account` to `targets`: weights by holding (an instrument's
+        identifier, or ``"USD cash"`` and the like), as shares of the account's value on `date`
+        (by default the last price date).
 
         Instruments held but not listed are sold; base-currency cash takes the weight the targets
         leave, and other currencies are converted to their targets (zero if not listed). Each
@@ -433,14 +423,14 @@ class Books:
         tax is estimated.
         """
         options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
-        pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
-        text = call(self._native.rebalance, self._date_or_last_price(date), account, dumps(pairs), dumps(options))
+        weights = {k: float(w) for k, w in targets.items()}
+        text = call(self._native.rebalance, self._date_or_last_price(date), account, dumps(weights), dumps(options))
         return loads(_types.Rebalance, text)
 
     def rebalance_accounts(
         self,
         accounts: Sequence[str],
-        targets: Mapping[str | _types.HoldingKey, float],
+        targets: Mapping[_types.HoldingKey, float],
         *,
         date: DateLike | None = None,
         lot_method: _types.LotMethod = "fifo",
@@ -455,12 +445,12 @@ class Books:
         proportion to the value each account has free; trades do not move cash between
         accounts."""
         options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
-        pairs = [[_holding_key(k), float(w)] for k, w in targets.items()]
+        weights = {k: float(w) for k, w in targets.items()}
         text = call(
             self._native.rebalance_accounts,
             self._date_or_last_price(date),
             json.dumps(list(accounts)),
-            dumps(pairs),
+            dumps(weights),
             dumps(options),
         )
         return loads(_types.CombinedRebalance, text)
@@ -500,15 +490,15 @@ class Books:
                 raise ValueError("factor shocks need a factor_model")
             model = factor_model.model if isinstance(factor_model, _types.FactorModelEstimate) else factor_model
             factor_shocks = _types.FactorShocks(
-                model=model, shocks=[(k, float(v)) for k, v in factors.items()], propagate=propagate
+                model=model, shocks={k: float(v) for k, v in factors.items()}, propagate=propagate
             )
         shocks = _types.Shocks(
-            instruments=[(k, float(v)) for k, v in (instruments or {}).items()],
+            instruments={k: float(v) for k, v in (instruments or {}).items()},
             groups=[
                 _types.GroupShock(scheme=scheme, value=value, shock=float(v))
                 for (scheme, value), v in (groups or {}).items()
             ],
-            currencies=[(k, float(v)) for k, v in (currencies or {}).items()],
+            currencies={k: float(v) for k, v in (currencies or {}).items()},
             factors=factor_shocks,
         )
         options = self._scenario_options(group_by, risk, confidence, stress)
@@ -535,7 +525,7 @@ class Books:
         window = _types.HistoricalWindow(
             start=datetime.date.fromisoformat(_arrays.date(start)),
             end=datetime.date.fromisoformat(_arrays.date(end)),
-            proxies=list((proxies or {}).items()),
+            proxies=dict(proxies or {}),
         )
         options = self._scenario_options(group_by, risk, confidence, stress)
         text = call(self._native.historical_scenario, self._date_or_last_price(date), dumps(window), dumps(options))

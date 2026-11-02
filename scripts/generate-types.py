@@ -39,12 +39,16 @@ SCALARS = {
     "AccountId": ("str", "string", "An account's identifier."),
     "TransactionId": ("str", "string", "A transaction's identifier."),
     "LotId": ("str", "string", "A tax lot's identifier."),
+    "HoldingKey": (
+        "str",
+        "string",
+        "A holding: an instrument's identifier, such as \"SPY\", or a currency's code followed by \" cash\", such as \"USD cash\".",
+    ),
 }
 
 # Python class names for the variants of tagged unions, where the tag alone would be unclear or
 # would clash with another name. Other variants take the tag in PascalCase.
 VARIANT_NAMES = {
-    "HoldingKey": {"instrument": "InstrumentHolding", "cash": "CashHolding"},
     "Effect": {"set_lot": "LotSet", "close_lot": "LotClosed", "cash": "CashChange"},
     "Allocation": {"trade": "TradeAllocation", "income": "IncomeAllocation", "exchange": "ExchangeAllocation"},
     "Prior": {"market": "MarketPrior", "returns": "ReturnsPrior"},
@@ -128,6 +132,22 @@ def nullable(schema: dict) -> tuple[dict, bool]:
     return schema, False
 
 
+# The pattern of the keys of a map keyed by whole numbers, such as years.
+INTEGER_KEYS = "^-?\\d+$"
+
+
+def map_value(schema: dict) -> dict | None:
+    """The schema of a map's values: its additional properties, or the one pattern its keys
+    follow."""
+    value = schema.get("additionalProperties")
+    if isinstance(value, dict):
+        return value
+    patterns = schema.get("patternProperties", {})
+    if len(patterns) == 1:
+        return next(iter(patterns.values()))
+    return None
+
+
 def doc(text: str | None) -> str:
     return (text or "").strip()
 
@@ -157,7 +177,7 @@ def ts_inner(schema: dict) -> str:
         item = ts_type(schema.get("items", {}))
         return f"({item})[]" if "|" in item else f"{item}[]"
     if t == "object" and "properties" not in schema:
-        value = schema.get("additionalProperties", {})
+        value = map_value(schema)
         return f"Record<string, {ts_type(value) if value else 'unknown'}>"
     if t in ("number", "integer"):
         return "number"
@@ -259,8 +279,9 @@ class Python:
         if t == "array":
             return f"list[{self.annotation(schema.get('items', {}))}]"
         if t == "object" and "properties" not in schema:
-            value = schema.get("additionalProperties")
-            return f"dict[str, {self.annotation(value) if value else 'object'}]"
+            value = map_value(schema)
+            key = "int" if INTEGER_KEYS in schema.get("patternProperties", {}) else "str"
+            return f"dict[{key}, {self.annotation(value) if value else 'object'}]"
         return {"number": "float", "integer": "int", "string": "str", "boolean": "bool"}.get(t, "object")
 
     def default(self, prop: dict, annotation: str) -> str | None:

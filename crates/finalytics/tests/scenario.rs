@@ -50,8 +50,11 @@ fn results() -> Value {
     let realised: Vec<Decimal> = books.realised_gains().iter().map(|g| g.gain_base).collect();
 
     let values = books.value_series(&dates, &market).unwrap();
-    let performance =
-        finalytics::Performance::from_values(&values, finalytics::FlowTiming::StartOfDay).unwrap();
+    let performance = finalytics::performance::Performance::from_values(
+        &values,
+        finalytics::performance::FlowTiming::StartOfDay,
+    )
+    .unwrap();
     let holdings = books.holding_series(&dates, &market).unwrap();
     let (first, end) = (dates[0], last);
     let contributions: BTreeMap<String, f64> = performance
@@ -65,11 +68,11 @@ fn results() -> Value {
     let tail = risk::tail_risk(&returns, 0.95, TailMethod::CornishFisher).unwrap();
 
     let weights = risk::holding_weights(&valuation).unwrap();
-    let keys: Vec<HoldingKey> = weights.iter().map(|(k, _)| k.clone()).collect();
+    let keys: Vec<HoldingKey> = weights.keys().cloned().collect();
     let held = risk::holding_returns(&books, &keys, &dates, &market).unwrap();
     let estimate = risk::covariance(&held.table, CovarianceMethod::LedoitWolf).unwrap();
     let annual = estimate.matrix.scaled(252.0);
-    let w: Vec<f64> = weights.iter().map(|(_, w)| *w).collect();
+    let w: Vec<f64> = weights.values().copied().collect();
     let decomposition = risk::risk_decomposition(&w, &annual).unwrap();
 
     let instruments: Vec<HoldingKey> = ["BOND", "SAP", "SPY"]
@@ -81,7 +84,7 @@ fn results() -> Value {
         .unwrap()
         .matrix
         .scaled(252.0);
-    let problem = Problem::new(covariance);
+    let problem = Problem::from_covariance(covariance);
     let minimum = problem.solve(&Objective::MinimumVariance).unwrap();
     let hrp = problem
         .solve(&Objective::HierarchicalRiskParity {

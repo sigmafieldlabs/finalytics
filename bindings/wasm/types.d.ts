@@ -111,7 +111,7 @@ export interface AccountsPerformance {
  */
 export type Allocation =
   | {
-    allocation: "trade";
+    type: "trade";
     /** The holding. */
     holding: HoldingKey;
     /** The currency of `amount`. */
@@ -120,7 +120,7 @@ export type Allocation =
     amount: Decimal;
   }
   | {
-    allocation: "income";
+    type: "income";
     /** The holding that earned it. */
     holding: HoldingKey;
     /** The currency of `amount`. */
@@ -129,7 +129,7 @@ export type Allocation =
     amount: Decimal;
   }
   | {
-    allocation: "exchange";
+    type: "exchange";
     /** The instrument given up, wholly or in part. */
     from: InstrumentId;
     /** The instrument received. */
@@ -295,7 +295,10 @@ export interface BlackLitterman {
   prior: Prior;
   /** The views; without any, the posterior returns are the prior. */
   views?: View[];
-  /** The uncertainty of the prior relative to the covariance, greater than zero. */
+  /**
+   * The uncertainty of the prior relative to the covariance, greater than zero: 0.05 by
+   * default.
+   */
   tau?: number;
 }
 
@@ -372,27 +375,27 @@ export interface Column {
 /** What a column holds, so that an export can format it. */
 export type ColumnKind =
   | {
-    kind: "text";
+    type: "text";
   }
   | {
-    kind: "date";
+    type: "date";
   }
   | {
-    kind: "number";
+    type: "number";
   }
   | {
-    kind: "integer";
+    type: "integer";
   }
   | {
-    kind: "fraction";
+    type: "fraction";
   }
   | {
-    kind: "money";
+    type: "money";
     /** The currency. */
     currency: Currency;
   }
   | {
-    kind: "boolean";
+    type: "boolean";
   };
 
 /**
@@ -405,9 +408,9 @@ export interface CombinedRebalance {
   /** The accounts' combined value in the base currency. */
   value_base: Decimal;
   /** Each holding's weight in the combined value before the trades. */
-  weights_before: [HoldingKey, number][];
+  weights_before: Record<string, number>;
   /** Each holding's weight in the combined value after the trades. */
-  weights_after: [HoldingKey, number][];
+  weights_after: Record<string, number>;
   /** The value traded in all the accounts, as a share of their combined value. */
   turnover: number;
   /** The gain the sales would realise in the base currency, after fees. */
@@ -505,18 +508,18 @@ export interface CovarianceEstimate {
 /** How a covariance matrix is estimated from returns. */
 export type CovarianceMethod =
   | {
-    method: "sample";
+    type: "sample";
   }
   | {
-    method: "ewma";
+    type: "ewma";
     /** The decay factor, between 0 and 1. */
     decay: number;
   }
   | {
-    method: "ledoit_wolf";
+    type: "ledoit_wolf";
   }
   | {
-    method: "oas";
+    type: "oas";
   };
 
 /** An ISO 4217 currency code, for example "USD". */
@@ -564,9 +567,9 @@ export interface CurrencyAttributionPeriod {
    * The portfolio's exposure to each currency after any hedging, adding up to one; without
    * it, each currency's share of the portfolio's segment weights (no hedging).
    */
-  portfolio_exposures?: [Currency, number][] | null;
+  portfolio_exposures?: Record<string, number> | null;
   /** The benchmark's exposure to each currency, as for the portfolio. */
-  benchmark_exposures?: [Currency, number][] | null;
+  benchmark_exposures?: Record<string, number> | null;
 }
 
 /** What one currency added to the excess return. */
@@ -683,12 +686,12 @@ export interface Drawdown {
 /** A change to the books made by one transaction. */
 export type Effect =
   | {
-    effect: "set_lot";
+    type: "set_lot";
     /** The lot after the transaction. */
     lot: Lot;
   }
   | {
-    effect: "close_lot";
+    type: "close_lot";
     /** The account that held it. */
     account: AccountId;
     /** The instrument it held. */
@@ -697,7 +700,7 @@ export type Effect =
     lot: LotId;
   }
   | {
-    effect: "cash";
+    type: "cash";
     /** The account. */
     account: AccountId;
     /** The currency. */
@@ -847,7 +850,7 @@ export interface FactorShocks {
   /** The model. Its assets are instrument identifiers; assets that are not held are ignored. */
   model: FactorModel;
   /** The return of each shocked factor, by factor name. */
-  shocks: [string, number][];
+  shocks: Record<string, number>;
   /**
    * Whether the factors that are not shocked move too, by their expected return given the
    * shocked ones under the model's factor covariance. Without it, they return zero.
@@ -1028,9 +1031,9 @@ export interface HistoricalWindow {
   end: Date;
   /**
    * Instruments whose prices stand in for others' over the period, such as an index for a
-   * fund that did not exist then: `(instrument, proxy)` pairs.
+   * fund that did not exist then: the proxy of each instrument, by instrument.
    */
-  proxies?: [InstrumentId, InstrumentId][];
+  proxies?: Record<string, InstrumentId>;
 }
 
 /**
@@ -1045,11 +1048,11 @@ export interface HoldingImpact {
   /** Its share of the portfolio's value before. */
   weight_before: number;
   /** Its return in its own currency. */
-  local_return: number;
+  return_local: number;
   /** The change in its currency's value in the base currency. */
   currency_return: number;
-  /** Its return in the base currency, `(1 + local)(1 + currency) - 1`. */
-  total_return: number;
+  /** Its return in the base currency, `(1 + return_local)(1 + currency_return) - 1`. */
+  return_base: number;
   /** Its value after, in the base currency. */
   value_after: number;
   /**
@@ -1063,19 +1066,8 @@ export interface HoldingImpact {
   source: ShockSource;
 }
 
-/**
- * A holding for performance attribution: an instrument, or cash in one currency, added up
- * across accounts.
- */
-export type HoldingKey =
-  | {
-    holding: "instrument";
-    id: InstrumentId;
-  }
-  | {
-    holding: "cash";
-    id: Currency;
-  };
+/** A holding: an instrument's identifier, such as "SPY", or a currency's code followed by " cash", such as "USD cash". */
+export type HoldingKey = string;
 
 /**
  * One holding's values, trades and income on each date of a `HoldingSeries`.
@@ -1266,9 +1258,9 @@ export interface IncomeSummary {
   /** All income. */
   total: Decimal;
   /** By calendar year. */
-  by_year: [number, Decimal][];
+  by_year: Record<string, Decimal>;
   /** By holding: the instrument that paid it, or cash for interest on cash. */
-  by_holding: [HoldingKey, Decimal][];
+  by_holding: Record<string, Decimal>;
 }
 
 /** Something a portfolio can hold, other than cash. */
@@ -1427,9 +1419,6 @@ export interface Matrix {
   values: number[];
 }
 
-/** The method that produced a solution. */
-export type Method = "interior_point" | "newton" | "recursive_bisection" | "trade_elimination";
-
 /**
  * An exact decimal amount in one currency.
  *
@@ -1466,50 +1455,50 @@ export interface NamedScenario {
 /** What an optimisation seeks. */
 export type Objective =
   | {
-    objective: "minimum_variance";
+    type: "minimum_variance";
   }
   | {
-    objective: "mean_variance";
+    type: "mean_variance";
     /** The weight on variance, greater than zero. */
     risk_aversion: number;
   }
   | {
-    objective: "robust_mean_variance";
+    type: "robust_mean_variance";
     /** The weight on variance, greater than zero. */
     risk_aversion: number;
     /** The set of possible expected returns. */
     uncertainty: ReturnUncertainty;
   }
   | {
-    objective: "target_return";
+    type: "target_return";
     /** The expected return required. */
     target: number;
   }
   | {
-    objective: "target_volatility";
+    type: "target_volatility";
     /** The volatility allowed, greater than zero. */
     target: number;
   }
   | {
-    objective: "maximum_sharpe";
+    type: "maximum_sharpe";
     /** The risk-free rate, in the units of the expected returns. */
     risk_free_rate: number;
   }
   | {
-    objective: "maximum_diversification";
+    type: "maximum_diversification";
   }
   | {
-    objective: "minimum_cvar";
+    type: "minimum_cvar";
     /** The confidence level, for example 0.95. */
     confidence: number;
   }
   | {
-    objective: "risk_budgeting";
+    type: "risk_budgeting";
     /** The risk budgets, one per asset, each greater than zero; they are scaled to sum to one. */
     budgets?: number[] | null;
   }
   | {
-    objective: "hierarchical_risk_parity";
+    type: "hierarchical_risk_parity";
     /** How clusters are joined. */
     linkage?: Linkage;
   };
@@ -1581,24 +1570,24 @@ export interface PerformanceReport {
 /** A reporting period ending on an as-of date. */
 export type Period =
   | {
-    period: "month_to_date";
+    type: "month_to_date";
   }
   | {
-    period: "quarter_to_date";
+    type: "quarter_to_date";
   }
   | {
-    period: "year_to_date";
+    type: "year_to_date";
   }
   | {
-    period: "years";
+    type: "years";
     /** The number of years. */
     years: number;
   }
   | {
-    period: "since_inception";
+    type: "since_inception";
   }
   | {
-    period: "since";
+    type: "since";
     /** The start of the period. */
     start: Date;
   };
@@ -1748,7 +1737,7 @@ export interface PositionValue {
 /** The prior expected returns of the Black–Litterman model. */
 export type Prior =
   | {
-    prior: "market";
+    type: "market";
     /**
      * Each asset's market capitalisation or weight, one per asset; they are scaled to sum to
      * one.
@@ -1763,7 +1752,7 @@ export type Prior =
     risk_free_rate?: number;
   }
   | {
-    prior: "returns";
+    type: "returns";
     /** The prior expected returns. */
     returns: number[];
   };
@@ -1822,7 +1811,7 @@ export interface ProposedTrade {
   /** For a sale, the lots it closes. */
   lots: LotSale[];
   /** The fee, in the instrument's currency. */
-  fees: Decimal;
+  fees_local: Decimal;
   /**
    * For a sale, the gain it would realise in the base currency, after fees, as the books
    * would record it.
@@ -1899,9 +1888,9 @@ export interface RealisedSummary {
   /** Gains on lots held for longer than the long-term period. */
   long_term: Decimal;
   /** By calendar year of disposal. */
-  by_year: [number, Decimal][];
+  by_year: Record<string, Decimal>;
   /** By instrument. */
-  by_instrument: [InstrumentId, Decimal][];
+  by_instrument: Record<string, Decimal>;
 }
 
 /** The trades that move an account to target weights, and their effects. */
@@ -1917,9 +1906,9 @@ export interface Rebalance {
   /** Conversions that fund purchases in other currencies and reach the target cash balances. */
   conversions: ProposedConversion[];
   /** Each holding's weight before the trades. */
-  weights_before: [HoldingKey, number][];
+  weights_before: Record<string, number>;
   /** Each holding's weight after the trades. */
-  weights_after: [HoldingKey, number][];
+  weights_after: Record<string, number>;
   /** The value traded, sales and purchases, as a share of the account's value. */
   turnover: number;
   /** The gain the sales would realise in the base currency, after fees. */
@@ -2023,11 +2012,11 @@ export interface ReportOptions {
    * Annual expected returns by instrument for the efficient frontier; instruments not listed,
    * and every instrument when none is, take their historical mean return.
    */
-  expected_returns?: [InstrumentId, number][];
+  expected_returns?: Record<string, number>;
   /** The number of portfolios on the efficient frontier: 25 by default. */
   frontier_points?: number;
   /** Benchmark weights by holding, for the ex-ante tracking error. */
-  benchmark_weights?: [HoldingKey, number][];
+  benchmark_weights?: Record<string, number>;
   /** The benchmark's segments, for the attribution report. */
   attribution?: AttributionInputs | null;
   /** The scenarios of the scenarios report. */
@@ -2069,7 +2058,7 @@ export interface ResampledSolution {
   solved: number;
   /** The number of simulated problems the solver could not solve, left out of the average. */
   failed: number;
-  /** The time taken, in seconds. */
+  /** The time taken, in seconds. It varies from run to run and is left out of comparisons. */
   solve_time: number;
 }
 
@@ -2093,7 +2082,7 @@ export interface Resampling {
  */
 export type ReturnUncertainty =
   | {
-    set: "ellipsoid";
+    type: "ellipsoid";
     /** The size of the ellipsoid, not negative. */
     size: number;
     /**
@@ -2103,7 +2092,7 @@ export type ReturnUncertainty =
     covariance?: Matrix | null;
   }
   | {
-    set: "box";
+    type: "box";
     /** The half-width for each asset, not negative. */
     half_widths: number[];
   };
@@ -2246,7 +2235,7 @@ export interface ScenarioResult {
    * The factor returns applied, given and propagated, in the order of the model's factors;
    * empty without factor shocks.
    */
-  factor_returns: [string, number][];
+  factor_returns: Record<string, number>;
   /** The effect by each classification scheme the options group by. */
   groups: SchemeImpact[];
   /** The risk before, with a risk model. */
@@ -2273,7 +2262,7 @@ export interface ScenarioRisk {
    * The parametric value at risk of the portfolio's value at the model's confidence, a loss
    * in the base currency: `z * volatility * value`.
    */
-  value_at_risk: number;
+  value_at_risk_base: number;
   /** Each holding's contribution to the volatility, in the order of the holdings. */
   contributions: RiskContribution[];
   /** The contributions added up by each classification scheme the options group by. */
@@ -2306,8 +2295,8 @@ export interface ScenarioSummary {
   portfolio_return: number;
   /** The annualised volatility after. */
   volatility_after?: number | null;
-  /** The value at risk after, at the first confidence of the options. */
-  value_at_risk_after?: number | null;
+  /** The value at risk after, in the base currency, at the first confidence of the options. */
+  value_at_risk_after_base?: number | null;
   /** The holding that lost most. */
   worst?: HoldingKey | null;
   /** Its change in value. */
@@ -2419,31 +2408,31 @@ export type Severity = "warning" | "error";
 /** How a holding's return in a scenario was set. */
 export type ShockSource =
   | {
-    source: "instrument";
+    type: "instrument";
   }
   | {
-    source: "group";
+    type: "group";
     /** The group's classification scheme. */
     scheme: string;
     /** The group's classification. */
     value: string;
   }
   | {
-    source: "factor";
+    type: "factor";
   }
   | {
-    source: "history";
+    type: "history";
   }
   | {
-    source: "proxy";
+    type: "proxy";
     /** The instrument whose prices were used. */
     instrument: InstrumentId;
   }
   | {
-    source: "cash";
+    type: "cash";
   }
   | {
-    source: "none";
+    type: "none";
   };
 
 /**
@@ -2454,14 +2443,14 @@ export type ShockSource =
  */
 export interface Shocks {
   /** Returns of single instruments, by identifier. */
-  instruments?: [InstrumentId, number][];
+  instruments?: Record<string, number>;
   /**
    * Returns of every instrument in a group. An instrument without its own shock may match at
    * most one of them.
    */
   groups?: GroupShock[];
   /** Changes in the value of currencies in the base currency: -0.1 when a currency loses 10%. */
-  currencies?: [Currency, number][];
+  currencies?: Record<string, number>;
   /** Returns of factors. */
   factors?: FactorShocks | null;
 }
@@ -2482,6 +2471,9 @@ export interface Slice {
 /**
  * The result of an optimisation, with what is needed to judge it: the status, the objective,
  * how closely the constraints hold, and the work done.
+ *
+ * Two solutions are equal when everything but the time taken is equal, so that solving the
+ * same problem twice gives equal solutions.
  */
 export interface Solution {
   /** The objective optimised. */
@@ -2510,12 +2502,15 @@ export interface Solution {
    */
   max_violation?: number | null;
   /** The method used. */
-  method: Method;
+  method: SolveMethod;
   /** Iterations of the solver or of Newton's method. */
   iterations: number;
-  /** The time taken, in seconds. */
+  /** The time taken, in seconds. It varies from run to run and is left out of comparisons. */
   solve_time: number;
 }
+
+/** The method that produced a solution. */
+export type SolveMethod = "interior_point" | "newton" | "recursive_bisection" | "trade_elimination";
 
 /** How an optimisation ended. */
 export type SolveStatus = "optimal" | "nearly_optimal" | "infeasible" | "unbounded" | "iteration_limit" | "numerical_difficulty";
@@ -2649,7 +2644,7 @@ export interface TaxRates {
   short_term: Decimal;
   /** The rate on gains from lots held for longer. */
   long_term: Decimal;
-  /** The holding period, in days, beyond which a gain is long-term. */
+  /** The holding period, in days, beyond which a gain is long-term: 365 by default. */
   long_term_after_days?: number;
 }
 
@@ -2886,21 +2881,21 @@ export interface Turnover {
 /** What the numbers of a series, grid or column measure. */
 export type Unit =
   | {
-    unit: "money";
+    type: "money";
     /** The currency. */
     currency: Currency;
   }
   | {
-    unit: "fraction";
+    type: "fraction";
   }
   | {
-    unit: "ratio";
+    type: "ratio";
   }
   | {
-    unit: "level";
+    type: "level";
   }
   | {
-    unit: "count";
+    type: "count";
   };
 
 /**
@@ -2960,15 +2955,15 @@ export interface View {
 /** How uncertain a view is: its variance in the model. */
 export type ViewUncertainty =
   | {
-    method: "proportional";
+    type: "proportional";
   }
   | {
-    method: "confidence";
+    type: "confidence";
     /** The confidence, greater than 0 and at most 1. */
     confidence: number;
   }
   | {
-    method: "variance";
+    type: "variance";
     /** The variance, not negative. */
     variance: number;
   };

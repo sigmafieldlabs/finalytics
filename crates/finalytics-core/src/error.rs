@@ -57,7 +57,7 @@ pub enum Error {
     Validation(ValidationReport),
 }
 
-/// The result type of `finalytics-core`.
+/// The engine's result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// How serious a validation issue is.

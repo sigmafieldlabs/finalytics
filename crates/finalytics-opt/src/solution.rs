@@ -38,7 +38,7 @@ impl SolveStatus {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum Method {
+pub enum SolveMethod {
     /// The Clarabel interior-point solver for convex conic programmes.
     InteriorPoint,
     /// Newton's method on the convex risk-budgeting problem.
@@ -54,7 +54,10 @@ pub enum Method {
 
 /// The result of an optimisation, with what is needed to judge it: the status, the objective,
 /// how closely the constraints hold, and the work done.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// Two solutions are equal when everything but the time taken is equal, so that solving the
+/// same problem twice gives equal solutions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Solution {
@@ -80,9 +83,38 @@ pub struct Solution {
     /// holds exactly).
     pub max_violation: Option<f64>,
     /// The method used.
-    pub method: Method,
+    pub method: SolveMethod,
     /// Iterations of the solver or of Newton's method.
     pub iterations: u32,
-    /// The time taken, in seconds.
+    /// The time taken, in seconds. It varies from run to run and is left out of comparisons.
     pub solve_time: f64,
+}
+
+impl PartialEq for Solution {
+    fn eq(&self, other: &Self) -> bool {
+        // Listing every field makes a new one a compile error here until it is compared.
+        let Solution {
+            objective,
+            status,
+            labels,
+            weights,
+            objective_value,
+            expected_return,
+            volatility,
+            max_violation,
+            method,
+            iterations,
+            solve_time: _,
+        } = self;
+        *objective == other.objective
+            && *status == other.status
+            && *labels == other.labels
+            && *weights == other.weights
+            && *objective_value == other.objective_value
+            && *expected_return == other.expected_return
+            && *volatility == other.volatility
+            && *max_violation == other.max_violation
+            && *method == other.method
+            && *iterations == other.iterations
+    }
 }

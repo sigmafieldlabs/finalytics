@@ -11,6 +11,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - A guide to migrating from 0.9 (`docs/migrating-from-0.9.md`): what changed, what replaces
   each part of 0.9, and a 0.9 optimisation worked through in 1.0, run as a test.
+- Reporting periods are read from their labels by the engine (`Period` implements `FromStr` and
+  `Display` in Rust), so Python and JavaScript accept the same labels, now including
+  `since 2026-01-31`.
+- Rust constructors for inputs that gained `#[non_exhaustive]`: `TaxRates::new`,
+  `BlackLitterman::new`, `Resampling::new`, `Turnover::new`, `HistoricalWindow::new`,
+  `FactorShocks::new`, `ScenarioRiskModel::from_covariance` and `from_factor_model`;
+  `TradeLimits` implements `Default`.
 
 ### Changed
 
@@ -26,6 +33,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `long_term_after_days` days, as tax-aware rebalancing does. A lot held for exactly that many
   days was long-term in the report and short-term for rebalancing.
 - Rust documentation examples use the paths of the `finalytics` crate.
+- A holding is written as text in data: an instrument's identifier, such as `"SPY"`, or a
+  currency followed by ` cash`, such as `"USD cash"`. It was an object such as
+  `{"holding": "instrument", "id": "SPY"}`. In Python a holding is a `str` (`fl.cash("USD")` gives
+  `"USD cash"`; `fl.holding` and `finalytics.pandas.label` are gone); in TypeScript a `string`.
+  An instrument's identifier may not take the cash form.
+- Values keyed by an instrument, a currency, a factor, a year or a holding are maps, such as
+  `{"SPY": 0.6, "USD cash": 0.4}`, rather than lists of pairs: weights before and after a
+  rebalance, shocks, proxies, factor returns, currency exposures, expected returns and benchmark
+  weights for reports, and realised gains and income by year, instrument or holding. Rebalancing
+  targets are maps in JavaScript too, and `holding_weights` returns a map in Rust. Validation
+  paths into these maps end in the key, such as `shocks.instruments.SPY`.
+- Every tagged union is tagged by `type`, such as `{"type": "maximum_sharpe"}`, in place of
+  tags named after each union (`objective`, `method`, `prior` and others). Transactions already
+  used `type`, so portfolio documents keep their shape.
+- Renamed for consistency: in scenario results, `local_return` and `total_return` of a holding
+  are `return_local` and `return_base`, and the money values at risk are `value_at_risk_base`
+  and `value_at_risk_after_base`; a proposed trade's `fees` are `fees_local`; Rust
+  `opt::Method` is `SolveMethod`, and `Problem::new` is `Problem::from_covariance`.
+- Rust: `Problem`, `TaxRates`, `BlackLitterman`, `Resampling`, `Turnover`, `TradeLimits`,
+  `ScenarioRiskModel`, `HistoricalWindow` and `FactorShocks` are `#[non_exhaustive]`. A new
+  parameter of an enumeration's variant will arrive as a new variant.
+- Rust: the performance types and functions are in `finalytics::performance` rather than at the
+  crate's root, and `finalytics::numeric` is no longer public. Semantic versioning covers the
+  `finalytics` crate; the crates it is built from say that their own API may change in any
+  release.
+- JavaScript: `writeDocument` accepts the `MarketData` that `readDocument` returns, and
+  `impliedRiskAversion` takes its options as an object, as `statistics` does.
+- A solution, and a resampled one, compare equal to another when everything but the time taken
+  is equal.
 
 ### Fixed
 

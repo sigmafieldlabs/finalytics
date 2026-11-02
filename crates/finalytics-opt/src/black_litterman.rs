@@ -14,7 +14,7 @@ use crate::problem::{Problem, check_symmetric, check_vector};
 /// The prior expected returns of the Black–Litterman model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "prior", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Prior {
     /// The equilibrium returns implied by market weights, `pi = risk_aversion * C w + rate`: the
@@ -40,7 +40,7 @@ pub enum Prior {
 /// How uncertain a view is: its variance in the model.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "method", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ViewUncertainty {
     /// Proportional to the variance of the view portfolio, `tau * p' C p` (He and Litterman,
@@ -78,6 +78,7 @@ pub struct View {
 /// The inputs to the Black–Litterman model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct BlackLitterman {
     /// The covariance matrix of the assets' returns, in the units of the returns wanted, for
     /// example annualised.
@@ -87,13 +88,26 @@ pub struct BlackLitterman {
     /// The views; without any, the posterior returns are the prior.
     #[serde(default)]
     pub views: Vec<View>,
-    /// The uncertainty of the prior relative to the covariance, greater than zero.
+    /// The uncertainty of the prior relative to the covariance, greater than zero: 0.05 by
+    /// default.
     #[serde(default = "default_tau")]
     pub tau: f64,
 }
 
 fn default_tau() -> f64 {
     0.05
+}
+
+impl BlackLitterman {
+    /// The model for `covariance` and `prior`, with no views yet and the default `tau`.
+    pub fn new(covariance: Matrix, prior: Prior) -> Self {
+        BlackLitterman {
+            covariance,
+            prior,
+            views: Vec::new(),
+            tau: default_tau(),
+        }
+    }
 }
 
 /// The posterior of the Black–Litterman model.
@@ -118,7 +132,7 @@ impl BlackLittermanEstimate {
     /// An optimisation problem with the posterior covariance and expected returns, and the
     /// default constraints.
     pub fn problem(&self) -> Problem {
-        Problem::new(self.posterior_covariance.clone())
+        Problem::from_covariance(self.posterior_covariance.clone())
             .with_expected_returns(self.posterior_returns.clone())
     }
 }
@@ -146,16 +160,13 @@ impl BlackLitterman {
     ///     vec!["equity".into(), "bonds".into()],
     ///     vec![0.0400, 0.0020, 0.0020, 0.0049],
     /// )?;
-    /// let model = BlackLitterman {
-    ///     covariance,
-    ///     prior: Prior::Market { weights: vec![0.6, 0.4], risk_aversion: 2.5, risk_free_rate: 0.0 },
-    ///     views: vec![View {
-    ///         portfolio: BTreeMap::from([("bonds".to_owned(), 1.0)]),
-    ///         expected_return: 0.05,
-    ///         uncertainty: Default::default(),
-    ///     }],
-    ///     tau: 0.05,
-    /// };
+    /// let prior = Prior::Market { weights: vec![0.6, 0.4], risk_aversion: 2.5, risk_free_rate: 0.0 };
+    /// let mut model = BlackLitterman::new(covariance, prior);
+    /// model.views.push(View {
+    ///     portfolio: BTreeMap::from([("bonds".to_owned(), 1.0)]),
+    ///     expected_return: 0.05,
+    ///     uncertainty: Default::default(),
+    /// });
     /// let estimate = model.estimate()?;
     /// // The view lifts bonds above their equilibrium return.
     /// assert!(estimate.posterior_returns[1] > estimate.prior_returns[1]);

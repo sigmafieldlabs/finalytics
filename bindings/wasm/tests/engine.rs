@@ -19,7 +19,7 @@ fn the_optimiser_runs() {
         vec![0.0400, 0.0020, 0.0020, 0.0049],
     )
     .expect("a valid matrix");
-    let problem = Problem::new(covariance).with_expected_returns(vec![0.07, 0.03]);
+    let problem = Problem::from_covariance(covariance).with_expected_returns(vec![0.07, 0.03]);
     for objective in [
         Objective::MaximumSharpe {
             risk_free_rate: 0.02,

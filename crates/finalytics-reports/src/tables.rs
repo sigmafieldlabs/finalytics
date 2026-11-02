@@ -15,7 +15,7 @@ use crate::{
 /// What a column holds, so that an export can format it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum ColumnKind {
     /// Text.
@@ -82,7 +82,9 @@ pub struct ReportTable {
 }
 
 /// Any report given as JSON, as the engine writes it, turned into its tables. The report's
-/// provenance says which report it is.
+/// provenance says which report it is. The Python and JavaScript packages use it; from Rust, call
+/// the report's own `tables`.
+#[doc(hidden)]
 pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
     let value: serde_json::Value =
         serde_json::from_str(report).map_err(|e| invalid("report", format!("is not JSON: {e}")))?;
@@ -782,7 +784,7 @@ impl ScenariosReport {
                         n(s.change),
                         n(s.portfolio_return),
                         o(s.volatility_after),
-                        o(s.value_at_risk_after),
+                        o(s.value_at_risk_after_base),
                         s.worst.as_ref().map_or(Cell::Missing, holding_name),
                         o(s.worst_change),
                     ]

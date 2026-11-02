@@ -73,6 +73,15 @@ impl Portfolio {
                     format!("duplicate instrument {}", instrument.id),
                 );
             }
+            if crate::HoldingKey::is_cash_form(instrument.id.as_str()) {
+                report.error(
+                    format!("instruments[{i}].id"),
+                    format!(
+                        "{:?} has the form of a cash holding; choose another identifier",
+                        instrument.id.as_str()
+                    ),
+                );
+            }
             if instrument.multiplier <= Decimal::ZERO {
                 report.error(
                     format!("instruments[{i}].multiplier"),

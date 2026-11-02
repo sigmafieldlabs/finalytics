@@ -26,7 +26,7 @@ fn covariance() -> Matrix {
 }
 
 fn problem() -> Problem {
-    Problem::new(covariance()).with_expected_returns(vec![0.08, 0.05, 0.03, 0.04])
+    Problem::from_covariance(covariance()).with_expected_returns(vec![0.08, 0.05, 0.03, 0.04])
 }
 
 fn paths(error: Error) -> Vec<String> {
@@ -41,7 +41,7 @@ fn risk_parity_equalises_risk_shares() {
     let solution = problem()
         .solve(&Objective::RiskBudgeting { budgets: None })
         .unwrap();
-    assert_eq!(solution.method, Method::Newton);
+    assert_eq!(solution.method, SolveMethod::Newton);
     assert!(solution.objective_value.unwrap() < 1e-12);
     let weights = solution.weights.unwrap();
     let risk = risk_decomposition(&weights, &covariance()).unwrap();
@@ -101,7 +101,7 @@ fn infeasible_constraints_give_a_status_not_weights() {
 fn a_riskless_asset_is_handled_by_the_cone_formulations() {
     let names = vec!["equity".to_owned(), "cash".to_owned()];
     let covariance = Matrix::new(names, vec![0.04, 0.0, 0.0, 0.0]).unwrap();
-    let problem = Problem::new(covariance).with_expected_returns(vec![0.07, 0.02]);
+    let problem = Problem::from_covariance(covariance).with_expected_returns(vec![0.07, 0.02]);
     let solution = problem
         .solve(&Objective::TargetVolatility { target: 0.05 })
         .unwrap();
@@ -187,13 +187,11 @@ fn invalid_problems_list_every_problem() {
         min: 0.0,
         max: 0.3,
     }];
-    constraints.turnover = Some(Turnover {
-        current: vec![0.25; 3],
-        limit: Some(0.1),
-        costs: Some(vec![0.001; 4]),
-        quadratic_costs: None,
-    });
-    let error = Problem::new(covariance())
+    let mut turnover = Turnover::new(vec![0.25; 3]);
+    turnover.limit = Some(0.1);
+    turnover.costs = Some(vec![0.001; 4]);
+    constraints.turnover = Some(turnover);
+    let error = Problem::from_covariance(covariance())
         .with_constraints(constraints)
         .solve(&Objective::MinimumVariance)
         .unwrap_err();
@@ -206,7 +204,7 @@ fn invalid_problems_list_every_problem() {
             "constraints.turnover.costs",
         ]
     );
-    let error = Problem::new(covariance())
+    let error = Problem::from_covariance(covariance())
         .solve(&Objective::MaximumSharpe {
             risk_free_rate: 0.0,
         })
@@ -216,7 +214,7 @@ fn invalid_problems_list_every_problem() {
     let indefinite = Matrix::new(labels()[..2].to_vec(), vec![1.0, 2.0, 2.0, 1.0]).unwrap();
     assert_eq!(
         paths(
-            Problem::new(indefinite)
+            Problem::from_covariance(indefinite)
                 .solve(&Objective::MinimumVariance)
                 .unwrap_err()
         ),
@@ -241,10 +239,24 @@ fn problems_and_solutions_round_trip_through_json() {
     assert_eq!(back, problem);
 
     let objective: Objective =
-        serde_json::from_str(r#"{"objective": "mean_variance", "risk_aversion": 3}"#).unwrap();
+        serde_json::from_str(r#"{"type": "mean_variance", "risk_aversion": 3}"#).unwrap();
     let solution = back.solve(&objective).unwrap();
     let json = serde_json::to_value(&solution).unwrap();
     assert_eq!(json["status"], "optimal");
     assert_eq!(json["method"], "interior_point");
-    assert_eq!(json["objective"]["objective"], "mean_variance");
+    assert_eq!(json["objective"]["type"], "mean_variance");
+}
+
+#[test]
+fn solving_twice_gives_equal_solutions() {
+    // The time taken varies from run to run and is left out of the comparison.
+    let objective = Objective::MaximumSharpe {
+        risk_free_rate: 0.02,
+    };
+    let first = problem().solve(&objective).unwrap();
+    let mut second = problem().solve(&objective).unwrap();
+    second.solve_time = first.solve_time + 1.0;
+    assert_eq!(first, second);
+    second.iterations += 1;
+    assert_ne!(first, second);
 }

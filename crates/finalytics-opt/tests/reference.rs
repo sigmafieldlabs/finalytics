@@ -34,7 +34,7 @@ fn problem(fixture: &Value) -> Problem {
         .iter()
         .map(floats)
         .collect();
-    Problem::new(covariance)
+    Problem::from_covariance(covariance)
         .with_expected_returns(floats(&fixture["expected_returns"]))
         .with_scenarios(ReturnsTable::new(names, columns).unwrap())
 }
@@ -85,15 +85,15 @@ fn hierarchical_risk_parity_matches_the_reference() {
     for case in fixture()["hierarchical_risk_parity"].as_array().unwrap() {
         let values = floats(&case["covariance"]);
         let n = (values.len() as f64).sqrt().round() as usize;
-        let problem = Problem::new(Matrix::new(labels(n), values).unwrap());
+        let problem = Problem::from_covariance(Matrix::new(labels(n), values).unwrap());
         for result in case["results"].as_array().unwrap() {
             let objective: Objective = serde_json::from_value(json!({
-                "objective": "hierarchical_risk_parity",
+                "type": "hierarchical_risk_parity",
                 "linkage": result["linkage"],
             }))
             .unwrap();
             let solution = problem.solve(&objective).unwrap();
-            assert_eq!(solution.method, Method::RecursiveBisection);
+            assert_eq!(solution.method, SolveMethod::RecursiveBisection);
             let weights = solution.weights.unwrap();
             for (k, (w, r)) in weights.iter().zip(floats(&result["weights"])).enumerate() {
                 assert!(
@@ -186,7 +186,7 @@ fn a_factor_model_gives_the_solutions_of_its_covariance_matrix() {
     let model = factor_model(&fixture);
     let mu = floats(&fixture["expected_returns"]);
     let factor_form = Problem::from_factor_model(model.clone()).with_expected_returns(mu.clone());
-    let dense = Problem::new(model.covariance()).with_expected_returns(mu);
+    let dense = Problem::from_covariance(model.covariance()).with_expected_returns(mu);
     let equal = vec![1.0 / 8.0; 8];
     let mut tracking = Constraints::default();
     tracking.tracking_error = Some(TrackingErrorLimit {
@@ -250,7 +250,7 @@ fn a_factor_model_gives_the_solutions_of_its_covariance_matrix() {
 fn factor_model_problems_are_validated() {
     let fixture = fixture();
     let model = factor_model(&fixture);
-    let both = Problem::new(model.covariance()).with_factor_model(model.clone());
+    let both = Problem::from_covariance(model.covariance()).with_factor_model(model.clone());
     let error = both.solve(&Objective::MinimumVariance).unwrap_err();
     assert!(error.to_string().contains("not both"), "{error}");
     let mut limits = Constraints::default();
@@ -263,7 +263,7 @@ fn factor_model_problems_are_validated() {
     let unknown = Problem::from_factor_model(model.clone()).with_constraints(limits.clone());
     let error = unknown.solve(&Objective::MinimumVariance).unwrap_err();
     assert!(error.to_string().contains("no factor momentum"), "{error}");
-    let without_model = Problem::new(model.covariance()).with_constraints(limits);
+    let without_model = Problem::from_covariance(model.covariance()).with_constraints(limits);
     let error = without_model
         .solve(&Objective::MinimumVariance)
         .unwrap_err();
@@ -361,10 +361,8 @@ fn resampled_solution_matches_the_reference() {
         problem.resampled(&objective, &resampling).unwrap().weights,
         found.weights
     );
-    let other = Resampling {
-        seed: resampling.seed + 1,
-        ..resampling
-    };
+    let mut other = resampling;
+    other.seed += 1;
     assert_ne!(
         problem.resampled(&objective, &other).unwrap().weights,
         found.weights
@@ -401,16 +399,18 @@ fn quadratic_costs_match_the_reference() {
     }
 }
 
+fn limits(minimum: Option<f64>, maximum_count: Option<usize>) -> TradeLimits {
+    let mut limits = TradeLimits::default();
+    limits.minimum = minimum;
+    limits.maximum_count = maximum_count;
+    limits
+}
+
 fn trade_problem(limits: TradeLimits) -> (Problem, Vec<f64>) {
     let current = vec![0.125; 8];
     let problem = problem(&fixture()).with_constraints({
         let mut constraints = Constraints::default();
-        constraints.turnover = Some(Turnover {
-            current: current.clone(),
-            limit: None,
-            costs: None,
-            quadratic_costs: None,
-        });
+        constraints.turnover = Some(Turnover::new(current.clone()));
         constraints.trades = Some(limits);
         constraints
     });
@@ -421,22 +421,13 @@ fn trade_problem(limits: TradeLimits) -> (Problem, Vec<f64>) {
 fn trade_limits_hold_after_elimination() {
     let objective = Objective::MeanVariance { risk_aversion: 4.0 };
     for limits in [
-        TradeLimits {
-            minimum: Some(0.05),
-            maximum_count: None,
-        },
-        TradeLimits {
-            minimum: None,
-            maximum_count: Some(3),
-        },
-        TradeLimits {
-            minimum: Some(0.03),
-            maximum_count: Some(4),
-        },
+        limits(Some(0.05), None),
+        limits(None, Some(3)),
+        limits(Some(0.03), Some(4)),
     ] {
         let (problem, current) = trade_problem(limits.clone());
         let solution = problem.solve(&objective).unwrap();
-        assert_eq!(solution.method, Method::TradeElimination);
+        assert_eq!(solution.method, SolveMethod::TradeElimination);
         assert_eq!(solution.status, SolveStatus::Optimal, "{limits:?}");
         assert!(solution.max_violation.unwrap() < 1e-7, "{limits:?}");
         let weights = solution.weights.unwrap();
@@ -462,23 +453,17 @@ fn trade_limits_hold_after_elimination() {
 #[test]
 fn loose_trade_limits_change_nothing() {
     let objective = Objective::MeanVariance { risk_aversion: 4.0 };
-    let (limited, _) = trade_problem(TradeLimits {
-        minimum: Some(1e-6),
-        maximum_count: Some(8),
-    });
+    let (limited, _) = trade_problem(limits(Some(1e-6), Some(8)));
     let mut free = limited.clone();
     free.constraints.trades = None;
     let a = limited.solve(&objective).unwrap();
     let b = free.solve(&objective).unwrap();
-    assert_eq!(a.method, Method::TradeElimination);
+    assert_eq!(a.method, SolveMethod::TradeElimination);
     assert_eq!(a.weights, b.weights);
-    let error = Problem::new(free.covariance.clone().unwrap())
+    let error = Problem::from_covariance(free.covariance.clone().unwrap())
         .with_constraints({
             let mut constraints = Constraints::default();
-            constraints.trades = Some(TradeLimits {
-                minimum: Some(0.01),
-                maximum_count: None,
-            });
+            constraints.trades = Some(limits(Some(0.01), None));
             constraints
         })
         .solve(&objective)

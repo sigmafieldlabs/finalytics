@@ -34,10 +34,10 @@ test("covariance estimators match the reference", () => {
     const labels = c.columns.map((_, i) => `asset ${i}`);
     const returns = { labels, columns: c.columns };
     const methods = {
-      sample: { method: "sample" },
-      ewma: { method: "ewma", decay: c.ewma.decay },
-      ledoit_wolf: { method: "ledoit_wolf" },
-      oas: { method: "oas" },
+      sample: { type: "sample" },
+      ewma: { type: "ewma", decay: c.ewma.decay },
+      ledoit_wolf: { type: "ledoit_wolf" },
+      oas: { type: "oas" },
     };
     for (const [key, method] of Object.entries(methods)) {
       const estimate = fl.covariance(returns, method);
@@ -82,7 +82,7 @@ test("validation errors list every issue", () => {
       return true;
     },
   );
-  assert.throws(() => fl.solve({ labels: ["a"] }, { objective: "mean_variance", risk_aversion: -1 }), {
+  assert.throws(() => fl.solve({ labels: ["a"] }, { type: "mean_variance", risk_aversion: -1 }), {
     name: "ValidationError",
   });
 });

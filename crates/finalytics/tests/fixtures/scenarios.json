@@ -3,12 +3,9 @@
  "shocks": {
   "as_of": "2026-10-30",
   "shocks": {
-   "instruments": [
-    [
-     "SAP",
-     -0.35
-    ]
-   ],
+   "instruments": {
+    "SAP": -0.35
+   },
    "groups": [
     {
      "scheme": "asset_class",
@@ -21,12 +18,9 @@
      "shock": 0.02
     }
    ],
-   "currencies": [
-    [
-     "EUR",
-     -0.08
-    ]
-   ]
+   "currencies": {
+    "EUR": -0.08
+   }
   },
   "options": {
    "group_by": [
@@ -73,37 +67,37 @@
    "holdings": [
     {
      "label": "BOND",
-     "local_return": 0.02,
+     "return_local": 0.02,
      "currency_return": 0.0,
-     "total_return": 0.020000000000000018,
+     "return_base": 0.020000000000000018,
      "value_after": 30781.7691
     },
     {
      "label": "SAP",
-     "local_return": -0.35,
+     "return_local": -0.35,
      "currency_return": -0.08,
-     "total_return": -0.4019999999999999,
+     "return_base": -0.4019999999999999,
      "value_after": 8443.291708592
     },
     {
      "label": "SPY",
-     "local_return": -0.25,
+     "return_local": -0.25,
      "currency_return": 0.0,
-     "total_return": -0.25,
+     "return_base": -0.25,
      "value_after": 31540.725
     },
     {
      "label": "EUR cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": -0.08,
-     "total_return": -0.07999999999999996,
+     "return_base": -0.07999999999999996,
      "value_after": 4650.768498
     },
     {
      "label": "USD cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 18943.0
     }
    ],
@@ -218,12 +212,9 @@
       0.0001
      ]
     },
-    "shocks": [
-     [
-      "equity",
-      -0.2
-     ]
-    ],
+    "shocks": {
+     "equity": -0.2
+    },
     "propagate": true
    }
   },
@@ -234,37 +225,37 @@
    "holdings": [
     {
      "label": "BOND",
-     "local_return": -0.052000000000000005,
+     "return_local": -0.052000000000000005,
      "currency_return": 0.0,
-     "total_return": -0.052000000000000046,
+     "return_base": -0.052000000000000046,
      "value_after": 28608.93834
     },
     {
      "label": "SAP",
-     "local_return": -0.24400000000000002,
+     "return_local": -0.24400000000000002,
      "currency_return": 0.0,
-     "total_return": -0.244,
+     "return_base": -0.244,
      "value_after": 10674.127979423998
     },
     {
      "label": "SPY",
-     "local_return": -0.2,
+     "return_local": -0.2,
      "currency_return": 0.0,
-     "total_return": -0.19999999999999996,
+     "return_base": -0.19999999999999996,
      "value_after": 33643.439999999995
     },
     {
      "label": "EUR cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 5055.18315
     },
     {
      "label": "USD cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 18943.0
     }
    ],
@@ -327,16 +318,10 @@
       0.0001
      ]
     },
-    "shocks": [
-     [
-      "equity",
-      -0.2
-     ],
-     [
-      "europe",
-      -0.05
-     ]
-    ],
+    "shocks": {
+     "equity": -0.2,
+     "europe": -0.05
+    },
     "propagate": true
    }
   },
@@ -347,37 +332,37 @@
    "holdings": [
     {
      "label": "BOND",
-     "local_return": -0.05296296296296299,
+     "return_local": -0.05296296296296299,
      "currency_return": 0.0,
-     "total_return": -0.05296296296296299,
+     "return_base": -0.05296296296296299,
      "value_after": 28579.8778462963
     },
     {
      "label": "SAP",
-     "local_return": -0.26,
+     "return_local": -0.26,
      "currency_return": 0.0,
-     "total_return": -0.26,
+     "return_base": -0.26,
      "value_after": 10448.220508959997
     },
     {
      "label": "SPY",
-     "local_return": -0.2,
+     "return_local": -0.2,
      "currency_return": 0.0,
-     "total_return": -0.19999999999999996,
+     "return_base": -0.19999999999999996,
      "value_after": 33643.439999999995
     },
     {
      "label": "EUR cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 5055.18315
     },
     {
      "label": "USD cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 18943.0
     }
    ],
@@ -440,12 +425,9 @@
       0.0001
      ]
     },
-    "shocks": [
-     [
-      "equity",
-      -0.2
-     ]
-    ],
+    "shocks": {
+     "equity": -0.2
+    },
     "propagate": false
    }
   },
@@ -456,37 +438,37 @@
    "holdings": [
     {
      "label": "BOND",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 30178.205
     },
     {
      "label": "SAP",
-     "local_return": -0.22000000000000003,
+     "return_local": -0.22000000000000003,
      "currency_return": 0.0,
-     "total_return": -0.21999999999999997,
+     "return_base": -0.21999999999999997,
      "value_after": 11012.989185119997
     },
     {
      "label": "SPY",
-     "local_return": -0.2,
+     "return_local": -0.2,
      "currency_return": 0.0,
-     "total_return": -0.19999999999999996,
+     "return_base": -0.19999999999999996,
      "value_after": 33643.439999999995
     },
     {
      "label": "EUR cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 5055.18315
     },
     {
      "label": "USD cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 18943.0
     }
    ],
@@ -503,7 +485,7 @@
   "window": {
    "start": "2026-09-03",
    "end": "2026-09-30",
-   "proxies": []
+   "proxies": {}
   },
   "options": {},
   "expected": {
@@ -512,37 +494,37 @@
    "holdings": [
     {
      "label": "BOND",
-     "local_return": -0.011629168598285777,
+     "return_local": -0.011629168598285777,
      "currency_return": 0.0,
-     "total_return": -0.011629168598285777,
+     "return_base": -0.011629168598285777,
      "value_after": 29827.25756606137
     },
     {
      "label": "SAP",
-     "local_return": -0.005520332313074028,
+     "return_local": -0.005520332313074028,
      "currency_return": -0.008125256767243516,
-     "total_return": -0.013600734962833316,
+     "return_base": -0.013600734962833316,
      "value_after": 13927.185177005937
     },
     {
      "label": "SPY",
-     "local_return": -0.06912489518784382,
+     "return_local": -0.06912489518784382,
      "currency_return": 0.0,
-     "total_return": -0.06912489518784382,
+     "return_base": -0.06912489518784382,
      "value_after": 39147.30092030186
     },
     {
      "label": "EUR cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": -0.008125256767243516,
-     "total_return": -0.008125256767243516,
+     "return_base": -0.008125256767243516,
      "value_after": 5014.108488900807
     },
     {
      "label": "USD cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 18943.0
     }
    ],
@@ -603,12 +585,9 @@
   "window": {
    "start": "2026-09-03",
    "end": "2026-09-30",
-   "proxies": [
-    [
-     "SAP",
-     "SPY"
-    ]
-   ]
+   "proxies": {
+    "SAP": "SPY"
+   }
   },
   "options": {},
   "expected": {
@@ -617,37 +596,37 @@
    "holdings": [
     {
      "label": "BOND",
-     "local_return": -0.011629168598285777,
+     "return_local": -0.011629168598285777,
      "currency_return": 0.0,
-     "total_return": -0.011629168598285777,
+     "return_base": -0.011629168598285777,
      "value_after": 29827.25756606137
     },
     {
      "label": "SAP",
-     "local_return": -0.06912489518784382,
+     "return_local": -0.06912489518784382,
      "currency_return": -0.008125256767243516,
-     "total_return": -0.07668849443267733,
+     "return_base": -0.07668849443267733,
      "value_after": 13036.435417063829
     },
     {
      "label": "SPY",
-     "local_return": -0.06912489518784382,
+     "return_local": -0.06912489518784382,
      "currency_return": 0.0,
-     "total_return": -0.06912489518784382,
+     "return_base": -0.06912489518784382,
      "value_after": 39147.30092030186
     },
     {
      "label": "EUR cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": -0.008125256767243516,
-     "total_return": -0.008125256767243516,
+     "return_base": -0.008125256767243516,
      "value_after": 5014.108488900807
     },
     {
      "label": "USD cash",
-     "local_return": 0.0,
+     "return_local": 0.0,
      "currency_return": 0.0,
-     "total_return": 0.0,
+     "return_base": 0.0,
      "value_after": 18943.0
     }
    ],

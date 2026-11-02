@@ -119,11 +119,8 @@ fn targets() -> Vec<(HoldingKey, f64)> {
     ]
 }
 
-fn weight(weights: &[(HoldingKey, f64)], key: &HoldingKey) -> f64 {
-    weights
-        .iter()
-        .find(|(k, _)| k == key)
-        .map_or(0.0, |(_, w)| *w)
+fn weight(weights: &std::collections::BTreeMap<HoldingKey, f64>, key: &HoldingKey) -> f64 {
+    weights.get(key).copied().unwrap_or(0.0)
 }
 
 #[test]
@@ -382,11 +379,7 @@ fn tax_aware_sales_take_losses_first_and_estimate_the_tax() {
         (HoldingKey::Instrument(id("BOND")), 0.5),
     ];
     let mut options = RebalanceOptions::default();
-    options.tax = Some(TaxRates {
-        short_term: dec("0.4"),
-        long_term: dec("0.2"),
-        long_term_after_days: 365,
-    });
+    options.tax = Some(TaxRates::new(dec("0.4"), dec("0.2")));
     let plan = rebalance(
         &books,
         &market,
@@ -452,13 +445,13 @@ fn fees_are_paid_and_recorded_as_the_books_record_them() {
         let expected = (dec("1") + dec("0.001") * t.value_local)
             .max(dec("5"))
             .round_dp(2);
-        assert_eq!(t.fees, expected, "{}", t.instrument);
+        assert_eq!(t.fees_local, expected, "{}", t.instrument);
     }
     let fees: Decimal = plan
         .trades
         .iter()
         .map(|t| {
-            t.fees
+            t.fees_local
                 * if t.currency == Currency::EUR {
                     dec("1.10")
                 } else {
@@ -502,11 +495,9 @@ fn invalid_fees_and_tax_rates_are_reported() {
         fees.rate = dec("-0.001");
         fees
     };
-    options.tax = Some(TaxRates {
-        short_term: dec("1.5"),
-        long_term: dec("0.2"),
-        long_term_after_days: -1,
-    });
+    let mut tax = TaxRates::new(dec("1.5"), dec("0.2"));
+    tax.long_term_after_days = -1;
+    options.tax = Some(tax);
     let Err(finalytics_core::Error::Validation(report)) = rebalance(
         &books,
         &market,

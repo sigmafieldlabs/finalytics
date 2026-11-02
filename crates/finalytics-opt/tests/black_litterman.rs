@@ -38,12 +38,13 @@ fn covariance(f: &Value) -> Matrix {
 }
 
 fn model(f: &Value, case: &Value) -> BlackLitterman {
-    BlackLitterman {
-        covariance: covariance(f),
-        prior: serde_json::from_value(case["prior"].clone()).unwrap(),
-        views: serde_json::from_value(case["views"].clone()).unwrap(),
-        tau: case["tau"].as_f64().unwrap(),
-    }
+    let mut model = BlackLitterman::new(
+        covariance(f),
+        serde_json::from_value(case["prior"].clone()).unwrap(),
+    );
+    model.views = serde_json::from_value(case["views"].clone()).unwrap();
+    model.tau = case["tau"].as_f64().unwrap();
+    model
 }
 
 #[test]
@@ -135,7 +136,7 @@ fn inputs_are_validated() {
         serde_json::from_value(json!({
             "portfolio": {"nowhere": 1.0},
             "expected_return": 0.1,
-            "uncertainty": {"method": "confidence", "confidence": 0.0}
+            "uncertainty": {"type": "confidence", "confidence": 0.0}
         }))
         .unwrap(),
     );

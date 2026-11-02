@@ -111,7 +111,7 @@ def test_holdings_and_valuation(books):
     assert len(events) == 11 and isinstance(events[0].effects[0], t.CashChange)
     weights = books.weights("2026-10-30")
     assert abs(sum(weights.values()) - 1.0) < 1e-12
-    assert fl.holding("SAP") in weights and fl.cash("EUR") in weights
+    assert "SAP" in weights and fl.cash("EUR") == "EUR cash" in weights
 
 
 def test_lot_preview_and_rebalancing(books, portfolio, market):
@@ -136,7 +136,7 @@ def test_rebalancing_with_fees_and_tax(books, portfolio, market):
     fees = fl.opt.Fees(rate=decimal.Decimal("0.001"), minimum=decimal.Decimal("5"))
     tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
     plan = books.rebalance("main", {"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, fees=fees, tax=tax)
-    assert all(t.fees >= 5 for t in plan.trades)
+    assert all(t.fees_local >= 5 for t in plan.trades)
     sales = [t for t in plan.trades if t.side == "sell"]
     assert sales and all(t.tax_base is not None for t in sales)
     assert plan.tax_base == sum(t.tax_base for t in sales)
@@ -156,5 +156,5 @@ def test_rebalancing_several_accounts(books):
     plan = books.rebalance_accounts(accounts, {"SPY": 0.3, "BOND": 0.4})
     assert [p.account for p in plan.accounts] == [a for a in accounts if any(p.account == a for p in plan.accounts)]
     after = dict(plan.weights_after)
-    assert abs(after[fl.types.InstrumentHolding(id="SPY")] - 0.3) < 1e-6
-    assert abs(after[fl.types.InstrumentHolding(id="BOND")] - 0.4) < 1e-6
+    assert abs(after["SPY"] - 0.3) < 1e-6
+    assert abs(after["BOND"] - 0.4) < 1e-6

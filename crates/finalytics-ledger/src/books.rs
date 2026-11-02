@@ -1,6 +1,8 @@
 //! Keeping the books: applying transactions in order.
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt;
+use std::str::FromStr;
 
 use finalytics_core::{Currency, Date, Decimal, Error, Result, ValidationReport};
 use serde::{Deserialize, Serialize};
@@ -14,7 +16,7 @@ use crate::{
 /// A change to the books made by one transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "effect", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Effect {
     /// A lot was opened or changed; this is its new state.
@@ -74,11 +76,12 @@ pub struct Flow {
     pub kind: FlowKind,
 }
 
-/// A holding for performance attribution: an instrument, or cash in one currency, added up
-/// across accounts.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "holding", content = "id", rename_all = "snake_case")]
+/// A holding: an instrument, or cash in one currency, added up across accounts.
+///
+/// In data, a holding is written as text: the instrument's identifier (`"SPY"`), or the
+/// currency's code followed by ` cash` (`"USD cash"`). No instrument's identifier takes the
+/// second form.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HoldingKey {
     /// An instrument.
     Instrument(InstrumentId),
@@ -86,12 +89,100 @@ pub enum HoldingKey {
     Cash(Currency),
 }
 
+impl HoldingKey {
+    /// The cash holding of `currency`, written `"USD cash"`.
+    pub fn cash(currency: Currency) -> Self {
+        HoldingKey::Cash(currency)
+    }
+
+    /// Whether `text` has the form of a cash holding, `"USD cash"`: an identifier of that form
+    /// would be read as cash, so no instrument may have one.
+    pub fn is_cash_form(text: &str) -> bool {
+        text.strip_suffix(" cash")
+            .is_some_and(|code| Currency::new(code).is_ok())
+    }
+}
+
+impl fmt::Display for HoldingKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HoldingKey::Instrument(id) => f.write_str(id.as_str()),
+            HoldingKey::Cash(currency) => write!(f, "{currency} cash"),
+        }
+    }
+}
+
+impl FromStr for HoldingKey {
+    type Err = Error;
+
+    /// Reads `"USD cash"` as cash in US dollars and anything else as an instrument's identifier.
+    fn from_str(text: &str) -> Result<Self> {
+        if let Some(code) = text.strip_suffix(" cash")
+            && let Ok(currency) = Currency::new(code)
+        {
+            return Ok(HoldingKey::Cash(currency));
+        }
+        InstrumentId::new(text)
+            .map(HoldingKey::Instrument)
+            .ok_or_else(|| {
+                let mut report = ValidationReport::new();
+                report.error(
+                    "holding",
+                    format!(
+                        "{text:?} is not a holding: write an instrument's identifier, or a \
+                         currency followed by \" cash\", such as \"USD cash\""
+                    ),
+                );
+                Error::Validation(report)
+            })
+    }
+}
+
+impl From<InstrumentId> for HoldingKey {
+    fn from(id: InstrumentId) -> Self {
+        HoldingKey::Instrument(id)
+    }
+}
+
+impl Serialize for HoldingKey {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for HoldingKey {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        text.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for HoldingKey {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "HoldingKey".into()
+    }
+
+    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "string",
+            "minLength": 1,
+            "description": "A holding: an instrument's identifier, such as \"SPY\", or a currency's code followed by \" cash\", such as \"USD cash\"."
+        })
+    }
+}
+
 /// How a transaction moved value between holdings, used to measure each holding's
 /// contribution. Value moved between holdings nets to zero; only external flows change the
 /// portfolio's total.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "allocation", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Allocation {
     /// `amount` (in `currency`) moved into `holding` (negative: out of it).

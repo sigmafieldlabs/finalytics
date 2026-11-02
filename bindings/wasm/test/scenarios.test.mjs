@@ -8,20 +8,16 @@ const f = await json("crates/finalytics/tests/fixtures/scenarios.json");
 const { portfolio, market } = await scenario(fl);
 const books = new fl.Books(portfolio, market);
 
-function label(key) {
-  return key.holding === "instrument" ? key.id : `${key.id} cash`;
-}
-
 function compare(result, expected, what) {
   close(result.value_before, expected.value_before, 1e-12, `${what} value before`);
   close(result.value_after, expected.value_after, 1e-12, `${what} value after`);
   assert.deepEqual(
-    result.holdings.map((h) => label(h.holding)),
+    result.holdings.map((h) => h.holding),
     expected.holdings.map((h) => h.label),
   );
   result.holdings.forEach((h, k) => {
-    for (const name of ["local_return", "currency_return", "total_return", "value_after"]) {
-      close(h[name], expected.holdings[k][name], 1e-12, `${what} ${h.holding.id} ${name}`);
+    for (const name of ["return_local", "currency_return", "return_base", "value_after"]) {
+      close(h[name], expected.holdings[k][name], 1e-12, `${what} ${h.holding} ${name}`);
     }
   });
 }
@@ -32,10 +28,10 @@ test("shocks match the reference", () => {
   compare(result, c.expected, "shocks");
   for (const key of ["risk_before", "risk_after"]) {
     close(result[key].volatility, c.expected[key].volatility, 1e-12, `${key} volatility`);
-    close(result[key].value_at_risk, c.expected[key].value_at_risk, 1e-12, `${key} value at risk`);
+    close(result[key].value_at_risk_base, c.expected[key].value_at_risk, 1e-12, `${key} value at risk`);
   }
-  assert.deepEqual(result.holdings.find((h) => h.holding.id === "SPY").source, {
-    source: "group",
+  assert.deepEqual(result.holdings.find((h) => h.holding === "SPY").source, {
+    type: "group",
     scheme: "asset_class",
     value: "Equity",
   });
@@ -46,7 +42,7 @@ test("factor shocks and historical replays match the reference", () => {
     const c = f[key];
     const result = books.shockScenario(c.shocks, { date: c.as_of });
     compare(result, c.expected, key);
-    result.factor_returns.forEach(([, value], k) => close(value, c.expected.factor_returns[k], 1e-12, key));
+    Object.values(result.factor_returns).forEach((value, k) => close(value, c.expected.factor_returns[k], 1e-12, key));
   }
   for (const key of ["historical", "historical_proxy"]) {
     const c = f[key];

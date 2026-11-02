@@ -2,6 +2,8 @@
 
 #![allow(clippy::unwrap_used)]
 
+use std::collections::BTreeMap;
+
 use finalytics_core::{Currency, Date, Decimal, Error, Money, TimeSeries};
 use finalytics_ledger::*;
 use finalytics_risk::*;
@@ -153,9 +155,9 @@ fn validation(result: Result<ScenarioResult, Error>) -> Vec<(String, String)> {
 fn shocks_to_groups_currencies_and_instruments() {
     let (books, market) = setup();
     let mut shocks = Shocks::default();
-    shocks.instruments = vec![(id("BOND"), -0.05)];
+    shocks.instruments = BTreeMap::from([(id("BOND"), -0.05)]);
     shocks.groups = vec![group("asset_class", "Equity", -0.2)];
-    shocks.currencies = vec![(Currency::EUR, -0.1)];
+    shocks.currencies = BTreeMap::from([(Currency::EUR, -0.1)]);
     shocks.factors = None;
     let mut options = ScenarioOptions::default();
     options.group_by = vec!["asset_class".into()];
@@ -165,7 +167,7 @@ fn shocks_to_groups_currencies_and_instruments() {
     // SPY 40,560 x 0.8; SAP 11,322 x 0.8 x 0.9; BOND 20,020 x 0.95; EUR cash 11,100 x 0.9.
     close(impact(&r, &instrument("SPY")).value_after, 32_448.0);
     let sap = impact(&r, &instrument("SAP"));
-    close(sap.total_return, -0.28);
+    close(sap.return_base, -0.28);
     close(sap.value_after, 8_151.84);
     assert_eq!(
         sap.source,
@@ -220,10 +222,10 @@ fn an_instrument_in_two_shocked_groups_needs_its_own_shock() {
     );
 
     // With its own shock, SAP takes it, and the other groups apply as usual.
-    shocks.instruments.push((id("SAP"), -0.25));
+    shocks.instruments.insert(id("SAP"), -0.25);
     let r = shock_scenario(&books, &market, date, &shocks, &options).unwrap();
-    close(impact(&r, &instrument("SAP")).local_return, -0.25);
-    close(impact(&r, &instrument("SPY")).local_return, -0.2);
+    close(impact(&r, &instrument("SAP")).return_local, -0.25);
+    close(impact(&r, &instrument("SPY")).return_local, -0.2);
     // BOND is not shocked; Asia matches nothing.
     assert_eq!(r.not_shocked, [id("BOND")]);
     assert_eq!(impact(&r, &instrument("BOND")).source, ShockSource::None);
@@ -240,8 +242,8 @@ fn an_instrument_in_two_shocked_groups_needs_its_own_shock() {
 fn shocks_are_validated() {
     let (books, market) = setup();
     let mut shocks = Shocks::default();
-    shocks.instruments = vec![(id("NOPE"), -0.1), (id("SPY"), -1.5)];
-    shocks.currencies = vec![(Currency::USD, 0.1)];
+    shocks.instruments = BTreeMap::from([(id("NOPE"), -0.1), (id("SPY"), -1.5)]);
+    shocks.currencies = BTreeMap::from([(Currency::USD, 0.1)]);
     let issues = validation(shock_scenario(
         &books,
         &market,
@@ -253,9 +255,9 @@ fn shocks_are_validated() {
     assert_eq!(
         paths,
         [
-            "shocks.instruments[0]",
-            "shocks.instruments[1]",
-            "shocks.currencies[0]"
+            "shocks.instruments.NOPE",
+            "shocks.instruments.SPY",
+            "shocks.currencies.USD"
         ]
     );
 }
@@ -277,11 +279,7 @@ fn factor_model() -> FactorModel {
 #[test]
 fn factor_shocks_with_and_without_propagation() {
     let (books, market) = setup();
-    let mut factors = FactorShocks {
-        model: factor_model(),
-        shocks: vec![("equity".into(), -0.1)],
-        propagate: false,
-    };
+    let mut factors = FactorShocks::new(factor_model(), BTreeMap::from([("equity".into(), -0.1)]));
     let date = d("2026-03-07");
     let options = ScenarioOptions::default();
     let shocks = |f: &FactorShocks| {
@@ -290,20 +288,20 @@ fn factor_shocks_with_and_without_propagation() {
         shocks
     };
     let r = shock_scenario(&books, &market, date, &shocks(&factors), &options).unwrap();
-    close(impact(&r, &instrument("SPY")).local_return, -0.1);
-    close(impact(&r, &instrument("SAP")).local_return, -0.12);
-    close(impact(&r, &instrument("BOND")).local_return, 0.0);
+    close(impact(&r, &instrument("SPY")).return_local, -0.1);
+    close(impact(&r, &instrument("SAP")).return_local, -0.12);
+    close(impact(&r, &instrument("BOND")).return_local, 0.0);
     assert_eq!(
         r.factor_returns,
-        [("equity".to_owned(), -0.1), ("rates".to_owned(), 0.0)]
+        BTreeMap::from([("equity".to_owned(), -0.1), ("rates".to_owned(), 0.0)])
     );
 
     // Rates are expected to move by -0.002 / 0.04 x -0.1 = 0.005 when equities fall 10%, so
     // the bond, with an exposure of -5, falls 2.5%.
     factors.propagate = true;
     let r = shock_scenario(&books, &market, date, &shocks(&factors), &options).unwrap();
-    close(r.factor_returns[1].1, 0.005);
-    close(impact(&r, &instrument("BOND")).local_return, -0.025);
+    close(r.factor_returns["rates"], 0.005);
+    close(impact(&r, &instrument("BOND")).return_local, -0.025);
     assert_eq!(impact(&r, &instrument("BOND")).source, ShockSource::Factor);
 }
 
@@ -327,12 +325,10 @@ fn risk_before_and_after_with_a_stress() {
     };
     let mut options = ScenarioOptions::default();
     options.group_by = vec!["asset_class".into()];
-    options.risk = Some(ScenarioRiskModel {
-        covariance: Some(covariance.clone()),
-        factor_model: None,
-        confidence: 0.99,
-        stress: Some(stress),
-    });
+    let mut model = ScenarioRiskModel::from_covariance(covariance.clone());
+    model.confidence = 0.99;
+    model.stress = Some(stress);
+    options.risk = Some(model);
     let mut shocks = Shocks::default();
     shocks.groups = vec![group("asset_class", "Equity", -0.2)];
     let r = shock_scenario(&books, &market, d("2026-03-07"), &shocks, &options).unwrap();
@@ -367,7 +363,7 @@ fn risk_before_and_after_with_a_stress() {
         variance(&weights(false), &covariance).sqrt(),
     );
     let z = normal_quantile(0.99);
-    close(before.value_at_risk, z * before.volatility * 101_002.0);
+    close(before.value_at_risk_base, z * before.volatility * 101_002.0);
     let stressed = stressed_covariance(&covariance, &stress).unwrap();
     // 2.25 x (0.5 x 0.02 + 0.5 x 0.2 x sqrt(0.05)) for SPY and SAP.
     close(
@@ -376,7 +372,10 @@ fn risk_before_and_after_with_a_stress() {
     );
     let after = r.risk_after.as_ref().unwrap();
     close(after.volatility, variance(&weights(true), &stressed).sqrt());
-    close(after.value_at_risk, z * after.volatility * r.value_after);
+    close(
+        after.value_at_risk_base,
+        z * after.volatility * r.value_after,
+    );
     let components: f64 = after.contributions.iter().map(|c| c.component).sum();
     close(components, after.volatility);
     let groups: Vec<&str> = after.groups[0]
@@ -414,11 +413,7 @@ fn risk_before_and_after_with_a_stress() {
 #[test]
 fn a_historical_period_replayed_on_todays_holdings() {
     let (books, market) = setup();
-    let window = HistoricalWindow {
-        start: d("2026-03-02"),
-        end: d("2026-03-05"),
-        proxies: vec![],
-    };
+    let window = HistoricalWindow::new(d("2026-03-02"), d("2026-03-05"));
     let r = historical_scenario(
         &books,
         &market,
@@ -428,10 +423,10 @@ fn a_historical_period_replayed_on_todays_holdings() {
     )
     .unwrap();
     // SPY 500 to 502, SAP 200 to 201 with EUR 1.10 to 1.10, BOND 100 to 100.2.
-    close(impact(&r, &instrument("SPY")).local_return, 0.004);
-    close(impact(&r, &instrument("SAP")).local_return, 0.005);
+    close(impact(&r, &instrument("SPY")).return_local, 0.004);
+    close(impact(&r, &instrument("SAP")).return_local, 0.005);
     close(impact(&r, &instrument("SAP")).currency_return, 0.0);
-    close(impact(&r, &instrument("BOND")).local_return, 0.002);
+    close(impact(&r, &instrument("BOND")).return_local, 0.002);
     assert_eq!(impact(&r, &instrument("SPY")).source, ShockSource::History);
     let path = r.path.as_ref().unwrap();
     assert_eq!(path.dates.len(), 4);
@@ -449,10 +444,8 @@ fn a_historical_period_replayed_on_todays_holdings() {
     assert_eq!(drawdown.trough, d("2026-03-04"));
 
     // A proxy replaces an instrument's prices; its currency's rate still applies.
-    let proxied = HistoricalWindow {
-        proxies: vec![(id("SAP"), id("INDEX"))],
-        ..window
-    };
+    let mut proxied = window.clone();
+    proxied.proxies = BTreeMap::from([(id("SAP"), id("INDEX"))]);
     let r = historical_scenario(
         &books,
         &market,
@@ -462,7 +455,7 @@ fn a_historical_period_replayed_on_todays_holdings() {
     )
     .unwrap();
     let sap = impact(&r, &instrument("SAP"));
-    close(sap.local_return, 51.0 / 50.0 - 1.0);
+    close(sap.return_local, 51.0 / 50.0 - 1.0);
     assert_eq!(
         sap.source,
         ShockSource::Proxy {
@@ -474,11 +467,7 @@ fn a_historical_period_replayed_on_todays_holdings() {
 #[test]
 fn a_period_without_prices_is_reported() {
     let (books, market) = setup();
-    let window = HistoricalWindow {
-        start: d("2026-01-02"),
-        end: d("2026-03-05"),
-        proxies: vec![],
-    };
+    let window = HistoricalWindow::new(d("2026-01-02"), d("2026-03-05"));
     let issues = validation(historical_scenario(
         &books,
         &market,

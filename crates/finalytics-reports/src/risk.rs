@@ -269,8 +269,8 @@ pub(crate) struct Estimated {
 /// on which every holding has a price.
 pub(crate) fn holdings_risk(cx: &Context<'_>, valuation: &Valuation) -> Result<Estimated> {
     let weights = holding_weights(valuation)?;
-    let keys: Vec<HoldingKey> = weights.iter().map(|(k, _)| k.clone()).collect();
-    let w: Vec<f64> = weights.iter().map(|(_, w)| *w).collect();
+    let keys: Vec<HoldingKey> = weights.keys().cloned().collect();
+    let w: Vec<f64> = weights.values().copied().collect();
     let mut start = cx.start;
     for key in &keys {
         if let HoldingKey::Instrument(id) = key
@@ -302,11 +302,11 @@ pub(crate) fn holdings_risk(cx: &Context<'_>, valuation: &Valuation) -> Result<E
     } else {
         let mut report = ValidationReport::new();
         let mut b = vec![0.0; keys.len()];
-        for (k, (key, weight)) in cx.options.benchmark_weights.iter().enumerate() {
+        for (key, weight) in &cx.options.benchmark_weights {
             match keys.iter().position(|x| x == key) {
                 Some(i) => b[i] += weight,
                 None => report.error(
-                    format!("options.benchmark_weights[{k}]"),
+                    format!("options.benchmark_weights.{key}"),
                     format!("{} is not held, so its risk is not estimated", label(key)),
                 ),
             }

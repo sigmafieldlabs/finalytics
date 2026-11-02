@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 import pytest
 
@@ -25,6 +27,8 @@ def test_periods_and_money_weighted(books):
     assert perf.modified_dietz() == pytest.approx(perf.time_weighted(), abs=0.02)
     with pytest.raises(ValueError):
         fl.period("2W")
+    assert fl.period(" ytd ") == fl.types.YearToDate()
+    assert fl.period("since 2026-01-31") == fl.types.Since(start=datetime.date(2026, 1, 31))
 
 
 def test_contributions_add_up(books, portfolio):
@@ -34,7 +38,7 @@ def test_contributions_add_up(books, portfolio):
     classes = {i.id: i.classifications["asset_class"] for i in portfolio.instruments}
 
     def group(key):
-        return "Cash" if isinstance(key, fl.types.CashHolding) else classes[key.id]
+        return "Cash" if key.endswith(" cash") else classes[key]
 
     groups = fl.group_contributions(contributions, group)
     assert [g.group for g in groups] == ["Cash", "Equity", "Fixed income"]

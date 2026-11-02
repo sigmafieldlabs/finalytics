@@ -1,7 +1,7 @@
 //! What every report shares: its options, its provenance, and the dates and series it is
 //! computed on.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -74,11 +74,11 @@ pub struct ReportOptions {
     pub long_term_after_days: i32,
     /// Annual expected returns by instrument for the efficient frontier; instruments not listed,
     /// and every instrument when none is, take their historical mean return.
-    pub expected_returns: Vec<(InstrumentId, f64)>,
+    pub expected_returns: BTreeMap<InstrumentId, f64>,
     /// The number of portfolios on the efficient frontier: 25 by default.
     pub frontier_points: usize,
     /// Benchmark weights by holding, for the ex-ante tracking error.
-    pub benchmark_weights: Vec<(HoldingKey, f64)>,
+    pub benchmark_weights: BTreeMap<HoldingKey, f64>,
     /// The benchmark's segments, for the attribution report.
     pub attribution: Option<AttributionInputs>,
     /// The scenarios of the scenarios report.
@@ -101,9 +101,9 @@ impl Default for ReportOptions {
             histogram_bins: 30,
             top: 10,
             long_term_after_days: 365,
-            expected_returns: Vec::new(),
+            expected_returns: BTreeMap::new(),
             frontier_points: 25,
-            benchmark_weights: Vec::new(),
+            benchmark_weights: BTreeMap::new(),
             attribution: None,
             scenarios: Vec::new(),
         }
@@ -335,10 +335,7 @@ pub(crate) fn time_series(dates: &[Date], values: &[f64]) -> Option<TimeSeries<f
 
 /// The display name of a holding: the instrument's identifier, or "USD cash".
 pub(crate) fn label(key: &HoldingKey) -> String {
-    match key {
-        HoldingKey::Instrument(id) => id.to_string(),
-        HoldingKey::Cash(c) => format!("{c} cash"),
-    }
+    key.to_string()
 }
 
 /// The group of a holding under an instrument classification scheme: the instrument's

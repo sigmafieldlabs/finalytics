@@ -58,7 +58,7 @@ def main():
             }
         )
 
-    market_prior = {"prior": "market", "weights": caps.tolist(), "risk_aversion": 2.5, "risk_free_rate": 0.02}
+    market_prior = {"type": "market", "weights": caps.tolist(), "risk_aversion": 2.5, "risk_free_rate": 0.02}
 
     absolute = {"a0": 0.08, "a3": 0.03}
     case(
@@ -88,7 +88,7 @@ def main():
         "Idzorek confidences",
         market_prior,
         [
-            {"portfolio": {a: 1.0}, "expected_return": v, "uncertainty": {"method": "confidence", "confidence": c}}
+            {"portfolio": {a: 1.0}, "expected_return": v, "uncertainty": {"type": "confidence", "confidence": c}}
             for (a, v), c in zip(absolute.items(), confidences)
         ],
         bl.BlackLittermanModel(
@@ -99,9 +99,9 @@ def main():
     variances = [0.0004, 0.0025]
     case(
         "given view variances and prior returns",
-        {"prior": "returns", "returns": given.tolist()},
+        {"type": "returns", "returns": given.tolist()},
         [
-            {"portfolio": {a: 1.0}, "expected_return": v, "uncertainty": {"method": "variance", "variance": w}}
+            {"portfolio": {a: 1.0}, "expected_return": v, "uncertainty": {"type": "variance", "variance": w}}
             for (a, v), w in zip(absolute.items(), variances)
         ],
         bl.BlackLittermanModel(covariance, pi=given, absolute_views=absolute, omega=np.diag(variances), tau=0.05),
@@ -110,7 +110,7 @@ def main():
     case(
         "a view held with certainty",
         market_prior,
-        [{"portfolio": {"a0": 1.0}, "expected_return": 0.08, "uncertainty": {"method": "confidence", "confidence": 1.0}}],
+        [{"portfolio": {"a0": 1.0}, "expected_return": 0.08, "uncertainty": {"type": "confidence", "confidence": 1.0}}],
         bl.BlackLittermanModel(
             covariance, pi=prior, absolute_views={"a0": 0.08}, omega="idzorek", view_confidences=[1.0], tau=0.05
         ),

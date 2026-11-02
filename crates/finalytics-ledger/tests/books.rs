@@ -461,3 +461,44 @@ fn a_sale_preview_leaves_the_lots_alone() {
             .is_err()
     );
 }
+
+#[test]
+fn holdings_are_written_as_text() {
+    let spy = HoldingKey::Instrument(iid("SPY"));
+    let usd = HoldingKey::Cash(Currency::USD);
+    assert_eq!(spy.to_string(), "SPY");
+    assert_eq!(usd.to_string(), "USD cash");
+    for key in [&spy, &usd] {
+        assert_eq!(&key.to_string().parse::<HoldingKey>().unwrap(), key);
+        let text = serde_json::to_string(key).unwrap();
+        assert_eq!(&serde_json::from_str::<HoldingKey>(&text).unwrap(), key);
+    }
+    // Keyed by holding, values are a plain map.
+    let weights = std::collections::BTreeMap::from([(spy.clone(), 0.6), (usd.clone(), 0.4)]);
+    assert_eq!(
+        serde_json::to_string(&weights).unwrap(),
+        r#"{"SPY":0.6,"USD cash":0.4}"#
+    );
+    // Text that is not a currency followed by " cash" names an instrument.
+    assert_eq!(
+        "usd cash".parse::<HoldingKey>().unwrap(),
+        HoldingKey::Instrument(iid("usd cash"))
+    );
+    assert!("".parse::<HoldingKey>().is_err());
+}
+
+#[test]
+fn an_instrument_cannot_be_named_like_cash() {
+    let mut portfolio = single_currency();
+    portfolio
+        .instruments
+        .push(equity("EUR cash", Currency::EUR));
+    let issues = portfolio.validate();
+    assert!(
+        issues
+            .issues()
+            .iter()
+            .any(|i| i.path.starts_with("instruments[") && i.message.contains("cash holding")),
+        "{issues:?}"
+    );
+}

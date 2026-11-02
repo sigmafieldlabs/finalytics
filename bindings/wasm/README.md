@@ -46,14 +46,14 @@ const returns = {
 };
 
 // Annualised estimates of risk and return.
-const { matrix } = covariance(returns, { method: "ledoit_wolf" });
+const { matrix } = covariance(returns, { type: "ledoit_wolf" });
 const annualised = { ...matrix, values: matrix.values.map((v) => v * 12) };
 const expected = returns.columns.map((r) => (12 * r.reduce((a, b) => a + b, 0)) / r.length);
 
 // The portfolio with the highest Sharpe ratio, holding 10% to 60% of each asset.
 const solution = solve(
   { labels: returns.labels, covariance: annualised, expected_returns: expected, constraints: { bounds: { min: 0.1, max: 0.6 } } },
-  { objective: "maximum_sharpe", risk_free_rate: 0.02 },
+  { type: "maximum_sharpe", risk_free_rate: 0.02 },
 );
 const weights = solution.labels.map((asset, i) => `${asset} ${solution.weights[i].toFixed(3)}`);
 console.log(weights.join(", ")); // Equities 0.444, Bonds 0.180, Gold 0.375

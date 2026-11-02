@@ -4,9 +4,8 @@
 #![allow(clippy::unwrap_used)]
 
 use finalytics::formats::{CsvOptions, fx_from_csv, portfolio_from_csv, prices_from_csv};
-use finalytics::{
-    AccountsPerformance, Books, Currency, Date, HouseholdOptions, MarketData, household,
-};
+use finalytics::performance::{AccountsPerformance, HouseholdOptions, household};
+use finalytics::{Books, Currency, Date, MarketData};
 use serde_json::Value;
 
 const ACCOUNTS: &str = include_str!("../../../tests/scenario/accounts.csv");

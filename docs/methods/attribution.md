@@ -186,7 +186,7 @@ euro gains 3% and cash returns 4% in dollars and 2.5% in euros:
 [0.002, 0.001, 0.0015]
 >>> [(c.currency, round(c.allocation, 6)) for c in result.currencies], round(result.residual, 6)
 ([('USD', 0.00063), ('EUR', 0.000945)], 0.000195)
->>> hedged = fl.performance.karnosky_singer([currency_year([("USD", 0.75), ("EUR", 0.25)])])
+>>> hedged = fl.performance.karnosky_singer([currency_year({"USD": 0.75, "EUR": 0.25})])
 >>> [(c.currency, round(c.allocation, 6)) for c in hedged.currencies], round(hedged.residual, 6)
 ([('USD', -0.000945), ('EUR', -0.001417)], -0.00018)
 

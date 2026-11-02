@@ -131,9 +131,9 @@ pub struct RealisedSummary {
     /// Gains on lots held for longer than the long-term period.
     pub long_term: Decimal,
     /// By calendar year of disposal.
-    pub by_year: Vec<(i32, Decimal)>,
+    pub by_year: BTreeMap<i32, Decimal>,
     /// By instrument.
-    pub by_instrument: Vec<(InstrumentId, Decimal)>,
+    pub by_instrument: BTreeMap<InstrumentId, Decimal>,
 }
 
 /// Income received up to the report's date, net of tax withheld, in the base currency.
@@ -144,9 +144,9 @@ pub struct IncomeSummary {
     /// All income.
     pub total: Decimal,
     /// By calendar year.
-    pub by_year: Vec<(i32, Decimal)>,
+    pub by_year: BTreeMap<i32, Decimal>,
     /// By holding: the instrument that paid it, or cash for interest on cash.
-    pub by_holding: Vec<(HoldingKey, Decimal)>,
+    pub by_holding: BTreeMap<HoldingKey, Decimal>,
 }
 
 /// The holdings report.
@@ -422,8 +422,8 @@ pub fn holdings_report(
         total: Decimal::ZERO,
         short_term: Decimal::ZERO,
         long_term: Decimal::ZERO,
-        by_year: Vec::new(),
-        by_instrument: Vec::new(),
+        by_year: BTreeMap::new(),
+        by_instrument: BTreeMap::new(),
     };
     let mut gains_by_year: BTreeMap<i32, Decimal> = BTreeMap::new();
     let mut gains_by_instrument: BTreeMap<InstrumentId, Decimal> = BTreeMap::new();
@@ -441,8 +441,8 @@ pub fn holdings_report(
         *gains_by_year.entry(g.disposed.year()).or_default() += g.gain_base;
         *gains_by_instrument.entry(g.instrument.clone()).or_default() += g.gain_base;
     }
-    realised.by_year = gains_by_year.into_iter().collect();
-    realised.by_instrument = gains_by_instrument.into_iter().collect();
+    realised.by_year = gains_by_year;
+    realised.by_instrument = gains_by_instrument;
 
     let income = income(books, market, cx.as_of, &mut warnings);
     Ok(HoldingsReport {

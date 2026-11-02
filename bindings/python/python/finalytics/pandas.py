@@ -16,11 +16,10 @@ from typing import Any
 
 import pandas as pd
 
-from finalytics import _types
 from finalytics._convert import to_json
 from finalytics.performance import Performance
 
-__all__ = ["frame", "growth", "label", "returns", "values"]
+__all__ = ["frame", "growth", "returns", "values"]
 
 
 def returns(performance: Performance) -> pd.Series:
@@ -38,14 +37,7 @@ def values(performance: Performance) -> pd.Series:
     return pd.Series(performance.values, index=pd.DatetimeIndex(performance.dates), name="value")
 
 
-def label(key: _types.HoldingKey) -> str:
-    """A holding as text: the instrument's identifier, or the currency followed by ``cash``."""
-    return key.id if isinstance(key, _types.InstrumentHolding) else f"{key.id} cash"
-
-
 def _cell(value: Any) -> Any:
-    if isinstance(value, (_types.InstrumentHolding, _types.CashHolding)):
-        return label(value)
     if dataclasses.is_dataclass(value) or isinstance(value, (list, dict)):
         return to_json(value)
     return value
@@ -53,6 +45,6 @@ def _cell(value: Any) -> Any:
 
 def frame(records: Iterable[Any]) -> pd.DataFrame:
     """A DataFrame with one row per record (any of the dataclasses in :mod:`finalytics.types`)
-    and one column per field. Holdings become text labels; nested records become JSON data."""
+    and one column per field; nested records become JSON data."""
     rows = [{f.name: _cell(getattr(r, f.name)) for f in dataclasses.fields(r)} for r in records]
     return pd.DataFrame(rows)

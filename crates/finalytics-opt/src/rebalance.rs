@@ -76,18 +76,30 @@ impl Fees {
 /// after fees; a loss saves tax at its rate.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct TaxRates {
     /// The rate on gains from lots held for at most `long_term_after_days` days.
     pub short_term: Decimal,
     /// The rate on gains from lots held for longer.
     pub long_term: Decimal,
-    /// The holding period, in days, beyond which a gain is long-term.
+    /// The holding period, in days, beyond which a gain is long-term: 365 by default.
     #[serde(default = "a_year")]
     pub long_term_after_days: i32,
 }
 
 fn a_year() -> i32 {
     365
+}
+
+impl TaxRates {
+    /// Short- and long-term rates, with gains long-term after 365 days.
+    pub fn new(short_term: Decimal, long_term: Decimal) -> Self {
+        TaxRates {
+            short_term,
+            long_term,
+            long_term_after_days: a_year(),
+        }
+    }
 }
 
 impl TaxRates {
@@ -133,7 +145,7 @@ pub struct ProposedTrade {
     /// For a sale, the lots it closes.
     pub lots: Vec<LotSale>,
     /// The fee, in the instrument's currency.
-    pub fees: Decimal,
+    pub fees_local: Decimal,
     /// For a sale, the gain it would realise in the base currency, after fees, as the books
     /// would record it.
     pub realised_gain_base: Option<Decimal>,
@@ -169,9 +181,9 @@ pub struct Rebalance {
     /// Conversions that fund purchases in other currencies and reach the target cash balances.
     pub conversions: Vec<ProposedConversion>,
     /// Each holding's weight before the trades.
-    pub weights_before: Vec<(HoldingKey, f64)>,
+    pub weights_before: BTreeMap<HoldingKey, f64>,
     /// Each holding's weight after the trades.
-    pub weights_after: Vec<(HoldingKey, f64)>,
+    pub weights_after: BTreeMap<HoldingKey, f64>,
     /// The value traded, sales and purchases, as a share of the account's value.
     pub turnover: f64,
     /// The gain the sales would realise in the base currency, after fees.
@@ -337,7 +349,7 @@ pub fn rebalance(
     let weights = |quantities: &BTreeMap<InstrumentId, Decimal>,
                    cash: &BTreeMap<Currency, Decimal>| {
         let total = to_f64(value_of(quantities, cash));
-        let mut out: Vec<(HoldingKey, f64)> = quantities
+        let out: BTreeMap<HoldingKey, f64> = quantities
             .iter()
             .filter(|(_, q)| !q.is_zero())
             .map(|(id, q)| {
@@ -352,7 +364,6 @@ pub fn rebalance(
                     .map(|(c, a)| (HoldingKey::Cash(*c), to_f64(*a * rates[c]) / total)),
             )
             .collect();
-        out.sort_by(|a, b| a.0.cmp(&b.0));
         out
     };
     let weights_before = weights(&quantities, &cash);
@@ -444,7 +455,7 @@ pub fn rebalance(
             value_local,
             value_base,
             lots,
-            fees,
+            fees_local: fees,
             realised_gain_base,
             tax_base,
         };
@@ -506,7 +517,7 @@ pub fn rebalance(
     let fees_base = sales
         .iter()
         .chain(&purchases)
-        .map(|t| t.fees * rates[&t.currency])
+        .map(|t| t.fees_local * rates[&t.currency])
         .sum::<Decimal>()
         .round_dp(10);
     let tax_base = options
@@ -542,9 +553,9 @@ pub struct CombinedRebalance {
     /// The accounts' combined value in the base currency.
     pub value_base: Decimal,
     /// Each holding's weight in the combined value before the trades.
-    pub weights_before: Vec<(HoldingKey, f64)>,
+    pub weights_before: BTreeMap<HoldingKey, f64>,
     /// Each holding's weight in the combined value after the trades.
-    pub weights_after: Vec<(HoldingKey, f64)>,
+    pub weights_after: BTreeMap<HoldingKey, f64>,
     /// The value traded in all the accounts, as a share of their combined value.
     pub turnover: f64,
     /// The gain the sales would realise in the base currency, after fees.
@@ -688,7 +699,7 @@ pub fn rebalance_accounts(
     }
 
     let value_base: Decimal = proposals.iter().map(|p| p.value_base).sum();
-    let combine = |pick: fn(&Rebalance) -> &Vec<(HoldingKey, f64)>| {
+    let combine = |pick: fn(&Rebalance) -> &BTreeMap<HoldingKey, f64>| {
         let mut out: BTreeMap<HoldingKey, f64> = BTreeMap::new();
         let total = to_f64(value_base);
         for p in &proposals {
@@ -697,7 +708,7 @@ pub fn rebalance_accounts(
                 *out.entry(k.clone()).or_default() += w * scale;
             }
         }
-        out.into_iter().collect::<Vec<_>>()
+        out
     };
     let traded: f64 = proposals
         .iter()
@@ -738,7 +749,7 @@ impl Rebalance {
                 instrument: t.instrument.clone(),
                 quantity: t.quantity,
                 price: t.price,
-                fees: t.fees,
+                fees: t.fees_local,
                 lot_method: Some(LotMethod::SpecificId),
                 lots: t
                     .lots
@@ -761,7 +772,7 @@ impl Rebalance {
                 instrument: t.instrument.clone(),
                 quantity: t.quantity,
                 price: t.price,
-                fees: t.fees,
+                fees: t.fees_local,
             })?;
         }
         Ok(out)

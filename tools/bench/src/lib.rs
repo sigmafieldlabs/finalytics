@@ -301,7 +301,7 @@ pub fn large_problem(assets: usize) -> Problem {
         finalytics::risk::covariance(&returns, finalytics::risk::CovarianceMethod::LedoitWolf)
             .unwrap_or_else(|e| unreachable!("the generated covariance is valid: {e}"));
     let covariance: Matrix = estimate.matrix.scaled(252.0);
-    with_budget_constraints(Problem::new(covariance), assets)
+    with_budget_constraints(Problem::from_covariance(covariance), assets)
 }
 
 /// The budget's optimisation problem with risk from a ten-factor statistical model of the same

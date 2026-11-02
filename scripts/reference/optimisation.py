@@ -96,7 +96,7 @@ def factor_model_cases(labels, mu, model):
     )
     case(
         "minimum variance with factor exposure limits",
-        {"objective": "minimum_variance"},
+        {"type": "minimum_variance"},
         {"factor_exposures": limits},
         w.value,
         variance(w.value),
@@ -111,7 +111,7 @@ def factor_model_cases(labels, mu, model):
     )
     case(
         "mean-variance with a tracking-error limit",
-        {"objective": "mean_variance", "risk_aversion": 3.0},
+        {"type": "mean_variance", "risk_aversion": 3.0},
         {"tracking_error": {"benchmark": equal.tolist(), "limit": 0.04}},
         w.value,
         mu @ w.value - 1.5 * variance(w.value),
@@ -127,7 +127,7 @@ def factor_model_cases(labels, mu, model):
     weights = t.value / s.value
     case(
         "maximum Sharpe",
-        {"objective": "maximum_sharpe", "risk_free_rate": 0.03},
+        {"type": "maximum_sharpe", "risk_free_rate": 0.03},
         {},
         weights,
         (mu @ weights - 0.03) / np.sqrt(variance(weights)),
@@ -136,7 +136,7 @@ def factor_model_cases(labels, mu, model):
     solve(cp.Maximize(mu @ w), exposure + long_only + [risk <= 0.2**2])
     case(
         "target volatility",
-        {"objective": "target_volatility", "target": 0.2},
+        {"type": "target_volatility", "target": 0.2},
         {},
         w.value,
         mu @ w.value,
@@ -174,7 +174,7 @@ def cost_cases(labels, cov, mu):
         cases.append(
             {
                 "name": name,
-                "problem": {"objective": "mean_variance", "risk_aversion": 4.0},
+                "problem": {"type": "mean_variance", "risk_aversion": 4.0},
                 "constraints": {"turnover": turnover},
                 "weights": x.tolist(),
                 # The engine reports the objective before trading costs, as for linear costs.
@@ -201,7 +201,7 @@ def robust_cases(labels, cov, mu):
         cases.append(
             {
                 "name": name,
-                "problem": {"objective": "robust_mean_variance", "risk_aversion": 4.0, "uncertainty": uncertainty},
+                "problem": {"type": "robust_mean_variance", "risk_aversion": 4.0, "uncertainty": uncertainty},
                 "constraints": constraints,
                 "weights": x.tolist(),
                 "objective_value": float(problem.value),
@@ -210,7 +210,7 @@ def robust_cases(labels, cov, mu):
 
     case(
         "ellipsoid of the covariance",
-        {"set": "ellipsoid", "size": 0.3},
+        {"type": "ellipsoid", "size": 0.3},
         {},
         [],
         lambda x: 0.3 * cp.norm(root @ x),
@@ -221,7 +221,7 @@ def robust_cases(labels, cov, mu):
     error_root = np.sqrt(np.diag(error))
     case(
         "ellipsoid of the estimation error, with a group",
-        {"set": "ellipsoid", "size": size, "covariance": {"labels": labels, "values": error.ravel().tolist()}},
+        {"type": "ellipsoid", "size": size, "covariance": {"labels": labels, "values": error.ravel().tolist()}},
         {"groups": [{"name": "first three", "assets": labels[:3], "min": 0.0, "max": 0.5}]},
         [cp.sum(w[:3]) <= 0.5],
         lambda x: size * cp.norm(cp.multiply(error_root, x)),
@@ -229,7 +229,7 @@ def robust_cases(labels, cov, mu):
     half_widths = 0.5 * np.sqrt(np.diag(cov)) / math.sqrt(observations)
     case(
         "box",
-        {"set": "box", "half_widths": half_widths.tolist()},
+        {"type": "box", "half_widths": half_widths.tolist()},
         {},
         [],
         lambda x: half_widths @ cp.abs(x),
@@ -290,7 +290,7 @@ def resampled_case(labels, cov, mu):
         solutions.append(w.value.copy())
     solutions = np.array(solutions)
     return {
-        "problem": {"objective": "mean_variance", "risk_aversion": 4.0},
+        "problem": {"type": "mean_variance", "risk_aversion": 4.0},
         "constraints": {"groups": [{"name": "first three", "assets": labels[:3], "min": 0.0, "max": 0.5}]},
         "resampling": {"samples": samples, "observations": observations, "seed": seed},
         "weights": solutions.mean(axis=0).tolist(),
@@ -319,7 +319,7 @@ def main():
         )
 
     solve(cp.Minimize(cp.quad_form(w, psd)), long_only)
-    case("minimum variance", {"objective": "minimum_variance"}, {}, w.value, w.value @ cov @ w.value)
+    case("minimum variance", {"type": "minimum_variance"}, {}, w.value, w.value @ cov @ w.value)
 
     groups = [{"name": "first three", "assets": labels[:3], "min": 0.0, "max": 0.4}]
     solve(
@@ -328,7 +328,7 @@ def main():
     )
     case(
         "mean-variance with a group and an asset bound",
-        {"objective": "mean_variance", "risk_aversion": 4.0},
+        {"type": "mean_variance", "risk_aversion": 4.0},
         {"groups": groups, "asset_bounds": [{"asset": labels[7], "min": 0.0, "max": 0.1}]},
         w.value,
         mu @ w.value - 2.0 * w.value @ cov @ w.value,
@@ -340,7 +340,7 @@ def main():
     )
     case(
         "long-short target return with a leverage limit",
-        {"objective": "target_return", "target": 0.16},
+        {"type": "target_return", "target": 0.16},
         {"bounds": {"min": -0.2, "max": 0.6}, "leverage": 1.6},
         w.value,
         w.value @ cov @ w.value,
@@ -352,7 +352,7 @@ def main():
     )
     case(
         "target volatility with a turnover limit",
-        {"objective": "target_volatility", "target": 0.17},
+        {"type": "target_volatility", "target": 0.17},
         {"turnover": {"current": equal.tolist(), "limit": 0.5}},
         w.value,
         mu @ w.value,
@@ -368,7 +368,7 @@ def main():
     value = mu @ w.value - 1.0 * w.value @ cov @ w.value
     case(
         "mean-variance with trading costs and a tracking-error limit",
-        {"objective": "mean_variance", "risk_aversion": 2.0},
+        {"type": "mean_variance", "risk_aversion": 2.0},
         {
             "turnover": {"current": current.tolist(), "costs": costs.tolist()},
             "tracking_error": {"benchmark": equal.tolist(), "limit": 0.05},
@@ -383,7 +383,7 @@ def main():
     ef.max_sharpe(risk_free_rate=0.03)
     weights = np.array([ef.weights[i] for i in range(n)])
     sharpe = (mu @ weights - 0.03) / np.sqrt(weights @ cov @ weights)
-    case("maximum Sharpe", {"objective": "maximum_sharpe", "risk_free_rate": 0.03}, {}, weights, sharpe)
+    case("maximum Sharpe", {"type": "maximum_sharpe", "risk_free_rate": 0.03}, {}, weights, sharpe)
 
     ef = EfficientFrontier(frame, covariance, weight_bounds=(0, 0.3), solver="CLARABEL")
     ef.add_sector_constraints(
@@ -396,7 +396,7 @@ def main():
     sharpe = (mu @ weights - 0.03) / np.sqrt(weights @ cov @ weights)
     case(
         "maximum Sharpe with bounds and a group",
-        {"objective": "maximum_sharpe", "risk_free_rate": 0.03},
+        {"type": "maximum_sharpe", "risk_free_rate": 0.03},
         {
             "bounds": {"min": 0.0, "max": 0.3},
             "groups": [{"name": "first three", "assets": labels[:3], "min": 0.2, "max": 0.5}],
@@ -411,7 +411,7 @@ def main():
     solve(cp.Minimize(cp.quad_form(y, psd)), [sigma @ y == 1, cp.sum(y) == k, y >= 0, y <= k])
     weights = y.value / k.value
     ratio = sigma @ weights / np.sqrt(weights @ cov @ weights)
-    case("maximum diversification", {"objective": "maximum_diversification"}, {}, weights, ratio)
+    case("maximum diversification", {"type": "maximum_diversification"}, {}, weights, ratio)
 
     alpha = 0.05
     z = cp.Variable()
@@ -424,7 +424,7 @@ def main():
     assert problem.status == cp.OPTIMAL, problem.status
     case(
         "minimum CVaR",
-        {"objective": "minimum_cvar", "confidence": 0.95},
+        {"type": "minimum_cvar", "confidence": 0.95},
         {},
         w.value,
         problem.value,

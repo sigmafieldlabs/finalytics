@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime
 import json
-import re
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 from typing import Any
@@ -32,22 +31,11 @@ PeriodLike = str | _types.Period
 
 
 def period(value: PeriodLike) -> _types.Period:
-    """A reporting period from its short label."""
+    """A reporting period from its short label: ``"MTD"``, ``"QTD"``, ``"YTD"``, ``"ITD"``,
+    a number of years such as ``"3Y"``, or ``"since 2026-01-31"``."""
     if not isinstance(value, str):
         return value
-    label = value.strip().upper()
-    fixed = {
-        "MTD": _types.MonthToDate(),
-        "QTD": _types.QuarterToDate(),
-        "YTD": _types.YearToDate(),
-        "ITD": _types.SinceInception(),
-    }
-    if label in fixed:
-        return fixed[label]
-    match = re.fullmatch(r"(\d+)Y", label)
-    if match:
-        return _types.Years(years=int(match.group(1)))
-    raise ValueError(f"unknown period {value!r}: use MTD, QTD, YTD, ITD or a number of years such as 3Y")
+    return loads(_types.Period, call(_finalytics.parse_period, value))
 
 
 class Performance:

@@ -10,8 +10,11 @@
 //! Errors are thrown as `Error` objects. A validation error has the name `ValidationError` and an
 //! `issues` property listing every problem, each with a `path` and a `message`.
 
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
 use finalytics::formats::{
@@ -20,13 +23,13 @@ use finalytics::formats::{
 use finalytics::opt::{
     BlackLitterman, Objective, Problem, Rebalance, RebalanceOptions, Resampling,
 };
+use finalytics::performance::{FlowTiming, Period};
 use finalytics::risk::{
     self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
 };
 use finalytics::{
-    AccountId, Currency, Date, Decimal, Error, FlowTiming, HoldingKey, HoldingSeries, InstrumentId,
-    LotMethod, MarketData as EngineMarket, Observation, Period, Portfolio, TimeSeries,
-    ValidationReport,
+    AccountId, Currency, Date, Decimal, Error, HoldingKey, HoldingSeries, InstrumentId, LotMethod,
+    MarketData as EngineMarket, Observation, Portfolio, TimeSeries, ValidationReport,
 };
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -604,8 +607,11 @@ impl Books {
         #[wasm_bindgen(unchecked_optional_param_type = "HouseholdOptions")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
         let dates = self.dates_or_default(optional(dates, "dates")?)?;
-        let options: finalytics::HouseholdOptions = optional(options, "options")?;
-        to_js(&finalytics::household(&self.books, &self.market, &dates, &options).map_err(error)?)
+        let options: finalytics::performance::HouseholdOptions = optional(options, "options")?;
+        to_js(
+            &finalytics::performance::household(&self.books, &self.market, &dates, &options)
+                .map_err(error)?,
+        )
     }
 
     /// Time-weighted performance on `dates` (by default `defaultDates()`), with flows at the
@@ -626,14 +632,15 @@ impl Books {
             .holding_series(&dates, &self.market)
             .map_err(error)?;
         Ok(Performance {
-            inner: finalytics::Performance::from_values(&values, timing).map_err(error)?,
+            inner: finalytics::performance::Performance::from_values(&values, timing)
+                .map_err(error)?,
             holdings: Some(holdings),
             warnings: values.warnings,
         })
     }
 
     /// Each holding's share of the portfolio's value on `date`.
-    #[wasm_bindgen(unchecked_return_type = "[HoldingKey, number][]")]
+    #[wasm_bindgen(unchecked_return_type = "Record<HoldingKey, number>")]
     pub fn weights(&self, date: &str) -> Result<JsValue, JsValue> {
         let valuation = self
             .books
@@ -680,10 +687,11 @@ impl Books {
     pub fn rebalance(
         &self,
         account: &str,
-        #[wasm_bindgen(unchecked_param_type = "[HoldingKey, number][]")] targets: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Record<HoldingKey, number>")] targets: JsValue,
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let targets: Vec<(HoldingKey, f64)> = from_js(targets, "targets")?;
+        let targets: BTreeMap<HoldingKey, f64> = from_js(targets, "targets")?;
+        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let (on, options) = self.rebalance_choices(choices)?;
         let plan = finalytics::opt::rebalance(
             &self.books,
@@ -703,7 +711,7 @@ impl Books {
     pub fn rebalance_accounts(
         &self,
         #[wasm_bindgen(unchecked_param_type = "string[]")] accounts: JsValue,
-        #[wasm_bindgen(unchecked_param_type = "[HoldingKey, number][]")] targets: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "Record<HoldingKey, number>")] targets: JsValue,
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
         let accounts: Vec<String> = from_js(accounts, "accounts")?;
@@ -711,7 +719,8 @@ impl Books {
             .iter()
             .map(|a| parse_account(a))
             .collect::<Result<Vec<_>, _>>()?;
-        let targets: Vec<(HoldingKey, f64)> = from_js(targets, "targets")?;
+        let targets: BTreeMap<HoldingKey, f64> = from_js(targets, "targets")?;
+        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let (on, options) = self.rebalance_choices(choices)?;
         let plan = finalytics::opt::rebalance_accounts(
             &self.books,
@@ -803,7 +812,7 @@ impl Books {
 /// A portfolio's daily time-weighted returns and the measures built on them.
 #[wasm_bindgen]
 pub struct Performance {
-    inner: finalytics::Performance,
+    inner: finalytics::performance::Performance,
     holdings: Option<HoldingSeries>,
     warnings: ValidationReport,
 }
@@ -821,7 +830,7 @@ impl Performance {
     ) -> Result<Performance, JsValue> {
         let timing: FlowTiming = named(timing.as_deref().unwrap_or("start_of_day"), "timing")?;
         let flows = flows.unwrap_or_else(|| vec![0.0; values.len()]);
-        let inner = finalytics::Performance::from_parts(
+        let inner = finalytics::performance::Performance::from_parts(
             parse_dates(dates, "dates")?,
             values.to_vec(),
             flows,
@@ -979,28 +988,10 @@ impl Performance {
 
 /// A period from its short label (`"MTD"`, `"QTD"`, `"YTD"`, `"ITD"`, `"3Y"`) or its object form.
 fn period(value: JsValue) -> Result<Period, JsValue> {
-    let Some(label) = value.as_string() else {
-        return from_js(value, "period");
-    };
-    let label = label.trim().to_uppercase();
-    let found = match label.as_str() {
-        "MTD" => Some(Period::MonthToDate),
-        "QTD" => Some(Period::QuarterToDate),
-        "YTD" => Some(Period::YearToDate),
-        "ITD" => Some(Period::SinceInception),
-        _ => label
-            .strip_suffix('Y')
-            .and_then(|n| n.parse().ok())
-            .map(|years| Period::Years { years }),
-    };
-    found.ok_or_else(|| {
-        invalid(
-            "period",
-            format!(
-                "unknown period {label:?}: use MTD, QTD, YTD, ITD or a number of years such as 3Y"
-            ),
-        )
-    })
+    match value.as_string() {
+        Some(label) => label.parse().map_err(error),
+        None => from_js(value, "period"),
+    }
 }
 
 /// The version of this release of Finalytics.
@@ -1025,14 +1016,22 @@ pub fn read_document(text: &str) -> Result<JsValue, JsValue> {
     Ok(object.into())
 }
 
-/// A portfolio document holding `portfolio` and, optionally, market data in the document format
-/// (`market.toDocument()`), as JSON text.
+/// A portfolio document holding `portfolio` and, optionally, its market data, as JSON text. The
+/// market data is a `MarketData`, as `readDocument` returns it, or the document format
+/// (`market.toDocument()`).
 #[wasm_bindgen(js_name = writeDocument)]
 pub fn write_document(
     #[wasm_bindgen(unchecked_param_type = "Portfolio")] portfolio: JsValue,
-    #[wasm_bindgen(unchecked_optional_param_type = "DocumentMarketData")] market: JsValue,
+    #[wasm_bindgen(unchecked_optional_param_type = "MarketData | DocumentMarketData")]
+    market: JsValue,
 ) -> Result<String, JsValue> {
     let mut document = PortfolioDocument::new(from_js(portfolio, "portfolio")?);
+    // A `MarketData` object turns itself into the document format.
+    let to_document = js_sys::Reflect::get(&market, &"toDocument".into()).unwrap_or_default();
+    let market = match to_document.dyn_ref::<js_sys::Function>() {
+        Some(f) if !market.is_undefined() && !market.is_null() => f.call0(&market)?,
+        _ => market,
+    };
     let market: Option<MarketDocument> = optional(market, "market")?;
     document.market = market.map(|MarketDocument(m)| m);
     Ok(document.to_json())
@@ -1355,9 +1354,9 @@ pub fn brinson_fachler(
     #[wasm_bindgen(unchecked_param_type = "AttributionPeriod[]")] periods: JsValue,
     #[wasm_bindgen(unchecked_optional_param_type = "Linking")] linking: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let periods: Vec<finalytics::AttributionPeriod> = from_js(periods, "periods")?;
-    let linking: finalytics::Linking = optional(linking, "linking")?;
-    to_js(&finalytics::brinson_fachler(&periods, linking).map_err(error)?)
+    let periods: Vec<finalytics::performance::AttributionPeriod> = from_js(periods, "periods")?;
+    let linking: finalytics::performance::Linking = optional(linking, "linking")?;
+    to_js(&finalytics::performance::brinson_fachler(&periods, linking).map_err(error)?)
 }
 
 /// Currency attribution by the method of Karnosky and Singer over one or more periods.
@@ -1366,9 +1365,10 @@ pub fn karnosky_singer(
     #[wasm_bindgen(unchecked_param_type = "CurrencyAttributionPeriod[]")] periods: JsValue,
     #[wasm_bindgen(unchecked_optional_param_type = "Linking")] linking: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let periods: Vec<finalytics::CurrencyAttributionPeriod> = from_js(periods, "periods")?;
-    let linking: finalytics::Linking = optional(linking, "linking")?;
-    to_js(&finalytics::karnosky_singer(&periods, linking).map_err(error)?)
+    let periods: Vec<finalytics::performance::CurrencyAttributionPeriod> =
+        from_js(periods, "periods")?;
+    let linking: finalytics::performance::Linking = optional(linking, "linking")?;
+    to_js(&finalytics::performance::karnosky_singer(&periods, linking).map_err(error)?)
 }
 
 /// The optimal portfolio for `objective`. A problem with no solution returns a solution whose
@@ -1407,17 +1407,21 @@ pub fn black_litterman(
 }
 
 /// The market's risk aversion implied by its returns: the annualised excess return over the
-/// annualised variance.
+/// annualised variance. Options default to 252 periods a year and a zero risk-free rate.
 #[wasm_bindgen(js_name = impliedRiskAversion)]
 pub fn implied_risk_aversion(
     #[wasm_bindgen(unchecked_param_type = "Float64Array | number[]")] returns: &[f64],
-    #[wasm_bindgen(js_name = periodsPerYear)] periods_per_year: Option<f64>,
-    #[wasm_bindgen(js_name = riskFreeRate)] risk_free_rate: Option<f64>,
+    #[wasm_bindgen(
+        unchecked_optional_param_type = "{ periods_per_year?: number; risk_free_rate?: number }"
+    )]
+    options: JsValue,
 ) -> Result<f64, JsValue> {
+    // The same options, and defaults, as the statistics take.
+    let options = statistics_options(options)?;
     finalytics::opt::implied_risk_aversion(
         returns,
-        periods_per_year.unwrap_or(252.0),
-        risk_free_rate.unwrap_or(0.0),
+        options.periods_per_year,
+        options.risk_free_rate,
     )
     .map_err(error)
 }

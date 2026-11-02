@@ -1,6 +1,8 @@
 //! Performance attribution: Brinson–Fachler by segment, linked over periods, and currency
 //! attribution by the method of Karnosky and Singer.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use finalytics_core::{Currency, Date, Result, ValidationReport};
@@ -129,8 +131,11 @@ pub struct Attribution {
 /// the compounded returns.
 ///
 /// ```
-/// # mod finalytics { pub use finalytics_core::*; pub use finalytics_perf::*; }
-/// use finalytics::{AttributionPeriod, Linking, Segment, brinson_fachler};
+/// # mod finalytics {
+/// #     pub use finalytics_core::*;
+/// #     pub mod performance { pub use finalytics_perf::*; }
+/// # }
+/// use finalytics::performance::{AttributionPeriod, Linking, Segment, brinson_fachler};
 ///
 /// let segment = |name: &str, w: f64, r: f64, b: f64, s: f64| Segment {
 ///     name: name.into(),
@@ -550,10 +555,10 @@ pub struct CurrencyAttributionPeriod {
     /// The portfolio's exposure to each currency after any hedging, adding up to one; without
     /// it, each currency's share of the portfolio's segment weights (no hedging).
     #[serde(default)]
-    pub portfolio_exposures: Option<Vec<(Currency, f64)>>,
+    pub portfolio_exposures: Option<BTreeMap<Currency, f64>>,
     /// The benchmark's exposure to each currency, as for the portfolio.
     #[serde(default)]
-    pub benchmark_exposures: Option<Vec<(Currency, f64)>>,
+    pub benchmark_exposures: Option<BTreeMap<Currency, f64>>,
 }
 
 /// What one currency added to the excess return.
@@ -695,17 +700,17 @@ pub fn karnosky_singer(
             (&p.benchmark_exposures, "benchmark_exposures"),
         ] {
             if let Some(list) = exposures {
-                let total: f64 = list.iter().map(|(_, w)| w).sum();
+                let total: f64 = list.values().sum();
                 if !total.is_finite() || (total - 1.0).abs() > 1e-6 {
                     report.error(
                         format!("{path}.{field}"),
                         format!("add up to {total}, not 1"),
                     );
                 }
-                for (j, (c, _)) in list.iter().enumerate() {
+                for c in list.keys() {
                     if !p.currencies.iter().any(|r| r.currency == *c) {
                         report.error(
-                            format!("{path}.{field}[{j}]"),
+                            format!("{path}.{field}.{c}"),
                             format!("{c} has no returns in currencies"),
                         );
                     }
@@ -819,18 +824,15 @@ fn currency_period(p: &CurrencyAttributionPeriod) -> CurrencyPeriodAttribution {
         )
     }));
     // Exposures: given, or each currency's share of the segment weights.
-    let implied = |benchmark: bool| -> Vec<(Currency, f64)> {
-        let mut out: Vec<(Currency, f64)> = Vec::new();
+    let implied = |benchmark: bool| -> BTreeMap<Currency, f64> {
+        let mut out: BTreeMap<Currency, f64> = BTreeMap::new();
         for s in &p.segments {
             let w = if benchmark {
                 s.benchmark_weight
             } else {
                 s.portfolio_weight
             };
-            match out.iter_mut().find(|(c, _)| *c == s.currency) {
-                Some((_, total)) => *total += w,
-                None => out.push((s.currency, w)),
-            }
+            *out.entry(s.currency).or_insert(0.0) += w;
         }
         out
     };
@@ -846,14 +848,17 @@ fn currency_period(p: &CurrencyAttributionPeriod) -> CurrencyPeriodAttribution {
         let (spot, cash) = rates(c);
         (1.0 + cash) * (1.0 + spot) - 1.0
     };
-    let weight = |list: &[(Currency, f64)], c: Currency| {
-        list.iter()
-            .filter(|(x, _)| *x == c)
-            .map(|(_, w)| w)
-            .sum::<f64>()
-    };
+    let weight = |map: &BTreeMap<Currency, f64>, c: Currency| map.get(&c).copied().unwrap_or(0.0);
+    // The currencies in the order they first appear in the segments, then any others the
+    // exposures name.
     let mut names: Vec<Currency> = Vec::new();
-    for c in u.iter().chain(&v).map(|(c, _)| *c) {
+    for c in p
+        .segments
+        .iter()
+        .map(|s| s.currency)
+        .chain(u.keys().copied())
+        .chain(v.keys().copied())
+    {
         if !names.contains(&c) {
             names.push(c);
         }
@@ -983,7 +988,9 @@ mod tests {
         }
     }
 
-    fn currency_example(portfolio_exposures: Option<Vec<(Currency, f64)>>) -> CurrencyAttribution {
+    fn currency_example(
+        portfolio_exposures: Option<BTreeMap<Currency, f64>>,
+    ) -> CurrencyAttribution {
         let segment = |name: &str, currency, w, r, b, s| CurrencySegment {
             name: name.into(),
             currency,
@@ -1031,7 +1038,10 @@ mod tests {
 
         // Hedging half the euros changes the portfolio's return and currency effects, not the
         // benchmark's return.
-        let hedged = currency_example(Some(vec![(Currency::USD, 0.75), (Currency::EUR, 0.25)]));
+        let hedged = currency_example(Some(BTreeMap::from([
+            (Currency::USD, 0.75),
+            (Currency::EUR, 0.25),
+        ])));
         close(hedged.benchmark_return, a.benchmark_return);
         close(hedged.allocation, a.allocation);
         close(

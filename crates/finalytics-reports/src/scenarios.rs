@@ -71,8 +71,8 @@ pub struct ScenarioSummary {
     pub portfolio_return: f64,
     /// The annualised volatility after.
     pub volatility_after: Option<f64>,
-    /// The value at risk after, at the first confidence of the options.
-    pub value_at_risk_after: Option<f64>,
+    /// The value at risk after, in the base currency, at the first confidence of the options.
+    pub value_at_risk_after_base: Option<f64>,
     /// The holding that lost most.
     pub worst: Option<HoldingKey>,
     /// Its change in value.
@@ -114,11 +114,10 @@ pub fn scenarios_report(
     let mut warnings = valuation.warnings.clone();
     let (risk_model, risk_start) = match holdings_risk(&cx, &valuation) {
         Ok(e) => (
-            Some(ScenarioRiskModel {
-                covariance: Some(e.risk.covariance),
-                factor_model: None,
-                confidence: options.confidences.first().copied().unwrap_or(0.95),
-                stress: None,
+            Some({
+                let mut model = ScenarioRiskModel::from_covariance(e.risk.covariance);
+                model.confidence = options.confidences.first().copied().unwrap_or(0.95);
+                model
             }),
             Some(e.risk.start),
         ),
@@ -186,7 +185,7 @@ pub fn scenarios_report(
                 change: r.change,
                 portfolio_return: r.portfolio_return,
                 volatility_after: r.risk_after.as_ref().map(|x| x.volatility),
-                value_at_risk_after: r.risk_after.as_ref().map(|x| x.value_at_risk),
+                value_at_risk_after_base: r.risk_after.as_ref().map(|x| x.value_at_risk_base),
                 worst: worst.map(|h| h.holding.clone()),
                 worst_change: worst.map(|h| h.change),
             }
@@ -217,7 +216,7 @@ pub fn scenarios_report(
         changes: grid("Change in value", Unit::Money { currency: cx.base }, |h| {
             h.change
         }),
-        returns: grid("Return", Unit::Fraction, |h| h.total_return),
+        returns: grid("Return", Unit::Fraction, |h| h.return_base),
         scenarios: outcomes,
         summary,
     })

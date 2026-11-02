@@ -4,8 +4,7 @@
 /// close to that of a single addition.
 ///
 /// ```
-/// # mod finalytics { pub use finalytics_core::*; }
-/// use finalytics::numeric::CompensatedSum;
+/// use finalytics_core::numeric::CompensatedSum;
 ///
 /// let mut sum = CompensatedSum::new();
 /// for x in [1e100, 1.0, -1e100] {

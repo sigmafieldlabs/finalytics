@@ -2508,7 +2508,7 @@
   {
    "name": "minimum variance",
    "problem": {
-    "objective": "minimum_variance"
+    "type": "minimum_variance"
    },
    "constraints": {},
    "weights": [
@@ -2526,7 +2526,7 @@
   {
    "name": "mean-variance with a group and an asset bound",
    "problem": {
-    "objective": "mean_variance",
+    "type": "mean_variance",
     "risk_aversion": 4.0
    },
    "constraints": {
@@ -2565,7 +2565,7 @@
   {
    "name": "long-short target return with a leverage limit",
    "problem": {
-    "objective": "target_return",
+    "type": "target_return",
     "target": 0.16
    },
    "constraints": {
@@ -2590,7 +2590,7 @@
   {
    "name": "target volatility with a turnover limit",
    "problem": {
-    "objective": "target_volatility",
+    "type": "target_volatility",
     "target": 0.17
    },
    "constraints": {
@@ -2623,7 +2623,7 @@
   {
    "name": "mean-variance with trading costs and a tracking-error limit",
    "problem": {
-    "objective": "mean_variance",
+    "type": "mean_variance",
     "risk_aversion": 2.0
    },
    "constraints": {
@@ -2678,7 +2678,7 @@
   {
    "name": "maximum Sharpe",
    "problem": {
-    "objective": "maximum_sharpe",
+    "type": "maximum_sharpe",
     "risk_free_rate": 0.03
    },
    "constraints": {},
@@ -2697,7 +2697,7 @@
   {
    "name": "maximum Sharpe with bounds and a group",
    "problem": {
-    "objective": "maximum_sharpe",
+    "type": "maximum_sharpe",
     "risk_free_rate": 0.03
    },
    "constraints": {
@@ -2733,7 +2733,7 @@
   {
    "name": "maximum diversification",
    "problem": {
-    "objective": "maximum_diversification"
+    "type": "maximum_diversification"
    },
    "constraints": {},
    "weights": [
@@ -2751,7 +2751,7 @@
   {
    "name": "minimum CVaR",
    "problem": {
-    "objective": "minimum_cvar",
+    "type": "minimum_cvar",
     "confidence": 0.95
    },
    "constraints": {},
@@ -3453,7 +3453,7 @@
    {
     "name": "minimum variance with factor exposure limits",
     "problem": {
-     "objective": "minimum_variance"
+     "type": "minimum_variance"
     },
     "constraints": {
      "factor_exposures": [
@@ -3494,7 +3494,7 @@
    {
     "name": "mean-variance with a tracking-error limit",
     "problem": {
-     "objective": "mean_variance",
+     "type": "mean_variance",
      "risk_aversion": 3.0
     },
     "constraints": {
@@ -3527,7 +3527,7 @@
    {
     "name": "maximum Sharpe",
     "problem": {
-     "objective": "maximum_sharpe",
+     "type": "maximum_sharpe",
      "risk_free_rate": 0.03
     },
     "constraints": {},
@@ -3546,7 +3546,7 @@
    {
     "name": "target volatility",
     "problem": {
-     "objective": "target_volatility",
+     "type": "target_volatility",
      "target": 0.2
     },
     "constraints": {},
@@ -3568,10 +3568,10 @@
   {
    "name": "ellipsoid of the covariance",
    "problem": {
-    "objective": "robust_mean_variance",
+    "type": "robust_mean_variance",
     "risk_aversion": 4.0,
     "uncertainty": {
-     "set": "ellipsoid",
+     "type": "ellipsoid",
      "size": 0.3
     }
    },
@@ -3591,10 +3591,10 @@
   {
    "name": "ellipsoid of the estimation error, with a group",
    "problem": {
-    "objective": "robust_mean_variance",
+    "type": "robust_mean_variance",
     "risk_aversion": 4.0,
     "uncertainty": {
-     "set": "ellipsoid",
+     "type": "ellipsoid",
      "size": 3.9379325865059513,
      "covariance": {
       "labels": [
@@ -3705,10 +3705,10 @@
   {
    "name": "box",
    "problem": {
-    "objective": "robust_mean_variance",
+    "type": "robust_mean_variance",
     "risk_aversion": 4.0,
     "uncertainty": {
-     "set": "box",
+     "type": "box",
      "half_widths": [
       0.0190331805536306,
       0.016758006524693756,
@@ -3739,7 +3739,7 @@
   {
    "name": "mean-variance with quadratic costs",
    "problem": {
-    "objective": "mean_variance",
+    "type": "mean_variance",
     "risk_aversion": 4.0
    },
    "constraints": {
@@ -3781,7 +3781,7 @@
   {
    "name": "mean-variance with linear and quadratic costs",
    "problem": {
-    "objective": "mean_variance",
+    "type": "mean_variance",
     "risk_aversion": 4.0
    },
    "constraints": {
@@ -3833,7 +3833,7 @@
  ],
  "resampled": {
   "problem": {
-   "objective": "mean_variance",
+   "type": "mean_variance",
    "risk_aversion": 4.0
   },
   "constraints": {

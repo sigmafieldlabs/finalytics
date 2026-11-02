@@ -147,8 +147,8 @@ def karnosky_singer(rng, hedged):
             "currencies": [{"currency": z, "spot_return": spot[z], "cash_return": cash[z]} for z in CURRENCIES],
         }
         if hedged:
-            period["portfolio_exposures"] = [[z, u[z]] for z in CURRENCIES]
-            period["benchmark_exposures"] = [[z, v[z]] for z in CURRENCIES]
+            period["portfolio_exposures"] = {z: u[z] for z in CURRENCIES}
+            period["benchmark_exposures"] = {z: v[z] for z in CURRENCIES}
         inputs.append(period)
         periods.append(
             {

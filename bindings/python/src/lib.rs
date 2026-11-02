@@ -6,6 +6,8 @@
 //! which the package turns into NumPy arrays without copying element by element. The Python
 //! package wraps these functions in its public, typed API.
 
+use std::collections::BTreeMap;
+
 use pyo3::create_exception;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -19,13 +21,13 @@ use finalytics::formats::{
 use finalytics::opt::{
     BlackLitterman, Objective, Problem, Rebalance, RebalanceOptions, Resampling,
 };
+use finalytics::performance::{FlowTiming, Performance, Period};
 use finalytics::risk::{
     self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
 };
 use finalytics::{
-    Books, Currency, Date, Decimal, Error, FlowTiming, HoldingKey, HoldingSeries, InstrumentId,
-    LotMethod, MarketData, Observation, Performance, Period, Portfolio, TimeSeries,
-    ValidationReport,
+    Books, Currency, Date, Decimal, Error, HoldingKey, HoldingSeries, InstrumentId, LotMethod,
+    MarketData, Observation, Portfolio, TimeSeries, ValidationReport,
 };
 
 create_exception!(
@@ -349,8 +351,8 @@ impl NativeBooks {
     }
 
     fn household(&self, dates_buffer: &[u8], options: &str) -> PyResult<String> {
-        let options: finalytics::HouseholdOptions = from_json(options, "options")?;
-        let found = finalytics::household(
+        let options: finalytics::performance::HouseholdOptions = from_json(options, "options")?;
+        let found = finalytics::performance::household(
             &self.books,
             &self.market,
             &dates(dates_buffer, "dates")?,
@@ -430,7 +432,8 @@ impl NativeBooks {
     fn rebalance(&self, on: &str, account: &str, targets: &str, options: &str) -> PyResult<String> {
         let account = finalytics::AccountId::new(account)
             .ok_or_else(|| invalid("account", format!("{account:?} is not a valid identifier")))?;
-        let targets: Vec<(HoldingKey, f64)> = from_json(targets, "targets")?;
+        let targets: BTreeMap<HoldingKey, f64> = from_json(targets, "targets")?;
+        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let options: RebalanceOptions = from_json(options, "options")?;
         let plan = finalytics::opt::rebalance(
             &self.books,
@@ -452,7 +455,8 @@ impl NativeBooks {
         options: &str,
     ) -> PyResult<String> {
         let accounts: Vec<finalytics::AccountId> = from_json(accounts, "accounts")?;
-        let targets: Vec<(HoldingKey, f64)> = from_json(targets, "targets")?;
+        let targets: BTreeMap<HoldingKey, f64> = from_json(targets, "targets")?;
+        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let options: RebalanceOptions = from_json(options, "options")?;
         let plan = finalytics::opt::rebalance_accounts(
             &self.books,
@@ -812,6 +816,11 @@ fn factor_model(model: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+fn parse_period(label: &str) -> PyResult<String> {
+    to_json(&label.parse::<Period>().map_err(engine)?)
+}
+
+#[pyfunction]
 fn report_tables(report: &str) -> PyResult<String> {
     to_json(&finalytics::reports::report_tables(report).map_err(engine)?)
 }
@@ -892,16 +901,17 @@ fn normal_quantile(p: f64) -> f64 {
 
 #[pyfunction]
 fn brinson_fachler(periods: &str, linking: &str) -> PyResult<String> {
-    let periods: Vec<finalytics::AttributionPeriod> = from_json(periods, "periods")?;
-    let linking: finalytics::Linking = named(linking, "linking")?;
-    to_json(&finalytics::brinson_fachler(&periods, linking).map_err(engine)?)
+    let periods: Vec<finalytics::performance::AttributionPeriod> = from_json(periods, "periods")?;
+    let linking: finalytics::performance::Linking = named(linking, "linking")?;
+    to_json(&finalytics::performance::brinson_fachler(&periods, linking).map_err(engine)?)
 }
 
 #[pyfunction]
 fn karnosky_singer(periods: &str, linking: &str) -> PyResult<String> {
-    let periods: Vec<finalytics::CurrencyAttributionPeriod> = from_json(periods, "periods")?;
-    let linking: finalytics::Linking = named(linking, "linking")?;
-    to_json(&finalytics::karnosky_singer(&periods, linking).map_err(engine)?)
+    let periods: Vec<finalytics::performance::CurrencyAttributionPeriod> =
+        from_json(periods, "periods")?;
+    let linking: finalytics::performance::Linking = named(linking, "linking")?;
+    to_json(&finalytics::performance::karnosky_singer(&periods, linking).map_err(engine)?)
 }
 
 #[pyfunction]
@@ -989,6 +999,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(normal_quantile, m)?)?;
     m.add_function(wrap_pyfunction!(solve, m)?)?;
     m.add_function(wrap_pyfunction!(stressed_covariance, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_period, m)?)?;
     m.add_function(wrap_pyfunction!(report_tables, m)?)?;
     m.add_function(wrap_pyfunction!(brinson_fachler, m)?)?;
     m.add_function(wrap_pyfunction!(karnosky_singer, m)?)?;

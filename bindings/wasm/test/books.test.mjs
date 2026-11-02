@@ -29,11 +29,7 @@ test("the scenario's books, values and performance", () => {
 
 test("rebalancing proposals apply to the books", () => {
   const books = new fl.Books(portfolio, market);
-  const targets = [
-    [{ holding: "instrument", id: "SPY" }, 0.4],
-    [{ holding: "instrument", id: "BOND" }, 0.4],
-    [{ holding: "instrument", id: "SAP" }, 0.15],
-  ];
+  const targets = { SPY: 0.4, BOND: 0.4, SAP: 0.15 };
   const plan = books.rebalance("main", targets, { lot_method: "highest_cost" });
   assert.equal(plan.date, "2026-10-30");
   const transactions = fl.rebalanceTransactions(plan);
@@ -45,19 +41,15 @@ test("rebalancing proposals apply to the books", () => {
 
 test("rebalancing with fees, tax rates and several accounts", () => {
   const books = new fl.Books(portfolio, market);
-  const targets = [
-    [{ holding: "instrument", id: "SPY" }, 0.2],
-    [{ holding: "instrument", id: "BOND" }, 0.5],
-  ];
+  const targets = { SPY: 0.2, BOND: 0.5 };
   const plan = books.rebalance("main", targets, {
     fees: { rate: "0.001", minimum: "5" },
     tax: { short_term: "0.4", long_term: "0.2" },
   });
-  assert.ok(plan.trades.every((t) => Number(t.fees) >= 5));
+  assert.ok(plan.trades.every((t) => Number(t.fees_local) >= 5));
   assert.ok(plan.tax_base !== null && plan.tax_base !== undefined);
   const combined = books.rebalanceAccounts(["isa", "main"], targets);
-  const spy = combined.weights_after.find(([k]) => k.holding === "instrument" && k.id === "SPY");
-  close(spy[1], 0.2, 1e-6, "combined SPY weight");
+  close(combined.weights_after.SPY, 0.2, 1e-6, "combined SPY weight");
   books.free();
 });
 
@@ -66,6 +58,8 @@ test("documents round trip", () => {
   const document = fl.readDocument(text);
   assert.deepEqual(document.portfolio, portfolio);
   assert.deepEqual(document.market.toDocument(), market.toDocument());
+  // The market data that readDocument returns writes back as it is.
+  assert.equal(fl.writeDocument(document.portfolio, document.market), text);
   assert.throws(() => fl.readDocument('{"format": "finalytics.portfolio", "format_version": 2, "portfolio": {}}'), {
     name: "ValidationError",
   });

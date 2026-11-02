@@ -33,8 +33,9 @@
 //! conversions that fund purchases; [`rebalance_accounts`] does the same for several accounts
 //! together.
 //!
-//! Most users should depend on the [`finalytics`](https://docs.rs/finalytics) crate, which re-exports
-//! the public API of every layer.
+//! This crate is one layer of Finalytics. Depend on the [`finalytics`](https://docs.rs/finalytics)
+//! crate instead: it re-exports the public API of every layer, and it is the crate whose API
+//! follows semantic versioning. This crate's own API may change in any release.
 
 mod black_litterman;
 mod frontier;
@@ -61,7 +62,7 @@ pub use rebalance::{
     TaxRates, rebalance, rebalance_accounts,
 };
 pub use resample::{ResampledSolution, Resampling};
-pub use solution::{Method, Solution, SolveStatus};
+pub use solution::{Solution, SolveMethod, SolveStatus};
 
 use finalytics_core::{Error, ValidationReport};
 

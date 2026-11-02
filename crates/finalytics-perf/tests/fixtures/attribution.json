@@ -712,34 +712,16 @@
       "cash_return": 0.001
      }
     ],
-    "portfolio_exposures": [
-     [
-      "USD",
-      0.7
-     ],
-     [
-      "EUR",
-      0.2
-     ],
-     [
-      "JPY",
-      0.1
-     ]
-    ],
-    "benchmark_exposures": [
-     [
-      "USD",
-      0.5
-     ],
-     [
-      "EUR",
-      0.3
-     ],
-     [
-      "JPY",
-      0.2
-     ]
-    ]
+    "portfolio_exposures": {
+     "USD": 0.7,
+     "EUR": 0.2,
+     "JPY": 0.1
+    },
+    "benchmark_exposures": {
+     "USD": 0.5,
+     "EUR": 0.3,
+     "JPY": 0.2
+    }
    },
    {
     "start": "2026-04-01",
@@ -795,34 +777,16 @@
       "cash_return": 0.001
      }
     ],
-    "portfolio_exposures": [
-     [
-      "USD",
-      0.7
-     ],
-     [
-      "EUR",
-      0.2
-     ],
-     [
-      "JPY",
-      0.1
-     ]
-    ],
-    "benchmark_exposures": [
-     [
-      "USD",
-      0.5
-     ],
-     [
-      "EUR",
-      0.3
-     ],
-     [
-      "JPY",
-      0.2
-     ]
-    ]
+    "portfolio_exposures": {
+     "USD": 0.7,
+     "EUR": 0.2,
+     "JPY": 0.1
+    },
+    "benchmark_exposures": {
+     "USD": 0.5,
+     "EUR": 0.3,
+     "JPY": 0.2
+    }
    },
    {
     "start": "2026-07-01",
@@ -878,34 +842,16 @@
       "cash_return": 0.001
      }
     ],
-    "portfolio_exposures": [
-     [
-      "USD",
-      0.7
-     ],
-     [
-      "EUR",
-      0.2
-     ],
-     [
-      "JPY",
-      0.1
-     ]
-    ],
-    "benchmark_exposures": [
-     [
-      "USD",
-      0.5
-     ],
-     [
-      "EUR",
-      0.3
-     ],
-     [
-      "JPY",
-      0.2
-     ]
-    ]
+    "portfolio_exposures": {
+     "USD": 0.7,
+     "EUR": 0.2,
+     "JPY": 0.1
+    },
+    "benchmark_exposures": {
+     "USD": 0.5,
+     "EUR": 0.3,
+     "JPY": 0.2
+    }
    },
    {
     "start": "2026-10-01",
@@ -961,34 +907,16 @@
       "cash_return": 0.001
      }
     ],
-    "portfolio_exposures": [
-     [
-      "USD",
-      0.7
-     ],
-     [
-      "EUR",
-      0.2
-     ],
-     [
-      "JPY",
-      0.1
-     ]
-    ],
-    "benchmark_exposures": [
-     [
-      "USD",
-      0.5
-     ],
-     [
-      "EUR",
-      0.3
-     ],
-     [
-      "JPY",
-      0.2
-     ]
-    ]
+    "portfolio_exposures": {
+     "USD": 0.7,
+     "EUR": 0.2,
+     "JPY": 0.1
+    },
+    "benchmark_exposures": {
+     "USD": 0.5,
+     "EUR": 0.3,
+     "JPY": 0.2
+    }
    }
   ],
   "periods": [

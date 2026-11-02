@@ -11,9 +11,8 @@ use crate::input::invalid;
 use crate::matrix::ReturnsTable;
 
 /// The weight of each holding in a valuation: each instrument and each cash currency, added up
-/// across accounts, as a share of the total value in the base currency. Holdings are in
-/// [`HoldingKey`] order.
-pub fn holding_weights(valuation: &Valuation) -> Result<Vec<(HoldingKey, f64)>> {
+/// across accounts, as a share of the total value in the base currency, by holding.
+pub fn holding_weights(valuation: &Valuation) -> Result<BTreeMap<HoldingKey, f64>> {
     if valuation.total_base <= Decimal::ZERO {
         return Err(invalid(
             "total_base",

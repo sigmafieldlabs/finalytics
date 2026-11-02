@@ -9,11 +9,12 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 
 use std::collections::BTreeMap;
 
+use finalytics::Books;
 use finalytics::opt::{
     BlackLitterman, Linkage, Objective, Prior, Resampling, View, ViewUncertainty,
 };
+use finalytics::performance::{FlowTiming, Performance};
 use finalytics::risk::{self, CovarianceMethod, StatisticsOptions, TailMethod};
-use finalytics::{Books, FlowTiming, Performance};
 use finalytics_bench::{factor_returns, large_factor_problem, large_portfolio, large_problem};
 
 fn ledger(c: &mut Criterion) {
@@ -115,16 +116,15 @@ fn optimisation(c: &mut Criterion) {
             uncertainty: ViewUncertainty::Confidence { confidence: 0.5 },
         })
         .collect();
-    let black_litterman = BlackLitterman {
+    let mut black_litterman = BlackLitterman::new(
         covariance,
-        prior: Prior::Market {
+        Prior::Market {
             weights: vec![1.0; 500],
             risk_aversion: 2.5,
             risk_free_rate: 0.0,
         },
-        views,
-        tau: 0.05,
-    };
+    );
+    black_litterman.views = views;
     group.bench_function("Black-Litterman, 10 views", |b| {
         b.iter(|| black_litterman.estimate())
     });
@@ -158,11 +158,7 @@ fn optimisation(c: &mut Criterion) {
         b.iter(|| {
             small.resampled(
                 &Objective::MeanVariance { risk_aversion: 4.0 },
-                &Resampling {
-                    samples: 100,
-                    observations: 120,
-                    seed: 1,
-                },
+                &Resampling::new(100, 120, 1),
             )
         })
     });

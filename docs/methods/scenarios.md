@@ -144,12 +144,12 @@ positive semidefinite, $C'$ is positive semidefinite whenever $C$ is.
 >>> round(result.value_before, 2), round(result.value_after, 2), round(result.portfolio_return, 4)
 (95835.0, 81334.9, -0.1513)
 >>> for h in result.holdings:
-...     print(h.holding.id, round(h.total_return, 4), round(h.change, 2), type(h.source).__name__)
+...     print(h.holding, round(h.return_base, 4), round(h.change, 2), type(h.source).__name__)
 BOND 0.02 502.5 InstrumentSource
 SAP -0.28 -5493.6 GroupSource
 SPY -0.2 -9400.0 GroupSource
-EUR -0.1 -109.0 CashSource
-USD 0.0 0.0 CashSource
+EUR cash -0.1 -109.0 CashSource
+USD cash 0.0 0.0 CashSource
 >>> [(g.group, round(g.contribution, 4)) for g in result.groups[0].groups]
 [('Europe', -0.0573), ('North America', -0.0928), ('cash', -0.0011)]
 
@@ -171,8 +171,8 @@ equities do, passes an equity shock on to the bond:
 ... )
 >>> result = books.shock_scenario(factors={"equity": -0.15}, factor_model=model, propagate=True)
 >>> result.factor_returns
-[('equity', -0.15), ('rates', 0.006)]
->>> [(h.holding.id, round(h.local_return, 4)) for h in result.holdings[:3]]
+{'equity': -0.15, 'rates': 0.006}
+>>> [(h.holding, round(h.return_local, 4)) for h in result.holdings[:3]]
 [('BOND', -0.036), ('SAP', -0.18), ('SPY', -0.15)]
 
 ```
@@ -209,7 +209,7 @@ volatilities 50% higher and correlations half way to one after:
 ... )
 >>> round(stressed.risk_before.volatility, 4), round(stressed.risk_after.volatility, 4)
 (0.1361, 0.2151)
->>> round(stressed.risk_before.value_at_risk), round(stressed.risk_after.value_at_risk)
+>>> round(stressed.risk_before.value_at_risk_base), round(stressed.risk_after.value_at_risk_base)
 (30354, 41296)
 
 ```

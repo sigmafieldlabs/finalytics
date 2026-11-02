@@ -6,13 +6,16 @@
 //! functions; `tests/corpus.rs` replays the committed corpus through them on the stable
 //! toolchain, so that every input found once stays checked.
 
+use std::collections::BTreeMap;
+
 use finalytics::formats::{
     CsvOptions, MarketDocument, PortfolioDocument, fx_from_csv, instruments_from_csv,
     portfolio_from_csv, prices_from_csv, transactions_from_csv,
 };
 use finalytics::opt::{Constraints, Objective, Problem};
+use finalytics::performance::{FlowTiming, Performance};
 use finalytics::risk::{self, Matrix, ReturnsTable, StatisticsOptions, TailMethod};
-use finalytics::{Books, Currency, Date, Decimal, FlowTiming, MarketData, Performance, Portfolio};
+use finalytics::{Books, Currency, Date, Decimal, MarketData, Portfolio};
 
 /// A check: it takes any bytes and panics if what must hold does not.
 pub type Check = fn(&[u8]);
@@ -191,11 +194,10 @@ fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: 
         fees.minimum = finalytics::Decimal::ONE;
         fees
     };
-    options.tax = Some(finalytics::opt::TaxRates {
-        short_term: finalytics::Decimal::new(3, 1),
-        long_term: finalytics::Decimal::new(15, 2),
-        long_term_after_days: 365,
-    });
+    options.tax = Some(finalytics::opt::TaxRates::new(
+        finalytics::Decimal::new(3, 1),
+        finalytics::Decimal::new(15, 2),
+    ));
     if let Ok(plan) = finalytics::opt::rebalance(books, market, date, &first.id, &targets, &options)
     {
         assert!(
@@ -269,9 +271,9 @@ fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, da
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .collect();
-    let mut options = finalytics::HouseholdOptions::default();
+    let mut options = finalytics::performance::HouseholdOptions::default();
     options.group_by = schemes;
-    let Ok(h) = finalytics::household(books, market, dates, &options) else {
+    let Ok(h) = finalytics::performance::household(books, market, dates, &options) else {
         return;
     };
     if let Some(twr) = h.household.time_weighted {
@@ -291,7 +293,7 @@ fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, da
         }
     }
     let text = serde_json::to_string(&h).unwrap_or_else(|e| panic!("{e}"));
-    let back: finalytics::Household =
+    let back: finalytics::performance::Household =
         serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(back, h, "a household that does not read back equal");
 }
@@ -377,12 +379,10 @@ fn portfolio_scenarios(portfolio: &Portfolio, books: &Books, market: &MarketData
             }
         }
     }
-    let mut currencies: Vec<(Currency, f64)> = Vec::new();
+    let mut currencies: BTreeMap<Currency, f64> = BTreeMap::new();
     for i in &portfolio.instruments {
-        if i.currency != portfolio.base_currency
-            && !currencies.iter().any(|(c, _)| *c == i.currency)
-        {
-            currencies.push((i.currency, -0.1));
+        if i.currency != portfolio.base_currency {
+            currencies.insert(i.currency, -0.1);
         }
     }
     let mut shocks = Shocks::default();
@@ -416,11 +416,7 @@ fn portfolio_scenarios(portfolio: &Portfolio, books: &Books, market: &MarketData
     if let (Some(&start), Some(&end)) = (dates.first(), dates.last())
         && start < end
     {
-        let window = HistoricalWindow {
-            start,
-            end,
-            proxies: Vec::new(),
-        };
+        let window = HistoricalWindow::new(start, end);
         if let Ok(result) = risk::historical_scenario(books, market, date, &window, &options) {
             scenario_holds(&result);
         }
@@ -580,23 +576,22 @@ pub fn scenarios(data: &[u8]) {
                 }
             }
             values[15] = v[36].abs();
-            ScenarioRiskModel {
-                covariance: Matrix::new(
-                    risk_labels.iter().map(|s| s.to_string()).collect(),
-                    values,
-                )
-                .ok(),
-                factor_model: None,
-                confidence: v[37],
-                stress,
-            }
+            // A model with the factor model's implied covariance, or with none when that is not
+            // a valid matrix, which the scenario must report.
+            let mut risk = ScenarioRiskModel::from_factor_model(m);
+            risk.factor_model = None;
+            risk.covariance =
+                Matrix::new(risk_labels.iter().map(|s| s.to_string()).collect(), values).ok();
+            risk.confidence = v[37];
+            risk.stress = stress;
+            risk
         })
     } else {
-        covariance.map(|c| ScenarioRiskModel {
-            covariance: Some(c),
-            factor_model: None,
-            confidence: v[37],
-            stress,
+        covariance.map(|c| {
+            let mut risk = ScenarioRiskModel::from_covariance(c);
+            risk.confidence = v[37];
+            risk.stress = stress;
+            risk
         })
     };
     let mut options = ScenarioOptions::default();
@@ -606,34 +601,36 @@ pub fn scenarios(data: &[u8]) {
     let result = if control & 0x01 == 0 {
         let shocks = {
             let mut built = Shocks::default();
-            built.instruments = vec![(
+            built.instruments = BTreeMap::from([(
                 finalytics::InstrumentId::new("A").unwrap_or_else(|| unreachable!()),
                 v[0],
-            )];
+            )]);
             built.groups = vec![GroupShock {
                 scheme: "asset_class".into(),
                 value: "Bonds".into(),
                 shock: v[1],
             }];
-            built.currencies = vec![(Currency::EUR, v[2])];
-            built.factors = model.map(|model| FactorShocks {
-                model,
-                shocks: vec![("f0".into(), v[3]), ("f1".into(), v[4])]
-                    .into_iter()
-                    .take(1 + usize::from(control & 0x02 != 0))
-                    .collect(),
-                propagate: control & 0x04 != 0,
+            built.currencies = BTreeMap::from([(Currency::EUR, v[2])]);
+            built.factors = model.map(|model| {
+                let mut shocks = FactorShocks::new(
+                    model,
+                    [("f0".into(), v[3]), ("f1".into(), v[4])]
+                        .into_iter()
+                        .take(1 + usize::from(control & 0x02 != 0))
+                        .collect(),
+                );
+                shocks.propagate = control & 0x04 != 0;
+                shocks
             });
             built
         };
         risk::shock_scenario(books, market, date, &shocks, &options)
     } else {
         let start = Date::from_ymd(2026, 1, 2).unwrap_or_else(|e| panic!("{e}"));
-        let window = HistoricalWindow {
+        let window = HistoricalWindow::new(
             start,
-            end: start.add_days(i32::from(control >> 5) + 1).unwrap_or(date),
-            proxies: Vec::new(),
-        };
+            start.add_days(i32::from(control >> 5) + 1).unwrap_or(date),
+        );
         risk::historical_scenario(books, market, date, &window, &options)
     };
     if let Ok(result) = result {
@@ -699,16 +696,15 @@ pub fn views(data: &[u8]) {
         });
         at += n + 2;
     }
-    let model = finalytics::opt::BlackLitterman {
+    let mut model = finalytics::opt::BlackLitterman::new(
         covariance,
-        prior: finalytics::opt::Prior::Market {
+        finalytics::opt::Prior::Market {
             weights: values[n * n..n * n + n].to_vec(),
             risk_aversion: 2.5,
             risk_free_rate: 0.0,
         },
-        views,
-        tau: 0.05,
-    };
+    );
+    model.views = views;
     if let Ok(estimate) = model.estimate() {
         assert!(
             estimate
@@ -734,7 +730,7 @@ pub fn views(data: &[u8]) {
 /// must be the periods' effects multiplied by their coefficients, and the result must read back
 /// equal from JSON.
 pub fn attribution(data: &[u8]) {
-    use finalytics::{
+    use finalytics::performance::{
         AttributionPeriod, CurrencyAttributionPeriod, CurrencyReturn, CurrencySegment, Linking,
         Segment, SegmentEffects,
     };
@@ -853,7 +849,7 @@ pub fn attribution(data: &[u8]) {
         by_currency
             .iter()
             .map(|p| {
-                let exposures = |e: &Option<Vec<(Currency, f64)>>| {
+                let exposures = |e: &Option<BTreeMap<Currency, f64>>| {
                     e.iter().flatten().map(|(_, w)| w.abs()).sum::<f64>()
                 };
                 let w: f64 = p
@@ -898,7 +894,7 @@ pub fn attribution(data: &[u8]) {
     }
     let effects = |e: &SegmentEffects| e.allocation + e.selection + e.interaction;
     if mode == 0 {
-        let Ok(a) = finalytics::brinson_fachler(&plain, linking) else {
+        let Ok(a) = finalytics::performance::brinson_fachler(&plain, linking) else {
             return;
         };
         let mut overall = 1.0 + a.portfolio_return.abs() + a.benchmark_return.abs();
@@ -945,11 +941,11 @@ pub fn attribution(data: &[u8]) {
             "the linked totals",
         );
         let text = serde_json::to_string(&a).unwrap_or_else(|e| panic!("{e}"));
-        let back: finalytics::Attribution =
+        let back: finalytics::performance::Attribution =
             serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, a, "an attribution that does not read back equal");
     } else {
-        let Ok(a) = finalytics::karnosky_singer(&by_currency, linking) else {
+        let Ok(a) = finalytics::performance::karnosky_singer(&by_currency, linking) else {
             return;
         };
         let mut overall = 1.0 + a.portfolio_return.abs() + a.benchmark_return.abs();
@@ -992,7 +988,7 @@ pub fn attribution(data: &[u8]) {
             "the linked totals",
         );
         let text = serde_json::to_string(&a).unwrap_or_else(|e| panic!("{e}"));
-        let back: finalytics::CurrencyAttribution =
+        let back: finalytics::performance::CurrencyAttribution =
             serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, a, "an attribution that does not read back equal");
     }
@@ -1063,19 +1059,20 @@ pub fn optimisation(data: &[u8]) {
             max: 1.0,
         };
         constraints.leverage = Some(2.0);
-        constraints.turnover = (control & 0x80 != 0).then(|| finalytics::opt::Turnover {
-            current: vec![1.0 / n as f64; n],
-            limit: None,
-            costs: None,
-            quadratic_costs: Some(vec![bound.abs().min(10.0); n]),
+        constraints.turnover = (control & 0x80 != 0).then(|| {
+            let mut turnover = finalytics::opt::Turnover::new(vec![1.0 / n as f64; n]);
+            turnover.quadratic_costs = Some(vec![bound.abs().min(10.0); n]);
+            turnover
         });
-        constraints.trades = (control & 0x80 != 0).then_some(finalytics::opt::TradeLimits {
-            minimum: Some(0.01),
-            maximum_count: Some(n.div_ceil(2)),
+        constraints.trades = (control & 0x80 != 0).then(|| {
+            let mut limits = finalytics::opt::TradeLimits::default();
+            limits.minimum = Some(0.01);
+            limits.maximum_count = Some(n.div_ceil(2));
+            limits
         });
         constraints
     });
-    let mut problem = Problem::new(matrix).with_expected_returns(expected.clone());
+    let mut problem = Problem::from_covariance(matrix).with_expected_returns(expected.clone());
     if let Some(c) = &constraints {
         problem = problem.with_constraints(c.clone());
     }
@@ -1124,11 +1121,7 @@ pub fn optimisation(data: &[u8]) {
         }
     }
     // A small resampling run, which must account for every simulated problem.
-    let resampling = finalytics::opt::Resampling {
-        samples: 2,
-        observations: 3,
-        seed: u64::from(control),
-    };
+    let resampling = finalytics::opt::Resampling::new(2, 3, u64::from(control));
     if let Ok(found) = problem.resampled(&objective, &resampling) {
         assert_eq!(
             found.solved + found.failed,
