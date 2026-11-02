@@ -1,0 +1,62 @@
+name: Pyodide
+
+# Builds the Python package for Pyodide, Python in the browser (PEP 783), and runs the Python
+# tests on it under Node.js. Run it by hand from the Actions tab. When it passes, its wheel can
+# join the PyPI release.
+#
+# Each Pyodide release fixes its Python, Emscripten and Rust versions; pyodide-build reports
+# them for the Python version set up here (3.14 for Pyodide 314).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheel:
+    name: Build and test the Pyodide wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install pyodide-build
+        run: python -m pip install pyodide-build
+      - name: Read the toolchain this Pyodide release uses
+        id: pyodide
+        run: |
+          {
+            echo "rust-toolchain=$(pyodide config get rust_toolchain)"
+            echo "emscripten-version=$(pyodide config get emscripten_version)"
+            echo "abi-version=$(pyodide config get pyodide_abi_version)"
+            echo "rustflags=$(pyodide config get rustflags)"
+          } | tee -a "$GITHUB_OUTPUT"
+      - uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: ${{ steps.pyodide.outputs.emscripten-version }}
+      - name: Build the wheel
+        uses: PyO3/maturin-action@v1
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS: ${{ steps.pyodide.outputs.rustflags }}
+          MATURIN_PYEMSCRIPTEN_PLATFORM_VERSION: ${{ steps.pyodide.outputs.abi-version }}
+        with:
+          working-directory: bindings/python
+          target: wasm32-unknown-emscripten
+          rust-toolchain: ${{ steps.pyodide.outputs.rust-toolchain }}
+          args: --release --out dist --interpreter 3.14
+      - name: Test the wheel in Pyodide
+        run: |
+          pyodide venv .venv-pyodide
+          source .venv-pyodide/bin/activate
+          python -m pip install numpy pandas pytest jsonschema
+          python -m pip install finalytics --no-index --no-deps --find-links bindings/python/dist
+          python -m pytest bindings/python/tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-pyodide
+          path: bindings/python/dist/*.whl
