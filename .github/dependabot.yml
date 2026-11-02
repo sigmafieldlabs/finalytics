@@ -8,3 +8,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Used by branch (stable, nightly, master); the minimum supported Rust version is an
+      # input of the action, not a version of it.
+      - dependency-name: dtolnay/rust-toolchain
