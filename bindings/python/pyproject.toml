@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "finalytics"
-description = "Portfolio analytics: accounting, performance, risk and optimisation."
+description = "Portfolio analytics: accounting, performance, risk, optimisation and reports."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT OR Apache-2.0"

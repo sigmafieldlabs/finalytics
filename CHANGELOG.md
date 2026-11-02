@@ -12,8 +12,8 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 
 ### Added
 
-- A workspace of crates behind the `finalytics` facade: core, ledger, formats, performance, risk
-  and optimisation.
+- A workspace of crates behind the `finalytics` facade: core, ledger, formats, performance, risk,
+  optimisation and reports.
 - A Python package (abi3 wheels for Python 3.10 and later) with the whole engine: portfolios
   from dataclasses, JSON, documents or CSV; market data from mappings, pandas Series or CSV;
   books, valuations, performance, contribution, risk and optimisation, with NumPy arrays in and

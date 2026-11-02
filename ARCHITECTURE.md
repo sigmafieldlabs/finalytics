@@ -27,6 +27,8 @@ finalytics-risk      statistics, drawdowns, covariance, VaR and expected shortfa
    ↑
 finalytics-opt       optimisation: convex formulations, risk parity, HRP, frontiers, rebalancing
    ↑
+finalytics-reports   report data for each screen: chart-ready series, provenance, export tables
+   ↑
 finalytics           the public API, re-exporting what users need
    ↑
 bindings/python      PyO3 extension and the Python package
