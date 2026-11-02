@@ -21,6 +21,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Account::new` and `Portfolio::new` already do for theirs. Python and JavaScript are unchanged.
 - The descriptions of the shared data types no longer name Rust methods or `None`; they read the
   same in the JSON Schema, the Python types and the TypeScript declarations.
+- The holdings report counts a lot or a gain as long-term when it has been held for more than
+  `long_term_after_days` days, as tax-aware rebalancing does. A lot held for exactly that many
+  days was long-term in the report and short-term for rebalancing.
 
 ### Fixed
 

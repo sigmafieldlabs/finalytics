@@ -69,7 +69,8 @@ pub struct ReportOptions {
     /// How many holdings lists of the largest, the top contributors and the like show: 10 by
     /// default.
     pub top: usize,
-    /// The holding period, in days, from which a lot or a gain is long-term: 365 by default.
+    /// The holding period, in days, after which a lot or a gain is long-term: a lot held for
+    /// more than this many days is long-term, as in rebalancing's tax rates. 365 by default.
     pub long_term_after_days: i32,
     /// Annual expected returns by instrument for the efficient frontier; instruments not listed,
     /// and every instrument when none is, take their historical mean return.

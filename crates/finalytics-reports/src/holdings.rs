@@ -97,7 +97,7 @@ pub struct LotRow {
     pub unrealised_return: Option<f64>,
     /// Calendar days held to the report's date.
     pub holding_days: i32,
-    /// Whether it has been held for the long-term period or longer.
+    /// Whether it has been held for longer than the long-term period.
     pub long_term: bool,
 }
 
@@ -126,9 +126,9 @@ pub struct Concentration {
 pub struct RealisedSummary {
     /// Every realised gain.
     pub total: Decimal,
-    /// Gains on lots held for less than the long-term period.
+    /// Gains on lots held for the long-term period or less.
     pub short_term: Decimal,
-    /// Gains on lots held for the long-term period or longer.
+    /// Gains on lots held for longer than the long-term period.
     pub long_term: Decimal,
     /// By calendar year of disposal.
     pub by_year: Vec<(i32, Decimal)>,
@@ -328,7 +328,7 @@ pub fn holdings_report(
                 unrealised_return: (lot.cost_base > Decimal::ZERO)
                     .then(|| to_f64(unrealised) / to_f64(lot.cost_base)),
                 holding_days,
-                long_term: holding_days >= options.long_term_after_days,
+                long_term: holding_days > options.long_term_after_days,
             }
         })
         .collect();
@@ -433,7 +433,7 @@ pub fn holdings_report(
         .filter(|g| g.disposed <= cx.as_of)
     {
         realised.total += g.gain_base;
-        if g.acquired.days_until(g.disposed) >= options.long_term_after_days {
+        if g.acquired.days_until(g.disposed) > options.long_term_after_days {
             realised.long_term += g.gain_base;
         } else {
             realised.short_term += g.gain_base;

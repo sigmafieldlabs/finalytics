@@ -138,6 +138,21 @@ fn holdings_add_up() {
 }
 
 #[test]
+fn long_term_means_held_for_more_than_the_period() {
+    // As in rebalancing's tax rates: a lot held for exactly the period is still short-term.
+    let (portfolio, books, market) = setup();
+    let source = Source::of(&portfolio, &market);
+    let report = holdings_report(&books, &market, &source, &options()).unwrap();
+    let lot = &report.lots[0];
+    for (period, long_term) in [(lot.holding_days, false), (lot.holding_days - 1, true)] {
+        let mut o = options();
+        o.long_term_after_days = period;
+        let r = holdings_report(&books, &market, &source, &o).unwrap();
+        assert_eq!(r.lots[0].long_term, long_term, "period {period}");
+    }
+}
+
+#[test]
 fn performance_agrees_with_the_engine() {
     let (portfolio, books, market) = setup();
     let source = Source::of(&portfolio, &market);

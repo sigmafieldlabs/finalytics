@@ -3707,7 +3707,7 @@
         },
         "long_term": {
           "type": "boolean",
-          "description": "Whether it has been held for the long-term period or longer."
+          "description": "Whether it has been held for longer than the long-term period."
         }
       },
       "required": [
@@ -5127,11 +5127,11 @@
           "$ref": "#/$defs/Decimal"
         },
         "short_term": {
-          "description": "Gains on lots held for less than the long-term period.",
+          "description": "Gains on lots held for the long-term period or less.",
           "$ref": "#/$defs/Decimal"
         },
         "long_term": {
-          "description": "Gains on lots held for the long-term period or longer.",
+          "description": "Gains on lots held for longer than the long-term period.",
           "$ref": "#/$defs/Decimal"
         },
         "by_year": {
@@ -5531,7 +5531,7 @@
         "long_term_after_days": {
           "type": "integer",
           "format": "int32",
-          "description": "The holding period, in days, from which a lot or a gain is long-term: 365 by default.",
+          "description": "The holding period, in days, after which a lot or a gain is long-term: a lot held for\nmore than this many days is long-term, as in rebalancing's tax rates. 365 by default.",
           "default": 365
         },
         "expected_returns": {

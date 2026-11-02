@@ -1400,7 +1400,7 @@ export interface LotRow {
   unrealised_return?: number | null;
   /** Calendar days held to the report's date. */
   holding_days: number;
-  /** Whether it has been held for the long-term period or longer. */
+  /** Whether it has been held for longer than the long-term period. */
   long_term: boolean;
 }
 
@@ -1894,9 +1894,9 @@ export interface RealisedGain {
 export interface RealisedSummary {
   /** Every realised gain. */
   total: Decimal;
-  /** Gains on lots held for less than the long-term period. */
+  /** Gains on lots held for the long-term period or less. */
   short_term: Decimal;
-  /** Gains on lots held for the long-term period or longer. */
+  /** Gains on lots held for longer than the long-term period. */
   long_term: Decimal;
   /** By calendar year of disposal. */
   by_year: [number, Decimal][];
@@ -2014,7 +2014,10 @@ export interface ReportOptions {
    * default.
    */
   top?: number;
-  /** The holding period, in days, from which a lot or a gain is long-term: 365 by default. */
+  /**
+   * The holding period, in days, after which a lot or a gain is long-term: a lot held for
+   * more than this many days is long-term, as in rebalancing's tax rates. 365 by default.
+   */
   long_term_after_days?: number;
   /**
    * Annual expected returns by instrument for the efficient frontier; instruments not listed,

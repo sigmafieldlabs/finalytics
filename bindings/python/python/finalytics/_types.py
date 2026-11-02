@@ -1927,7 +1927,7 @@ class LotRow:
     """Calendar days held to the report's date."""
 
     long_term: bool
-    """Whether it has been held for the long-term period or longer."""
+    """Whether it has been held for longer than the long-term period."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2678,10 +2678,10 @@ class RealisedSummary:
     """Every realised gain."""
 
     short_term: decimal.Decimal
-    """Gains on lots held for less than the long-term period."""
+    """Gains on lots held for the long-term period or less."""
 
     long_term: decimal.Decimal
-    """Gains on lots held for the long-term period or longer."""
+    """Gains on lots held for longer than the long-term period."""
 
     by_year: list[tuple[int, decimal.Decimal]]
     """By calendar year of disposal."""
@@ -2832,7 +2832,9 @@ class ReportOptions:
     """
 
     long_term_after_days: int = 365
-    """The holding period, in days, from which a lot or a gain is long-term: 365 by default."""
+    """The holding period, in days, after which a lot or a gain is long-term: a lot held for more
+    than this many days is long-term, as in rebalancing's tax rates. 365 by default.
+    """
 
     expected_returns: list[tuple[str, float]] = field(default_factory=list)
     """Annual expected returns by instrument for the efficient frontier; instruments not listed, and
