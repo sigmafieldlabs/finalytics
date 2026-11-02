@@ -46,6 +46,7 @@ def results(market, books):
         "hierarchical_risk_parity": problem.solve(fl.opt.HierarchicalRiskParity()).weights,
         "rebalance_trades": [[t.instrument, t.side, str(t.quantity)] for t in plan.trades],
         "rebalance_realised_gain_base": str(plan.realised_gain_base),
+        "source_digest": fl.reports.source(books).digest,
     }
 
 

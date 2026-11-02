@@ -20,7 +20,7 @@ written in Rust; this package is a thin, typed layer over it.
 
 from importlib.metadata import version as _distribution_version
 
-from finalytics import opt, risk, types
+from finalytics import opt, reports, risk, types
 from finalytics._errors import FinalyticsError, ValidationError
 from finalytics._finalytics import version
 from finalytics.performance import Performance, group_contributions, period
@@ -57,6 +57,7 @@ __all__ = [
     "opt",
     "period",
     "read_document",
+    "reports",
     "risk",
     "types",
     "version",

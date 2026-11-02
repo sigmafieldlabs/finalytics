@@ -66,6 +66,15 @@ fn api() -> Value {
     add::<finalytics::AccountSeries>(&mut g);
     add::<finalytics::HouseholdOptions>(&mut g);
     add::<finalytics::Household>(&mut g);
+    add::<finalytics::reports::ReportOptions>(&mut g);
+    add::<finalytics::reports::Source>(&mut g);
+    add::<finalytics::reports::HoldingsReport>(&mut g);
+    add::<finalytics::reports::OverviewReport>(&mut g);
+    add::<finalytics::reports::PerformanceReport>(&mut g);
+    add::<finalytics::reports::RiskReport>(&mut g);
+    add::<finalytics::reports::AttributionReport>(&mut g);
+    add::<finalytics::reports::ScenariosReport>(&mut g);
+    add::<finalytics::reports::ReportTable>(&mut g);
     // Risk.
     add::<risk::StatisticsOptions>(&mut g);
     add::<risk::Statistics>(&mut g);

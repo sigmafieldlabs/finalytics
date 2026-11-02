@@ -23,6 +23,7 @@ outputs are the engine's own.
 | [Robust and resampled optimisation](robust-optimisation.md) | Worst-case mean–variance over ellipsoids and boxes; Michaud resampling |
 | [Rebalancing](rebalancing.md) | Trades from current holdings to target weights, with lot selection |
 | [Scenarios](scenarios.md) | Shocks to instruments, groups, currencies and factors; historical replay; the effect on value and on risk, with stressed correlations |
+| [Reports](reports.md) | The holdings, overview, performance, risk, attribution and scenario reports; provenance; shapes for charts; tables for export |
 
 ## Conventions used throughout
 

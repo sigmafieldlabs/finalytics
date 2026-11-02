@@ -247,6 +247,9 @@ impl Market {
 struct NativeBooks {
     books: Books,
     market: MarketData,
+    portfolio: Portfolio,
+    /// The digest of the inputs, computed for the first report that needs it.
+    source: std::sync::OnceLock<finalytics::reports::Source>,
 }
 
 #[pymethods]
@@ -258,7 +261,40 @@ impl NativeBooks {
         Ok(NativeBooks {
             books,
             market: market.inner.clone(),
+            portfolio,
+            source: std::sync::OnceLock::new(),
         })
+    }
+
+    fn source(&self) -> PyResult<String> {
+        to_json(self.report_source())
+    }
+
+    fn report(&self, kind: &str, options: &str) -> PyResult<String> {
+        use finalytics::reports;
+        let options: reports::ReportOptions = from_json(options, "options")?;
+        let (books, market, source) = (&self.books, &self.market, self.report_source());
+        match kind {
+            "holdings" => {
+                to_json(&reports::holdings_report(books, market, source, &options).map_err(engine)?)
+            }
+            "overview" => {
+                to_json(&reports::overview_report(books, market, source, &options).map_err(engine)?)
+            }
+            "performance" => to_json(
+                &reports::performance_report(books, market, source, &options).map_err(engine)?,
+            ),
+            "risk" => {
+                to_json(&reports::risk_report(books, market, source, &options).map_err(engine)?)
+            }
+            "attribution" => to_json(
+                &reports::attribution_report(books, market, source, &options).map_err(engine)?,
+            ),
+            "scenarios" => to_json(
+                &reports::scenarios_report(books, market, source, &options).map_err(engine)?,
+            ),
+            other => Err(invalid("kind", format!("{other:?} is not a report"))),
+        }
     }
 
     fn base_currency(&self) -> String {
@@ -445,6 +481,13 @@ impl NativeBooks {
             risk::historical_scenario(&self.books, &self.market, date(on)?, &window, &options)
                 .map_err(engine)?;
         to_json(&result)
+    }
+}
+
+impl NativeBooks {
+    fn report_source(&self) -> &finalytics::reports::Source {
+        self.source
+            .get_or_init(|| finalytics::reports::Source::of(&self.portfolio, &self.market))
     }
 }
 
@@ -769,6 +812,11 @@ fn factor_model(model: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+fn report_tables(report: &str) -> PyResult<String> {
+    to_json(&finalytics::reports::report_tables(report).map_err(engine)?)
+}
+
+#[pyfunction]
 fn stressed_covariance(covariance: &str, stress: &str) -> PyResult<String> {
     let covariance: Matrix = from_json(covariance, "covariance")?;
     let stress: risk::CorrelationStress = from_json(stress, "stress")?;
@@ -941,6 +989,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(normal_quantile, m)?)?;
     m.add_function(wrap_pyfunction!(solve, m)?)?;
     m.add_function(wrap_pyfunction!(stressed_covariance, m)?)?;
+    m.add_function(wrap_pyfunction!(report_tables, m)?)?;
     m.add_function(wrap_pyfunction!(brinson_fachler, m)?)?;
     m.add_function(wrap_pyfunction!(karnosky_singer, m)?)?;
     m.add_function(wrap_pyfunction!(frontier, m)?)?;

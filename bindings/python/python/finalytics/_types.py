@@ -60,6 +60,9 @@ LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost
 Method = Literal["interior_point", "newton", "recursive_bisection", "trade_elimination"]
 """The method that produced a solution."""
 
+ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
+"""Which report a report is."""
+
 Severity = Literal["warning", "error"]
 """How serious a validation issue is."""
 
@@ -90,6 +93,32 @@ class Account:
     """Classifications by scheme, for grouping accounts: for example `owner: Alice` or `wrapper:
     ISA`.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class AccountHoldings:
+    """One account's holdings."""
+
+    account: str
+    """The account."""
+
+    name: str | None = None
+    """The account's name, if it has one."""
+
+    classifications: dict[str, str]
+    """The account's classifications."""
+
+    value_base: decimal.Decimal
+    """The account's value in the base currency."""
+
+    weight: float
+    """The share of the portfolio's value."""
+
+    positions: list[PositionValue]
+    """Its positions."""
+
+    cash: list[CashValue]
+    """Its cash balances."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -228,6 +257,17 @@ Value moved between holdings nets to zero; only external flows change the portfo
 
 
 @dataclass(frozen=True, kw_only=True)
+class Amount:
+    """A figure as a fraction and as an amount of money, such as a value at risk."""
+
+    fraction: float
+    """As a fraction of the portfolio's value."""
+
+    value: float
+    """As an amount in the base currency."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class AssetBound:
     """Limits on one asset's weight, in place of the default bounds."""
 
@@ -293,6 +333,22 @@ class Attribution:
 
 
 @dataclass(frozen=True, kw_only=True)
+class AttributionInputs:
+    """What the attribution report compares the portfolio with."""
+
+    scheme: str
+    """The instrument classification scheme that defines the segments, such as `asset_class`. Cash
+    is the segment "cash", and instruments without the classification "unclassified".
+    """
+
+    periods: list[BenchmarkPeriod]
+    """The benchmark's segments in each period, such as each month."""
+
+    linking: Linking = "carino"
+    """How the periods are linked: Cariño's method by default."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class AttributionPeriod:
     """The segments over one period. The portfolio weights add up to one, as do the benchmark
     weights.
@@ -306,6 +362,83 @@ class AttributionPeriod:
 
     segments: list[Segment]
     """The segments."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class AttributionReport:
+    """The attribution report."""
+
+    provenance: Provenance
+    """Where the numbers come from."""
+
+    scheme: str
+    """The classification scheme of the segments."""
+
+    periods: list[AttributionPeriod]
+    """Each period's segments: the portfolio's weights and returns from its books, beside the
+    benchmark's.
+    """
+
+    attribution: Attribution
+    """The attribution, by period and linked: the totals for a waterfall chart, and each period's
+    effects for a chart over time.
+    """
+
+    time_weighted: float | None = None
+    """The portfolio's time-weighted return over the same span, for comparison with the
+    attribution's portfolio return (`sum w r` in each period, linked), which leaves out trading
+    within each period.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class BenchmarkPeriod:
+    """The benchmark's segments over one period."""
+
+    start: datetime.date
+    """The start of the period."""
+
+    end: datetime.date
+    """The end of the period."""
+
+    segments: list[BenchmarkSegment]
+    """The segments, with weights adding up to one."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BenchmarkSegment:
+    """One segment of the benchmark over one period."""
+
+    name: str
+    """The segment: a classification of the scheme, such as `Equity`."""
+
+    benchmark_weight: float
+    """The benchmark's weight in the segment at the start of the period."""
+
+    benchmark_return: float
+    """The benchmark's return in the segment over the period."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Bin:
+    """One bin of a `Histogram`."""
+
+    lower: float
+    """The lower edge, included."""
+
+    upper: float
+    """The upper edge, excluded (included for the last bin)."""
+
+    count: int
+    """The number of observations in the bin."""
+
+    share: float
+    """The share of all observations in the bin."""
+
+    normal_share: float
+    """The share a normal distribution with the observations' mean and standard deviation puts in
+    the bin, for comparison.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -361,6 +494,17 @@ class Bound:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Breakdown:
+    """A whole split into parts by one dimension, such as by currency or by asset class."""
+
+    by: str
+    """The dimension: "holding", "currency", "kind", "account", or a classification scheme."""
+
+    slices: list[Slice]
+    """The parts, largest first."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class CashBalance:
     """A cash balance in one account and currency."""
 
@@ -394,6 +538,87 @@ class CashValue:
     """The balance in the base currency."""
 
 
+Cell = Union[float, bool, str, None]
+"""One cell of a `ReportTable`: a number, text, yes or no, or nothing."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Column:
+    """One column of a `ReportTable`."""
+
+    key: str
+    """A stable key for the column, such as `value_base`."""
+
+    label: str
+    """A heading for people, such as "Value (USD)"."""
+
+    kind: ColumnKind
+    """What it holds."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class TextColumn:
+    """Text."""
+
+    KIND: ClassVar[str] = "text"
+    """The value of the `kind` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class DateColumn:
+    """An ISO 8601 date, as text."""
+
+    KIND: ClassVar[str] = "date"
+    """The value of the `kind` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class NumberColumn:
+    """A number."""
+
+    KIND: ClassVar[str] = "number"
+    """The value of the `kind` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class IntegerColumn:
+    """A whole number."""
+
+    KIND: ClassVar[str] = "integer"
+    """The value of the `kind` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FractionColumn:
+    """A fraction, to show as a percentage: 0.05 is 5%."""
+
+    KIND: ClassVar[str] = "fraction"
+    """The value of the `kind` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MoneyColumn:
+    """An amount of money in a currency."""
+
+    KIND: ClassVar[str] = "money"
+    """The value of the `kind` tag that identifies this variant."""
+
+    currency: str
+    """The currency."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BooleanColumn:
+    """Yes or no."""
+
+    KIND: ClassVar[str] = "boolean"
+    """The value of the `kind` tag that identifies this variant."""
+
+
+ColumnKind = Union[TextColumn, DateColumn, NumberColumn, IntegerColumn, FractionColumn, MoneyColumn, BooleanColumn]
+"""What a column holds, so that an export can format it."""
+
+
 @dataclass(frozen=True, kw_only=True)
 class CombinedRebalance:
     """The trades that move several accounts together to target weights of their combined value, one
@@ -423,6 +648,28 @@ class CombinedRebalance:
 
     tax_base: decimal.Decimal | None = None
     """With tax rates, the estimated tax on the sales' gains in the base currency."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Concentration:
+    """How concentrated the portfolio's instruments are."""
+
+    largest: list[Slice]
+    """The largest instrument holdings, largest first, with their share of the portfolio."""
+
+    top_five: float
+    """The share of the portfolio in its five largest instruments."""
+
+    top_ten: float
+    """The share of the portfolio in its ten largest instruments."""
+
+    herfindahl: float | None = None
+    """The Herfindahl–Hirschman index of the instruments' shares of the value invested in
+    instruments, from 1/n (equal) to 1 (one instrument).
+    """
+
+    effective_holdings: float | None = None
+    """`1 / herfindahl`: the number of equal holdings that would be as concentrated."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1048,6 +1295,26 @@ class FrontierPoint:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Grid:
+    """A table of numbers with labelled rows and columns, for a heatmap."""
+
+    name: str
+    """What the grid is, such as "Monthly returns"."""
+
+    unit: Unit
+    """What its values measure."""
+
+    rows: list[str]
+    """The row labels."""
+
+    columns: list[str]
+    """The column labels."""
+
+    values: list[list[float | None]]
+    """One row of values per row label, one value per column; `None` where there is none."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class GroupContribution:
     """What a group of holdings (an asset class, a region) added to the portfolio's return."""
 
@@ -1136,6 +1403,61 @@ class GroupShock:
 
     shock: float
     """The return of each instrument in the group, in its own currency: -0.2 for a fall of 20%."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Headline:
+    """The headline figures of the overview."""
+
+    value: float
+    """The portfolio's value in the base currency."""
+
+    period_gain: float | None = None
+    """The gain over the last valuation period: the change in value less the flows."""
+
+    period_return: float | None = None
+    """The time-weighted return over the last valuation period."""
+
+    year_to_date: float | None = None
+    """The time-weighted return year to date."""
+
+    since_inception: float | None = None
+    """The time-weighted return since the first valuation."""
+
+    since_inception_annualised: float | None = None
+    """The annualised return since the first valuation, for a year or more."""
+
+    volatility: float
+    """The annualised volatility."""
+
+    sharpe_ratio: float | None = None
+    """The Sharpe ratio."""
+
+    max_drawdown: float
+    """The maximum drawdown, a negative return."""
+
+    confidence: float | None = None
+    """The confidence of the value at risk and expected shortfall: the first of the options."""
+
+    value_at_risk: Amount | None = None
+    """The historical value at risk over one valuation period."""
+
+    expected_shortfall: Amount | None = None
+    """The historical expected shortfall over one valuation period."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Histogram:
+    """The distribution of a set of observations."""
+
+    name: str
+    """What the observations are."""
+
+    unit: Unit
+    """What they measure."""
+
+    bins: list[Bin]
+    """Bins of equal width from the smallest observation to the largest."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1272,6 +1594,79 @@ class HoldingReturns:
 
 
 @dataclass(frozen=True, kw_only=True)
+class HoldingRiskReturn:
+    """One holding's weight, expected return and risk."""
+
+    holding: HoldingKey
+    """The holding."""
+
+    weight: float
+    """Its share of the portfolio's value."""
+
+    expected_return: float
+    """Its annual expected return: given in the options, or its historical mean."""
+
+    expected_return_given: bool
+    """Whether the expected return was given rather than the historical mean."""
+
+    volatility: float
+    """Its annualised volatility."""
+
+    risk_share: float | None = None
+    """Its share of the portfolio's volatility."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HoldingRow:
+    """One holding, added up across accounts."""
+
+    holding: HoldingKey
+    """The holding."""
+
+    name: str | None = None
+    """The instrument's name, if it has one."""
+
+    kind: InstrumentKind | None = None
+    """The instrument's kind; `None` for cash."""
+
+    currency: str
+    """The holding's currency."""
+
+    quantity: decimal.Decimal
+    """The quantity held, or the cash balance."""
+
+    price: decimal.Decimal | None = None
+    """The price per unit, in the instrument's currency; `None` for cash."""
+
+    value_local: decimal.Decimal
+    """The value in the holding's currency."""
+
+    value_base: decimal.Decimal
+    """The value in the base currency."""
+
+    cost_local: decimal.Decimal | None = None
+    """The cost basis in the instrument's currency; `None` for cash."""
+
+    cost_base: decimal.Decimal | None = None
+    """The cost basis in the base currency; `None` for cash."""
+
+    unrealised_local: decimal.Decimal | None = None
+    """`value_local - cost_local`."""
+
+    unrealised_base: decimal.Decimal | None = None
+    """`value_base - cost_base`, which includes the currency effect."""
+
+    unrealised_return: float | None = None
+    """`unrealised_base / cost_base`, when the cost is above zero."""
+
+    weight: float
+    """The share of the portfolio's value."""
+
+    classifications: dict[str, str]
+    """The instrument's classifications."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class HoldingSeries:
     """Values, value moved in and income per holding over dates, in the holding's currency and in
     the base currency: the input to contribution analysis.
@@ -1288,6 +1683,72 @@ class HoldingSeries:
 
     warnings: ValidationReport
     """Prices and rates carried forward from earlier dates."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HoldingsReport:
+    """The holdings report."""
+
+    provenance: Provenance
+    """Where the numbers come from."""
+
+    value: decimal.Decimal
+    """The portfolio's value in the base currency."""
+
+    holdings: list[HoldingRow]
+    """Each holding, added up across accounts, largest first."""
+
+    accounts: list[AccountHoldings]
+    """Each account's holdings, in the portfolio's order."""
+
+    lots: list[LotRow]
+    """The open tax lots, by account and instrument."""
+
+    breakdowns: list[Breakdown]
+    """The value split by holding, currency, instrument kind, account and each scheme of the
+    options.
+    """
+
+    concentration: Concentration
+    """How concentrated the instruments are."""
+
+    realised: RealisedSummary
+    """Gains realised to date."""
+
+    income: IncomeSummary
+    """Income received to date."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HoldingsRisk:
+    """The current holdings' risk, from the covariance of their returns."""
+
+    start: datetime.date
+    """The first date of the returns: the first valuation date on which every current holding has a
+    price.
+    """
+
+    observations: int
+    """The number of returns."""
+
+    method: CovarianceMethod
+    """How the covariance was estimated."""
+
+    covariance: Matrix
+    """The annualised covariance of the holdings' returns in the base currency, labelled by holding.
+    """
+
+    correlation: Grid
+    """Their correlations, for a heatmap."""
+
+    decomposition: RiskDecomposition
+    """The annualised volatility of the current weights, by holding."""
+
+    groups: list[SchemeRisk]
+    """The decomposition added up by each scheme of the options."""
+
+    tracking_error: RiskDecomposition | None = None
+    """The ex-ante tracking error against the benchmark weights of the options, by holding."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1325,6 +1786,20 @@ class HouseholdOptions:
 
     timing: FlowTiming = "start_of_day"
     """When external flows happen within the day: at the start (the default) or the end."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class IncomeSummary:
+    """Income received up to the report's date, net of tax withheld, in the base currency."""
+
+    total: decimal.Decimal
+    """All income."""
+
+    by_year: list[tuple[int, decimal.Decimal]]
+    """By calendar year."""
+
+    by_holding: list[tuple[HoldingKey, decimal.Decimal]]
+    """By holding: the instrument that paid it, or cash for interest on cash."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1420,6 +1895,44 @@ class LotPick:
 
 
 @dataclass(frozen=True, kw_only=True)
+class LotRow:
+    """One open tax lot, valued."""
+
+    account: str
+    """The account."""
+
+    instrument: str
+    """The instrument."""
+
+    lot: str
+    """The lot."""
+
+    acquired: datetime.date
+    """The acquisition date."""
+
+    quantity: decimal.Decimal
+    """The quantity."""
+
+    cost_base: decimal.Decimal
+    """The cost basis in the base currency."""
+
+    value_base: decimal.Decimal
+    """The value in the base currency."""
+
+    unrealised_base: decimal.Decimal
+    """`value_base - cost_base`."""
+
+    unrealised_return: float | None = None
+    """`unrealised_base / cost_base`, when the cost is above zero."""
+
+    holding_days: int
+    """Calendar days held to the report's date."""
+
+    long_term: bool
+    """Whether it has been held for the long-term period or longer."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class LotSale:
     """The part of a lot that a sale would close."""
 
@@ -1461,6 +1974,37 @@ class Money:
     amount: decimal.Decimal
 
     currency: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class MonthFlows:
+    """External flows and income in one calendar month, in the base currency."""
+
+    month: str
+    """The month, as `YYYY-MM`."""
+
+    inflows: float
+    """Deposits and transfers in, positive."""
+
+    outflows: float
+    """Withdrawals and transfers out, negative."""
+
+    income: float
+    """Income, net of tax withheld."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class NamedScenario:
+    """A scenario with a name, such as "Equities -20%" or "2008"."""
+
+    name: str
+    """The name."""
+
+    scenario: ScenarioDefinition
+    """What it does."""
+
+    stress: CorrelationStress | None = None
+    """A stress of the covariance for the risk after this scenario, as in a crisis."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1588,6 +2132,95 @@ Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetRetur
 
 
 @dataclass(frozen=True, kw_only=True)
+class OverviewReport:
+    """The overview report."""
+
+    provenance: Provenance
+    """Where the numbers come from."""
+
+    headline: Headline
+    """The headline figures."""
+
+    value: Series
+    """The portfolio's value on each valuation date."""
+
+    growth: Series
+    """The growth of 100 at the time-weighted return."""
+
+    benchmark_growth: Series | None = None
+    """The benchmark's growth of 100, with a benchmark."""
+
+    allocation: list[Breakdown]
+    """The value split by holding and by each scheme of the options."""
+
+    risk: HoldingsRisk | None = None
+    """The holdings' risk; `None` (with a warning) when it cannot be estimated."""
+
+    holdings: list[HoldingRiskReturn]
+    """Each holding's weight, expected return and risk."""
+
+    frontier: list[FrontierPoint] | None = None
+    """The efficient frontier of the holdings, long only and fully invested, from the expected
+    returns and the covariance; `None` (with a warning) when it cannot be found.
+    """
+
+    current: PortfolioPoint | None = None
+    """The current portfolio on the same axes as the frontier."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PerformanceReport:
+    """The performance report."""
+
+    provenance: Provenance
+    """Where the numbers come from."""
+
+    value: Series
+    """The portfolio's value on each valuation date."""
+
+    growth: Series
+    """The growth of 100 at the time-weighted return."""
+
+    benchmark_growth: Series | None = None
+    """The benchmark's growth of 100 over the same dates, with a benchmark."""
+
+    returns: Series
+    """The daily time-weighted returns."""
+
+    periods: list[PeriodRow]
+    """Returns over MTD, QTD, YTD, one, three and five years, and since inception."""
+
+    monthly: Grid
+    """Monthly returns: one row per year, one column per month and a last column for the year."""
+
+    benchmark_monthly: Grid | None = None
+    """The benchmark's monthly returns, in the same layout, with a benchmark."""
+
+    calendar_years: list[YearReturn]
+    """Calendar-year returns."""
+
+    contributions: list[Contribution]
+    """Each holding's contribution to the return from the first valuation to the last."""
+
+    groups: list[SchemeContributions]
+    """Contributions by each scheme of the options."""
+
+    top_contributors: list[Contribution]
+    """The holdings that contributed most, largest first."""
+
+    top_detractors: list[Contribution]
+    """The holdings that took away most, most negative first."""
+
+    flows: list[MonthFlows]
+    """External flows and income by month."""
+
+    household: Household | None = None
+    """The household by account and by group of accounts, when the portfolio has more than one
+    account.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class MonthToDate:
     """From the end of the previous month."""
 
@@ -1688,6 +2321,46 @@ class PeriodReturn:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PeriodRow:
+    """Returns over one reporting period."""
+
+    period: Period
+    """The period."""
+
+    label: str
+    """Its short name: "MTD", "QTD", "YTD", "1Y", "3Y", "5Y" or "ITD"."""
+
+    start: datetime.date | None = None
+    """The valuation the period starts from, `None` when the history does not reach back to the
+    period's start (the other figures are then `None` too).
+    """
+
+    end: datetime.date | None = None
+    """The valuation it ends on."""
+
+    cumulative: float | None = None
+    """The cumulative time-weighted return."""
+
+    annualised: float | None = None
+    """The annualised time-weighted return, for periods of a year or more."""
+
+    money_weighted: float | None = None
+    """The money-weighted return (annualised internal rate of return)."""
+
+    modified_dietz: float | None = None
+    """The Modified Dietz return."""
+
+    benchmark: float | None = None
+    """The benchmark's return over the same dates."""
+
+    excess_arithmetic: float | None = None
+    """`cumulative - benchmark`."""
+
+    excess_geometric: float | None = None
+    """`(1 + cumulative) / (1 + benchmark) - 1`."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Portfolio:
     """Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
     instruments and transactions.
@@ -1723,6 +2396,17 @@ class PortfolioDocument:
 
     market: DocumentMarketData | None = None
     """Market data stored with the portfolio."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PortfolioPoint:
+    """A portfolio's expected return and volatility, for a point on a risk–return chart."""
+
+    expected_return: float
+    """The annual expected return."""
+
+    volatility: float
+    """The annualised volatility."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1912,6 +2596,39 @@ class ProposedTrade:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Provenance:
+    """Where a report's numbers come from, so that a saved report can be checked to reproduce."""
+
+    report: ReportKind
+    """Which report this is."""
+
+    engine: str
+    """The engine: "finalytics"."""
+
+    version: str
+    """The engine's version."""
+
+    as_of: datetime.date
+    """The date of the report."""
+
+    start: datetime.date
+    """The first valuation date."""
+
+    base_currency: str
+    """The currency of every amount."""
+
+    source: Source
+    """The inputs."""
+
+    options: ReportOptions
+    """The options the report was computed with."""
+
+    warnings: ValidationReport
+    """Prices and rates carried forward from earlier dates, and figures that could not be computed.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class RealisedGain:
     """A gain or loss realised by a sale, a return of capital or a cash merger, for one lot."""
 
@@ -1953,6 +2670,26 @@ class RealisedGain:
 
     gain_base: decimal.Decimal
     """`proceeds_base - cost_base`, which includes the currency effect."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class RealisedSummary:
+    """Gains realised up to the report's date, in the base currency."""
+
+    total: decimal.Decimal
+    """Every realised gain."""
+
+    short_term: decimal.Decimal
+    """Gains on lots held for less than the long-term period."""
+
+    long_term: decimal.Decimal
+    """Gains on lots held for the long-term period or longer."""
+
+    by_year: list[tuple[int, decimal.Decimal]]
+    """By calendar year of disposal."""
+
+    by_instrument: list[tuple[str, decimal.Decimal]]
+    """By instrument."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2046,6 +2783,92 @@ class RelativeStatistics:
 
     correlation: float | None = None
     """The correlation of the returns with the benchmark's."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReportOptions:
+    """The options every report takes. Each report uses the ones that concern it; the others are
+    ignored, so one set of options can serve every screen.
+    """
+
+    as_of: datetime.date | None = None
+    """The date of the report: the last price date by default."""
+
+    start: datetime.date | None = None
+    """The first valuation date: the first transaction's date by default."""
+
+    group_by: list[str] = field(default_factory=list)
+    """Classification schemes of the instruments to break holdings, contribution and risk down by,
+    such as `asset_class` or `region`.
+    """
+
+    benchmark: str | None = None
+    """An instrument whose prices in the market data are the benchmark's levels, such as an index.
+    It need not be held.
+    """
+
+    risk_free_rate: float = 0.0
+    """The annual risk-free rate, for Sharpe ratios. The default is 0."""
+
+    periods_per_year: float = 252.0
+    """Valuation periods in a year, for annualising: 252 (trading days) by default."""
+
+    timing: FlowTiming = "start_of_day"
+    """When external flows happen within the day: at the start (the default) or the end."""
+
+    covariance: CovarianceMethod = field(default_factory=lambda: {'method': 'ledoit_wolf'})
+    """How the covariance of the holdings' returns is estimated: Ledoit–Wolf by default."""
+
+    confidences: list[float] = field(default_factory=lambda: [0.95, 0.99])
+    """The confidences of value at risk and expected shortfall: 0.95 and 0.99 by default."""
+
+    rolling_window: int = 63
+    """The window of rolling statistics, in valuation periods: 63 by default."""
+
+    histogram_bins: int = 30
+    """The number of bins of return histograms: 30 by default."""
+
+    top: int = 10
+    """How many holdings lists of the largest, the top contributors and the like show: 10 by
+    default.
+    """
+
+    long_term_after_days: int = 365
+    """The holding period, in days, from which a lot or a gain is long-term: 365 by default."""
+
+    expected_returns: list[tuple[str, float]] = field(default_factory=list)
+    """Annual expected returns by instrument for the efficient frontier; instruments not listed, and
+    every instrument when none is, take their historical mean return.
+    """
+
+    frontier_points: int = 25
+    """The number of portfolios on the efficient frontier: 25 by default."""
+
+    benchmark_weights: list[tuple[HoldingKey, float]] = field(default_factory=list)
+    """Benchmark weights by holding, for the ex-ante tracking error."""
+
+    attribution: AttributionInputs | None = None
+    """The benchmark's segments, for the attribution report."""
+
+    scenarios: list[NamedScenario] = field(default_factory=list)
+    """The scenarios of the scenarios report."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReportTable:
+    """A table of a report: named, with typed columns and one row of cells per record."""
+
+    name: str
+    """A stable name, such as `holdings`, usable as a file or sheet name."""
+
+    title: str
+    """A title for people, such as "Holdings"."""
+
+    columns: list[Column]
+    """The columns."""
+
+    rows: list[list[Cell]]
+    """The rows, one cell per column."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2187,6 +3010,71 @@ class RiskDecomposition:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RiskReport:
+    """The risk report."""
+
+    provenance: Provenance
+    """Where the numbers come from."""
+
+    value: float
+    """The portfolio's value on the report's date."""
+
+    returns: Series
+    """The portfolio's time-weighted returns, one per valuation period."""
+
+    statistics: Statistics
+    """Statistics of the returns, annualised."""
+
+    relative: RelativeStatistics | None = None
+    """Statistics against the benchmark, with a benchmark."""
+
+    drawdown: Series
+    """The fall from the running peak on each valuation date."""
+
+    drawdowns: list[Drawdown]
+    """The largest drawdowns, deepest first."""
+
+    tail: list[TailRow]
+    """Value at risk and expected shortfall by every method at every confidence of the options."""
+
+    histogram: Histogram
+    """The distribution of the returns, with the normal distribution's for comparison."""
+
+    holdings: HoldingsRisk | None = None
+    """The current holdings' risk; `None` (with a warning) when it cannot be estimated."""
+
+    rolling: list[Series]
+    """Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking error.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShockScenario:
+    """Shocks to instruments, groups, currencies or factors."""
+
+    TYPE: ClassVar[str] = "shocks"
+    """The value of the `type` tag that identifies this variant."""
+
+    shocks: Shocks
+    """The shocks."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HistoricalScenario:
+    """A historical period."""
+
+    TYPE: ClassVar[str] = "historical"
+    """The value of the `type` tag that identifies this variant."""
+
+    window: HistoricalWindow
+    """The period, with any proxies."""
+
+
+ScenarioDefinition = Union[ShockScenario, HistoricalScenario]
+"""What a scenario does: shocks, or a historical period replayed."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class ScenarioOptions:
     """What to report beyond the effect on each holding."""
 
@@ -2197,6 +3085,20 @@ class ScenarioOptions:
 
     risk: ScenarioRiskModel | None = None
     """The risk model for the risk before and after; without one, no risk is reported."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScenarioOutcome:
+    """One scenario's result, or why it could not be run."""
+
+    name: str
+    """The scenario's name."""
+
+    result: ScenarioResult | None = None
+    """The result; `None` when the scenario could not be run."""
+
+    problems: list[Issue]
+    """The problems that stopped it, with paths into the scenario."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2307,6 +3209,69 @@ class ScenarioRiskModel:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ScenarioSummary:
+    """One scenario in a line, for a summary table or a bar chart."""
+
+    name: str
+    """The scenario's name."""
+
+    change: float
+    """The change in value, in the base currency."""
+
+    portfolio_return: float
+    """The portfolio's return."""
+
+    volatility_after: float | None = None
+    """The annualised volatility after."""
+
+    value_at_risk_after: float | None = None
+    """The value at risk after, at the first confidence of the options."""
+
+    worst: HoldingKey | None = None
+    """The holding that lost most."""
+
+    worst_change: float | None = None
+    """Its change in value."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScenariosReport:
+    """The scenarios report."""
+
+    provenance: Provenance
+    """Where the numbers come from."""
+
+    value: float
+    """The portfolio's value before every scenario."""
+
+    risk_start: datetime.date | None = None
+    """The first date of the returns behind the risk model, when there is one."""
+
+    scenarios: list[ScenarioOutcome]
+    """Each scenario, in the order given."""
+
+    summary: list[ScenarioSummary]
+    """The scenarios that ran, in a line each."""
+
+    changes: Grid
+    """The change in each holding's value (rows) in each scenario that ran (columns)."""
+
+    returns: Grid
+    """Each holding's return in the base currency in each scenario that ran."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SchemeContributions:
+    """Contributions added up by the groups of one classification scheme."""
+
+    scheme: str
+    """The classification scheme."""
+
+    groups: list[GroupContribution]
+    """Each group, in name order."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class SchemeImpact:
     """The effect of a scenario by the groups of one classification scheme."""
 
@@ -2381,6 +3346,23 @@ class SegmentEffects:
 
     total: float
     """The sum of the three."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Series:
+    """A labelled series of numbers over time, for a line or bar chart."""
+
+    name: str
+    """What the series is, such as "Portfolio" or "Rolling volatility (63 days)"."""
+
+    unit: Unit
+    """What its values measure."""
+
+    dates: list[datetime.date]
+    """The dates."""
+
+    values: list[float]
+    """One value per date."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2476,6 +3458,20 @@ class Shocks:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Slice:
+    """One part of a whole, for a pie, bar or treemap chart."""
+
+    name: str
+    """The part's name: a holding, a currency, a group."""
+
+    value: float
+    """Its value in the base currency."""
+
+    weight: float
+    """Its share of the whole."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Solution:
     """The result of an optimisation, with what is needed to judge it: the status, the objective,
     how closely the constraints hold, and the work done.
@@ -2520,6 +3516,27 @@ class Solution:
 
     solve_time: float
     """The time taken, in seconds."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Source:
+    """What a report was computed from: a digest of the portfolio document and market data, and
+    their size. Computing it once and passing it to each report avoids hashing the inputs again.
+    """
+
+    digest: str
+    """The SHA-256 digest, in hexadecimal, of the portfolio document with its market data, as the
+    engine writes it. The same inputs give the same digest in every language.
+    """
+
+    transactions: int
+    """The number of transactions."""
+
+    accounts: int
+    """The number of accounts."""
+
+    instruments: int
+    """The number of instruments."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2618,6 +3635,23 @@ class TailRisk:
     expected_shortfall: float
     """The expected loss when the value at risk is exceeded (also called conditional value at risk).
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class TailRow:
+    """Value at risk and expected shortfall by one method at one confidence."""
+
+    confidence: float
+    """The confidence."""
+
+    method: TailMethod
+    """The method."""
+
+    value_at_risk: Amount
+    """The value at risk over one valuation period, a loss."""
+
+    expected_shortfall: Amount
+    """The expected shortfall over one valuation period, a loss."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3010,6 +4044,53 @@ class Turnover:
 
 
 @dataclass(frozen=True, kw_only=True)
+class MoneyUnit:
+    """An amount of money in a currency."""
+
+    UNIT: ClassVar[str] = "money"
+    """The value of the `unit` tag that identifies this variant."""
+
+    currency: str
+    """The currency."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FractionUnit:
+    """A return, weight or share as a fraction: 0.05 is 5%."""
+
+    UNIT: ClassVar[str] = "fraction"
+    """The value of the `unit` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class RatioUnit:
+    """A ratio, such as a Sharpe ratio or a beta."""
+
+    UNIT: ClassVar[str] = "ratio"
+    """The value of the `unit` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class LevelUnit:
+    """The level of an index, such as the growth of 100."""
+
+    UNIT: ClassVar[str] = "level"
+    """The value of the `unit` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CountUnit:
+    """A count."""
+
+    UNIT: ClassVar[str] = "count"
+    """The value of the `unit` tag that identifies this variant."""
+
+
+Unit = Union[MoneyUnit, FractionUnit, RatioUnit, LevelUnit, CountUnit]
+"""What the numbers of a series, grid or column measure."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class ValidationReport:
     """Every problem found while validating an input, rather than only the first.
 
@@ -3117,9 +4198,38 @@ ViewUncertainty = Union[Proportional, Confidence, Variance]
 """How uncertain a view is: its variance in the model."""
 
 
+@dataclass(frozen=True, kw_only=True)
+class YearReturn:
+    """The return of one calendar year (or the part of it covered)."""
+
+    year: int
+    """The year."""
+
+    start: datetime.date
+    """The valuation the year's return starts from: the last one of the year before, or the first
+    valuation.
+    """
+
+    end: datetime.date
+    """The last valuation of the year."""
+
+    complete: bool
+    """Whether the valuations cover the whole year."""
+
+    portfolio: float
+    """The portfolio's time-weighted return."""
+
+    benchmark: float | None = None
+    """The benchmark's return."""
+
+    excess: float | None = None
+    """`portfolio - benchmark`."""
+
+
 # The tag property and the class of each variant, by union.
 UNIONS = {
     "Allocation": ("allocation", {"exchange": ExchangeAllocation, "income": IncomeAllocation, "trade": TradeAllocation}),
+    "ColumnKind": ("kind", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
     "CovarianceMethod": ("method", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
     "Effect": ("effect", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
     "HoldingKey": ("holding", {"cash": CashHolding, "instrument": InstrumentHolding}),
@@ -3127,8 +4237,10 @@ UNIONS = {
     "Period": ("period", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
     "Prior": ("prior", {"market": MarketPrior, "returns": ReturnsPrior}),
     "ReturnUncertainty": ("set", {"box": Box, "ellipsoid": Ellipsoid}),
+    "ScenarioDefinition": ("type", {"historical": HistoricalScenario, "shocks": ShockScenario}),
     "ShockSource": ("source", {"cash": CashSource, "factor": FactorSource, "group": GroupSource, "history": HistorySource, "instrument": InstrumentSource, "none": NoSource, "proxy": ProxySource}),
     "TransactionKind": ("type", {"buy": Buy, "deposit": Deposit, "dividend": Dividend, "fee": Fee, "fx_conversion": FxConversion, "interest": Interest, "merger": Merger, "return_of_capital": ReturnOfCapital, "sell": Sell, "spin_off": SpinOff, "split": Split, "symbol_change": SymbolChange, "tax": Tax, "transfer_in": TransferIn, "transfer_out": TransferOut, "withdrawal": Withdrawal}),
+    "Unit": ("unit", {"count": CountUnit, "fraction": FractionUnit, "level": LevelUnit, "money": MoneyUnit, "ratio": RatioUnit}),
     "ViewUncertainty": ("method", {"confidence": Confidence, "proportional": Proportional, "variance": Variance}),
 }
 
@@ -3139,30 +4251,44 @@ FLATTENED = {"Transaction": ("kind", "TransactionKind")}
 
 __all__ = [
     "Account",
+    "AccountHoldings",
     "AccountId",
     "AccountLine",
     "AccountSeries",
     "AccountsPerformance",
     "Allocation",
+    "Amount",
     "AssetBound",
     "AssetFit",
     "Attribution",
+    "AttributionInputs",
     "AttributionPeriod",
+    "AttributionReport",
+    "BenchmarkPeriod",
+    "BenchmarkSegment",
+    "Bin",
     "BlackLitterman",
     "BlackLittermanEstimate",
+    "BooleanColumn",
     "Bound",
     "Box",
+    "Breakdown",
     "Buy",
     "CashBalance",
     "CashChange",
     "CashHolding",
     "CashSource",
     "CashValue",
+    "Cell",
+    "Column",
+    "ColumnKind",
     "CombinedRebalance",
+    "Concentration",
     "Confidence",
     "Constraints",
     "Contribution",
     "CorrelationStress",
+    "CountUnit",
     "CovarianceEstimate",
     "CovarianceMethod",
     "Currency",
@@ -3172,6 +4298,7 @@ __all__ = [
     "CurrencyPeriodAttribution",
     "CurrencyReturn",
     "CurrencySegment",
+    "DateColumn",
     "Deposit",
     "Dividend",
     "DocumentFxRates",
@@ -3196,33 +4323,46 @@ __all__ = [
     "Flow",
     "FlowKind",
     "FlowTiming",
+    "FractionColumn",
+    "FractionUnit",
     "FrontierPoint",
     "FxConversion",
+    "Grid",
     "GroupContribution",
     "GroupImpact",
     "GroupLimit",
     "GroupRisk",
     "GroupShock",
     "GroupSource",
+    "Headline",
     "HierarchicalRiskParity",
+    "Histogram",
+    "HistoricalScenario",
     "HistoricalWindow",
     "HistorySource",
     "HoldingImpact",
     "HoldingKey",
     "HoldingLine",
     "HoldingReturns",
+    "HoldingRiskReturn",
+    "HoldingRow",
     "HoldingSeries",
+    "HoldingsReport",
+    "HoldingsRisk",
     "Household",
     "HouseholdOptions",
     "IncomeAllocation",
+    "IncomeSummary",
     "Instrument",
     "InstrumentHolding",
     "InstrumentId",
     "InstrumentKind",
     "InstrumentSource",
+    "IntegerColumn",
     "Interest",
     "Issue",
     "LedoitWolf",
+    "LevelUnit",
     "Linkage",
     "Linking",
     "Lot",
@@ -3230,6 +4370,7 @@ __all__ = [
     "LotId",
     "LotMethod",
     "LotPick",
+    "LotRow",
     "LotSale",
     "LotSet",
     "MarketPrior",
@@ -3242,15 +4383,24 @@ __all__ = [
     "MinimumCvar",
     "MinimumVariance",
     "Money",
+    "MoneyColumn",
+    "MoneyUnit",
+    "MonthFlows",
     "MonthToDate",
+    "NamedScenario",
     "NoSource",
+    "NumberColumn",
     "Oas",
     "Objective",
+    "OverviewReport",
+    "PerformanceReport",
     "Period",
     "PeriodAttribution",
     "PeriodReturn",
+    "PeriodRow",
     "Portfolio",
     "PortfolioDocument",
+    "PortfolioPoint",
     "Position",
     "PositionValue",
     "Prior",
@@ -3258,12 +4408,18 @@ __all__ = [
     "Proportional",
     "ProposedConversion",
     "ProposedTrade",
+    "Provenance",
     "ProxySource",
     "QuarterToDate",
+    "RatioUnit",
     "RealisedGain",
+    "RealisedSummary",
     "Rebalance",
     "RebalanceOptions",
     "RelativeStatistics",
+    "ReportKind",
+    "ReportOptions",
+    "ReportTable",
     "ResampledSolution",
     "Resampling",
     "ReturnOfCapital",
@@ -3273,27 +4429,37 @@ __all__ = [
     "RiskBudgeting",
     "RiskContribution",
     "RiskDecomposition",
+    "RiskReport",
     "RobustMeanVariance",
     "Sample",
+    "ScenarioDefinition",
     "ScenarioOptions",
+    "ScenarioOutcome",
     "ScenarioPath",
     "ScenarioResult",
     "ScenarioRisk",
     "ScenarioRiskModel",
+    "ScenarioSummary",
+    "ScenariosReport",
+    "SchemeContributions",
     "SchemeImpact",
     "SchemePerformance",
     "SchemeRisk",
     "Segment",
     "SegmentEffects",
     "Sell",
+    "Series",
     "Severity",
+    "ShockScenario",
     "ShockSource",
     "Shocks",
     "Side",
     "Since",
     "SinceInception",
+    "Slice",
     "Solution",
     "SolveStatus",
+    "Source",
     "SpinOff",
     "Split",
     "Statistics",
@@ -3301,10 +4467,12 @@ __all__ = [
     "SymbolChange",
     "TailMethod",
     "TailRisk",
+    "TailRow",
     "TargetReturn",
     "TargetVolatility",
     "Tax",
     "TaxRates",
+    "TextColumn",
     "TimeSeries",
     "TrackingErrorLimit",
     "TradeAllocation",
@@ -3315,6 +4483,7 @@ __all__ = [
     "TransferIn",
     "TransferOut",
     "Turnover",
+    "Unit",
     "ValidationReport",
     "Valuation",
     "ValueSeries",
@@ -3322,6 +4491,7 @@ __all__ = [
     "View",
     "ViewUncertainty",
     "Withdrawal",
+    "YearReturn",
     "YearToDate",
     "Years",
 ]

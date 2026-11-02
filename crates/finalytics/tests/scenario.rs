@@ -131,6 +131,7 @@ fn results() -> Value {
         "hierarchical_risk_parity": hrp.weights,
         "rebalance_trades": trades,
         "rebalance_realised_gain_base": plan.realised_gain_base,
+        "source_digest": finalytics::reports::Source::of(&portfolio, &market).digest,
     })
 }
 

@@ -55,6 +55,8 @@ def from_json(tp: Any, value: Any) -> Any:
         options = [a for a in typing.get_args(tp) if a is not type(None)]
         if len(options) == 1:
             return from_json(options[0], value)
+        if all(o in (float, int, bool, str) for o in options):
+            return value
         variants = [a for a in options if a in _TAGS]
         if variants and isinstance(value, dict):
             for cls in variants:

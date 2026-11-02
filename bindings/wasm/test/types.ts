@@ -9,6 +9,7 @@ import init, {
   karnoskySinger,
   MarketData,
   portfolioFromCsv,
+  reportTables,
   resampled,
   solve,
   statisticalModel,
@@ -22,6 +23,7 @@ import init, {
   type FactorModelEstimate,
   type Matrix,
   type Objective,
+  type PerformanceReport,
   type Problem,
   type ScenarioResult,
   type ReturnsTable,
@@ -146,3 +148,12 @@ const twr: number | null | undefined = household.groups[0].groups[0].time_weight
 void contribution;
 void twr;
 void books.accountSeries().lines[0].flows;
+
+// Reports.
+const report: PerformanceReport = books.performanceReport({ benchmark: "SPX", group_by: ["asset_class"] });
+const september: number | null | undefined = report.monthly.values[0][8];
+const exported = reportTables(report);
+const firstCell: number | boolean | string | null = exported[0].rows[0][0];
+void september;
+void firstCell;
+void books.source().digest;

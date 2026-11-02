@@ -66,6 +66,12 @@ pub mod risk {
     };
 }
 
+/// Report data for each workstation screen: holdings, overview, performance, risk, attribution
+/// and scenarios, with chart-ready series, provenance and tables for export.
+pub mod reports {
+    pub use finalytics_reports::*;
+}
+
 /// Portfolio optimisation: minimum variance, mean–variance and robust mean–variance, target
 /// return and volatility, maximum Sharpe ratio and diversification, minimum CVaR, risk budgeting
 /// and hierarchical risk parity, with a covariance matrix or a factor model, under budget, bound,

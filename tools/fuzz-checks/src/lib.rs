@@ -145,6 +145,7 @@ fn books(portfolio: &Portfolio, market: &MarketData) {
         portfolio_scenarios(portfolio, &books, market, last);
     }
     household_holds(portfolio, &books, market, &dates);
+    reports_hold(portfolio, &books, market);
     if let (Ok(values), Ok(holdings)) = (
         books.value_series(&dates, market),
         books.holding_series(&dates, market),
@@ -288,6 +289,70 @@ fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, da
     let back: finalytics::Household =
         serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(back, h, "a household that does not read back equal");
+}
+
+/// Computes the holdings, performance, risk and overview reports, broken down by every
+/// classification scheme and measured against the first instrument with prices, and checks that
+/// each writes JSON that reads back as the same report and turns into rectangular tables.
+fn reports_hold(portfolio: &Portfolio, books: &Books, market: &MarketData) {
+    use finalytics::reports::{
+        ReportOptions, ReportTable, Source, holdings_report, overview_report, performance_report,
+        report_tables, risk_report,
+    };
+    let source = Source::of(portfolio, market);
+    let options = ReportOptions {
+        group_by: portfolio
+            .instruments
+            .iter()
+            .flat_map(|i| i.classifications.keys().cloned())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect(),
+        benchmark: portfolio
+            .instruments
+            .iter()
+            .map(|i| i.id.clone())
+            .find(|id| market.prices(id).is_some_and(|p| !p.is_empty())),
+        rolling_window: 5,
+        histogram_bins: 10,
+        frontier_points: 2,
+        ..Default::default()
+    };
+    fn holds<T>(name: &str, report: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let text = serde_json::to_string(report)
+            .unwrap_or_else(|e| panic!("a {name} report that does not write: {e}"));
+        let back: T = serde_json::from_str(&text)
+            .unwrap_or_else(|e| panic!("a {name} report that does not read back: {e}\n{text}"));
+        let again = serde_json::to_string(&back).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(again, text, "a {name} report that reads back differently");
+        let tables: Vec<ReportTable> = report_tables(&text)
+            .unwrap_or_else(|e| panic!("a {name} report without tables: {e}\n{text}"));
+        for table in &tables {
+            assert!(
+                table
+                    .rows
+                    .iter()
+                    .all(|row| row.len() == table.columns.len()),
+                "the {name} report's {} table is not rectangular",
+                table.name
+            );
+        }
+    }
+    if let Ok(report) = holdings_report(books, market, &source, &options) {
+        holds("holdings", &report);
+    }
+    if let Ok(report) = performance_report(books, market, &source, &options) {
+        holds("performance", &report);
+    }
+    if let Ok(report) = risk_report(books, market, &source, &options) {
+        holds("risk", &report);
+    }
+    if let Ok(report) = overview_report(books, market, &source, &options) {
+        holds("overview", &report);
+    }
 }
 
 /// Shocks every instrument, every classification and every foreign currency of the portfolio,

@@ -1,6 +1,6 @@
 [package]
 name = "finalytics"
-description = "Portfolio analytics: accounting, performance, risk and optimisation, for Rust, Python and WebAssembly."
+description = "Portfolio analytics: accounting, performance, risk, optimisation and reports, for Rust, Python and WebAssembly."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,6 +21,7 @@ schema = [
     "finalytics-perf/schema",
     "finalytics-risk/schema",
     "finalytics-opt/schema",
+    "finalytics-reports/schema",
 ]
 
 [dependencies]
@@ -30,6 +31,7 @@ finalytics-formats = { workspace = true }
 finalytics-perf = { workspace = true }
 finalytics-risk = { workspace = true }
 finalytics-opt = { workspace = true }
+finalytics-reports = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

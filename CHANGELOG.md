@@ -106,12 +106,23 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   consolidated, with time- and money-weighted returns and each account's contribution to the
   consolidated return, adding up exactly. Validated against an independent implementation in
   pandas and SciPy.
+- Reports: the data for each screen of a portfolio workstation, computed in one call from the
+  books: holdings (positions by holding and account, tax lots, allocation by every dimension,
+  concentration, realised gains and income), an overview (headline figures, allocation, risk
+  and return by holding, the efficient frontier with the current portfolio), performance
+  (standard periods against a benchmark, monthly and calendar-year returns, contribution by
+  holding and group, flows by month, the household by account), risk (statistics, drawdowns,
+  tail risk, the return distribution, correlation, risk decomposition, rolling statistics),
+  attribution measured from the books, and scenarios side by side. Every report carries its
+  provenance, with a SHA-256 digest of its inputs that is the same in every language; its series,
+  breakdowns, grids and histograms are ready for charts; and it turns into typed tables for
+  export. Validated against an independent implementation in pandas and NumPy.
 - A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
   with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,
   `Performance`, `MarketData` and functions for risk and optimisation), `Float64Array`s for
   series, TypeScript declarations for every data type, and a worker with a promise-based client
-  for running the engine off the main thread. The engine is about 0.8 MB gzipped.
+  for running the engine off the main thread. The engine is about 1.0 MB gzipped.
 - Methods and validation pages (`docs/methods/`) for every model: definitions, conventions,
   references, how each is checked against independent implementations, and examples that run as
   tests.

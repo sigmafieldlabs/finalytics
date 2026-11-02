@@ -48,6 +48,23 @@ VARIANT_NAMES = {
     "Effect": {"set_lot": "LotSet", "close_lot": "LotClosed", "cash": "CashChange"},
     "Allocation": {"trade": "TradeAllocation", "income": "IncomeAllocation", "exchange": "ExchangeAllocation"},
     "Prior": {"market": "MarketPrior", "returns": "ReturnsPrior"},
+    "ColumnKind": {
+        "text": "TextColumn",
+        "date": "DateColumn",
+        "number": "NumberColumn",
+        "integer": "IntegerColumn",
+        "fraction": "FractionColumn",
+        "money": "MoneyColumn",
+        "boolean": "BooleanColumn",
+    },
+    "Unit": {
+        "money": "MoneyUnit",
+        "fraction": "FractionUnit",
+        "ratio": "RatioUnit",
+        "level": "LevelUnit",
+        "count": "CountUnit",
+    },
+    "ScenarioDefinition": {"shocks": "ShockScenario", "historical": "HistoricalScenario"},
     "ShockSource": {
         "instrument": "InstrumentSource",
         "group": "GroupSource",
@@ -148,10 +165,14 @@ def ts_inner(schema: dict) -> str:
         return "string"
     if t == "boolean":
         return "boolean"
+    if t == "null":
+        return "null"
     if "oneOf" in schema:
         return " | ".join(ts_object(v) for v in schema["oneOf"])
     if "properties" in schema:
         return ts_object(schema)
+    if "anyOf" in schema:
+        return " | ".join(ts_type(o) for o in schema["anyOf"])
     return "unknown"
 
 
@@ -219,6 +240,7 @@ class Python:
         self.classes: dict[str, str] = {}
         self.blocks: list[str] = []
         self.flattened: dict[str, tuple[str, str]] = {}
+        self.plain_unions: list[str] = []
 
     def annotation(self, schema: dict) -> str:
         inner, null = nullable(schema)
@@ -338,6 +360,13 @@ class Python:
                 self.union(name, schema["oneOf"], schema.get("description", ""))
             elif "properties" in schema:
                 self.dataclass(name, schema)
+            elif "anyOf" in schema:
+                # An untagged union of plain values, such as a table cell.
+                members = [self.inner(o) if o.get("type") != "null" else "None" for o in schema["anyOf"]]
+                self.blocks.append(
+                    f"{name} = Union[{', '.join(members)}]\n" + docstring(doc(schema.get("description")), 0)
+                )
+                self.plain_unions.append(name)
         aliases = [
             f"{name} = {SCALARS[name][0]}\n" + docstring(SCALARS[name][2], 0)
             for name in SCALARS
@@ -351,7 +380,7 @@ class Python:
             for k, (tag, v) in unions.items()
         )
         table_flat = ", ".join(f"{json.dumps(k)}: ({json.dumps(f)}, {json.dumps(u)})" for k, (f, u) in self.flattened.items())
-        names = sorted([*self.classes, *self.unions, *[n for n in self.defs if is_string_enum(self.defs[n]) and n not in SCALARS], *[n for n in SCALARS if SCALARS[n][0] == "str"]])
+        names = sorted([*self.classes, *self.unions, *self.plain_unions, *[n for n in self.defs if is_string_enum(self.defs[n]) and n not in SCALARS], *[n for n in SCALARS if SCALARS[n][0] == "str"]])
         header = f'"""Data types exchanged with the Finalytics engine.\n\n{HEADER}\n"""'
         parts = [
             header,

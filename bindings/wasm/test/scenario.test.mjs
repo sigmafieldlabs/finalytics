@@ -57,6 +57,7 @@ function results(portfolio, market) {
     hierarchical_risk_parity: fl.solve(problem, { objective: "hierarchical_risk_parity" }).weights,
     rebalance_trades: plan.trades.map((t) => [t.instrument, t.side, t.quantity]),
     rebalance_realised_gain_base: plan.realised_gain_base,
+    source_digest: books.source().digest,
   };
 }
 

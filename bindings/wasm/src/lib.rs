@@ -355,6 +355,9 @@ pub struct Books {
     books: finalytics::Books,
     market: EngineMarket,
     first_trade: Option<Date>,
+    portfolio: Portfolio,
+    /// The digest of the inputs, computed for the first report that needs it.
+    source: std::cell::OnceCell<finalytics::reports::Source>,
 }
 
 #[wasm_bindgen]
@@ -373,7 +376,115 @@ impl Books {
             books,
             first_trade: portfolio.transactions.iter().map(|t| t.trade_date).min(),
             market,
+            portfolio,
+            source: std::cell::OnceCell::new(),
         })
+    }
+
+    /// The digest and size of the inputs the reports are computed from.
+    #[wasm_bindgen(unchecked_return_type = "Source")]
+    pub fn source(&self) -> Result<JsValue, JsValue> {
+        to_js(self.report_source())
+    }
+
+    /// Positions, lots and cash by holding and by account; allocation by every dimension;
+    /// concentration; realised gains and income.
+    #[wasm_bindgen(js_name = holdingsReport, unchecked_return_type = "HoldingsReport")]
+    pub fn holdings_report(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        let r = finalytics::reports::holdings_report(
+            &self.books,
+            &self.market,
+            self.report_source(),
+            &options,
+        );
+        to_js(&r.map_err(error)?)
+    }
+
+    /// Headline figures, growth, allocation, risk by holding and by group, each holding's
+    /// expected return and risk, and the efficient frontier.
+    #[wasm_bindgen(js_name = overviewReport, unchecked_return_type = "OverviewReport")]
+    pub fn overview_report(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        let r = finalytics::reports::overview_report(
+            &self.books,
+            &self.market,
+            self.report_source(),
+            &options,
+        );
+        to_js(&r.map_err(error)?)
+    }
+
+    /// Value and growth, returns over the standard periods, monthly and calendar-year returns,
+    /// contribution, flows and income, and the household.
+    #[wasm_bindgen(js_name = performanceReport, unchecked_return_type = "PerformanceReport")]
+    pub fn performance_report(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        let r = finalytics::reports::performance_report(
+            &self.books,
+            &self.market,
+            self.report_source(),
+            &options,
+        );
+        to_js(&r.map_err(error)?)
+    }
+
+    /// Statistics, drawdowns, tail risk, the return distribution, the holdings' covariance,
+    /// correlation and risk decomposition, and rolling statistics.
+    #[wasm_bindgen(js_name = riskReport, unchecked_return_type = "RiskReport")]
+    pub fn risk_report(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        let r = finalytics::reports::risk_report(
+            &self.books,
+            &self.market,
+            self.report_source(),
+            &options,
+        );
+        to_js(&r.map_err(error)?)
+    }
+
+    /// Brinson–Fachler attribution against the benchmark segments in the options.
+    #[wasm_bindgen(js_name = attributionReport, unchecked_return_type = "AttributionReport")]
+    pub fn attribution_report(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        let r = finalytics::reports::attribution_report(
+            &self.books,
+            &self.market,
+            self.report_source(),
+            &options,
+        );
+        to_js(&r.map_err(error)?)
+    }
+
+    /// The scenarios in the options, run together on the current holdings, side by side.
+    #[wasm_bindgen(js_name = scenariosReport, unchecked_return_type = "ScenariosReport")]
+    pub fn scenarios_report(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        let r = finalytics::reports::scenarios_report(
+            &self.books,
+            &self.market,
+            self.report_source(),
+            &options,
+        );
+        to_js(&r.map_err(error)?)
     }
 
     /// The currency results are reported in.
@@ -644,6 +755,11 @@ impl Books {
 }
 
 impl Books {
+    fn report_source(&self) -> &finalytics::reports::Source {
+        self.source
+            .get_or_init(|| finalytics::reports::Source::of(&self.portfolio, &self.market))
+    }
+
     /// The date and options of `Books.rebalance` and `Books.rebalanceAccounts`.
     fn rebalance_choices(&self, choices: JsValue) -> Result<(Date, RebalanceOptions), JsValue> {
         self.dated_choices(choices)
@@ -1148,6 +1264,22 @@ pub fn factor_model(
 ) -> Result<JsValue, JsValue> {
     let model: FactorModel = from_js(model, "model")?;
     to_js(&model)
+}
+
+fn report_options(value: JsValue) -> Result<finalytics::reports::ReportOptions, JsValue> {
+    optional(value, "options")
+}
+
+/// Any report, as returned by the engine, as labelled tables for export.
+#[wasm_bindgen(js_name = reportTables, unchecked_return_type = "ReportTable[]")]
+pub fn report_tables(
+    #[wasm_bindgen(unchecked_param_type = "object")] report: JsValue,
+) -> Result<JsValue, JsValue> {
+    let text = js_sys::JSON::stringify(&report)
+        .map_err(|_| invalid("report", "could not be written as JSON"))?
+        .as_string()
+        .unwrap_or_default();
+    to_js(&finalytics::reports::report_tables(&text).map_err(error)?)
 }
 
 /// `covariance` with every volatility scaled and every correlation moved toward one by

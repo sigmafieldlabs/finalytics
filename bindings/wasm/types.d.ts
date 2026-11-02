@@ -15,6 +15,24 @@ export interface Account {
   classifications?: Record<string, string>;
 }
 
+/** One account's holdings. */
+export interface AccountHoldings {
+  /** The account. */
+  account: AccountId;
+  /** The account's name, if it has one. */
+  name?: string | null;
+  /** The account's classifications. */
+  classifications: Record<string, string>;
+  /** The account's value in the base currency. */
+  value_base: Decimal;
+  /** The share of the portfolio's value. */
+  weight: number;
+  /** Its positions. */
+  positions: PositionValue[];
+  /** Its cash balances. */
+  cash: CashValue[];
+}
+
 /**
  * Identifies an account within a portfolio.
  *
@@ -120,6 +138,14 @@ export type Allocation =
     quantity: Decimal;
   };
 
+/** A figure as a fraction and as an amount of money, such as a value at risk. */
+export interface Amount {
+  /** As a fraction of the portfolio's value. */
+  fraction: number;
+  /** As an amount in the base currency. */
+  value: number;
+}
+
 /** Limits on one asset's weight, in place of the default bounds. */
 export interface AssetBound {
   /** The asset's label. */
@@ -171,6 +197,19 @@ export interface Attribution {
   periods: PeriodAttribution[];
 }
 
+/** What the attribution report compares the portfolio with. */
+export interface AttributionInputs {
+  /**
+   * The instrument classification scheme that defines the segments, such as `asset_class`.
+   * Cash is the segment "cash", and instruments without the classification "unclassified".
+   */
+  scheme: string;
+  /** The benchmark's segments in each period, such as each month. */
+  periods: BenchmarkPeriod[];
+  /** How the periods are linked: Cariño's method by default. */
+  linking?: Linking;
+}
+
 /**
  * The segments over one period. The portfolio weights add up to one, as do the benchmark
  * weights.
@@ -182,6 +221,67 @@ export interface AttributionPeriod {
   end: Date;
   /** The segments. */
   segments: Segment[];
+}
+
+/** The attribution report. */
+export interface AttributionReport {
+  /** Where the numbers come from. */
+  provenance: Provenance;
+  /** The classification scheme of the segments. */
+  scheme: string;
+  /**
+   * Each period's segments: the portfolio's weights and returns from its books, beside the
+   * benchmark's.
+   */
+  periods: AttributionPeriod[];
+  /**
+   * The attribution, by period and linked: the totals for a waterfall chart, and each
+   * period's effects for a chart over time.
+   */
+  attribution: Attribution;
+  /**
+   * The portfolio's time-weighted return over the same span, for comparison with the
+   * attribution's portfolio return (`sum w r` in each period, linked), which leaves out
+   * trading within each period.
+   */
+  time_weighted?: number | null;
+}
+
+/** The benchmark's segments over one period. */
+export interface BenchmarkPeriod {
+  /** The start of the period. */
+  start: Date;
+  /** The end of the period. */
+  end: Date;
+  /** The segments, with weights adding up to one. */
+  segments: BenchmarkSegment[];
+}
+
+/** One segment of the benchmark over one period. */
+export interface BenchmarkSegment {
+  /** The segment: a classification of the scheme, such as `Equity`. */
+  name: string;
+  /** The benchmark's weight in the segment at the start of the period. */
+  benchmark_weight: number;
+  /** The benchmark's return in the segment over the period. */
+  benchmark_return: number;
+}
+
+/** One bin of a `Histogram`. */
+export interface Bin {
+  /** The lower edge, included. */
+  lower: number;
+  /** The upper edge, excluded (included for the last bin). */
+  upper: number;
+  /** The number of observations in the bin. */
+  count: number;
+  /** The share of all observations in the bin. */
+  share: number;
+  /**
+   * The share a normal distribution with the observations' mean and standard deviation puts
+   * in the bin, for comparison.
+   */
+  normal_share: number;
 }
 
 /** The inputs to the Black–Litterman model. */
@@ -224,6 +324,14 @@ export interface Bound {
   max: number;
 }
 
+/** A whole split into parts by one dimension, such as by currency or by asset class. */
+export interface Breakdown {
+  /** The dimension: "holding", "currency", "kind", "account", or a classification scheme. */
+  by: string;
+  /** The parts, largest first. */
+  slices: Slice[];
+}
+
 /** A cash balance in one account and currency. */
 export interface CashBalance {
   /** The account. */
@@ -248,6 +356,45 @@ export interface CashValue {
   value_base: Decimal;
 }
 
+/** One cell of a `ReportTable`: a number, text, yes or no, or nothing. */
+export type Cell = number | boolean | string | null;
+
+/** One column of a `ReportTable`. */
+export interface Column {
+  /** A stable key for the column, such as `value_base`. */
+  key: string;
+  /** A heading for people, such as "Value (USD)". */
+  label: string;
+  /** What it holds. */
+  kind: ColumnKind;
+}
+
+/** What a column holds, so that an export can format it. */
+export type ColumnKind =
+  | {
+    kind: "text";
+  }
+  | {
+    kind: "date";
+  }
+  | {
+    kind: "number";
+  }
+  | {
+    kind: "integer";
+  }
+  | {
+    kind: "fraction";
+  }
+  | {
+    kind: "money";
+    /** The currency. */
+    currency: Currency;
+  }
+  | {
+    kind: "boolean";
+  };
+
 /**
  * The trades that move several accounts together to target weights of their combined value,
  * one proposal per account.
@@ -269,6 +416,23 @@ export interface CombinedRebalance {
   fees_base: Decimal;
   /** With tax rates, the estimated tax on the sales' gains in the base currency. */
   tax_base?: Decimal | null;
+}
+
+/** How concentrated the portfolio's instruments are. */
+export interface Concentration {
+  /** The largest instrument holdings, largest first, with their share of the portfolio. */
+  largest: Slice[];
+  /** The share of the portfolio in its five largest instruments. */
+  top_five: number;
+  /** The share of the portfolio in its ten largest instruments. */
+  top_ten: number;
+  /**
+   * The Herfindahl–Hirschman index of the instruments' shares of the value invested in
+   * instruments, from 1/n (equal) to 1 (one instrument).
+   */
+  herfindahl?: number | null;
+  /** `1 / herfindahl`: the number of equal holdings that would be as concentrated. */
+  effective_holdings?: number | null;
 }
 
 /** The constraints on a portfolio. The default is fully invested and long-only. */
@@ -736,6 +900,20 @@ export interface FrontierPoint {
   weights: number[];
 }
 
+/** A table of numbers with labelled rows and columns, for a heatmap. */
+export interface Grid {
+  /** What the grid is, such as "Monthly returns". */
+  name: string;
+  /** What its values measure. */
+  unit: Unit;
+  /** The row labels. */
+  rows: string[];
+  /** The column labels. */
+  columns: string[];
+  /** One row of values per row label, one value per column; `None` where there is none. */
+  values: ((number | null)[])[];
+}
+
 /** What a group of holdings (an asset class, a region) added to the portfolio's return. */
 export interface GroupContribution {
   /** The group. */
@@ -802,6 +980,44 @@ export interface GroupShock {
   value: string;
   /** The return of each instrument in the group, in its own currency: -0.2 for a fall of 20%. */
   shock: number;
+}
+
+/** The headline figures of the overview. */
+export interface Headline {
+  /** The portfolio's value in the base currency. */
+  value: number;
+  /** The gain over the last valuation period: the change in value less the flows. */
+  period_gain?: number | null;
+  /** The time-weighted return over the last valuation period. */
+  period_return?: number | null;
+  /** The time-weighted return year to date. */
+  year_to_date?: number | null;
+  /** The time-weighted return since the first valuation. */
+  since_inception?: number | null;
+  /** The annualised return since the first valuation, for a year or more. */
+  since_inception_annualised?: number | null;
+  /** The annualised volatility. */
+  volatility: number;
+  /** The Sharpe ratio. */
+  sharpe_ratio?: number | null;
+  /** The maximum drawdown, a negative return. */
+  max_drawdown: number;
+  /** The confidence of the value at risk and expected shortfall: the first of the options. */
+  confidence?: number | null;
+  /** The historical value at risk over one valuation period. */
+  value_at_risk?: Amount | null;
+  /** The historical expected shortfall over one valuation period. */
+  expected_shortfall?: Amount | null;
+}
+
+/** The distribution of a set of observations. */
+export interface Histogram {
+  /** What the observations are. */
+  name: string;
+  /** What they measure. */
+  unit: Unit;
+  /** Bins of equal width from the smallest observation to the largest. */
+  bins: Bin[];
 }
 
 /** A historical period to replay on today's holdings. */
@@ -902,6 +1118,56 @@ export interface HoldingReturns {
   warnings: ValidationReport;
 }
 
+/** One holding's weight, expected return and risk. */
+export interface HoldingRiskReturn {
+  /** The holding. */
+  holding: HoldingKey;
+  /** Its share of the portfolio's value. */
+  weight: number;
+  /** Its annual expected return: given in the options, or its historical mean. */
+  expected_return: number;
+  /** Whether the expected return was given rather than the historical mean. */
+  expected_return_given: boolean;
+  /** Its annualised volatility. */
+  volatility: number;
+  /** Its share of the portfolio's volatility. */
+  risk_share?: number | null;
+}
+
+/** One holding, added up across accounts. */
+export interface HoldingRow {
+  /** The holding. */
+  holding: HoldingKey;
+  /** The instrument's name, if it has one. */
+  name?: string | null;
+  /** The instrument's kind; `None` for cash. */
+  kind?: InstrumentKind | null;
+  /** The holding's currency. */
+  currency: Currency;
+  /** The quantity held, or the cash balance. */
+  quantity: Decimal;
+  /** The price per unit, in the instrument's currency; `None` for cash. */
+  price?: Decimal | null;
+  /** The value in the holding's currency. */
+  value_local: Decimal;
+  /** The value in the base currency. */
+  value_base: Decimal;
+  /** The cost basis in the instrument's currency; `None` for cash. */
+  cost_local?: Decimal | null;
+  /** The cost basis in the base currency; `None` for cash. */
+  cost_base?: Decimal | null;
+  /** `value_local - cost_local`. */
+  unrealised_local?: Decimal | null;
+  /** `value_base - cost_base`, which includes the currency effect. */
+  unrealised_base?: Decimal | null;
+  /** `unrealised_base / cost_base`, when the cost is above zero. */
+  unrealised_return?: number | null;
+  /** The share of the portfolio's value. */
+  weight: number;
+  /** The instrument's classifications. */
+  classifications: Record<string, string>;
+}
+
 /**
  * Values, value moved in and income per holding over dates, in the holding's currency and in
  * the base currency: the input to contribution analysis.
@@ -915,6 +1181,57 @@ export interface HoldingSeries {
   lines: HoldingLine[];
   /** Prices and rates carried forward from earlier dates. */
   warnings: ValidationReport;
+}
+
+/** The holdings report. */
+export interface HoldingsReport {
+  /** Where the numbers come from. */
+  provenance: Provenance;
+  /** The portfolio's value in the base currency. */
+  value: Decimal;
+  /** Each holding, added up across accounts, largest first. */
+  holdings: HoldingRow[];
+  /** Each account's holdings, in the portfolio's order. */
+  accounts: AccountHoldings[];
+  /** The open tax lots, by account and instrument. */
+  lots: LotRow[];
+  /**
+   * The value split by holding, currency, instrument kind, account and each scheme of the
+   * options.
+   */
+  breakdowns: Breakdown[];
+  /** How concentrated the instruments are. */
+  concentration: Concentration;
+  /** Gains realised to date. */
+  realised: RealisedSummary;
+  /** Income received to date. */
+  income: IncomeSummary;
+}
+
+/** The current holdings' risk, from the covariance of their returns. */
+export interface HoldingsRisk {
+  /**
+   * The first date of the returns: the first valuation date on which every current holding
+   * has a price.
+   */
+  start: Date;
+  /** The number of returns. */
+  observations: number;
+  /** How the covariance was estimated. */
+  method: CovarianceMethod;
+  /**
+   * The annualised covariance of the holdings' returns in the base currency, labelled by
+   * holding.
+   */
+  covariance: Matrix;
+  /** Their correlations, for a heatmap. */
+  correlation: Grid;
+  /** The annualised volatility of the current weights, by holding. */
+  decomposition: RiskDecomposition;
+  /** The decomposition added up by each scheme of the options. */
+  groups: SchemeRisk[];
+  /** The ex-ante tracking error against the benchmark weights of the options, by holding. */
+  tracking_error?: RiskDecomposition | null;
 }
 
 /** A household's performance over a period: consolidated, by account and by group of accounts. */
@@ -942,6 +1259,16 @@ export interface HouseholdOptions {
   group_by?: string[];
   /** When external flows happen within the day: at the start (the default) or the end. */
   timing?: FlowTiming;
+}
+
+/** Income received up to the report's date, net of tax withheld, in the base currency. */
+export interface IncomeSummary {
+  /** All income. */
+  total: Decimal;
+  /** By calendar year. */
+  by_year: [number, Decimal][];
+  /** By holding: the instrument that paid it, or cash for interest on cash. */
+  by_holding: [HoldingKey, Decimal][];
 }
 
 /** Something a portfolio can hold, other than cash. */
@@ -1051,6 +1378,32 @@ export interface LotPick {
   quantity: Decimal;
 }
 
+/** One open tax lot, valued. */
+export interface LotRow {
+  /** The account. */
+  account: AccountId;
+  /** The instrument. */
+  instrument: InstrumentId;
+  /** The lot. */
+  lot: LotId;
+  /** The acquisition date. */
+  acquired: Date;
+  /** The quantity. */
+  quantity: Decimal;
+  /** The cost basis in the base currency. */
+  cost_base: Decimal;
+  /** The value in the base currency. */
+  value_base: Decimal;
+  /** `value_base - cost_base`. */
+  unrealised_base: Decimal;
+  /** `unrealised_base / cost_base`, when the cost is above zero. */
+  unrealised_return?: number | null;
+  /** Calendar days held to the report's date. */
+  holding_days: number;
+  /** Whether it has been held for the long-term period or longer. */
+  long_term: boolean;
+}
+
 /** The part of a lot that a sale would close. */
 export interface LotSale {
   /** The lot. */
@@ -1086,6 +1439,28 @@ export type Method = "interior_point" | "newton" | "recursive_bisection" | "trad
 export interface Money {
   amount: Decimal;
   currency: Currency;
+}
+
+/** External flows and income in one calendar month, in the base currency. */
+export interface MonthFlows {
+  /** The month, as `YYYY-MM`. */
+  month: string;
+  /** Deposits and transfers in, positive. */
+  inflows: number;
+  /** Withdrawals and transfers out, negative. */
+  outflows: number;
+  /** Income, net of tax withheld. */
+  income: number;
+}
+
+/** A scenario with a name, such as "Equities -20%" or "2008". */
+export interface NamedScenario {
+  /** The name. */
+  name: string;
+  /** What it does. */
+  scenario: ScenarioDefinition;
+  /** A stress of the covariance for the risk after this scenario, as in a crisis. */
+  stress?: CorrelationStress | null;
 }
 
 /** What an optimisation seeks. */
@@ -1138,6 +1513,70 @@ export type Objective =
     /** How clusters are joined. */
     linkage?: Linkage;
   };
+
+/** The overview report. */
+export interface OverviewReport {
+  /** Where the numbers come from. */
+  provenance: Provenance;
+  /** The headline figures. */
+  headline: Headline;
+  /** The portfolio's value on each valuation date. */
+  value: Series;
+  /** The growth of 100 at the time-weighted return. */
+  growth: Series;
+  /** The benchmark's growth of 100, with a benchmark. */
+  benchmark_growth?: Series | null;
+  /** The value split by holding and by each scheme of the options. */
+  allocation: Breakdown[];
+  /** The holdings' risk; `None` (with a warning) when it cannot be estimated. */
+  risk?: HoldingsRisk | null;
+  /** Each holding's weight, expected return and risk. */
+  holdings: HoldingRiskReturn[];
+  /**
+   * The efficient frontier of the holdings, long only and fully invested, from the expected
+   * returns and the covariance; `None` (with a warning) when it cannot be found.
+   */
+  frontier?: FrontierPoint[] | null;
+  /** The current portfolio on the same axes as the frontier. */
+  current?: PortfolioPoint | null;
+}
+
+/** The performance report. */
+export interface PerformanceReport {
+  /** Where the numbers come from. */
+  provenance: Provenance;
+  /** The portfolio's value on each valuation date. */
+  value: Series;
+  /** The growth of 100 at the time-weighted return. */
+  growth: Series;
+  /** The benchmark's growth of 100 over the same dates, with a benchmark. */
+  benchmark_growth?: Series | null;
+  /** The daily time-weighted returns. */
+  returns: Series;
+  /** Returns over MTD, QTD, YTD, one, three and five years, and since inception. */
+  periods: PeriodRow[];
+  /** Monthly returns: one row per year, one column per month and a last column for the year. */
+  monthly: Grid;
+  /** The benchmark's monthly returns, in the same layout, with a benchmark. */
+  benchmark_monthly?: Grid | null;
+  /** Calendar-year returns. */
+  calendar_years: YearReturn[];
+  /** Each holding's contribution to the return from the first valuation to the last. */
+  contributions: Contribution[];
+  /** Contributions by each scheme of the options. */
+  groups: SchemeContributions[];
+  /** The holdings that contributed most, largest first. */
+  top_contributors: Contribution[];
+  /** The holdings that took away most, most negative first. */
+  top_detractors: Contribution[];
+  /** External flows and income by month. */
+  flows: MonthFlows[];
+  /**
+   * The household by account and by group of accounts, when the portfolio has more than one
+   * account.
+   */
+  household?: Household | null;
+}
 
 /** A reporting period ending on an as-of date. */
 export type Period =
@@ -1195,6 +1634,35 @@ export interface PeriodReturn {
   annualised?: number | null;
 }
 
+/** Returns over one reporting period. */
+export interface PeriodRow {
+  /** The period. */
+  period: Period;
+  /** Its short name: "MTD", "QTD", "YTD", "1Y", "3Y", "5Y" or "ITD". */
+  label: string;
+  /**
+   * The valuation the period starts from, `None` when the history does not reach back to
+   * the period's start (the other figures are then `None` too).
+   */
+  start?: Date | null;
+  /** The valuation it ends on. */
+  end?: Date | null;
+  /** The cumulative time-weighted return. */
+  cumulative?: number | null;
+  /** The annualised time-weighted return, for periods of a year or more. */
+  annualised?: number | null;
+  /** The money-weighted return (annualised internal rate of return). */
+  money_weighted?: number | null;
+  /** The Modified Dietz return. */
+  modified_dietz?: number | null;
+  /** The benchmark's return over the same dates. */
+  benchmark?: number | null;
+  /** `cumulative - benchmark`. */
+  excess_arithmetic?: number | null;
+  /** `(1 + cumulative) / (1 + benchmark) - 1`. */
+  excess_geometric?: number | null;
+}
+
 /**
  * Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
  * instruments and transactions.
@@ -1223,6 +1691,14 @@ export interface PortfolioDocument {
   portfolio: Portfolio;
   /** Market data stored with the portfolio. */
   market?: DocumentMarketData | null;
+}
+
+/** A portfolio's expected return and volatility, for a point on a risk–return chart. */
+export interface PortfolioPoint {
+  /** The annual expected return. */
+  expected_return: number;
+  /** The annualised volatility. */
+  volatility: number;
 }
 
 /** A position: the open lots of one instrument in one account, added up. */
@@ -1359,6 +1835,31 @@ export interface ProposedTrade {
   tax_base?: Decimal | null;
 }
 
+/** Where a report's numbers come from, so that a saved report can be checked to reproduce. */
+export interface Provenance {
+  /** Which report this is. */
+  report: ReportKind;
+  /** The engine: "finalytics". */
+  engine: string;
+  /** The engine's version. */
+  version: string;
+  /** The date of the report. */
+  as_of: Date;
+  /** The first valuation date. */
+  start: Date;
+  /** The currency of every amount. */
+  base_currency: Currency;
+  /** The inputs. */
+  source: Source;
+  /** The options the report was computed with. */
+  options: ReportOptions;
+  /**
+   * Prices and rates carried forward from earlier dates, and figures that could not be
+   * computed.
+   */
+  warnings: ValidationReport;
+}
+
 /** A gain or loss realised by a sale, a return of capital or a cash merger, for one lot. */
 export interface RealisedGain {
   /** The transaction that realised it. */
@@ -1387,6 +1888,20 @@ export interface RealisedGain {
   cost_base: Decimal;
   /** `proceeds_base - cost_base`, which includes the currency effect. */
   gain_base: Decimal;
+}
+
+/** Gains realised up to the report's date, in the base currency. */
+export interface RealisedSummary {
+  /** Every realised gain. */
+  total: Decimal;
+  /** Gains on lots held for less than the long-term period. */
+  short_term: Decimal;
+  /** Gains on lots held for the long-term period or longer. */
+  long_term: Decimal;
+  /** By calendar year of disposal. */
+  by_year: [number, Decimal][];
+  /** By instrument. */
+  by_instrument: [InstrumentId, Decimal][];
 }
 
 /** The trades that move an account to target weights, and their effects. */
@@ -1456,6 +1971,76 @@ export interface RelativeStatistics {
   alpha?: number | null;
   /** The correlation of the returns with the benchmark's. */
   correlation?: number | null;
+}
+
+/** Which report a report is. */
+export type ReportKind = "holdings" | "overview" | "performance" | "risk" | "attribution" | "scenarios";
+
+/**
+ * The options every report takes. Each report uses the ones that concern it; the others are
+ * ignored, so one set of options can serve every screen.
+ */
+export interface ReportOptions {
+  /** The date of the report: the last price date by default. */
+  as_of?: Date | null;
+  /** The first valuation date: the first transaction's date by default. */
+  start?: Date | null;
+  /**
+   * Classification schemes of the instruments to break holdings, contribution and risk down
+   * by, such as `asset_class` or `region`.
+   */
+  group_by?: string[];
+  /**
+   * An instrument whose prices in the market data are the benchmark's levels, such as an
+   * index. It need not be held.
+   */
+  benchmark?: InstrumentId | null;
+  /** The annual risk-free rate, for Sharpe ratios. The default is 0. */
+  risk_free_rate?: number;
+  /** Valuation periods in a year, for annualising: 252 (trading days) by default. */
+  periods_per_year?: number;
+  /** When external flows happen within the day: at the start (the default) or the end. */
+  timing?: FlowTiming;
+  /** How the covariance of the holdings' returns is estimated: Ledoit–Wolf by default. */
+  covariance?: CovarianceMethod;
+  /** The confidences of value at risk and expected shortfall: 0.95 and 0.99 by default. */
+  confidences?: number[];
+  /** The window of rolling statistics, in valuation periods: 63 by default. */
+  rolling_window?: number;
+  /** The number of bins of return histograms: 30 by default. */
+  histogram_bins?: number;
+  /**
+   * How many holdings lists of the largest, the top contributors and the like show: 10 by
+   * default.
+   */
+  top?: number;
+  /** The holding period, in days, from which a lot or a gain is long-term: 365 by default. */
+  long_term_after_days?: number;
+  /**
+   * Annual expected returns by instrument for the efficient frontier; instruments not listed,
+   * and every instrument when none is, take their historical mean return.
+   */
+  expected_returns?: [InstrumentId, number][];
+  /** The number of portfolios on the efficient frontier: 25 by default. */
+  frontier_points?: number;
+  /** Benchmark weights by holding, for the ex-ante tracking error. */
+  benchmark_weights?: [HoldingKey, number][];
+  /** The benchmark's segments, for the attribution report. */
+  attribution?: AttributionInputs | null;
+  /** The scenarios of the scenarios report. */
+  scenarios?: NamedScenario[];
+}
+
+/** A table of a report: named, with typed columns and one row of cells per record. */
+export interface ReportTable {
+  /** A stable name, such as `holdings`, usable as a file or sheet name. */
+  name: string;
+  /** A title for people, such as "Holdings". */
+  title: string;
+  /** The columns. */
+  columns: Column[];
+  /** The rows, one cell per column. */
+  rows: Cell[][];
 }
 
 /** The result of resampled optimisation. */
@@ -1557,6 +2142,51 @@ export interface RiskDecomposition {
   contributions: RiskContribution[];
 }
 
+/** The risk report. */
+export interface RiskReport {
+  /** Where the numbers come from. */
+  provenance: Provenance;
+  /** The portfolio's value on the report's date. */
+  value: number;
+  /** The portfolio's time-weighted returns, one per valuation period. */
+  returns: Series;
+  /** Statistics of the returns, annualised. */
+  statistics: Statistics;
+  /** Statistics against the benchmark, with a benchmark. */
+  relative?: RelativeStatistics | null;
+  /** The fall from the running peak on each valuation date. */
+  drawdown: Series;
+  /** The largest drawdowns, deepest first. */
+  drawdowns: Drawdown[];
+  /**
+   * Value at risk and expected shortfall by every method at every confidence of the
+   * options.
+   */
+  tail: TailRow[];
+  /** The distribution of the returns, with the normal distribution's for comparison. */
+  histogram: Histogram;
+  /** The current holdings' risk; `None` (with a warning) when it cannot be estimated. */
+  holdings?: HoldingsRisk | null;
+  /**
+   * Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking
+   * error.
+   */
+  rolling: Series[];
+}
+
+/** What a scenario does: shocks, or a historical period replayed. */
+export type ScenarioDefinition =
+  | {
+    type: "shocks";
+    /** The shocks. */
+    shocks: Shocks;
+  }
+  | {
+    type: "historical";
+    /** The period, with any proxies. */
+    window: HistoricalWindow;
+  };
+
 /** What to report beyond the effect on each holding. */
 export interface ScenarioOptions {
   /**
@@ -1566,6 +2196,16 @@ export interface ScenarioOptions {
   group_by?: string[];
   /** The risk model for the risk before and after; without one, no risk is reported. */
   risk?: ScenarioRiskModel | null;
+}
+
+/** One scenario's result, or why it could not be run. */
+export interface ScenarioOutcome {
+  /** The scenario's name. */
+  name: string;
+  /** The result; `None` when the scenario could not be run. */
+  result?: ScenarioResult | null;
+  /** The problems that stopped it, with paths into the scenario. */
+  problems: Issue[];
 }
 
 /** The hypothetical value of today's holdings over a historical period. */
@@ -1653,6 +2293,50 @@ export interface ScenarioRiskModel {
   stress?: CorrelationStress | null;
 }
 
+/** One scenario in a line, for a summary table or a bar chart. */
+export interface ScenarioSummary {
+  /** The scenario's name. */
+  name: string;
+  /** The change in value, in the base currency. */
+  change: number;
+  /** The portfolio's return. */
+  portfolio_return: number;
+  /** The annualised volatility after. */
+  volatility_after?: number | null;
+  /** The value at risk after, at the first confidence of the options. */
+  value_at_risk_after?: number | null;
+  /** The holding that lost most. */
+  worst?: HoldingKey | null;
+  /** Its change in value. */
+  worst_change?: number | null;
+}
+
+/** The scenarios report. */
+export interface ScenariosReport {
+  /** Where the numbers come from. */
+  provenance: Provenance;
+  /** The portfolio's value before every scenario. */
+  value: number;
+  /** The first date of the returns behind the risk model, when there is one. */
+  risk_start?: Date | null;
+  /** Each scenario, in the order given. */
+  scenarios: ScenarioOutcome[];
+  /** The scenarios that ran, in a line each. */
+  summary: ScenarioSummary[];
+  /** The change in each holding's value (rows) in each scenario that ran (columns). */
+  changes: Grid;
+  /** Each holding's return in the base currency in each scenario that ran. */
+  returns: Grid;
+}
+
+/** Contributions added up by the groups of one classification scheme. */
+export interface SchemeContributions {
+  /** The classification scheme. */
+  scheme: string;
+  /** Each group, in name order. */
+  groups: GroupContribution[];
+}
+
 /** The effect of a scenario by the groups of one classification scheme. */
 export interface SchemeImpact {
   /** The classification scheme. */
@@ -1714,6 +2398,18 @@ export interface SegmentEffects {
   total: number;
 }
 
+/** A labelled series of numbers over time, for a line or bar chart. */
+export interface Series {
+  /** What the series is, such as "Portfolio" or "Rolling volatility (63 days)". */
+  name: string;
+  /** What its values measure. */
+  unit: Unit;
+  /** The dates. */
+  dates: Date[];
+  /** One value per date. */
+  values: number[];
+}
+
 /** How serious a validation issue is. */
 export type Severity = "warning" | "error";
 
@@ -1770,6 +2466,16 @@ export interface Shocks {
 /** Buy or sell. */
 export type Side = "buy" | "sell";
 
+/** One part of a whole, for a pie, bar or treemap chart. */
+export interface Slice {
+  /** The part's name: a holding, a currency, a group. */
+  name: string;
+  /** Its value in the base currency. */
+  value: number;
+  /** Its share of the whole. */
+  weight: number;
+}
+
 /**
  * The result of an optimisation, with what is needed to judge it: the status, the objective,
  * how closely the constraints hold, and the work done.
@@ -1810,6 +2516,24 @@ export interface Solution {
 
 /** How an optimisation ended. */
 export type SolveStatus = "optimal" | "nearly_optimal" | "infeasible" | "unbounded" | "iteration_limit" | "numerical_difficulty";
+
+/**
+ * What a report was computed from: a digest of the portfolio document and market data, and
+ * their size. Computing it once and passing it to each report avoids hashing the inputs again.
+ */
+export interface Source {
+  /**
+   * The SHA-256 digest, in hexadecimal, of the portfolio document with its market data, as
+   * the engine writes it. The same inputs give the same digest in every language.
+   */
+  digest: string;
+  /** The number of transactions. */
+  transactions: number;
+  /** The number of accounts. */
+  accounts: number;
+  /** The number of instruments. */
+  instruments: number;
+}
 
 /**
  * Statistics of a returns series.
@@ -1898,6 +2622,18 @@ export interface TailRisk {
    * risk).
    */
   expected_shortfall: number;
+}
+
+/** Value at risk and expected shortfall by one method at one confidence. */
+export interface TailRow {
+  /** The confidence. */
+  confidence: number;
+  /** The method. */
+  method: TailMethod;
+  /** The value at risk over one valuation period, a loss. */
+  value_at_risk: Amount;
+  /** The expected shortfall over one valuation period, a loss. */
+  expected_shortfall: Amount;
 }
 
 /**
@@ -2144,6 +2880,26 @@ export interface Turnover {
   quadratic_costs?: number[] | null;
 }
 
+/** What the numbers of a series, grid or column measure. */
+export type Unit =
+  | {
+    unit: "money";
+    /** The currency. */
+    currency: Currency;
+  }
+  | {
+    unit: "fraction";
+  }
+  | {
+    unit: "ratio";
+  }
+  | {
+    unit: "level";
+  }
+  | {
+    unit: "count";
+  };
+
 /**
  * Every problem found while validating an input, rather than only the first.
  *
@@ -2213,3 +2969,24 @@ export type ViewUncertainty =
     /** The variance, not negative. */
     variance: number;
   };
+
+/** The return of one calendar year (or the part of it covered). */
+export interface YearReturn {
+  /** The year. */
+  year: number;
+  /**
+   * The valuation the year's return starts from: the last one of the year before, or the
+   * first valuation.
+   */
+  start: Date;
+  /** The last valuation of the year. */
+  end: Date;
+  /** Whether the valuations cover the whole year. */
+  complete: boolean;
+  /** The portfolio's time-weighted return. */
+  portfolio: number;
+  /** The benchmark's return. */
+  benchmark?: number | null;
+  /** `portfolio - benchmark`. */
+  excess?: number | null;
+}

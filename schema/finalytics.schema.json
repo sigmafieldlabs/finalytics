@@ -36,6 +36,61 @@
       ],
       "description": "An account in a portfolio, such as a brokerage or custody account."
     },
+    "AccountHoldings": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "$ref": "#/$defs/AccountId",
+          "description": "The account."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The account's name, if it has one."
+        },
+        "classifications": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The account's classifications."
+        },
+        "value_base": {
+          "description": "The account's value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of the portfolio's value."
+        },
+        "positions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PositionValue"
+          },
+          "description": "Its positions."
+        },
+        "cash": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CashValue"
+          },
+          "description": "Its cash balances."
+        }
+      },
+      "required": [
+        "account",
+        "classifications",
+        "value_base",
+        "weight",
+        "positions",
+        "cash"
+      ],
+      "description": "One account's holdings."
+    },
     "AccountId": {
       "type": "string",
       "description": "Identifies an account within a portfolio.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
@@ -262,6 +317,26 @@
       ],
       "description": "How a transaction moved value between holdings, used to measure each holding's\ncontribution. Value moved between holdings nets to zero; only external flows change the\nportfolio's total."
     },
+    "Amount": {
+      "type": "object",
+      "properties": {
+        "fraction": {
+          "type": "number",
+          "format": "double",
+          "description": "As a fraction of the portfolio's value."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "As an amount in the base currency."
+        }
+      },
+      "required": [
+        "fraction",
+        "value"
+      ],
+      "description": "A figure as a fraction and as an amount of money, such as a value at risk."
+    },
     "AssetBound": {
       "type": "object",
       "properties": {
@@ -381,6 +456,32 @@
       ],
       "description": "Brinson–Fachler attribution over one or more periods."
     },
+    "AttributionInputs": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The instrument classification scheme that defines the segments, such as `asset_class`.\nCash is the segment \"cash\", and instruments without the classification \"unclassified\"."
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BenchmarkPeriod"
+          },
+          "description": "The benchmark's segments in each period, such as each month."
+        },
+        "linking": {
+          "$ref": "#/$defs/Linking",
+          "description": "How the periods are linked: Cariño's method by default.",
+          "default": "carino"
+        }
+      },
+      "required": [
+        "scheme",
+        "periods"
+      ],
+      "description": "What the attribution report compares the portfolio with."
+    },
     "AttributionPeriod": {
       "type": "object",
       "properties": {
@@ -406,6 +507,135 @@
         "segments"
       ],
       "description": "The segments over one period. The portfolio weights add up to one, as do the benchmark\nweights."
+    },
+    "AttributionReport": {
+      "type": "object",
+      "properties": {
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Where the numbers come from."
+        },
+        "scheme": {
+          "type": "string",
+          "description": "The classification scheme of the segments."
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttributionPeriod"
+          },
+          "description": "Each period's segments: the portfolio's weights and returns from its books, beside the\nbenchmark's."
+        },
+        "attribution": {
+          "$ref": "#/$defs/Attribution",
+          "description": "The attribution, by period and linked: the totals for a waterfall chart, and each\nperiod's effects for a chart over time."
+        },
+        "time_weighted": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The portfolio's time-weighted return over the same span, for comparison with the\nattribution's portfolio return (`sum w r` in each period, linked), which leaves out\ntrading within each period."
+        }
+      },
+      "required": [
+        "provenance",
+        "scheme",
+        "periods",
+        "attribution"
+      ],
+      "description": "The attribution report."
+    },
+    "BenchmarkPeriod": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BenchmarkSegment"
+          },
+          "description": "The segments, with weights adding up to one."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "segments"
+      ],
+      "description": "The benchmark's segments over one period."
+    },
+    "BenchmarkSegment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The segment: a classification of the scheme, such as `Equity`."
+        },
+        "benchmark_weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's weight in the segment at the start of the period."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's return in the segment over the period."
+        }
+      },
+      "required": [
+        "name",
+        "benchmark_weight",
+        "benchmark_return"
+      ],
+      "description": "One segment of the benchmark over one period."
+    },
+    "Bin": {
+      "type": "object",
+      "properties": {
+        "lower": {
+          "type": "number",
+          "format": "double",
+          "description": "The lower edge, included."
+        },
+        "upper": {
+          "type": "number",
+          "format": "double",
+          "description": "The upper edge, excluded (included for the last bin)."
+        },
+        "count": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of observations in the bin."
+        },
+        "share": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of all observations in the bin."
+        },
+        "normal_share": {
+          "type": "number",
+          "format": "double",
+          "description": "The share a normal distribution with the observations' mean and standard deviation puts\nin the bin, for comparison."
+        }
+      },
+      "required": [
+        "lower",
+        "upper",
+        "count",
+        "share",
+        "normal_share"
+      ],
+      "description": "One bin of a `Histogram`."
     },
     "BlackLitterman": {
       "type": "object",
@@ -507,6 +737,27 @@
       ],
       "description": "Lower and upper limits on a weight."
     },
+    "Breakdown": {
+      "type": "object",
+      "properties": {
+        "by": {
+          "type": "string",
+          "description": "The dimension: \"holding\", \"currency\", \"kind\", \"account\", or a classification scheme."
+        },
+        "slices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Slice"
+          },
+          "description": "The parts, largest first."
+        }
+      },
+      "required": [
+        "by",
+        "slices"
+      ],
+      "description": "A whole split into parts by one dimension, such as by currency or by asset class."
+    },
     "CashBalance": {
       "type": "object",
       "properties": {
@@ -562,6 +813,152 @@
         "value_base"
       ],
       "description": "A cash balance valued on a date."
+    },
+    "Cell": {
+      "anyOf": [
+        {
+          "type": "number",
+          "format": "double",
+          "description": "A number."
+        },
+        {
+          "type": "boolean",
+          "description": "Yes or no."
+        },
+        {
+          "type": "string",
+          "description": "Text, or a date as text."
+        },
+        {
+          "type": "null",
+          "description": "Nothing."
+        }
+      ],
+      "description": "One cell of a `ReportTable`: a number, text, yes or no, or nothing."
+    },
+    "Column": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "A stable key for the column, such as `value_base`."
+        },
+        "label": {
+          "type": "string",
+          "description": "A heading for people, such as \"Value (USD)\"."
+        },
+        "kind": {
+          "$ref": "#/$defs/ColumnKind",
+          "description": "What it holds."
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "kind"
+      ],
+      "description": "One column of a `ReportTable`."
+    },
+    "ColumnKind": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "text"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "description": "Text."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "date"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "description": "An ISO 8601 date, as text."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "number"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "description": "A number."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "integer"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "description": "A whole number."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "fraction"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "description": "A fraction, to show as a percentage: 0.05 is 5%."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "money"
+            },
+            "currency": {
+              "$ref": "#/$defs/Currency",
+              "description": "The currency."
+            }
+          },
+          "required": [
+            "kind",
+            "currency"
+          ],
+          "description": "An amount of money in a currency."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "boolean"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "description": "Yes or no."
+        }
+      ],
+      "description": "What a column holds, so that an export can format it."
     },
     "CombinedRebalance": {
       "type": "object",
@@ -648,6 +1045,50 @@
         "fees_base"
       ],
       "description": "The trades that move several accounts together to target weights of their combined value,\none proposal per account."
+    },
+    "Concentration": {
+      "type": "object",
+      "properties": {
+        "largest": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Slice"
+          },
+          "description": "The largest instrument holdings, largest first, with their share of the portfolio."
+        },
+        "top_five": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of the portfolio in its five largest instruments."
+        },
+        "top_ten": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of the portfolio in its ten largest instruments."
+        },
+        "herfindahl": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The Herfindahl–Hirschman index of the instruments' shares of the value invested in\ninstruments, from 1/n (equal) to 1 (one instrument)."
+        },
+        "effective_holdings": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`1 / herfindahl`: the number of equal holdings that would be as concentrated."
+        }
+      },
+      "required": [
+        "largest",
+        "top_five",
+        "top_ten"
+      ],
+      "description": "How concentrated the portfolio's instruments are."
     },
     "Constraints": {
       "type": "object",
@@ -1917,6 +2358,55 @@
       ],
       "description": "A portfolio on the efficient frontier."
     },
+    "Grid": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "What the grid is, such as \"Monthly returns\"."
+        },
+        "unit": {
+          "$ref": "#/$defs/Unit",
+          "description": "What its values measure."
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The row labels."
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The column labels."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "description": "One row of values per row label, one value per column; `None` where there is none."
+        }
+      },
+      "required": [
+        "name",
+        "unit",
+        "rows",
+        "columns",
+        "values"
+      ],
+      "description": "A table of numbers with labelled rows and columns, for a heatmap."
+    },
     "GroupContribution": {
       "type": "object",
       "properties": {
@@ -2082,6 +2572,136 @@
         "shock"
       ],
       "description": "A return for every instrument with a classification, such as all equities."
+    },
+    "Headline": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's value in the base currency."
+        },
+        "period_gain": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The gain over the last valuation period: the change in value less the flows."
+        },
+        "period_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The time-weighted return over the last valuation period."
+        },
+        "year_to_date": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The time-weighted return year to date."
+        },
+        "since_inception": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The time-weighted return since the first valuation."
+        },
+        "since_inception_annualised": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annualised return since the first valuation, for a year or more."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The annualised volatility."
+        },
+        "sharpe_ratio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The Sharpe ratio."
+        },
+        "max_drawdown": {
+          "type": "number",
+          "format": "double",
+          "description": "The maximum drawdown, a negative return."
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The confidence of the value at risk and expected shortfall: the first of the options."
+        },
+        "value_at_risk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The historical value at risk over one valuation period."
+        },
+        "expected_shortfall": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The historical expected shortfall over one valuation period."
+        }
+      },
+      "required": [
+        "value",
+        "volatility",
+        "max_drawdown"
+      ],
+      "description": "The headline figures of the overview."
+    },
+    "Histogram": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "What the observations are."
+        },
+        "unit": {
+          "$ref": "#/$defs/Unit",
+          "description": "What they measure."
+        },
+        "bins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Bin"
+          },
+          "description": "Bins of equal width from the smallest observation to the largest."
+        }
+      },
+      "required": [
+        "name",
+        "unit",
+        "bins"
+      ],
+      "description": "The distribution of a set of observations."
     },
     "HistoricalWindow": {
       "type": "object",
@@ -2326,6 +2946,178 @@
       ],
       "description": "Returns of holdings in the base currency between consecutive dates."
     },
+    "HoldingRiskReturn": {
+      "type": "object",
+      "properties": {
+        "holding": {
+          "$ref": "#/$defs/HoldingKey",
+          "description": "The holding."
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "Its share of the portfolio's value."
+        },
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "Its annual expected return: given in the options, or its historical mean."
+        },
+        "expected_return_given": {
+          "type": "boolean",
+          "description": "Whether the expected return was given rather than the historical mean."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "Its annualised volatility."
+        },
+        "risk_share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "Its share of the portfolio's volatility."
+        }
+      },
+      "required": [
+        "holding",
+        "weight",
+        "expected_return",
+        "expected_return_given",
+        "volatility"
+      ],
+      "description": "One holding's weight, expected return and risk."
+    },
+    "HoldingRow": {
+      "type": "object",
+      "properties": {
+        "holding": {
+          "$ref": "#/$defs/HoldingKey",
+          "description": "The holding."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The instrument's name, if it has one."
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstrumentKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The instrument's kind; `None` for cash."
+        },
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The holding's currency."
+        },
+        "quantity": {
+          "description": "The quantity held, or the cash balance.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "price": {
+          "description": "The price per unit, in the instrument's currency; `None` for cash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value_local": {
+          "description": "The value in the holding's currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "value_base": {
+          "description": "The value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "cost_local": {
+          "description": "The cost basis in the instrument's currency; `None` for cash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost_base": {
+          "description": "The cost basis in the base currency; `None` for cash.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unrealised_local": {
+          "description": "`value_local - cost_local`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unrealised_base": {
+          "description": "`value_base - cost_base`, which includes the currency effect.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unrealised_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`unrealised_base / cost_base`, when the cost is above zero."
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of the portfolio's value."
+        },
+        "classifications": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "The instrument's classifications."
+        }
+      },
+      "required": [
+        "holding",
+        "currency",
+        "quantity",
+        "value_local",
+        "value_base",
+        "weight",
+        "classifications"
+      ],
+      "description": "One holding, added up across accounts."
+    },
     "HoldingSeries": {
       "type": "object",
       "properties": {
@@ -2359,6 +3151,130 @@
         "warnings"
       ],
       "description": "Values, value moved in and income per holding over dates, in the holding's currency and in\nthe base currency: the input to contribution analysis."
+    },
+    "HoldingsReport": {
+      "type": "object",
+      "properties": {
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Where the numbers come from."
+        },
+        "value": {
+          "description": "The portfolio's value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "holdings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HoldingRow"
+          },
+          "description": "Each holding, added up across accounts, largest first."
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountHoldings"
+          },
+          "description": "Each account's holdings, in the portfolio's order."
+        },
+        "lots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LotRow"
+          },
+          "description": "The open tax lots, by account and instrument."
+        },
+        "breakdowns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Breakdown"
+          },
+          "description": "The value split by holding, currency, instrument kind, account and each scheme of the\noptions."
+        },
+        "concentration": {
+          "$ref": "#/$defs/Concentration",
+          "description": "How concentrated the instruments are."
+        },
+        "realised": {
+          "$ref": "#/$defs/RealisedSummary",
+          "description": "Gains realised to date."
+        },
+        "income": {
+          "$ref": "#/$defs/IncomeSummary",
+          "description": "Income received to date."
+        }
+      },
+      "required": [
+        "provenance",
+        "value",
+        "holdings",
+        "accounts",
+        "lots",
+        "breakdowns",
+        "concentration",
+        "realised",
+        "income"
+      ],
+      "description": "The holdings report."
+    },
+    "HoldingsRisk": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The first date of the returns: the first valuation date on which every current holding\nhas a price."
+        },
+        "observations": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of returns."
+        },
+        "method": {
+          "$ref": "#/$defs/CovarianceMethod",
+          "description": "How the covariance was estimated."
+        },
+        "covariance": {
+          "$ref": "#/$defs/Matrix",
+          "description": "The annualised covariance of the holdings' returns in the base currency, labelled by\nholding."
+        },
+        "correlation": {
+          "$ref": "#/$defs/Grid",
+          "description": "Their correlations, for a heatmap."
+        },
+        "decomposition": {
+          "$ref": "#/$defs/RiskDecomposition",
+          "description": "The annualised volatility of the current weights, by holding."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SchemeRisk"
+          },
+          "description": "The decomposition added up by each scheme of the options."
+        },
+        "tracking_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiskDecomposition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ex-ante tracking error against the benchmark weights of the options, by holding."
+        }
+      },
+      "required": [
+        "start",
+        "observations",
+        "method",
+        "covariance",
+        "correlation",
+        "decomposition",
+        "groups"
+      ],
+      "description": "The current holdings' risk, from the covariance of their returns."
     },
     "Household": {
       "type": "object",
@@ -2422,6 +3338,56 @@
         }
       },
       "description": "Options for `household`."
+    },
+    "IncomeSummary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "description": "All income.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "by_year": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "format": "int32"
+              },
+              {
+                "$ref": "#/$defs/Decimal"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "By calendar year."
+        },
+        "by_holding": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/HoldingKey"
+              },
+              {
+                "$ref": "#/$defs/Decimal"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "By holding: the instrument that paid it, or cash for interest on cash."
+        }
+      },
+      "required": [
+        "total",
+        "by_year",
+        "by_holding"
+      ],
+      "description": "Income received up to the report's date, net of tax withheld, in the base currency."
     },
     "Instrument": {
       "type": "object",
@@ -2691,6 +3657,73 @@
       ],
       "description": "A lot named by a sale or transfer, for specific identification."
     },
+    "LotRow": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "$ref": "#/$defs/AccountId",
+          "description": "The account."
+        },
+        "instrument": {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "The instrument."
+        },
+        "lot": {
+          "$ref": "#/$defs/LotId",
+          "description": "The lot."
+        },
+        "acquired": {
+          "$ref": "#/$defs/Date",
+          "description": "The acquisition date."
+        },
+        "quantity": {
+          "description": "The quantity.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "cost_base": {
+          "description": "The cost basis in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "value_base": {
+          "description": "The value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "unrealised_base": {
+          "description": "`value_base - cost_base`.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "unrealised_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`unrealised_base / cost_base`, when the cost is above zero."
+        },
+        "holding_days": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Calendar days held to the report's date."
+        },
+        "long_term": {
+          "type": "boolean",
+          "description": "Whether it has been held for the long-term period or longer."
+        }
+      },
+      "required": [
+        "account",
+        "instrument",
+        "lot",
+        "acquired",
+        "quantity",
+        "cost_base",
+        "value_base",
+        "unrealised_base",
+        "holding_days",
+        "long_term"
+      ],
+      "description": "One open tax lot, valued."
+    },
     "LotSale": {
       "type": "object",
       "properties": {
@@ -2787,6 +3820,67 @@
         "currency"
       ],
       "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until `Money::round` is called."
+    },
+    "MonthFlows": {
+      "type": "object",
+      "properties": {
+        "month": {
+          "type": "string",
+          "description": "The month, as `YYYY-MM`."
+        },
+        "inflows": {
+          "type": "number",
+          "format": "double",
+          "description": "Deposits and transfers in, positive."
+        },
+        "outflows": {
+          "type": "number",
+          "format": "double",
+          "description": "Withdrawals and transfers out, negative."
+        },
+        "income": {
+          "type": "number",
+          "format": "double",
+          "description": "Income, net of tax withheld."
+        }
+      },
+      "required": [
+        "month",
+        "inflows",
+        "outflows",
+        "income"
+      ],
+      "description": "External flows and income in one calendar month, in the base currency."
+    },
+    "NamedScenario": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name."
+        },
+        "scenario": {
+          "$ref": "#/$defs/ScenarioDefinition",
+          "description": "What it does."
+        },
+        "stress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CorrelationStress"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A stress of the covariance for the risk after this scenario, as in a crisis.",
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "scenario"
+      ],
+      "description": "A scenario with a name, such as \"Equities -20%\" or \"2008\"."
     },
     "Objective": {
       "oneOf": [
@@ -2981,6 +4075,215 @@
       ],
       "description": "What an optimisation seeks."
     },
+    "OverviewReport": {
+      "type": "object",
+      "properties": {
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Where the numbers come from."
+        },
+        "headline": {
+          "$ref": "#/$defs/Headline",
+          "description": "The headline figures."
+        },
+        "value": {
+          "$ref": "#/$defs/Series",
+          "description": "The portfolio's value on each valuation date."
+        },
+        "growth": {
+          "$ref": "#/$defs/Series",
+          "description": "The growth of 100 at the time-weighted return."
+        },
+        "benchmark_growth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Series"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark's growth of 100, with a benchmark."
+        },
+        "allocation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Breakdown"
+          },
+          "description": "The value split by holding and by each scheme of the options."
+        },
+        "risk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldingsRisk"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The holdings' risk; `None` (with a warning) when it cannot be estimated."
+        },
+        "holdings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HoldingRiskReturn"
+          },
+          "description": "Each holding's weight, expected return and risk."
+        },
+        "frontier": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/FrontierPoint"
+          },
+          "description": "The efficient frontier of the holdings, long only and fully invested, from the expected\nreturns and the covariance; `None` (with a warning) when it cannot be found."
+        },
+        "current": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PortfolioPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The current portfolio on the same axes as the frontier."
+        }
+      },
+      "required": [
+        "provenance",
+        "headline",
+        "value",
+        "growth",
+        "allocation",
+        "holdings"
+      ],
+      "description": "The overview report."
+    },
+    "PerformanceReport": {
+      "type": "object",
+      "properties": {
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Where the numbers come from."
+        },
+        "value": {
+          "$ref": "#/$defs/Series",
+          "description": "The portfolio's value on each valuation date."
+        },
+        "growth": {
+          "$ref": "#/$defs/Series",
+          "description": "The growth of 100 at the time-weighted return."
+        },
+        "benchmark_growth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Series"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark's growth of 100 over the same dates, with a benchmark."
+        },
+        "returns": {
+          "$ref": "#/$defs/Series",
+          "description": "The daily time-weighted returns."
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PeriodRow"
+          },
+          "description": "Returns over MTD, QTD, YTD, one, three and five years, and since inception."
+        },
+        "monthly": {
+          "$ref": "#/$defs/Grid",
+          "description": "Monthly returns: one row per year, one column per month and a last column for the year."
+        },
+        "benchmark_monthly": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Grid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark's monthly returns, in the same layout, with a benchmark."
+        },
+        "calendar_years": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/YearReturn"
+          },
+          "description": "Calendar-year returns."
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Contribution"
+          },
+          "description": "Each holding's contribution to the return from the first valuation to the last."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SchemeContributions"
+          },
+          "description": "Contributions by each scheme of the options."
+        },
+        "top_contributors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Contribution"
+          },
+          "description": "The holdings that contributed most, largest first."
+        },
+        "top_detractors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Contribution"
+          },
+          "description": "The holdings that took away most, most negative first."
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MonthFlows"
+          },
+          "description": "External flows and income by month."
+        },
+        "household": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Household"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The household by account and by group of accounts, when the portfolio has more than one\naccount."
+        }
+      },
+      "required": [
+        "provenance",
+        "value",
+        "growth",
+        "returns",
+        "periods",
+        "monthly",
+        "calendar_years",
+        "contributions",
+        "groups",
+        "top_contributors",
+        "top_detractors",
+        "flows"
+      ],
+      "description": "The performance report."
+    },
     "Period": {
       "oneOf": [
         {
@@ -3152,6 +4455,102 @@
       ],
       "description": "A return over a reporting period."
     },
+    "PeriodRow": {
+      "type": "object",
+      "properties": {
+        "period": {
+          "$ref": "#/$defs/Period",
+          "description": "The period."
+        },
+        "label": {
+          "type": "string",
+          "description": "Its short name: \"MTD\", \"QTD\", \"YTD\", \"1Y\", \"3Y\", \"5Y\" or \"ITD\"."
+        },
+        "start": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The valuation the period starts from, `None` when the history does not reach back to\nthe period's start (the other figures are then `None` too)."
+        },
+        "end": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The valuation it ends on."
+        },
+        "cumulative": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The cumulative time-weighted return."
+        },
+        "annualised": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annualised time-weighted return, for periods of a year or more."
+        },
+        "money_weighted": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The money-weighted return (annualised internal rate of return)."
+        },
+        "modified_dietz": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The Modified Dietz return."
+        },
+        "benchmark": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The benchmark's return over the same dates."
+        },
+        "excess_arithmetic": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`cumulative - benchmark`."
+        },
+        "excess_geometric": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`(1 + cumulative) / (1 + benchmark) - 1`."
+        }
+      },
+      "required": [
+        "period",
+        "label"
+      ],
+      "description": "Returns over one reporting period."
+    },
     "Portfolio": {
       "type": "object",
       "properties": {
@@ -3226,6 +4625,26 @@
         "portfolio"
       ],
       "description": "A portfolio and, optionally, the market data to value it, in one versioned document."
+    },
+    "PortfolioPoint": {
+      "type": "object",
+      "properties": {
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual expected return."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The annualised volatility."
+        }
+      },
+      "required": [
+        "expected_return",
+        "volatility"
+      ],
+      "description": "A portfolio's expected return and volatility, for a point on a risk–return chart."
     },
     "Position": {
       "type": "object",
@@ -3574,6 +4993,59 @@
       ],
       "description": "A proposed trade in one instrument."
     },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/ReportKind",
+          "description": "Which report this is."
+        },
+        "engine": {
+          "type": "string",
+          "description": "The engine: \"finalytics\"."
+        },
+        "version": {
+          "type": "string",
+          "description": "The engine's version."
+        },
+        "as_of": {
+          "$ref": "#/$defs/Date",
+          "description": "The date of the report."
+        },
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The first valuation date."
+        },
+        "base_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency of every amount."
+        },
+        "source": {
+          "$ref": "#/$defs/Source",
+          "description": "The inputs."
+        },
+        "options": {
+          "$ref": "#/$defs/ReportOptions",
+          "description": "The options the report was computed with."
+        },
+        "warnings": {
+          "$ref": "#/$defs/ValidationReport",
+          "description": "Prices and rates carried forward from earlier dates, and figures that could not be\ncomputed."
+        }
+      },
+      "required": [
+        "report",
+        "engine",
+        "version",
+        "as_of",
+        "start",
+        "base_currency",
+        "source",
+        "options",
+        "warnings"
+      ],
+      "description": "Where a report's numbers come from, so that a saved report can be checked to reproduce."
+    },
     "RealisedGain": {
       "type": "object",
       "properties": {
@@ -3646,6 +5118,66 @@
         "gain_base"
       ],
       "description": "A gain or loss realised by a sale, a return of capital or a cash merger, for one lot."
+    },
+    "RealisedSummary": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "description": "Every realised gain.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "short_term": {
+          "description": "Gains on lots held for less than the long-term period.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "long_term": {
+          "description": "Gains on lots held for the long-term period or longer.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "by_year": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "format": "int32"
+              },
+              {
+                "$ref": "#/$defs/Decimal"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "By calendar year of disposal."
+        },
+        "by_instrument": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/InstrumentId"
+              },
+              {
+                "$ref": "#/$defs/Decimal"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "By instrument."
+        }
+      },
+      "required": [
+        "total",
+        "short_term",
+        "long_term",
+        "by_year",
+        "by_instrument"
+      ],
+      "description": "Gains realised up to the report's date, in the base currency."
     },
     "Rebalance": {
       "type": "object",
@@ -3856,6 +5388,256 @@
         "tracking_error"
       ],
       "description": "Statistics of a returns series against a benchmark's returns over the same periods."
+    },
+    "ReportKind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "holdings",
+          "description": "The holdings report."
+        },
+        {
+          "type": "string",
+          "const": "overview",
+          "description": "The overview report."
+        },
+        {
+          "type": "string",
+          "const": "performance",
+          "description": "The performance report."
+        },
+        {
+          "type": "string",
+          "const": "risk",
+          "description": "The risk report."
+        },
+        {
+          "type": "string",
+          "const": "attribution",
+          "description": "The attribution report."
+        },
+        {
+          "type": "string",
+          "const": "scenarios",
+          "description": "The scenarios report."
+        }
+      ],
+      "description": "Which report a report is."
+    },
+    "ReportOptions": {
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The date of the report: the last price date by default.",
+          "default": null
+        },
+        "start": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first valuation date: the first transaction's date by default.",
+          "default": null
+        },
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classification schemes of the instruments to break holdings, contribution and risk down\nby, such as `asset_class` or `region`.",
+          "default": []
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstrumentId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An instrument whose prices in the market data are the benchmark's levels, such as an\nindex. It need not be held.",
+          "default": null
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free rate, for Sharpe ratios. The default is 0.",
+          "default": 0.0
+        },
+        "periods_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "Valuation periods in a year, for annualising: 252 (trading days) by default.",
+          "default": 252.0
+        },
+        "timing": {
+          "$ref": "#/$defs/FlowTiming",
+          "description": "When external flows happen within the day: at the start (the default) or the end.",
+          "default": "start_of_day"
+        },
+        "covariance": {
+          "$ref": "#/$defs/CovarianceMethod",
+          "description": "How the covariance of the holdings' returns is estimated: Ledoit–Wolf by default.",
+          "default": {
+            "method": "ledoit_wolf"
+          }
+        },
+        "confidences": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The confidences of value at risk and expected shortfall: 0.95 and 0.99 by default.",
+          "default": [
+            0.95,
+            0.99
+          ]
+        },
+        "rolling_window": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The window of rolling statistics, in valuation periods: 63 by default.",
+          "default": 63
+        },
+        "histogram_bins": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of bins of return histograms: 30 by default.",
+          "default": 30
+        },
+        "top": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many holdings lists of the largest, the top contributors and the like show: 10 by\ndefault.",
+          "default": 10
+        },
+        "long_term_after_days": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The holding period, in days, from which a lot or a gain is long-term: 365 by default.",
+          "default": 365
+        },
+        "expected_returns": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/InstrumentId"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Annual expected returns by instrument for the efficient frontier; instruments not listed,\nand every instrument when none is, take their historical mean return.",
+          "default": []
+        },
+        "frontier_points": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of portfolios on the efficient frontier: 25 by default.",
+          "default": 25
+        },
+        "benchmark_weights": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/HoldingKey"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Benchmark weights by holding, for the ex-ante tracking error.",
+          "default": []
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttributionInputs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark's segments, for the attribution report.",
+          "default": null
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NamedScenario"
+          },
+          "description": "The scenarios of the scenarios report.",
+          "default": []
+        }
+      },
+      "description": "The options every report takes. Each report uses the ones that concern it; the others are\nignored, so one set of options can serve every screen."
+    },
+    "ReportTable": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A stable name, such as `holdings`, usable as a file or sheet name."
+        },
+        "title": {
+          "type": "string",
+          "description": "A title for people, such as \"Holdings\"."
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "description": "The columns."
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Cell"
+            }
+          },
+          "description": "The rows, one cell per column."
+        }
+      },
+      "required": [
+        "name",
+        "title",
+        "columns",
+        "rows"
+      ],
+      "description": "A table of a report: named, with typed columns and one row of cells per record."
     },
     "ResampledSolution": {
       "type": "object",
@@ -4120,6 +5902,132 @@
       ],
       "description": "A portfolio's volatility split into each asset's contribution (Euler allocation)."
     },
+    "RiskReport": {
+      "type": "object",
+      "properties": {
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Where the numbers come from."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's value on the report's date."
+        },
+        "returns": {
+          "$ref": "#/$defs/Series",
+          "description": "The portfolio's time-weighted returns, one per valuation period."
+        },
+        "statistics": {
+          "$ref": "#/$defs/Statistics",
+          "description": "Statistics of the returns, annualised."
+        },
+        "relative": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RelativeStatistics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Statistics against the benchmark, with a benchmark."
+        },
+        "drawdown": {
+          "$ref": "#/$defs/Series",
+          "description": "The fall from the running peak on each valuation date."
+        },
+        "drawdowns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Drawdown"
+          },
+          "description": "The largest drawdowns, deepest first."
+        },
+        "tail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TailRow"
+          },
+          "description": "Value at risk and expected shortfall by every method at every confidence of the\noptions."
+        },
+        "histogram": {
+          "$ref": "#/$defs/Histogram",
+          "description": "The distribution of the returns, with the normal distribution's for comparison."
+        },
+        "holdings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldingsRisk"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The current holdings' risk; `None` (with a warning) when it cannot be estimated."
+        },
+        "rolling": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Series"
+          },
+          "description": "Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking\nerror."
+        }
+      },
+      "required": [
+        "provenance",
+        "value",
+        "returns",
+        "statistics",
+        "drawdown",
+        "drawdowns",
+        "tail",
+        "histogram",
+        "rolling"
+      ],
+      "description": "The risk report."
+    },
+    "ScenarioDefinition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "shocks"
+            },
+            "shocks": {
+              "$ref": "#/$defs/Shocks",
+              "description": "The shocks."
+            }
+          },
+          "required": [
+            "type",
+            "shocks"
+          ],
+          "description": "Shocks to instruments, groups, currencies or factors."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "historical"
+            },
+            "window": {
+              "$ref": "#/$defs/HistoricalWindow",
+              "description": "The period, with any proxies."
+            }
+          },
+          "required": [
+            "type",
+            "window"
+          ],
+          "description": "A historical period."
+        }
+      ],
+      "description": "What a scenario does: shocks, or a historical period replayed."
+    },
     "ScenarioOptions": {
       "type": "object",
       "properties": {
@@ -4145,6 +6053,38 @@
         }
       },
       "description": "What to report beyond the effect on each holding."
+    },
+    "ScenarioOutcome": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The scenario's name."
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The result; `None` when the scenario could not be run."
+        },
+        "problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "description": "The problems that stopped it, with paths into the scenario."
+        }
+      },
+      "required": [
+        "name",
+        "problems"
+      ],
+      "description": "One scenario's result, or why it could not be run."
     },
     "ScenarioPath": {
       "type": "object",
@@ -4389,6 +6329,143 @@
       },
       "description": "The risk model for the risk before and after a scenario."
     },
+    "ScenarioSummary": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The scenario's name."
+        },
+        "change": {
+          "type": "number",
+          "format": "double",
+          "description": "The change in value, in the base currency."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's return."
+        },
+        "volatility_after": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annualised volatility after."
+        },
+        "value_at_risk_after": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The value at risk after, at the first confidence of the options."
+        },
+        "worst": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldingKey"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The holding that lost most."
+        },
+        "worst_change": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "Its change in value."
+        }
+      },
+      "required": [
+        "name",
+        "change",
+        "portfolio_return"
+      ],
+      "description": "One scenario in a line, for a summary table or a bar chart."
+    },
+    "ScenariosReport": {
+      "type": "object",
+      "properties": {
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Where the numbers come from."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's value before every scenario."
+        },
+        "risk_start": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first date of the returns behind the risk model, when there is one."
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScenarioOutcome"
+          },
+          "description": "Each scenario, in the order given."
+        },
+        "summary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScenarioSummary"
+          },
+          "description": "The scenarios that ran, in a line each."
+        },
+        "changes": {
+          "$ref": "#/$defs/Grid",
+          "description": "The change in each holding's value (rows) in each scenario that ran (columns)."
+        },
+        "returns": {
+          "$ref": "#/$defs/Grid",
+          "description": "Each holding's return in the base currency in each scenario that ran."
+        }
+      },
+      "required": [
+        "provenance",
+        "value",
+        "scenarios",
+        "summary",
+        "changes",
+        "returns"
+      ],
+      "description": "The scenarios report."
+    },
+    "SchemeContributions": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The classification scheme."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GroupContribution"
+          },
+          "description": "Each group, in name order."
+        }
+      },
+      "required": [
+        "scheme",
+        "groups"
+      ],
+      "description": "Contributions added up by the groups of one classification scheme."
+    },
     "SchemeImpact": {
       "type": "object",
       "properties": {
@@ -4525,6 +6602,41 @@
         "total"
       ],
       "description": "What one segment added to the excess return."
+    },
+    "Series": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "What the series is, such as \"Portfolio\" or \"Rolling volatility (63 days)\"."
+        },
+        "unit": {
+          "$ref": "#/$defs/Unit",
+          "description": "What its values measure."
+        },
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The dates."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "One value per date."
+        }
+      },
+      "required": [
+        "name",
+        "unit",
+        "dates",
+        "values"
+      ],
+      "description": "A labelled series of numbers over time, for a line or bar chart."
     },
     "Severity": {
       "oneOf": [
@@ -4731,6 +6843,31 @@
       ],
       "description": "Buy or sell."
     },
+    "Slice": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The part's name: a holding, a currency, a group."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value in the base currency."
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "Its share of the whole."
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "weight"
+      ],
+      "description": "One part of a whole, for a pie, bar or treemap chart."
+    },
     "Solution": {
       "type": "object",
       "properties": {
@@ -4852,6 +6989,40 @@
         }
       ],
       "description": "How an optimisation ended."
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "digest": {
+          "type": "string",
+          "description": "The SHA-256 digest, in hexadecimal, of the portfolio document with its market data, as\nthe engine writes it. The same inputs give the same digest in every language."
+        },
+        "transactions": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of transactions."
+        },
+        "accounts": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of accounts."
+        },
+        "instruments": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of instruments."
+        }
+      },
+      "required": [
+        "digest",
+        "transactions",
+        "accounts",
+        "instruments"
+      ],
+      "description": "What a report was computed from: a digest of the portfolio document and market data, and\ntheir size. Computing it once and passing it to each report avoids hashing the inputs again."
     },
     "Statistics": {
       "type": "object",
@@ -5024,6 +7195,35 @@
         "expected_shortfall"
       ],
       "description": "Value at risk and expected shortfall over one period of the returns.\n\nBoth are losses, reported as positive returns: a value at risk of 0.021 at 95% confidence\nmeans that one period in twenty is expected to lose 2.1% or more."
+    },
+    "TailRow": {
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "description": "The confidence."
+        },
+        "method": {
+          "$ref": "#/$defs/TailMethod",
+          "description": "The method."
+        },
+        "value_at_risk": {
+          "$ref": "#/$defs/Amount",
+          "description": "The value at risk over one valuation period, a loss."
+        },
+        "expected_shortfall": {
+          "$ref": "#/$defs/Amount",
+          "description": "The expected shortfall over one valuation period, a loss."
+        }
+      },
+      "required": [
+        "confidence",
+        "method",
+        "value_at_risk",
+        "expected_shortfall"
+      ],
+      "description": "Value at risk and expected shortfall by one method at one confidence."
     },
     "TaxRates": {
       "type": "object",
@@ -5683,6 +7883,81 @@
       ],
       "description": "Trading from the current portfolio: a limit on turnover, costs of trading, or both."
     },
+    "Unit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "const": "money"
+            },
+            "currency": {
+              "$ref": "#/$defs/Currency",
+              "description": "The currency."
+            }
+          },
+          "required": [
+            "unit",
+            "currency"
+          ],
+          "description": "An amount of money in a currency."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "const": "fraction"
+            }
+          },
+          "required": [
+            "unit"
+          ],
+          "description": "A return, weight or share as a fraction: 0.05 is 5%."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "const": "ratio"
+            }
+          },
+          "required": [
+            "unit"
+          ],
+          "description": "A ratio, such as a Sharpe ratio or a beta."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "const": "level"
+            }
+          },
+          "required": [
+            "unit"
+          ],
+          "description": "The level of an index, such as the growth of 100."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unit": {
+              "type": "string",
+              "const": "count"
+            }
+          },
+          "required": [
+            "unit"
+          ],
+          "description": "A count."
+        }
+      ],
+      "description": "What the numbers of a series, grid or column measure."
+    },
     "ValidationReport": {
       "type": "object",
       "properties": {
@@ -5864,6 +8139,57 @@
         }
       ],
       "description": "How uncertain a view is: its variance in the model."
+    },
+    "YearReturn": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The year."
+        },
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The valuation the year's return starts from: the last one of the year before, or the\nfirst valuation."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The last valuation of the year."
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "Whether the valuations cover the whole year."
+        },
+        "portfolio": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's time-weighted return."
+        },
+        "benchmark": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The benchmark's return."
+        },
+        "excess": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`portfolio - benchmark`."
+        }
+      },
+      "required": [
+        "year",
+        "start",
+        "end",
+        "complete",
+        "portfolio"
+      ],
+      "description": "The return of one calendar year (or the part of it covered)."
     }
   }
 }
