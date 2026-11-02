@@ -82,17 +82,17 @@ export interface AccountsPerformance {
   /** `value_end - value_start - flows`. */
   gain: number;
   /**
-   * The share of the household's value at the start, `None` if the household started with
+   * The share of the household's value at the start, absent if the household started with
    * nothing.
    */
   weight_start?: number | null;
   /**
-   * The time-weighted return over the period, `None` when it cannot be measured, such as for
+   * The time-weighted return over the period, absent when it cannot be measured, such as for
    * an account that gained or lost value on a day it started with none.
    */
   time_weighted?: number | null;
   /**
-   * The money-weighted return (annualised internal rate of return), `None` when it cannot be
+   * The money-weighted return (annualised internal rate of return), absent when it cannot be
    * found.
    */
   money_weighted?: number | null;
@@ -162,11 +162,11 @@ export interface AssetFit {
   asset: string;
   /**
    * The intercept: the regression's alpha, or the mean return for a statistical model;
-   * `None` for a fundamental model.
+   * absent for a fundamental model.
    */
   intercept?: number | null;
   /**
-   * The share of the asset's return variance the factors explain. `None` when the asset's
+   * The share of the asset's return variance the factors explain. Absent when the asset's
    * returns do not vary.
    */
   r_squared?: number | null;
@@ -492,8 +492,8 @@ export interface CovarianceEstimate {
   /** The estimator used. */
   method: CovarianceMethod;
   /**
-   * The covariance matrix, labelled like the returns. Scale it to annualise, for example
-   * with `Matrix::scaled` by 252 for daily returns.
+   * The covariance matrix, labelled like the returns. Scale it to annualise, for example by
+   * 252 for daily returns.
    */
   matrix: Matrix;
   /** The shrinkage intensity, between 0 and 1, for the shrinkage estimators. */
@@ -670,7 +670,7 @@ export interface Drawdown {
   peak: Date;
   /** The date of the lowest point. */
   trough: Date;
-  /** The first date at or above the peak again, or `None` if the series has not recovered. */
+  /** The first date at or above the peak again, absent if the series has not recovered. */
   recovery?: Date | null;
   /** The fall from the peak to the trough, as a negative return (-0.25 for a fall of 25%). */
   depth: number;
@@ -741,7 +741,7 @@ export interface FactorContribution {
   /** The portfolio's exposure to the factor, `(B' w)_k`. */
   exposure: number;
   /**
-   * The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the
+   * The change in volatility per unit of exposure, `(F x)_k / volatility`. Absent when the
    * portfolio has no volatility.
    */
   marginal?: number | null;
@@ -750,7 +750,7 @@ export interface FactorContribution {
    * volatility.
    */
   component: number;
-  /** `component / volatility`. `None` when the portfolio has no volatility. */
+  /** `component / volatility`. Absent when the portfolio has no volatility. */
   share?: number | null;
 }
 
@@ -833,7 +833,7 @@ export interface FactorRisk {
   factors: FactorContribution[];
   /** The specific part's contribution, `sum d w^2 / volatility`. */
   specific_component: number;
-  /** `specific_component / volatility`. `None` when the portfolio has no volatility. */
+  /** `specific_component / volatility`. Absent when the portfolio has no volatility. */
   specific_share?: number | null;
   /** Each asset's contribution under the model's covariance matrix, in the model's order. */
   assets: RiskContribution[];
@@ -910,7 +910,7 @@ export interface Grid {
   rows: string[];
   /** The column labels. */
   columns: string[];
-  /** One row of values per row label, one value per column; `None` where there is none. */
+  /** One row of values per row label, one value per column; absent where there is none. */
   values: ((number | null)[])[];
 }
 
@@ -937,7 +937,7 @@ export interface GroupImpact {
   /** Its share of the portfolio's value before. */
   weight_before: number;
   /**
-   * Its share of the portfolio's value after, or `None` if the portfolio is worth nothing
+   * Its share of the portfolio's value after, absent if the portfolio is worth nothing
    * after.
    */
   weight_after?: number | null;
@@ -968,7 +968,7 @@ export interface GroupRisk {
   weight: number;
   /** The sum of its assets' components. */
   component: number;
-  /** The sum of its assets' shares, `None` when the portfolio has no volatility. */
+  /** The sum of its assets' shares, absent when the portfolio has no volatility. */
   share?: number | null;
 }
 
@@ -1053,7 +1053,7 @@ export interface HoldingImpact {
   /** Its value after, in the base currency. */
   value_after: number;
   /**
-   * Its share of the portfolio's value after, or `None` if the portfolio is worth nothing
+   * Its share of the portfolio's value after, absent if the portfolio is worth nothing
    * after.
    */
   weight_after?: number | null;
@@ -1140,21 +1140,21 @@ export interface HoldingRow {
   holding: HoldingKey;
   /** The instrument's name, if it has one. */
   name?: string | null;
-  /** The instrument's kind; `None` for cash. */
+  /** The instrument's kind; absent for cash. */
   kind?: InstrumentKind | null;
   /** The holding's currency. */
   currency: Currency;
   /** The quantity held, or the cash balance. */
   quantity: Decimal;
-  /** The price per unit, in the instrument's currency; `None` for cash. */
+  /** The price per unit, in the instrument's currency; absent for cash. */
   price?: Decimal | null;
   /** The value in the holding's currency. */
   value_local: Decimal;
   /** The value in the base currency. */
   value_base: Decimal;
-  /** The cost basis in the instrument's currency; `None` for cash. */
+  /** The cost basis in the instrument's currency; absent for cash. */
   cost_local?: Decimal | null;
-  /** The cost basis in the base currency; `None` for cash. */
+  /** The cost basis in the base currency; absent for cash. */
   cost_base?: Decimal | null;
   /** `value_local - cost_local`. */
   unrealised_local?: Decimal | null;
@@ -1434,7 +1434,7 @@ export type Method = "interior_point" | "newton" | "recursive_bisection" | "trad
  * An exact decimal amount in one currency.
  *
  * Arithmetic between amounts checks that the currencies match and that no overflow occurs.
- * Amounts keep their full precision until `Money::round` is called.
+ * Amounts keep their full precision until they are rounded.
  */
 export interface Money {
   amount: Decimal;
@@ -1528,13 +1528,13 @@ export interface OverviewReport {
   benchmark_growth?: Series | null;
   /** The value split by holding and by each scheme of the options. */
   allocation: Breakdown[];
-  /** The holdings' risk; `None` (with a warning) when it cannot be estimated. */
+  /** The holdings' risk; absent (with a warning) when it cannot be estimated. */
   risk?: HoldingsRisk | null;
   /** Each holding's weight, expected return and risk. */
   holdings: HoldingRiskReturn[];
   /**
    * The efficient frontier of the holdings, long only and fully invested, from the expected
-   * returns and the covariance; `None` (with a warning) when it cannot be found.
+   * returns and the covariance; absent (with a warning) when it cannot be found.
    */
   frontier?: FrontierPoint[] | null;
   /** The current portfolio on the same axes as the frontier. */
@@ -1641,8 +1641,8 @@ export interface PeriodRow {
   /** Its short name: "MTD", "QTD", "YTD", "1Y", "3Y", "5Y" or "ITD". */
   label: string;
   /**
-   * The valuation the period starts from, `None` when the history does not reach back to
-   * the period's start (the other figures are then `None` too).
+   * The valuation the period starts from, absent when the history does not reach back to
+   * the period's start (the other figures are then absent too).
    */
   start?: Date | null;
   /** The valuation it ends on. */
@@ -2049,11 +2049,11 @@ export interface ResampledSolution {
   objective: Objective;
   /** The asset labels. */
   labels: string[];
-  /** The average of the simulated problems' optimal weights, `None` if none was solved. */
+  /** The average of the simulated problems' optimal weights, absent if none was solved. */
   weights?: number[] | null;
   /**
    * The standard deviation of each weight across the simulated problems (divisor `m - 1` for
-   * `m` solved problems), `None` with fewer than two.
+   * `m` solved problems), absent with fewer than two.
    */
   weight_deviations?: number[] | null;
   /** The expected return of the average weights under the problem's own estimates. */
@@ -2119,13 +2119,13 @@ export interface RiskContribution {
   weight: number;
   /**
    * The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`.
-   * `None` when the portfolio has no volatility.
+   * Absent when the portfolio has no volatility.
    */
   marginal?: number | null;
   /** `weight * marginal`. The components add up to the portfolio's volatility. */
   component: number;
   /**
-   * `component / volatility`. The shares add up to one. `None` when the portfolio has no
+   * `component / volatility`. The shares add up to one. Absent when the portfolio has no
    * volatility.
    */
   share?: number | null;
@@ -2165,7 +2165,7 @@ export interface RiskReport {
   tail: TailRow[];
   /** The distribution of the returns, with the normal distribution's for comparison. */
   histogram: Histogram;
-  /** The current holdings' risk; `None` (with a warning) when it cannot be estimated. */
+  /** The current holdings' risk; absent (with a warning) when it cannot be estimated. */
   holdings?: HoldingsRisk | null;
   /**
    * Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking
@@ -2202,7 +2202,7 @@ export interface ScenarioOptions {
 export interface ScenarioOutcome {
   /** The scenario's name. */
   name: string;
-  /** The result; `None` when the scenario could not be run. */
+  /** The result; absent when the scenario could not be run. */
   result?: ScenarioResult | null;
   /** The problems that stopped it, with paths into the scenario. */
   problems: Issue[];
@@ -2215,7 +2215,7 @@ export interface ScenarioPath {
   /** The holdings' value on each date, in the base currency. */
   values: number[];
   /**
-   * The largest fall from a peak over the period, `None` if the value never falls or is not
+   * The largest fall from a peak over the period, absent if the value never falls or is not
    * always above zero.
    */
   worst_drawdown?: Drawdown | null;
@@ -2249,7 +2249,7 @@ export interface ScenarioResult {
   /** The risk before, with a risk model. */
   risk_before?: ScenarioRisk | null;
   /**
-   * The risk after, with the stressed covariance if the risk model has a stress; `None`
+   * The risk after, with the stressed covariance if the risk model has a stress; absent
    * without a risk model or if the portfolio is worth nothing after.
    */
   risk_after?: ScenarioRisk | null;
@@ -2487,13 +2487,13 @@ export interface Solution {
   status: SolveStatus;
   /** The asset labels. */
   labels: string[];
-  /** The optimal weights, one per asset, when `SolveStatus::has_solution`. */
+  /** The optimal weights, one per asset, when the status is optimal or nearly optimal. */
   weights?: number[] | null;
   /**
    * The value of the objective at the weights: the variance for minimum variance and target
    * return; the utility for mean–variance; the expected return for target volatility; the
    * Sharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,
-   * the largest difference between an asset's share of risk and its budget. `None` for
+   * the largest difference between an asset's share of risk and its budget. Absent for
    * hierarchical risk parity, which optimises no objective.
    */
   objective_value?: number | null;
@@ -2538,8 +2538,8 @@ export interface Source {
 /**
  * Statistics of a returns series.
  *
- * Annualised figures scale by `StatisticsOptions::periods_per_year`. Ratios that divide by a
- * dispersion are `None` when the returns do not vary.
+ * Annualised figures scale by the number of periods in a year given in the options. Ratios
+ * that divide by a dispersion are absent when the returns do not vary.
  */
 export interface Statistics {
   /** The number of returns. */
@@ -2567,7 +2567,7 @@ export interface Statistics {
    * from a starting value before the first return.
    */
   max_drawdown: number;
-  /** The annualised return over the size of the maximum drawdown; `None` without a drawdown. */
+  /** The annualised return over the size of the maximum drawdown; absent without a drawdown. */
   calmar_ratio?: number | null;
   /** The skewness of the returns (population moments). */
   skewness?: number | null;

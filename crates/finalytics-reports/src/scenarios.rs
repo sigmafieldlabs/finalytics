@@ -50,7 +50,7 @@ pub struct NamedScenario {
 pub struct ScenarioOutcome {
     /// The scenario's name.
     pub name: String,
-    /// The result; `None` when the scenario could not be run.
+    /// The result; absent when the scenario could not be run.
     pub result: Option<ScenarioResult>,
     /// The problems that stopped it, with paths into the scenario.
     pub problems: Vec<Issue>,

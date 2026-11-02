@@ -193,7 +193,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The share of the household's value at the start, `None` if the household started with\nnothing."
+          "description": "The share of the household's value at the start, absent if the household started with\nnothing."
         },
         "time_weighted": {
           "type": [
@@ -201,7 +201,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The time-weighted return over the period, `None` when it cannot be measured, such as for\nan account that gained or lost value on a day it started with none."
+          "description": "The time-weighted return over the period, absent when it cannot be measured, such as for\nan account that gained or lost value on a day it started with none."
         },
         "money_weighted": {
           "type": [
@@ -209,7 +209,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The money-weighted return (annualised internal rate of return), `None` when it cannot be\nfound."
+          "description": "The money-weighted return (annualised internal rate of return), absent when it cannot be\nfound."
         },
         "contribution": {
           "type": "number",
@@ -375,7 +375,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The intercept: the regression's alpha, or the mean return for a statistical model;\n`None` for a fundamental model."
+          "description": "The intercept: the regression's alpha, or the mean return for a statistical model;\nabsent for a fundamental model."
         },
         "r_squared": {
           "type": [
@@ -383,7 +383,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The share of the asset's return variance the factors explain. `None` when the asset's\nreturns do not vary."
+          "description": "The share of the asset's return variance the factors explain. Absent when the asset's\nreturns do not vary."
         }
       },
       "required": [
@@ -1255,7 +1255,7 @@
         },
         "matrix": {
           "$ref": "#/$defs/Matrix",
-          "description": "The covariance matrix, labelled like the returns. Scale it to annualise, for example\nwith `Matrix::scaled` by 252 for daily returns."
+          "description": "The covariance matrix, labelled like the returns. Scale it to annualise, for example by\n252 for daily returns."
         },
         "shrinkage": {
           "type": [
@@ -1762,7 +1762,7 @@
               "type": "null"
             }
           ],
-          "description": "The first date at or above the peak again, or `None` if the series has not recovered."
+          "description": "The first date at or above the peak again, absent if the series has not recovered."
         },
         "depth": {
           "type": "number",
@@ -1969,7 +1969,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the\nportfolio has no volatility."
+          "description": "The change in volatility per unit of exposure, `(F x)_k / volatility`. Absent when the\nportfolio has no volatility."
         },
         "component": {
           "type": "number",
@@ -1982,7 +1982,7 @@
             "null"
           ],
           "format": "double",
-          "description": "`component / volatility`. `None` when the portfolio has no volatility."
+          "description": "`component / volatility`. Absent when the portfolio has no volatility."
         }
       },
       "required": [
@@ -2183,7 +2183,7 @@
             "null"
           ],
           "format": "double",
-          "description": "`specific_component / volatility`. `None` when the portfolio has no volatility."
+          "description": "`specific_component / volatility`. Absent when the portfolio has no volatility."
         },
         "assets": {
           "type": "array",
@@ -2395,7 +2395,7 @@
               "format": "double"
             }
           },
-          "description": "One row of values per row label, one value per column; `None` where there is none."
+          "description": "One row of values per row label, one value per column; absent where there is none."
         }
       },
       "required": [
@@ -2465,7 +2465,7 @@
             "null"
           ],
           "format": "double",
-          "description": "Its share of the portfolio's value after, or `None` if the portfolio is worth nothing\nafter."
+          "description": "Its share of the portfolio's value after, absent if the portfolio is worth nothing\nafter."
         },
         "contribution": {
           "type": "number",
@@ -2539,7 +2539,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The sum of its assets' shares, `None` when the portfolio has no volatility."
+          "description": "The sum of its assets' shares, absent when the portfolio has no volatility."
         }
       },
       "required": [
@@ -2782,7 +2782,7 @@
             "null"
           ],
           "format": "double",
-          "description": "Its share of the portfolio's value after, or `None` if the portfolio is worth nothing\nafter."
+          "description": "Its share of the portfolio's value after, absent if the portfolio is worth nothing\nafter."
         },
         "change": {
           "type": "number",
@@ -3013,7 +3013,7 @@
               "type": "null"
             }
           ],
-          "description": "The instrument's kind; `None` for cash."
+          "description": "The instrument's kind; absent for cash."
         },
         "currency": {
           "$ref": "#/$defs/Currency",
@@ -3024,7 +3024,7 @@
           "$ref": "#/$defs/Decimal"
         },
         "price": {
-          "description": "The price per unit, in the instrument's currency; `None` for cash.",
+          "description": "The price per unit, in the instrument's currency; absent for cash.",
           "anyOf": [
             {
               "$ref": "#/$defs/Decimal"
@@ -3043,7 +3043,7 @@
           "$ref": "#/$defs/Decimal"
         },
         "cost_local": {
-          "description": "The cost basis in the instrument's currency; `None` for cash.",
+          "description": "The cost basis in the instrument's currency; absent for cash.",
           "anyOf": [
             {
               "$ref": "#/$defs/Decimal"
@@ -3054,7 +3054,7 @@
           ]
         },
         "cost_base": {
-          "description": "The cost basis in the base currency; `None` for cash.",
+          "description": "The cost basis in the base currency; absent for cash.",
           "anyOf": [
             {
               "$ref": "#/$defs/Decimal"
@@ -3819,7 +3819,7 @@
         "amount",
         "currency"
       ],
-      "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until `Money::round` is called."
+      "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until they are rounded."
     },
     "MonthFlows": {
       "type": "object",
@@ -4121,7 +4121,7 @@
               "type": "null"
             }
           ],
-          "description": "The holdings' risk; `None` (with a warning) when it cannot be estimated."
+          "description": "The holdings' risk; absent (with a warning) when it cannot be estimated."
         },
         "holdings": {
           "type": "array",
@@ -4138,7 +4138,7 @@
           "items": {
             "$ref": "#/$defs/FrontierPoint"
           },
-          "description": "The efficient frontier of the holdings, long only and fully invested, from the expected\nreturns and the covariance; `None` (with a warning) when it cannot be found."
+          "description": "The efficient frontier of the holdings, long only and fully invested, from the expected\nreturns and the covariance; absent (with a warning) when it cannot be found."
         },
         "current": {
           "anyOf": [
@@ -4475,7 +4475,7 @@
               "type": "null"
             }
           ],
-          "description": "The valuation the period starts from, `None` when the history does not reach back to\nthe period's start (the other figures are then `None` too)."
+          "description": "The valuation the period starts from, absent when the history does not reach back to\nthe period's start (the other figures are then absent too)."
         },
         "end": {
           "anyOf": [
@@ -5662,7 +5662,7 @@
             "type": "number",
             "format": "double"
           },
-          "description": "The average of the simulated problems' optimal weights, `None` if none was solved."
+          "description": "The average of the simulated problems' optimal weights, absent if none was solved."
         },
         "weight_deviations": {
           "type": [
@@ -5673,7 +5673,7 @@
             "type": "number",
             "format": "double"
           },
-          "description": "The standard deviation of each weight across the simulated problems (divisor `m - 1` for\n`m` solved problems), `None` with fewer than two."
+          "description": "The standard deviation of each weight across the simulated problems (divisor `m - 1` for\n`m` solved problems), absent with fewer than two."
         },
         "expected_return": {
           "type": [
@@ -5857,7 +5857,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`.\n`None` when the portfolio has no volatility."
+          "description": "The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`.\nAbsent when the portfolio has no volatility."
         },
         "component": {
           "type": "number",
@@ -5870,7 +5870,7 @@
             "null"
           ],
           "format": "double",
-          "description": "`component / volatility`. The shares add up to one. `None` when the portfolio has no\nvolatility."
+          "description": "`component / volatility`. The shares add up to one. Absent when the portfolio has no\nvolatility."
         }
       },
       "required": [
@@ -5964,7 +5964,7 @@
               "type": "null"
             }
           ],
-          "description": "The current holdings' risk; `None` (with a warning) when it cannot be estimated."
+          "description": "The current holdings' risk; absent (with a warning) when it cannot be estimated."
         },
         "rolling": {
           "type": "array",
@@ -6070,7 +6070,7 @@
               "type": "null"
             }
           ],
-          "description": "The result; `None` when the scenario could not be run."
+          "description": "The result; absent when the scenario could not be run."
         },
         "problems": {
           "type": "array",
@@ -6113,7 +6113,7 @@
               "type": "null"
             }
           ],
-          "description": "The largest fall from a peak over the period, `None` if the value never falls or is not\nalways above zero."
+          "description": "The largest fall from a peak over the period, absent if the value never falls or is not\nalways above zero."
         }
       },
       "required": [
@@ -6212,7 +6212,7 @@
               "type": "null"
             }
           ],
-          "description": "The risk after, with the stressed covariance if the risk model has a stress; `None`\nwithout a risk model or if the portfolio is worth nothing after."
+          "description": "The risk after, with the stressed covariance if the risk model has a stress; absent\nwithout a risk model or if the portfolio is worth nothing after."
         },
         "path": {
           "anyOf": [
@@ -6895,7 +6895,7 @@
             "type": "number",
             "format": "double"
           },
-          "description": "The optimal weights, one per asset, when `SolveStatus::has_solution`."
+          "description": "The optimal weights, one per asset, when the status is optimal or nearly optimal."
         },
         "objective_value": {
           "type": [
@@ -6903,7 +6903,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The value of the objective at the weights: the variance for minimum variance and target\nreturn; the utility for mean–variance; the expected return for target volatility; the\nSharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,\nthe largest difference between an asset's share of risk and its budget. `None` for\nhierarchical risk parity, which optimises no objective."
+          "description": "The value of the objective at the weights: the variance for minimum variance and target\nreturn; the utility for mean–variance; the expected return for target volatility; the\nSharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,\nthe largest difference between an asset's share of risk and its budget. Absent for\nhierarchical risk parity, which optimises no objective."
         },
         "expected_return": {
           "type": [
@@ -6965,7 +6965,7 @@
         {
           "type": "string",
           "const": "nearly_optimal",
-          "description": "Solved to reduced accuracy; the weights are usable but should be checked against\n`Solution::max_violation`."
+          "description": "Solved to reduced accuracy; the weights are usable but should be checked against the\nsolution's largest constraint violation, `max_violation`."
         },
         {
           "type": "string",
@@ -7080,7 +7080,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The annualised return over the size of the maximum drawdown; `None` without a drawdown."
+          "description": "The annualised return over the size of the maximum drawdown; absent without a drawdown."
         },
         "skewness": {
           "type": [
@@ -7119,7 +7119,7 @@
         "best",
         "worst"
       ],
-      "description": "Statistics of a returns series.\n\nAnnualised figures scale by `StatisticsOptions::periods_per_year`. Ratios that divide by a\ndispersion are `None` when the returns do not vary."
+      "description": "Statistics of a returns series.\n\nAnnualised figures scale by the number of periods in a year given in the options. Ratios\nthat divide by a dispersion are absent when the returns do not vary."
     },
     "StatisticsOptions": {
       "type": "object",

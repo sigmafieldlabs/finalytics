@@ -176,17 +176,17 @@ class AccountsPerformance:
     """`value_end - value_start - flows`."""
 
     weight_start: float | None = None
-    """The share of the household's value at the start, `None` if the household started with
+    """The share of the household's value at the start, absent if the household started with
     nothing.
     """
 
     time_weighted: float | None = None
-    """The time-weighted return over the period, `None` when it cannot be measured, such as for an
+    """The time-weighted return over the period, absent when it cannot be measured, such as for an
     account that gained or lost value on a day it started with none.
     """
 
     money_weighted: float | None = None
-    """The money-weighted return (annualised internal rate of return), `None` when it cannot be
+    """The money-weighted return (annualised internal rate of return), absent when it cannot be
     found.
     """
 
@@ -289,12 +289,12 @@ class AssetFit:
     """The asset's label."""
 
     intercept: float | None = None
-    """The intercept: the regression's alpha, or the mean return for a statistical model; `None` for
+    """The intercept: the regression's alpha, or the mean return for a statistical model; absent for
     a fundamental model.
     """
 
     r_squared: float | None = None
-    """The share of the asset's return variance the factors explain. `None` when the asset's returns
+    """The share of the asset's return variance the factors explain. Absent when the asset's returns
     do not vary.
     """
 
@@ -750,8 +750,8 @@ class CovarianceEstimate:
     """The estimator used."""
 
     matrix: Matrix
-    """The covariance matrix, labelled like the returns. Scale it to annualise, for example with
-    `Matrix::scaled` by 252 for daily returns.
+    """The covariance matrix, labelled like the returns. Scale it to annualise, for example by 252
+    for daily returns.
     """
 
     shrinkage: float | None = None
@@ -1004,7 +1004,7 @@ class Drawdown:
     """The date of the lowest point."""
 
     recovery: datetime.date | None = None
-    """The first date at or above the peak again, or `None` if the series has not recovered."""
+    """The first date at or above the peak again, absent if the series has not recovered."""
 
     depth: float
     """The fall from the peak to the trough, as a negative return (-0.25 for a fall of 25%)."""
@@ -1116,7 +1116,7 @@ class FactorContribution:
     """The portfolio's exposure to the factor, `(B' w)_k`."""
 
     marginal: float | None = None
-    """The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the
+    """The change in volatility per unit of exposure, `(F x)_k / volatility`. Absent when the
     portfolio has no volatility.
     """
 
@@ -1125,7 +1125,7 @@ class FactorContribution:
     """
 
     share: float | None = None
-    """`component / volatility`. `None` when the portfolio has no volatility."""
+    """`component / volatility`. Absent when the portfolio has no volatility."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1222,7 +1222,7 @@ class FactorRisk:
     """The specific part's contribution, `sum d w^2 / volatility`."""
 
     specific_share: float | None = None
-    """`specific_component / volatility`. `None` when the portfolio has no volatility."""
+    """`specific_component / volatility`. Absent when the portfolio has no volatility."""
 
     assets: list[RiskContribution]
     """Each asset's contribution under the model's covariance matrix, in the model's order."""
@@ -1311,7 +1311,7 @@ class Grid:
     """The column labels."""
 
     values: list[list[float | None]]
-    """One row of values per row label, one value per column; `None` where there is none."""
+    """One row of values per row label, one value per column; absent where there is none."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1348,8 +1348,7 @@ class GroupImpact:
     """Its share of the portfolio's value before."""
 
     weight_after: float | None = None
-    """Its share of the portfolio's value after, or `None` if the portfolio is worth nothing after.
-    """
+    """Its share of the portfolio's value after, absent if the portfolio is worth nothing after."""
 
     contribution: float
     """`change` as a share of the portfolio's value before: the groups' contributions add up to the
@@ -1388,7 +1387,7 @@ class GroupRisk:
     """The sum of its assets' components."""
 
     share: float | None = None
-    """The sum of its assets' shares, `None` when the portfolio has no volatility."""
+    """The sum of its assets' shares, absent when the portfolio has no volatility."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1504,8 +1503,7 @@ class HoldingImpact:
     """Its value after, in the base currency."""
 
     weight_after: float | None = None
-    """Its share of the portfolio's value after, or `None` if the portfolio is worth nothing after.
-    """
+    """Its share of the portfolio's value after, absent if the portfolio is worth nothing after."""
 
     change: float
     """`value_after - value_before`."""
@@ -1627,7 +1625,7 @@ class HoldingRow:
     """The instrument's name, if it has one."""
 
     kind: InstrumentKind | None = None
-    """The instrument's kind; `None` for cash."""
+    """The instrument's kind; absent for cash."""
 
     currency: str
     """The holding's currency."""
@@ -1636,7 +1634,7 @@ class HoldingRow:
     """The quantity held, or the cash balance."""
 
     price: decimal.Decimal | None = None
-    """The price per unit, in the instrument's currency; `None` for cash."""
+    """The price per unit, in the instrument's currency; absent for cash."""
 
     value_local: decimal.Decimal
     """The value in the holding's currency."""
@@ -1645,10 +1643,10 @@ class HoldingRow:
     """The value in the base currency."""
 
     cost_local: decimal.Decimal | None = None
-    """The cost basis in the instrument's currency; `None` for cash."""
+    """The cost basis in the instrument's currency; absent for cash."""
 
     cost_base: decimal.Decimal | None = None
-    """The cost basis in the base currency; `None` for cash."""
+    """The cost basis in the base currency; absent for cash."""
 
     unrealised_local: decimal.Decimal | None = None
     """`value_local - cost_local`."""
@@ -1968,7 +1966,7 @@ class Money:
     """An exact decimal amount in one currency.
 
     Arithmetic between amounts checks that the currencies match and that no overflow occurs.
-    Amounts keep their full precision until `Money::round` is called.
+    Amounts keep their full precision until they are rounded.
     """
 
     amount: decimal.Decimal
@@ -2154,14 +2152,14 @@ class OverviewReport:
     """The value split by holding and by each scheme of the options."""
 
     risk: HoldingsRisk | None = None
-    """The holdings' risk; `None` (with a warning) when it cannot be estimated."""
+    """The holdings' risk; absent (with a warning) when it cannot be estimated."""
 
     holdings: list[HoldingRiskReturn]
     """Each holding's weight, expected return and risk."""
 
     frontier: list[FrontierPoint] | None = None
     """The efficient frontier of the holdings, long only and fully invested, from the expected
-    returns and the covariance; `None` (with a warning) when it cannot be found.
+    returns and the covariance; absent (with a warning) when it cannot be found.
     """
 
     current: PortfolioPoint | None = None
@@ -2331,8 +2329,8 @@ class PeriodRow:
     """Its short name: "MTD", "QTD", "YTD", "1Y", "3Y", "5Y" or "ITD"."""
 
     start: datetime.date | None = None
-    """The valuation the period starts from, `None` when the history does not reach back to the
-    period's start (the other figures are then `None` too).
+    """The valuation the period starts from, absent when the history does not reach back to the
+    period's start (the other figures are then absent too).
     """
 
     end: datetime.date | None = None
@@ -2882,11 +2880,11 @@ class ResampledSolution:
     """The asset labels."""
 
     weights: list[float] | None = None
-    """The average of the simulated problems' optimal weights, `None` if none was solved."""
+    """The average of the simulated problems' optimal weights, absent if none was solved."""
 
     weight_deviations: list[float] | None = None
     """The standard deviation of each weight across the simulated problems (divisor `m - 1` for `m`
-    solved problems), `None` with fewer than two.
+    solved problems), absent with fewer than two.
     """
 
     expected_return: float | None = None
@@ -2983,7 +2981,7 @@ class RiskContribution:
     """Its weight."""
 
     marginal: float | None = None
-    """The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`. `None`
+    """The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`. Absent
     when the portfolio has no volatility.
     """
 
@@ -2991,7 +2989,7 @@ class RiskContribution:
     """`weight * marginal`. The components add up to the portfolio's volatility."""
 
     share: float | None = None
-    """`component / volatility`. The shares add up to one. `None` when the portfolio has no
+    """`component / volatility`. The shares add up to one. Absent when the portfolio has no
     volatility.
     """
 
@@ -3041,7 +3039,7 @@ class RiskReport:
     """The distribution of the returns, with the normal distribution's for comparison."""
 
     holdings: HoldingsRisk | None = None
-    """The current holdings' risk; `None` (with a warning) when it cannot be estimated."""
+    """The current holdings' risk; absent (with a warning) when it cannot be estimated."""
 
     rolling: list[Series]
     """Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking error.
@@ -3095,7 +3093,7 @@ class ScenarioOutcome:
     """The scenario's name."""
 
     result: ScenarioResult | None = None
-    """The result; `None` when the scenario could not be run."""
+    """The result; absent when the scenario could not be run."""
 
     problems: list[Issue]
     """The problems that stopped it, with paths into the scenario."""
@@ -3112,7 +3110,7 @@ class ScenarioPath:
     """The holdings' value on each date, in the base currency."""
 
     worst_drawdown: Drawdown | None = None
-    """The largest fall from a peak over the period, `None` if the value never falls or is not
+    """The largest fall from a peak over the period, absent if the value never falls or is not
     always above zero.
     """
 
@@ -3157,7 +3155,7 @@ class ScenarioResult:
     """The risk before, with a risk model."""
 
     risk_after: ScenarioRisk | None = None
-    """The risk after, with the stressed covariance if the risk model has a stress; `None` without a
+    """The risk after, with the stressed covariance if the risk model has a stress; absent without a
     risk model or if the portfolio is worth nothing after.
     """
 
@@ -3487,13 +3485,13 @@ class Solution:
     """The asset labels."""
 
     weights: list[float] | None = None
-    """The optimal weights, one per asset, when `SolveStatus::has_solution`."""
+    """The optimal weights, one per asset, when the status is optimal or nearly optimal."""
 
     objective_value: float | None = None
     """The value of the objective at the weights: the variance for minimum variance and target
     return; the utility for mean–variance; the expected return for target volatility; the Sharpe
     ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting, the
-    largest difference between an asset's share of risk and its budget. `None` for hierarchical
+    largest difference between an asset's share of risk and its budget. Absent for hierarchical
     risk parity, which optimises no objective.
     """
 
@@ -3543,8 +3541,8 @@ class Source:
 class Statistics:
     """Statistics of a returns series.
 
-    Annualised figures scale by `StatisticsOptions::periods_per_year`. Ratios that divide by a
-    dispersion are `None` when the returns do not vary.
+    Annualised figures scale by the number of periods in a year given in the options. Ratios that
+    divide by a dispersion are absent when the returns do not vary.
     """
 
     observations: int
@@ -3579,7 +3577,7 @@ class Statistics:
     """
 
     calmar_ratio: float | None = None
-    """The annualised return over the size of the maximum drawdown; `None` without a drawdown."""
+    """The annualised return over the size of the maximum drawdown; absent without a drawdown."""
 
     skewness: float | None = None
     """The skewness of the returns (population moments)."""

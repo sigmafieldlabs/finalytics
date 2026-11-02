@@ -319,7 +319,7 @@
         "amount",
         "currency"
       ],
-      "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until `Money::round` is called."
+      "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until they are rounded."
     },
     "Portfolio": {
       "type": "object",

@@ -22,21 +22,21 @@ pub struct HoldingRow {
     pub holding: HoldingKey,
     /// The instrument's name, if it has one.
     pub name: Option<String>,
-    /// The instrument's kind; `None` for cash.
+    /// The instrument's kind; absent for cash.
     pub kind: Option<InstrumentKind>,
     /// The holding's currency.
     pub currency: Currency,
     /// The quantity held, or the cash balance.
     pub quantity: Decimal,
-    /// The price per unit, in the instrument's currency; `None` for cash.
+    /// The price per unit, in the instrument's currency; absent for cash.
     pub price: Option<Decimal>,
     /// The value in the holding's currency.
     pub value_local: Decimal,
     /// The value in the base currency.
     pub value_base: Decimal,
-    /// The cost basis in the instrument's currency; `None` for cash.
+    /// The cost basis in the instrument's currency; absent for cash.
     pub cost_local: Option<Decimal>,
-    /// The cost basis in the base currency; `None` for cash.
+    /// The cost basis in the base currency; absent for cash.
     pub cost_base: Option<Decimal>,
     /// `value_local - cost_local`.
     pub unrealised_local: Option<Decimal>,

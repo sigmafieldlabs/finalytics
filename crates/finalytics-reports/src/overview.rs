@@ -91,12 +91,12 @@ pub struct OverviewReport {
     pub benchmark_growth: Option<Series>,
     /// The value split by holding and by each scheme of the options.
     pub allocation: Vec<Breakdown>,
-    /// The holdings' risk; `None` (with a warning) when it cannot be estimated.
+    /// The holdings' risk; absent (with a warning) when it cannot be estimated.
     pub risk: Option<HoldingsRisk>,
     /// Each holding's weight, expected return and risk.
     pub holdings: Vec<HoldingRiskReturn>,
     /// The efficient frontier of the holdings, long only and fully invested, from the expected
-    /// returns and the covariance; `None` (with a warning) when it cannot be found.
+    /// returns and the covariance; absent (with a warning) when it cannot be found.
     pub frontier: Option<Vec<FrontierPoint>>,
     /// The current portfolio on the same axes as the frontier.
     pub current: Option<PortfolioPoint>,

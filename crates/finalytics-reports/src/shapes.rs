@@ -72,7 +72,7 @@ pub struct Grid {
     pub rows: Vec<String>,
     /// The column labels.
     pub columns: Vec<String>,
-    /// One row of values per row label, one value per column; `None` where there is none.
+    /// One row of values per row label, one value per column; absent where there is none.
     pub values: Vec<Vec<Option<f64>>>,
 }
 

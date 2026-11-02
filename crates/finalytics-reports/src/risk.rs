@@ -79,7 +79,7 @@ pub struct RiskReport {
     pub tail: Vec<TailRow>,
     /// The distribution of the returns, with the normal distribution's for comparison.
     pub histogram: Histogram,
-    /// The current holdings' risk; `None` (with a warning) when it cannot be estimated.
+    /// The current holdings' risk; absent (with a warning) when it cannot be estimated.
     pub holdings: Option<HoldingsRisk>,
     /// Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking
     /// error.

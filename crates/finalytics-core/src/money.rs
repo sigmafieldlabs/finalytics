@@ -37,7 +37,7 @@ impl Rounding {
 /// An exact decimal amount in one currency.
 ///
 /// Arithmetic between amounts checks that the currencies match and that no overflow occurs.
-/// Amounts keep their full precision until [`Money::round`] is called.
+/// Amounts keep their full precision until they are rounded.
 ///
 /// ```
 /// use finalytics_core::{Currency, Decimal, Money, Rounding};

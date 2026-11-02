@@ -17,11 +17,11 @@ pub struct RiskContribution {
     /// Its weight.
     pub weight: f64,
     /// The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`.
-    /// `None` when the portfolio has no volatility.
+    /// Absent when the portfolio has no volatility.
     pub marginal: Option<f64>,
     /// `weight * marginal`. The components add up to the portfolio's volatility.
     pub component: f64,
-    /// `component / volatility`. The shares add up to one. `None` when the portfolio has no
+    /// `component / volatility`. The shares add up to one. Absent when the portfolio has no
     /// volatility.
     pub share: Option<f64>,
 }
@@ -47,7 +47,7 @@ pub struct GroupRisk {
     pub weight: f64,
     /// The sum of its assets' components.
     pub component: f64,
-    /// The sum of its assets' shares, `None` when the portfolio has no volatility.
+    /// The sum of its assets' shares, absent when the portfolio has no volatility.
     pub share: Option<f64>,
 }
 

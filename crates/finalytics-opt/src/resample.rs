@@ -34,10 +34,10 @@ pub struct ResampledSolution {
     pub objective: Objective,
     /// The asset labels.
     pub labels: Vec<String>,
-    /// The average of the simulated problems' optimal weights, `None` if none was solved.
+    /// The average of the simulated problems' optimal weights, absent if none was solved.
     pub weights: Option<Vec<f64>>,
     /// The standard deviation of each weight across the simulated problems (divisor `m - 1` for
-    /// `m` solved problems), `None` with fewer than two.
+    /// `m` solved problems), absent with fewer than two.
     pub weight_deviations: Option<Vec<f64>>,
     /// The expected return of the average weights under the problem's own estimates.
     pub expected_return: Option<f64>,

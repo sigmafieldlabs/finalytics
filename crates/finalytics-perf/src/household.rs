@@ -38,13 +38,13 @@ pub struct AccountsPerformance {
     pub flows: f64,
     /// `value_end - value_start - flows`.
     pub gain: f64,
-    /// The share of the household's value at the start, `None` if the household started with
+    /// The share of the household's value at the start, absent if the household started with
     /// nothing.
     pub weight_start: Option<f64>,
-    /// The time-weighted return over the period, `None` when it cannot be measured, such as for
+    /// The time-weighted return over the period, absent when it cannot be measured, such as for
     /// an account that gained or lost value on a day it started with none.
     pub time_weighted: Option<f64>,
-    /// The money-weighted return (annualised internal rate of return), `None` when it cannot be
+    /// The money-weighted return (annualised internal rate of return), absent when it cannot be
     /// found.
     pub money_weighted: Option<f64>,
     /// The contribution to the household's time-weighted return: each day's gain over the

@@ -56,8 +56,8 @@ impl StatisticsOptions {
 
 /// Statistics of a returns series.
 ///
-/// Annualised figures scale by [`StatisticsOptions::periods_per_year`]. Ratios that divide by a
-/// dispersion are `None` when the returns do not vary.
+/// Annualised figures scale by the number of periods in a year given in the options. Ratios
+/// that divide by a dispersion are absent when the returns do not vary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Statistics {
@@ -80,7 +80,7 @@ pub struct Statistics {
     /// The largest fall from a peak, as a negative return (-0.25 for a fall of 25%), measured
     /// from a starting value before the first return.
     pub max_drawdown: f64,
-    /// The annualised return over the size of the maximum drawdown; `None` without a drawdown.
+    /// The annualised return over the size of the maximum drawdown; absent without a drawdown.
     pub calmar_ratio: Option<f64>,
     /// The skewness of the returns (population moments).
     pub skewness: Option<f64>,

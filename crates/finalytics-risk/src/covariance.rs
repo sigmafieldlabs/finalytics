@@ -35,8 +35,8 @@ pub enum CovarianceMethod {
 pub struct CovarianceEstimate {
     /// The estimator used.
     pub method: CovarianceMethod,
-    /// The covariance matrix, labelled like the returns. Scale it to annualise, for example
-    /// with [`Matrix::scaled`] by 252 for daily returns.
+    /// The covariance matrix, labelled like the returns. Scale it to annualise, for example by
+    /// 252 for daily returns.
     pub matrix: Matrix,
     /// The shrinkage intensity, between 0 and 1, for the shrinkage estimators.
     pub shrinkage: Option<f64>,

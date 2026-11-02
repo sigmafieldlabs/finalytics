@@ -12,7 +12,7 @@ pub struct Drawdown {
     pub peak: Date,
     /// The date of the lowest point.
     pub trough: Date,
-    /// The first date at or above the peak again, or `None` if the series has not recovered.
+    /// The first date at or above the peak again, absent if the series has not recovered.
     pub recovery: Option<Date>,
     /// The fall from the peak to the trough, as a negative return (-0.25 for a fall of 25%).
     pub depth: f64,

@@ -186,7 +186,7 @@ pub struct HoldingImpact {
     pub total_return: f64,
     /// Its value after, in the base currency.
     pub value_after: f64,
-    /// Its share of the portfolio's value after, or `None` if the portfolio is worth nothing
+    /// Its share of the portfolio's value after, absent if the portfolio is worth nothing
     /// after.
     pub weight_after: Option<f64>,
     /// `value_after - value_before`.
@@ -209,7 +209,7 @@ pub struct GroupImpact {
     pub change: f64,
     /// Its share of the portfolio's value before.
     pub weight_before: f64,
-    /// Its share of the portfolio's value after, or `None` if the portfolio is worth nothing
+    /// Its share of the portfolio's value after, absent if the portfolio is worth nothing
     /// after.
     pub weight_after: Option<f64>,
     /// `change` as a share of the portfolio's value before: the groups' contributions add up to
@@ -261,7 +261,7 @@ pub struct ScenarioPath {
     pub dates: Vec<Date>,
     /// The holdings' value on each date, in the base currency.
     pub values: Vec<f64>,
-    /// The largest fall from a peak over the period, `None` if the value never falls or is not
+    /// The largest fall from a peak over the period, absent if the value never falls or is not
     /// always above zero.
     pub worst_drawdown: Option<Drawdown>,
 }
@@ -293,7 +293,7 @@ pub struct ScenarioResult {
     pub groups: Vec<SchemeImpact>,
     /// The risk before, with a risk model.
     pub risk_before: Option<ScenarioRisk>,
-    /// The risk after, with the stressed covariance if the risk model has a stress; `None`
+    /// The risk after, with the stressed covariance if the risk model has a stress; absent
     /// without a risk model or if the portfolio is worth nothing after.
     pub risk_after: Option<ScenarioRisk>,
     /// For a historical scenario, the holdings' value over the period.

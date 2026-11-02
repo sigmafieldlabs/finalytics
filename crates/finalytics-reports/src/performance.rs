@@ -25,8 +25,8 @@ pub struct PeriodRow {
     pub period: Period,
     /// Its short name: "MTD", "QTD", "YTD", "1Y", "3Y", "5Y" or "ITD".
     pub label: String,
-    /// The valuation the period starts from, `None` when the history does not reach back to
-    /// the period's start (the other figures are then `None` too).
+    /// The valuation the period starts from, absent when the history does not reach back to
+    /// the period's start (the other figures are then absent too).
     pub start: Option<Date>,
     /// The valuation it ends on.
     pub end: Option<Date>,

@@ -323,9 +323,9 @@ pub struct AssetFit {
     /// The asset's label.
     pub asset: String,
     /// The intercept: the regression's alpha, or the mean return for a statistical model;
-    /// `None` for a fundamental model.
+    /// absent for a fundamental model.
     pub intercept: Option<f64>,
-    /// The share of the asset's return variance the factors explain. `None` when the asset's
+    /// The share of the asset's return variance the factors explain. Absent when the asset's
     /// returns do not vary.
     pub r_squared: Option<f64>,
 }
@@ -698,13 +698,13 @@ pub struct FactorContribution {
     pub factor: String,
     /// The portfolio's exposure to the factor, `(B' w)_k`.
     pub exposure: f64,
-    /// The change in volatility per unit of exposure, `(F x)_k / volatility`. `None` when the
+    /// The change in volatility per unit of exposure, `(F x)_k / volatility`. Absent when the
     /// portfolio has no volatility.
     pub marginal: Option<f64>,
     /// `exposure * marginal`. With the specific component, the components add up to the
     /// volatility.
     pub component: f64,
-    /// `component / volatility`. `None` when the portfolio has no volatility.
+    /// `component / volatility`. Absent when the portfolio has no volatility.
     pub share: Option<f64>,
 }
 
@@ -723,7 +723,7 @@ pub struct FactorRisk {
     pub factors: Vec<FactorContribution>,
     /// The specific part's contribution, `sum d w^2 / volatility`.
     pub specific_component: f64,
-    /// `specific_component / volatility`. `None` when the portfolio has no volatility.
+    /// `specific_component / volatility`. Absent when the portfolio has no volatility.
     pub specific_share: Option<f64>,
     /// Each asset's contribution under the model's covariance matrix, in the model's order.
     pub assets: Vec<RiskContribution>,

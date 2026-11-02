@@ -11,8 +11,8 @@ use crate::problem::Objective;
 pub enum SolveStatus {
     /// Solved to the solver's full accuracy.
     Optimal,
-    /// Solved to reduced accuracy; the weights are usable but should be checked against
-    /// [`Solution::max_violation`].
+    /// Solved to reduced accuracy; the weights are usable but should be checked against the
+    /// solution's largest constraint violation, `max_violation`.
     NearlyOptimal,
     /// No portfolio satisfies the constraints.
     Infeasible,
@@ -61,12 +61,12 @@ pub struct Solution {
     pub status: SolveStatus,
     /// The asset labels.
     pub labels: Vec<String>,
-    /// The optimal weights, one per asset, when [`SolveStatus::has_solution`].
+    /// The optimal weights, one per asset, when the status is optimal or nearly optimal.
     pub weights: Option<Vec<f64>>,
     /// The value of the objective at the weights: the variance for minimum variance and target
     /// return; the utility for mean–variance; the expected return for target volatility; the
     /// Sharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,
-    /// the largest difference between an asset's share of risk and its budget. `None` for
+    /// the largest difference between an asset's share of risk and its budget. Absent for
     /// hierarchical risk parity, which optimises no objective.
     pub objective_value: Option<f64>,
     /// The expected return at the weights, when expected returns are given.
