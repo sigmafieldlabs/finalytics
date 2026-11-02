@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-alpha.0] - 2026-11-02
+
 Finalytics 1.0 is a redesign of the library. See the migration guide (to follow) for moving from
 0.9.
 
