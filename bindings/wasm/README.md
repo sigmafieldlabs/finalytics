@@ -1,4 +1,13 @@
-# Finalytics for JavaScript and TypeScript
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/finalytics-logo-dark.png">
+  <img src="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/finalytics-logo.png" alt="Finalytics" width="420">
+</picture>
+
+[![npm](https://img.shields.io/npm/v/finalytics)](https://www.npmjs.com/package/finalytics)
+[![Downloads](https://img.shields.io/npm/dm/finalytics)](https://www.npmjs.com/package/finalytics)
+[![CI](https://github.com/sigmafieldlabs/finalytics/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sigmafieldlabs/finalytics/actions/workflows/ci.yml)
+[![Licence](https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-blue)](https://github.com/sigmafieldlabs/finalytics#licence)
+[![Homepage](https://img.shields.io/badge/homepage-sigmafield.app-0b7a75)](https://sigmafield.app/libraries/finalytics)
 
 Finalytics is a portfolio analytics engine: it keeps the books of a multi-currency portfolio from
 its transactions, measures performance and risk, and optimises portfolios under real-world
@@ -14,62 +23,53 @@ npm install finalytics
 
 ## Quick start
 
-A portfolio is its instruments and transactions; with prices, the engine keeps its books and
-measures it. Here, a deposit buys two funds at the end of January, and their prices at the end of
-each month value the portfolio. Saved as `quick-start.mjs`, it runs with `node quick-start.mjs`:
+Estimate risk and return from a year of monthly returns, then find the portfolio with the highest
+Sharpe ratio that holds between 10% and 60% of each asset: Saved as
+`quick-start.mjs`, it runs with `node quick-start.mjs`:
 
 ```js
 import { readFile } from "node:fs/promises";
-import init, { Books, MarketData, portfolioFromCsv, statistics } from "finalytics";
+import init, { covariance, solve } from "finalytics";
 
 // In a browser, `await init()` loads the engine. In Node, pass it the WebAssembly file:
-const wasm = new URL("finalytics_bg.wasm", import.meta.resolve("finalytics"));
-await init({ module_or_path: await readFile(wasm) });
+await init({ module_or_path: await readFile(new URL("finalytics_bg.wasm", import.meta.resolve("finalytics"))) });
 
-const portfolio = portfolioFromCsv(
-  `id,kind,currency,class.asset_class
-SPY,fund,USD,Equity
-AGG,fund,USD,Bonds
-`,
-  `id,account,trade_date,type,instrument,quantity,price,amount,currency
-t1,main,2026-01-30,deposit,,,,10000,USD
-t2,main,2026-01-30,buy,SPY,12,500,,
-t3,main,2026-01-30,buy,AGG,40,100,,
-`,
-  "USD",
+// Twelve months of returns for three assets.
+const returns = {
+  labels: ["Equities", "Bonds", "Gold"],
+  columns: [
+    [-0.028, 0.021, -0.044, 0.043, -0.021, 0.020, 0.055, -0.028, -0.009, 0.017, 0.044, 0.014],
+    [-0.009, 0.020, 0.002, 0.021, -0.013, 0.005, 0.014, 0.002, -0.001, -0.011, -0.028, 0.032],
+    [-0.013, -0.029, 0.004, 0.069, -0.009, 0.000, 0.017, 0.005, -0.030, 0.003, 0.057, -0.001],
+  ],
+};
+
+// Annualised estimates of risk and return.
+const { matrix } = covariance(returns, { method: "ledoit_wolf" });
+const annualised = { ...matrix, values: matrix.values.map((v) => v * 12) };
+const expected = returns.columns.map((r) => (12 * r.reduce((a, b) => a + b, 0)) / r.length);
+
+// The portfolio with the highest Sharpe ratio, holding 10% to 60% of each asset.
+const solution = solve(
+  { labels: returns.labels, covariance: annualised, expected_returns: expected, constraints: { bounds: { min: 0.1, max: 0.6 } } },
+  { objective: "maximum_sharpe", risk_free_rate: 0.02 },
 );
-const market = MarketData.fromCsv(`date,SPY,AGG
-2026-01-30,500,100
-2026-02-27,520,100.8
-2026-03-31,490,101.5
-2026-04-30,530,101
-`);
-const books = new Books(portfolio, market);
-
-// The value at the end of April, in the base currency.
-console.log(books.valuation("2026-04-30").total_base); // 10400
-
-// The time-weighted return since the purchase, each holding's contribution to it, and
-// statistics of the monthly returns.
-const performance = books.performance();
-console.log(performance.period("ITD").cumulative.toFixed(4)); // 0.0400
-const contributions = performance.contributions().map((c) => `${c.holding.id} ${c.contribution.toFixed(4)}`);
-console.log(contributions.join(", ")); // AGG 0.0040, SPY 0.0360, USD 0.0000
-const stats = statistics(performance.returns, { periods_per_year: 12 });
-console.log(stats.volatility.toFixed(4), stats.max_drawdown.toFixed(4)); // 0.1420 -0.0323
+const weights = solution.labels.map((asset, i) => `${asset} ${solution.weights[i].toFixed(3)}`);
+console.log(weights.join(", ")); // Equities 0.444, Bonds 0.180, Gold 0.375
+console.log(solution.expected_return.toFixed(4), solution.volatility.toFixed(4)); // 0.0709 0.0670
 ```
 
 The same example is in the READMEs of the
 [Rust crate](https://github.com/sigmafieldlabs/finalytics#quick-start) and the
-[Python package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/python#quick-start).
+[Python package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/python#quick-start), and it runs as a test, so the
+results shown are the engine's.
 
-## More of the API
+## Books, performance and reports
 
 ```ts
-const solution = solve(
-  { labels, covariance, expected_returns: mu },
-  { objective: "maximum_sharpe", risk_free_rate: 0.03 },
-);
+const books = new Books(portfolioFromCsv(instrumentsCsv, transactionsCsv, "USD"), MarketData.fromCsv(pricesCsv));
+const performance = books.performance();
+performance.period("YTD");
 const report = books.performanceReport({ benchmark: "SPY" });
 const tables = reportTables(report); // for CSV, spreadsheet or PDF export
 ```

@@ -1,4 +1,16 @@
-# Finalytics
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/finalytics-logo-dark.png">
+  <img src="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/finalytics-logo.png" alt="Finalytics" width="420">
+</picture>
+
+[![CI](https://github.com/sigmafieldlabs/finalytics/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sigmafieldlabs/finalytics/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/finalytics)](https://crates.io/crates/finalytics)
+[![docs.rs](https://img.shields.io/docsrs/finalytics)](https://docs.rs/finalytics)
+[![PyPI](https://img.shields.io/pypi/v/finalytics)](https://pypi.org/project/finalytics/)
+[![npm](https://img.shields.io/npm/v/finalytics)](https://www.npmjs.com/package/finalytics)
+[![Licence](https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-blue)](https://github.com/sigmafieldlabs/finalytics#licence)
+[![Rust 1.88+](https://img.shields.io/badge/rust-1.88%2B-orange)](https://www.rust-lang.org)
+[![Homepage](https://img.shields.io/badge/homepage-sigmafield.app-0b7a75)](https://sigmafield.app/libraries/finalytics)
 
 Finalytics is a portfolio analytics engine written in Rust, with bindings for Python and for
 JavaScript and TypeScript through WebAssembly. It keeps the books of a multi-currency portfolio
@@ -48,79 +60,46 @@ finalytics` or `npm install finalytics@next`.
 
 ## Quick start
 
-A portfolio is its instruments and transactions; with prices, the engine keeps its books and
-measures it. Here, a deposit buys two funds at the end of January, and their prices at the end of
-each month value the portfolio:
+Estimate risk and return from a year of monthly returns, then find the portfolio with the highest
+Sharpe ratio that holds between 10% and 60% of each asset:
 
 ```rust
-use finalytics::formats::{CsvOptions, portfolio_from_csv, prices_from_csv};
-use finalytics::{Books, Currency, Date, FlowTiming, HoldingKey, MarketData, Performance};
-
-const INSTRUMENTS: &str = "\
-id,kind,currency,class.asset_class
-SPY,fund,USD,Equity
-AGG,fund,USD,Bonds
-";
-
-const TRANSACTIONS: &str = "\
-id,account,trade_date,type,instrument,quantity,price,amount,currency
-t1,main,2026-01-30,deposit,,,,10000,USD
-t2,main,2026-01-30,buy,SPY,12,500,,
-t3,main,2026-01-30,buy,AGG,40,100,,
-";
-
-const PRICES: &str = "\
-date,SPY,AGG
-2026-01-30,500,100
-2026-02-27,520,100.8
-2026-03-31,490,101.5
-2026-04-30,530,101
-";
+use finalytics::opt::{Bound, Constraints, Objective, Problem};
+use finalytics::risk::{CovarianceMethod, ReturnsTable, covariance};
 
 fn main() -> Result<(), finalytics::Error> {
-    let options = CsvOptions::default();
-    let portfolio = portfolio_from_csv(Currency::USD, INSTRUMENTS, TRANSACTIONS, None, options)?;
-    let mut market = MarketData::new();
-    for (instrument, prices) in prices_from_csv(PRICES, options)? {
-        market = market.with_prices(instrument, prices);
-    }
-    let books = Books::build(&portfolio, &market)?;
+    // Twelve months of returns for three assets.
+    let returns = ReturnsTable::new(
+        vec!["Equities".into(), "Bonds".into(), "Gold".into()],
+        vec![
+            vec![-0.028, 0.021, -0.044, 0.043, -0.021, 0.020, 0.055, -0.028, -0.009, 0.017, 0.044, 0.014],
+            vec![-0.009, 0.020, 0.002, 0.021, -0.013, 0.005, 0.014, 0.002, -0.001, -0.011, -0.028, 0.032],
+            vec![-0.013, -0.029, 0.004, 0.069, -0.009, 0.000, 0.017, 0.005, -0.030, 0.003, 0.057, -0.001],
+        ],
+    )?;
 
-    let dates: Vec<Date> = ["2026-01-30", "2026-02-27", "2026-03-31", "2026-04-30"]
-        .into_iter()
-        .map(str::parse)
-        .collect::<Result<_, _>>()?;
-    let (first, last) = (dates[0], dates[3]);
+    // Annualised estimates of risk and return.
+    let estimate = covariance(&returns, CovarianceMethod::LedoitWolf)?;
+    let expected = returns.columns().iter().map(|r| 12.0 * r.iter().sum::<f64>() / r.len() as f64).collect();
 
-    // The value at the end of April, in the base currency.
-    let valuation = books.value_on(last, &market)?;
-    assert_eq!(valuation.total_base.to_string(), "10400");
+    // The portfolio with the highest Sharpe ratio, holding 10% to 60% of each asset.
+    let solution = Problem::new(estimate.matrix.scaled(12.0))
+        .with_expected_returns(expected)
+        .with_constraints(Constraints { bounds: Bound { min: 0.1, max: 0.6 }, ..Default::default() })
+        .solve(&Objective::MaximumSharpe { risk_free_rate: 0.02 })?;
 
-    // The time-weighted return since the purchase, and each holding's contribution to it.
-    let values = books.value_series(&dates, &market)?;
-    let performance = Performance::from_values(&values, FlowTiming::StartOfDay)?;
-    let twr = performance.time_weighted(first, last).unwrap_or(f64::NAN);
-    assert_eq!(format!("{twr:.4}"), "0.0400");
-
-    let holdings = books.holding_series(&dates, &market)?;
-    let contributions: Vec<String> = performance
-        .contributions(&holdings, first, last)?
-        .iter()
-        .filter_map(|c| match &c.holding {
-            HoldingKey::Instrument(id) => Some(format!("{id} {:.4}", c.contribution)),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(contributions, ["AGG 0.0040", "SPY 0.0360"]);
+    let weights: Vec<String> = solution.labels.iter().zip(solution.weights.unwrap_or_default())
+        .map(|(asset, w)| format!("{asset} {w:.3}")).collect();
+    assert_eq!(weights, ["Equities 0.444", "Bonds 0.180", "Gold 0.375"]);
     Ok(())
 }
 ```
 
 The same example is in the READMEs of the
 [Python](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/python#quick-start) and
-[JavaScript](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#quick-start)
-packages. The examples run as tests, so their results are
-the engine's own.
+[JavaScript](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#quick-start) packages, and it runs as a test, so
+the weights shown are the engine's. The [methods pages](https://github.com/sigmafieldlabs/finalytics/tree/main/docs/methods) define
+every model, with more examples.
 
 ## Repository layout
 
