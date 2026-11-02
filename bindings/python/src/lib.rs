@@ -304,6 +304,26 @@ impl NativeBooks {
         to_json(&series)
     }
 
+    fn account_series(&self, dates_buffer: &[u8]) -> PyResult<String> {
+        let series = self
+            .books
+            .account_series(&dates(dates_buffer, "dates")?, &self.market)
+            .map_err(engine)?;
+        to_json(&series)
+    }
+
+    fn household(&self, dates_buffer: &[u8], options: &str) -> PyResult<String> {
+        let options: finalytics::HouseholdOptions = from_json(options, "options")?;
+        let found = finalytics::household(
+            &self.books,
+            &self.market,
+            &dates(dates_buffer, "dates")?,
+            &options,
+        )
+        .map_err(engine)?;
+        to_json(&found)
+    }
+
     fn realised_gains(&self) -> PyResult<String> {
         to_json(&self.books.realised_gains())
     }
@@ -565,16 +585,19 @@ fn validate_portfolio(portfolio: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (base_currency, instruments, transactions, delimiter, accounts=None))]
 fn read_portfolio_csv(
     base_currency: &str,
     instruments: &str,
     transactions: &str,
     delimiter: &str,
+    accounts: Option<&str>,
 ) -> PyResult<String> {
     let portfolio = portfolio_from_csv(
         currency(base_currency)?,
         instruments,
         transactions,
+        accounts,
         csv_options(delimiter)?,
     )
     .map_err(engine)?;

@@ -83,6 +83,7 @@ fn a_portfolio_from_csv_builds_books() {
         Currency::USD,
         INSTRUMENTS,
         TRANSACTIONS,
+        None,
         CsvOptions::default(),
     )
     .unwrap();
@@ -136,11 +137,73 @@ fn structural_problems_come_back_under_their_file() {
         Currency::USD,
         INSTRUMENTS,
         transactions,
+        None,
         CsvOptions::default(),
     ));
     assert_eq!(
         paths(&report),
         ["portfolio.transactions[0].instrument: unknown instrument MSFT"]
+    );
+}
+
+#[test]
+fn accounts_with_classifications() {
+    let accounts = "id,name,lot_method,class.owner,class.wrapper\n\
+                    main,Brokerage,highest_cost,Alice,taxable\n\
+                    isa,Stocks and shares ISA,,Alice,ISA\n\
+                    spare,,,Bob,\n";
+    let portfolio = portfolio_from_csv(
+        Currency::USD,
+        INSTRUMENTS,
+        TRANSACTIONS,
+        Some(accounts),
+        CsvOptions::default(),
+    )
+    .unwrap();
+    let ids: Vec<&str> = portfolio.accounts.iter().map(|a| a.id.as_str()).collect();
+    assert_eq!(ids, ["main", "isa", "spare"]);
+    let main = &portfolio.accounts[0];
+    assert_eq!(main.name.as_deref(), Some("Brokerage"));
+    assert_eq!(main.lot_method, finalytics_ledger::LotMethod::HighestCost);
+    assert_eq!(main.classifications["wrapper"], "taxable");
+    assert_eq!(
+        portfolio.accounts[1].lot_method,
+        finalytics_ledger::LotMethod::Fifo
+    );
+    assert!(
+        !portfolio.accounts[2]
+            .classifications
+            .contains_key("wrapper")
+    );
+
+    // With an accounts file, a transaction in an account it does not list is an error.
+    let unlisted = report(portfolio_from_csv(
+        Currency::USD,
+        INSTRUMENTS,
+        TRANSACTIONS,
+        Some("id\nisa\n"),
+        CsvOptions::default(),
+    ));
+    assert!(
+        !paths(&unlisted).is_empty()
+            && paths(&unlisted)
+                .iter()
+                .all(|p| p.starts_with("portfolio.transactions[")
+                    && p.ends_with("unknown account main")),
+        "{:?}",
+        paths(&unlisted)
+    );
+
+    let malformed = report(accounts_from_csv(
+        "id,lot_method\nmain,newest\n,fifo\n",
+        CsvOptions::default(),
+    ));
+    assert_eq!(
+        paths(&malformed),
+        [
+            r#"line 2 (lot_method): "newest" is not a lot method; use fifo, lifo, highest_cost, lowest_cost, average_cost or specific_id"#,
+            "line 3 (id): is required"
+        ]
     );
 }
 
@@ -195,6 +258,7 @@ fn documents_round_trip_with_their_market_data() {
         Currency::USD,
         INSTRUMENTS,
         TRANSACTIONS,
+        None,
         CsvOptions::default(),
     )
     .unwrap();

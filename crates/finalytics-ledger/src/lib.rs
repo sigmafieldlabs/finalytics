@@ -27,4 +27,7 @@ pub use lots::Lot;
 pub use market::MarketData;
 pub use portfolio::Portfolio;
 pub use transaction::{LotPick, Transaction, TransactionKind};
-pub use valuation::{CashValue, HoldingLine, HoldingSeries, PositionValue, Valuation, ValueSeries};
+pub use valuation::{
+    AccountLine, AccountSeries, CashValue, HoldingLine, HoldingSeries, PositionValue, Valuation,
+    ValueSeries,
+};

@@ -86,6 +86,87 @@ class Account:
     lot_method: LotMethod = "fifo"
     """How sales in this account choose lots, unless a sale says otherwise."""
 
+    classifications: dict[str, str] = field(default_factory=dict)
+    """Classifications by scheme, for grouping accounts: for example `owner: Alice` or `wrapper:
+    ISA`.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class AccountLine:
+    """One account's values and external flows on each date of an `AccountSeries`."""
+
+    account: str
+    """The account."""
+
+    values: list[decimal.Decimal]
+    """The account's value at the end of each date, in the base currency."""
+
+    flows: list[decimal.Decimal]
+    """The external flows into the account since the previous date (deposits and transfers in
+    positive; withdrawals and transfers out negative), each converted at its own date's rate.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class AccountSeries:
+    """Each account's values and external flows on a set of dates: the input to performance by
+    account and by group of accounts.
+    """
+
+    dates: list[datetime.date]
+    """The dates."""
+
+    lines: list[AccountLine]
+    """One line per account, in the portfolio's order."""
+
+    warnings: ValidationReport
+    """Prices and rates carried forward from earlier dates."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class AccountsPerformance:
+    """The performance of one account, a group of accounts or the whole household over a period."""
+
+    name: str
+    """The account's identifier, the group's name, or "household"."""
+
+    accounts: list[str]
+    """The accounts it includes."""
+
+    value_start: float
+    """The value at the start of the period, in the base currency."""
+
+    value_end: float
+    """The value at the end of the period."""
+
+    flows: float
+    """The external flows over the period, net: positive when more came in than went out."""
+
+    gain: float
+    """`value_end - value_start - flows`."""
+
+    weight_start: float | None = None
+    """The share of the household's value at the start, `None` if the household started with
+    nothing.
+    """
+
+    time_weighted: float | None = None
+    """The time-weighted return over the period, `None` when it cannot be measured, such as for an
+    account that gained or lost value on a day it started with none.
+    """
+
+    money_weighted: float | None = None
+    """The money-weighted return (annualised internal rate of return), `None` when it cannot be
+    found.
+    """
+
+    contribution: float
+    """The contribution to the household's time-weighted return: each day's gain over the
+    household's starting value for the day, linked by the household's growth. The contributions
+    of all accounts add up to the household's return.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class TradeAllocation:
@@ -1210,6 +1291,43 @@ class HoldingSeries:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Household:
+    """A household's performance over a period: consolidated, by account and by group of accounts.
+    """
+
+    start: datetime.date
+    """The start of the period: the first date."""
+
+    end: datetime.date
+    """The end of the period: the last date."""
+
+    household: AccountsPerformance
+    """Every account together."""
+
+    accounts: list[AccountsPerformance]
+    """Each account, in the portfolio's order."""
+
+    groups: list[SchemePerformance]
+    """Each scheme the options group by."""
+
+    warnings: ValidationReport
+    """Prices and rates carried forward, and returns that could not be measured."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HouseholdOptions:
+    """Options for `household`."""
+
+    group_by: list[str] = field(default_factory=list)
+    """Classification schemes of the accounts to group them by, such as `owner` or `wrapper`.
+    Accounts without the classification are in the group "unclassified".
+    """
+
+    timing: FlowTiming = "start_of_day"
+    """When external flows happen within the day: at the start (the default) or the end."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Instrument:
     """Something a portfolio can hold, other than cash."""
 
@@ -2200,6 +2318,17 @@ class SchemeImpact:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SchemePerformance:
+    """Performance by the groups of one classification scheme of the accounts."""
+
+    scheme: str
+    """The classification scheme."""
+
+    groups: list[AccountsPerformance]
+    """Each group, in name order."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class SchemeRisk:
     """Risk by the groups of one classification scheme."""
 
@@ -3011,6 +3140,9 @@ FLATTENED = {"Transaction": ("kind", "TransactionKind")}
 __all__ = [
     "Account",
     "AccountId",
+    "AccountLine",
+    "AccountSeries",
+    "AccountsPerformance",
     "Allocation",
     "AssetBound",
     "AssetFit",
@@ -3080,6 +3212,8 @@ __all__ = [
     "HoldingLine",
     "HoldingReturns",
     "HoldingSeries",
+    "Household",
+    "HouseholdOptions",
     "IncomeAllocation",
     "Instrument",
     "InstrumentHolding",
@@ -3147,6 +3281,7 @@ __all__ = [
     "ScenarioRisk",
     "ScenarioRiskModel",
     "SchemeImpact",
+    "SchemePerformance",
     "SchemeRisk",
     "Segment",
     "SegmentEffects",

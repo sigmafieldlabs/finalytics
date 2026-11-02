@@ -7,6 +7,8 @@ inputs can be checked to give the same results in every language:
   class and region classifications.
 - `transactions.csv`: deposits into two accounts, purchases, a currency conversion, a dividend
   with tax withheld, a sale and a withdrawal.
+- `accounts.csv`: the two accounts, with owner and wrapper classifications. The other tests
+  leave it out, so that their accounts come from the transactions.
 - `prices.csv` and `fx.csv`: 44 business days of prices and EUR/USD rates, from 1 September to
   30 October 2026.
 

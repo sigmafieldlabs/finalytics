@@ -101,6 +101,11 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   the volatility, risk decomposition and value at risk before and after, with volatilities and
   correlations optionally stressed. Validated against an independent implementation in pandas,
   NumPy and SciPy.
+- Households: classifications on accounts and an accounts CSV reader; each account's values and
+  external flows on every date; and performance by account, by group of accounts and
+  consolidated, with time- and money-weighted returns and each account's contribution to the
+  consolidated return, adding up exactly. Validated against an independent implementation in
+  pandas and SciPy.
 - A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
   with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,

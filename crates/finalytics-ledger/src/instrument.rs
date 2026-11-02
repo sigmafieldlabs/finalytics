@@ -119,15 +119,27 @@ pub struct Account {
     /// How sales in this account choose lots, unless a sale says otherwise.
     #[serde(default)]
     pub lot_method: LotMethod,
+    /// Classifications by scheme, for grouping accounts: for example `owner: Alice` or
+    /// `wrapper: ISA`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub classifications: BTreeMap<String, String>,
 }
 
 impl Account {
-    /// An account using first-in, first-out lot relief.
+    /// An account using first-in, first-out lot relief, with no classifications.
     pub fn new(id: AccountId) -> Account {
         Account {
             id,
             name: None,
             lot_method: LotMethod::Fifo,
+            classifications: BTreeMap::new(),
         }
+    }
+
+    /// This account with a classification added.
+    pub fn classified(mut self, scheme: &str, value: &str) -> Account {
+        self.classifications
+            .insert(scheme.to_owned(), value.to_owned());
+        self
     }
 }

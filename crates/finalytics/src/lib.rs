@@ -12,27 +12,29 @@ pub use finalytics_core::{
 };
 
 pub use finalytics_ledger::{
-    Account, AccountId, Allocation, Books, CashBalance, CashValue, Effect, Event, Flow, FlowKind,
-    HoldingKey, HoldingLine, HoldingSeries, Holdings, Instrument, InstrumentId, InstrumentKind,
-    Lot, LotId, LotMethod, LotPick, LotSale, MarketData, Portfolio, Position, PositionValue,
-    RealisedGain, Transaction, TransactionId, TransactionKind, Valuation, ValueSeries,
+    Account, AccountId, AccountLine, AccountSeries, Allocation, Books, CashBalance, CashValue,
+    Effect, Event, Flow, FlowKind, HoldingKey, HoldingLine, HoldingSeries, Holdings, Instrument,
+    InstrumentId, InstrumentKind, Lot, LotId, LotMethod, LotPick, LotSale, MarketData, Portfolio,
+    Position, PositionValue, RealisedGain, Transaction, TransactionId, TransactionKind, Valuation,
+    ValueSeries,
 };
 
 pub use finalytics_formats::PortfolioDocument;
 pub use finalytics_perf::{
-    Attribution, AttributionPeriod, Contribution, CurrencyAttribution, CurrencyAttributionPeriod,
-    CurrencyEffect, CurrencyPeriodAttribution, CurrencyReturn, CurrencySegment, ExcessReturn,
-    FlowTiming, GroupContribution, Linking, Performance, Period, PeriodAttribution, PeriodReturn,
-    Segment, SegmentEffects, brinson_fachler, group_contributions, karnosky_singer,
+    AccountsPerformance, Attribution, AttributionPeriod, Contribution, CurrencyAttribution,
+    CurrencyAttributionPeriod, CurrencyEffect, CurrencyPeriodAttribution, CurrencyReturn,
+    CurrencySegment, ExcessReturn, FlowTiming, GroupContribution, Household, HouseholdOptions,
+    Linking, Performance, Period, PeriodAttribution, PeriodReturn, SchemePerformance, Segment,
+    SegmentEffects, brinson_fachler, group_contributions, household, karnosky_singer,
 };
 
 /// Reading and writing portfolios: CSV import with validation reports, the versioned portfolio
 /// document in JSON, and a JSON reader for any of the engine's types.
 pub mod formats {
     pub use finalytics_formats::{
-        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument, from_json,
-        fx_from_csv, instruments_from_csv, portfolio_from_csv, prices_from_csv,
-        transactions_from_csv,
+        CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument,
+        accounts_from_csv, from_json, fx_from_csv, instruments_from_csv, portfolio_from_csv,
+        prices_from_csv, transactions_from_csv,
     };
 }
 

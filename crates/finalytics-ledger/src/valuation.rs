@@ -88,7 +88,145 @@ pub struct ValueSeries {
     pub warnings: ValidationReport,
 }
 
+/// One account's values and external flows on each date of an [`AccountSeries`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct AccountLine {
+    /// The account.
+    pub account: AccountId,
+    /// The account's value at the end of each date, in the base currency.
+    pub values: Vec<Decimal>,
+    /// The external flows into the account since the previous date (deposits and transfers in
+    /// positive; withdrawals and transfers out negative), each converted at its own date's rate.
+    pub flows: Vec<Decimal>,
+}
+
+/// Each account's values and external flows on a set of dates: the input to performance by
+/// account and by group of accounts.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct AccountSeries {
+    /// The dates.
+    pub dates: Vec<Date>,
+    /// One line per account, in the portfolio's order.
+    pub lines: Vec<AccountLine>,
+    /// Prices and rates carried forward from earlier dates.
+    pub warnings: ValidationReport,
+}
+
+impl AccountSeries {
+    /// The value series of the accounts for which `include` is true: their values and flows
+    /// added up. Value moved between two included accounts by a withdrawal from one and a
+    /// deposit into the other nets to zero.
+    pub fn combined(&self, mut include: impl FnMut(&AccountId) -> bool) -> ValueSeries {
+        let n = self.dates.len();
+        let mut values = vec![Decimal::ZERO; n];
+        let mut flows = vec![Decimal::ZERO; n];
+        for line in self.lines.iter().filter(|l| include(&l.account)) {
+            for t in 0..n {
+                values[t] += line.values[t];
+                flows[t] += line.flows[t];
+            }
+        }
+        ValueSeries {
+            dates: self.dates.clone(),
+            values,
+            flows,
+            warnings: self.warnings.clone(),
+        }
+    }
+}
+
 impl Books {
+    /// Each account's value at the end of each of `dates` (strictly increasing), with its
+    /// external flows in between, in one pass over the transactions. Added up over every
+    /// account, the lines give [`Books::value_series`].
+    pub fn account_series(&self, dates: &[Date], market: &MarketData) -> Result<AccountSeries> {
+        if let Some(pair) = dates.windows(2).find(|p| p[1] <= p[0]) {
+            return Err(Error::UnorderedDates {
+                previous: pair[0],
+                next: pair[1],
+            });
+        }
+        let base = self.base_currency();
+        let mut look = Lookup {
+            market,
+            problems: ValidationReport::new(),
+        };
+        let index: HashMap<&AccountId, usize> = self
+            .accounts()
+            .iter()
+            .enumerate()
+            .map(|(k, a)| (&a.id, k))
+            .collect();
+        let mut totals: Vec<Totals> = self.accounts().iter().map(|_| Totals::default()).collect();
+        let mut lines: Vec<AccountLine> = self
+            .accounts()
+            .iter()
+            .map(|a| AccountLine {
+                account: a.id.clone(),
+                values: vec![Decimal::ZERO; dates.len()],
+                flows: vec![Decimal::ZERO; dates.len()],
+            })
+            .collect();
+        let mut events = self.events().iter().peekable();
+        for (t, &date) in dates.iter().enumerate() {
+            while let Some(event) = events.next_if(|e| e.date <= date) {
+                for effect in &event.effects {
+                    let account = match effect {
+                        Effect::SetLot { lot } => &lot.account,
+                        Effect::CloseLot { account, .. } | Effect::Cash { account, .. } => account,
+                    };
+                    if let Some(&k) = index.get(account) {
+                        totals[k].apply_all(std::slice::from_ref(effect));
+                    }
+                }
+                for f in &event.flows {
+                    let Some(&k) = index.get(&f.account) else {
+                        continue;
+                    };
+                    match market.fx_rate(f.currency, base, event.date).value() {
+                        Some(rate) => lines[k].flows[t] += f.amount * rate,
+                        None => look.problems.error(
+                            format!("fx.{}{base}", f.currency),
+                            format!(
+                                "no rate on or shortly before {} for a flow of {} {}",
+                                event.date, f.amount, f.currency
+                            ),
+                        ),
+                    }
+                }
+            }
+            let mut rates = Rates::new(base, date);
+            let mut prices: HashMap<&InstrumentId, Decimal> = HashMap::new();
+            for (k, account) in totals.iter().enumerate() {
+                let mut total = Decimal::ZERO;
+                for (id, quantity) in &account.quantities {
+                    let Some(instrument) = self.instrument(id) else {
+                        continue;
+                    };
+                    let price = *prices.entry(id).or_insert_with(|| look.price(id, date));
+                    let local = *quantity * price * instrument.multiplier;
+                    total += local * rates.get(instrument.currency, &mut look);
+                }
+                for (currency, amount) in &account.cash {
+                    if !amount.is_zero() {
+                        total += *amount * rates.get(*currency, &mut look);
+                    }
+                }
+                lines[k].values[t] = total;
+            }
+        }
+        if look.problems.has_errors() {
+            return Err(Error::Validation(look.problems));
+        }
+        Ok(AccountSeries {
+            dates: dates.to_vec(),
+            lines,
+            warnings: look.problems,
+        })
+    }
+
     /// The holdings at the end of `date`, valued with `market`.
     ///
     /// Every price and rate that is missing (beyond the carry-forward limit) is reported at once,

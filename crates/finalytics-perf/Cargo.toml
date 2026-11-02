@@ -1,6 +1,6 @@
 [package]
 name = "finalytics-perf"
-description = "Performance measurement for Finalytics: time- and money-weighted returns, periods, contribution, benchmark comparison and attribution."
+description = "Performance measurement for Finalytics: time- and money-weighted returns, periods, contribution, benchmark comparison, attribution and households."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

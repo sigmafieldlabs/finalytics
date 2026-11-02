@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::lots::{Relief, ReliefError, derived, relieve};
 use crate::{
-    AccountId, Instrument, InstrumentId, Lot, LotId, LotMethod, LotPick, MarketData, Portfolio,
-    Transaction, TransactionId, TransactionKind,
+    Account, AccountId, Instrument, InstrumentId, Lot, LotId, LotMethod, LotPick, MarketData,
+    Portfolio, Transaction, TransactionId, TransactionKind,
 };
 
 /// A change to the books made by one transaction.
@@ -417,6 +417,7 @@ impl Holdings {
 #[derive(Debug, Clone)]
 pub struct Books {
     base_currency: Currency,
+    accounts: Vec<Account>,
     instruments: BTreeMap<InstrumentId, Instrument>,
     events: Vec<Event>,
     realised: Vec<RealisedGain>,
@@ -463,6 +464,7 @@ impl Books {
         }
         Ok(Books {
             base_currency: portfolio.base_currency,
+            accounts: portfolio.accounts.clone(),
             instruments: portfolio
                 .instruments
                 .iter()
@@ -477,6 +479,11 @@ impl Books {
     /// The base currency.
     pub fn base_currency(&self) -> Currency {
         self.base_currency
+    }
+
+    /// The accounts, in the portfolio's order.
+    pub fn accounts(&self) -> &[Account] {
+        &self.accounts
     }
 
     /// The instrument with identifier `id`.

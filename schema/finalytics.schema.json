@@ -22,6 +22,13 @@
           "$ref": "#/$defs/LotMethod",
           "description": "How sales in this account choose lots, unless a sale says otherwise.",
           "default": "fifo"
+        },
+        "classifications": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Classifications by scheme, for grouping accounts: for example `owner: Alice` or\n`wrapper: ISA`."
         }
       },
       "required": [
@@ -32,6 +39,139 @@
     "AccountId": {
       "type": "string",
       "description": "Identifies an account within a portfolio.\n\nIdentifiers are non-empty, have no leading or trailing whitespace, and are compared\nexactly (case matters)."
+    },
+    "AccountLine": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "$ref": "#/$defs/AccountId",
+          "description": "The account."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Decimal"
+          },
+          "description": "The account's value at the end of each date, in the base currency."
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Decimal"
+          },
+          "description": "The external flows into the account since the previous date (deposits and transfers in\npositive; withdrawals and transfers out negative), each converted at its own date's rate."
+        }
+      },
+      "required": [
+        "account",
+        "values",
+        "flows"
+      ],
+      "description": "One account's values and external flows on each date of an `AccountSeries`."
+    },
+    "AccountSeries": {
+      "type": "object",
+      "properties": {
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The dates."
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountLine"
+          },
+          "description": "One line per account, in the portfolio's order."
+        },
+        "warnings": {
+          "$ref": "#/$defs/ValidationReport",
+          "description": "Prices and rates carried forward from earlier dates."
+        }
+      },
+      "required": [
+        "dates",
+        "lines",
+        "warnings"
+      ],
+      "description": "Each account's values and external flows on a set of dates: the input to performance by\naccount and by group of accounts."
+    },
+    "AccountsPerformance": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The account's identifier, the group's name, or \"household\"."
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountId"
+          },
+          "description": "The accounts it includes."
+        },
+        "value_start": {
+          "type": "number",
+          "format": "double",
+          "description": "The value at the start of the period, in the base currency."
+        },
+        "value_end": {
+          "type": "number",
+          "format": "double",
+          "description": "The value at the end of the period."
+        },
+        "flows": {
+          "type": "number",
+          "format": "double",
+          "description": "The external flows over the period, net: positive when more came in than went out."
+        },
+        "gain": {
+          "type": "number",
+          "format": "double",
+          "description": "`value_end - value_start - flows`."
+        },
+        "weight_start": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The share of the household's value at the start, `None` if the household started with\nnothing."
+        },
+        "time_weighted": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The time-weighted return over the period, `None` when it cannot be measured, such as for\nan account that gained or lost value on a day it started with none."
+        },
+        "money_weighted": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The money-weighted return (annualised internal rate of return), `None` when it cannot be\nfound."
+        },
+        "contribution": {
+          "type": "number",
+          "format": "double",
+          "description": "The contribution to the household's time-weighted return: each day's gain over the\nhousehold's starting value for the day, linked by the household's growth. The\ncontributions of all accounts add up to the household's return."
+        }
+      },
+      "required": [
+        "name",
+        "accounts",
+        "value_start",
+        "value_end",
+        "flows",
+        "gain",
+        "contribution"
+      ],
+      "description": "The performance of one account, a group of accounts or the whole household over a period."
     },
     "Allocation": {
       "oneOf": [
@@ -2220,6 +2360,69 @@
       ],
       "description": "Values, value moved in and income per holding over dates, in the holding's currency and in\nthe base currency: the input to contribution analysis."
     },
+    "Household": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period: the first date."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period: the last date."
+        },
+        "household": {
+          "$ref": "#/$defs/AccountsPerformance",
+          "description": "Every account together."
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountsPerformance"
+          },
+          "description": "Each account, in the portfolio's order."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SchemePerformance"
+          },
+          "description": "Each scheme the options group by."
+        },
+        "warnings": {
+          "$ref": "#/$defs/ValidationReport",
+          "description": "Prices and rates carried forward, and returns that could not be measured."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "household",
+        "accounts",
+        "groups",
+        "warnings"
+      ],
+      "description": "A household's performance over a period: consolidated, by account and by group of accounts."
+    },
+    "HouseholdOptions": {
+      "type": "object",
+      "properties": {
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classification schemes of the accounts to group them by, such as `owner` or `wrapper`.\nAccounts without the classification are in the group \"unclassified\".",
+          "default": []
+        },
+        "timing": {
+          "$ref": "#/$defs/FlowTiming",
+          "description": "When external flows happen within the day: at the start (the default) or the end.",
+          "default": "start_of_day"
+        }
+      },
+      "description": "Options for `household`."
+    },
     "Instrument": {
       "type": "object",
       "properties": {
@@ -4206,6 +4409,27 @@
         "groups"
       ],
       "description": "The effect of a scenario by the groups of one classification scheme."
+    },
+    "SchemePerformance": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "description": "The classification scheme."
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountsPerformance"
+          },
+          "description": "Each group, in name order."
+        }
+      },
+      "required": [
+        "scheme",
+        "groups"
+      ],
+      "description": "Performance by the groups of one classification scheme of the accounts."
     },
     "SchemeRisk": {
       "type": "object",

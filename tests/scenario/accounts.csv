@@ -1,0 +1,3 @@
+id,name,lot_method,class.owner,class.wrapper
+main,Brokerage account,fifo,Alice,taxable
+isa,Stocks and shares ISA,fifo,Alice,ISA

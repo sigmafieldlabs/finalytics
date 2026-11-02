@@ -466,6 +466,33 @@ impl Books {
         to_js(self.books.events())
     }
 
+    /// Each account's end-of-day value and external flows on `dates` (by default
+    /// `defaultDates()`).
+    #[wasm_bindgen(js_name = accountSeries, unchecked_return_type = "AccountSeries")]
+    pub fn account_series(&self, dates: Option<Vec<String>>) -> Result<JsValue, JsValue> {
+        let dates = self.dates_or_default(dates)?;
+        to_js(
+            &self
+                .books
+                .account_series(&dates, &self.market)
+                .map_err(error)?,
+        )
+    }
+
+    /// Performance over `dates` (by default `defaultDates()`): every account together, each
+    /// account, and the groups of accounts by each classification scheme in the options, with
+    /// each one's contribution to the household's time-weighted return.
+    #[wasm_bindgen(unchecked_return_type = "Household")]
+    pub fn household(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Date[]")] dates: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "HouseholdOptions")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let dates = self.dates_or_default(optional(dates, "dates")?)?;
+        let options: finalytics::HouseholdOptions = optional(options, "options")?;
+        to_js(&finalytics::household(&self.books, &self.market, &dates, &options).map_err(error)?)
+    }
+
     /// Time-weighted performance on `dates` (by default `defaultDates()`), with flows at the
     /// start (default) or end of the day.
     pub fn performance(
@@ -900,18 +927,22 @@ pub fn validate_portfolio(
     to_js(portfolio.validate().issues())
 }
 
-/// A portfolio from CSV text of instruments and transactions.
+/// A portfolio from CSV text of instruments, transactions and, optionally, accounts. With
+/// accounts, the portfolio has exactly the accounts listed; without, one per account the
+/// transactions name.
 #[wasm_bindgen(js_name = portfolioFromCsv, unchecked_return_type = "Portfolio")]
 pub fn portfolio_from_csv_text(
     instruments: &str,
     transactions: &str,
     #[wasm_bindgen(js_name = baseCurrency)] base_currency: &str,
     delimiter: Option<String>,
+    accounts: Option<String>,
 ) -> Result<JsValue, JsValue> {
     let portfolio = portfolio_from_csv(
         currency(base_currency)?,
         instruments,
         transactions,
+        accounts.as_deref(),
         csv_options(delimiter)?,
     )
     .map_err(error)?;

@@ -1,4 +1,4 @@
-//! Reading instruments, transactions, prices and FX rates from CSV.
+//! Reading accounts, instruments, transactions, prices and FX rates from CSV.
 //!
 //! Every reader checks the whole file and reports every problem at once, located by line and
 //! column, for example `line 15 (quantity)`. Column names are matched without regard to case or
@@ -312,6 +312,49 @@ pub fn instruments_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Instr
         instruments.push(instrument);
     }
     finish(report, instruments)
+}
+
+/// Reads accounts. Columns: `id` (required); `name` and `lot_method` (optional, first-in
+/// first-out by default); `class.<scheme>` for classifications (for example `class.owner`).
+pub fn accounts_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Account>> {
+    let mut report = ValidationReport::new();
+    let Some(table) = Table::read(text, options, &mut report) else {
+        return Err(Error::Validation(report));
+    };
+    if !table.require(&["id"], &mut report) {
+        return Err(Error::Validation(report));
+    }
+    let mut accounts = Vec::new();
+    for (line, values) in &table.rows {
+        let mut row = Row {
+            table: &table,
+            line: *line,
+            values,
+            report: &mut report,
+        };
+        let id = row.required("id", |t| {
+            AccountId::new(t).ok_or_else(|| format!("{t:?} is not a valid identifier"))
+        });
+        let lot_method = row.optional("lot_method", parse_lot_method);
+        let (Some(id), Some(lot_method)) = (id, lot_method) else {
+            continue;
+        };
+        let mut account = Account::new(id);
+        account.name = row.raw("name").map(str::to_owned);
+        account.lot_method = lot_method.unwrap_or_default();
+        for (i, name) in table.names.iter().enumerate() {
+            let Some(value) = values.get(i).filter(|v| !v.is_empty()) else {
+                continue;
+            };
+            if let Some(scheme) = name.strip_prefix("class.") {
+                account
+                    .classifications
+                    .insert(scheme.to_owned(), value.clone());
+            }
+        }
+        accounts.push(account);
+    }
+    finish(report, accounts)
 }
 
 /// Reads transactions. Every row needs `id`, `account`, `trade_date` and `type`; the other
@@ -788,18 +831,30 @@ fn original_header(text: &str, options: CsvOptions, index: usize) -> Option<Stri
         .and_then(|h| h.get(index).map(str::to_owned))
 }
 
-/// Builds a portfolio from instruments and transactions read from CSV. Accounts are created for
-/// every account the transactions name, with first-in, first-out lot relief.
+/// Builds a portfolio from instruments, transactions and, optionally, accounts read from CSV.
+/// With an accounts file, the portfolio has exactly the accounts it lists, and a transaction in
+/// any other account is an error; without one, an account is created for every account the
+/// transactions name, with first-in, first-out lot relief.
 ///
-/// Problems in either file and in the portfolio's structure are reported together, with paths
-/// under `instruments`, `transactions` and `portfolio`.
+/// Problems in every file and in the portfolio's structure are reported together, with paths
+/// under `accounts`, `instruments`, `transactions` and `portfolio`.
 pub fn portfolio_from_csv(
     base_currency: Currency,
     instruments_csv: &str,
     transactions_csv: &str,
+    accounts_csv: Option<&str>,
     options: CsvOptions,
 ) -> Result<Portfolio> {
     let mut report = ValidationReport::new();
+    let listed = match accounts_csv.map(|text| accounts_from_csv(text, options)) {
+        None => None,
+        Some(Ok(v)) => Some(v),
+        Some(Err(Error::Validation(r))) => {
+            report.merge("accounts", r);
+            Some(Vec::new())
+        }
+        Some(Err(e)) => return Err(e),
+    };
     let instruments = match instruments_from_csv(instruments_csv, options) {
         Ok(v) => v,
         Err(Error::Validation(r)) => {
@@ -819,10 +874,13 @@ pub fn portfolio_from_csv(
     if report.has_errors() {
         return Err(Error::Validation(report));
     }
-    let accounts: BTreeSet<AccountId> = transactions.iter().map(|t| t.account.clone()).collect();
+    let accounts = listed.unwrap_or_else(|| {
+        let named: BTreeSet<AccountId> = transactions.iter().map(|t| t.account.clone()).collect();
+        named.into_iter().map(Account::new).collect()
+    });
     let portfolio = Portfolio {
         base_currency,
-        accounts: accounts.into_iter().map(Account::new).collect(),
+        accounts,
         instruments,
         transactions,
     };

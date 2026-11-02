@@ -81,11 +81,17 @@ pub fn csv_fx(data: &[u8]) {
 /// them on the last transaction date.
 pub fn csv_portfolio(data: &[u8]) {
     let Some(text) = text(data) else { return };
-    let (instruments, transactions) = text.split_once('\0').unwrap_or((text, ""));
+    let (instruments, rest) = text.split_once('\0').unwrap_or((text, ""));
+    // An optional third part, after a second NUL, is an accounts file.
+    let (transactions, accounts) = match rest.split_once('\0') {
+        Some((transactions, accounts)) => (transactions, Some(accounts)),
+        None => (rest, None),
+    };
     if let Ok(portfolio) = portfolio_from_csv(
         Currency::USD,
         instruments,
         transactions,
+        accounts,
         CsvOptions::default(),
     ) {
         books(&portfolio, &MarketData::new());
@@ -138,6 +144,7 @@ fn books(portfolio: &Portfolio, market: &MarketData) {
         rebalancing(portfolio, &books, market, last);
         portfolio_scenarios(portfolio, &books, market, last);
     }
+    household_holds(portfolio, &books, market, &dates);
     if let (Ok(values), Ok(holdings)) = (
         books.value_series(&dates, market),
         books.holding_series(&dates, market),
@@ -193,6 +200,57 @@ fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: 
     }
     let accounts: Vec<_> = portfolio.accounts.iter().map(|a| a.id.clone()).collect();
     let _ = finalytics::opt::rebalance_accounts(books, market, date, &accounts, &targets, &options);
+}
+
+/// Measures the household by every scheme of its accounts' classifications, and checks that
+/// the accounts' series add up to the portfolio's, that the accounts' contributions add up to
+/// the household's return, and that the result reads back equal from JSON.
+fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, dates: &[Date]) {
+    if let (Ok(accounts), Ok(whole)) = (
+        books.account_series(dates, market),
+        books.value_series(dates, market),
+    ) {
+        let all = accounts.combined(|_| true);
+        assert_eq!(
+            all.values, whole.values,
+            "the accounts' values do not add up"
+        );
+        assert_eq!(all.flows, whole.flows, "the accounts' flows do not add up");
+    }
+    let schemes: Vec<String> = portfolio
+        .accounts
+        .iter()
+        .flat_map(|a| a.classifications.keys().cloned())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let options = finalytics::HouseholdOptions {
+        group_by: schemes,
+        ..Default::default()
+    };
+    let Ok(h) = finalytics::household(books, market, dates, &options) else {
+        return;
+    };
+    if let Some(twr) = h.household.time_weighted {
+        let total: f64 = h.accounts.iter().map(|a| a.contribution).sum();
+        let scale: f64 = 1.0 + h.accounts.iter().map(|a| a.contribution.abs()).sum::<f64>();
+        assert!(
+            (total - twr).abs() <= 1e-9 * scale,
+            "the accounts contribute {total}, not the household's {twr}"
+        );
+        for scheme in &h.groups {
+            let total: f64 = scheme.groups.iter().map(|g| g.contribution).sum();
+            assert!(
+                (total - twr).abs() <= 1e-9 * scale,
+                "the {} groups contribute {total}, not {twr}",
+                scheme.scheme
+            );
+        }
+    }
+    let text = serde_json::to_string(&h).unwrap_or_else(|e| panic!("{e}"));
+    let back: finalytics::Household =
+        serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+    assert_eq!(back, h, "a household that does not read back equal");
 }
 
 /// Shocks every instrument, every classification and every foreign currency of the portfolio,
@@ -329,6 +387,7 @@ fn scenario_books() -> &'static (Books, MarketData) {
              t3,main,2026-01-02,fx_conversion,,,,,,33000,USD,30000,EUR\n\
              t4,main,2026-01-02,buy,B,100,250,,,,,,\n\
              t5,main,2026-01-02,buy,C,300,100,,,,,,\n",
+            None,
             options,
         )
         .unwrap_or_else(|e| panic!("{e}"));

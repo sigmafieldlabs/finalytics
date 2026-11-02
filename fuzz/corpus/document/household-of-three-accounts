@@ -1,0 +1,134 @@
+{
+  "format": "finalytics.portfolio",
+  "format_version": 1,
+  "portfolio": {
+    "base_currency": "USD",
+    "accounts": [
+      {
+        "id": "main",
+        "name": "Brokerage",
+        "lot_method": "fifo",
+        "classifications": {
+          "owner": "Alice",
+          "wrapper": "taxable"
+        }
+      },
+      {
+        "id": "isa",
+        "name": "ISA",
+        "lot_method": "fifo",
+        "classifications": {
+          "owner": "Alice",
+          "wrapper": "ISA"
+        }
+      },
+      {
+        "id": "kid",
+        "name": "Junior account",
+        "lot_method": "fifo",
+        "classifications": {
+          "owner": "Bob"
+        }
+      }
+    ],
+    "instruments": [
+      {
+        "id": "SPY",
+        "kind": "fund",
+        "currency": "USD"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "t1",
+        "account": "main",
+        "trade_date": "2026-03-02",
+        "type": "deposit",
+        "amount": {
+          "amount": "10000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t2",
+        "account": "main",
+        "trade_date": "2026-03-02",
+        "type": "buy",
+        "instrument": "SPY",
+        "quantity": "50",
+        "price": "100",
+        "fees": "0"
+      },
+      {
+        "id": "t3",
+        "account": "isa",
+        "trade_date": "2026-03-02",
+        "type": "deposit",
+        "amount": {
+          "amount": "5000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t4",
+        "account": "isa",
+        "trade_date": "2026-03-02",
+        "type": "buy",
+        "instrument": "SPY",
+        "quantity": "50",
+        "price": "100",
+        "fees": "0"
+      },
+      {
+        "id": "t5",
+        "account": "kid",
+        "trade_date": "2026-03-03",
+        "type": "deposit",
+        "amount": {
+          "amount": "1000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t6",
+        "account": "main",
+        "trade_date": "2026-03-04",
+        "type": "withdrawal",
+        "amount": {
+          "amount": "2000",
+          "currency": "USD"
+        }
+      },
+      {
+        "id": "t7",
+        "account": "isa",
+        "trade_date": "2026-03-04",
+        "type": "deposit",
+        "amount": {
+          "amount": "2000",
+          "currency": "USD"
+        }
+      }
+    ]
+  },
+  "market": {
+    "pivot": "USD",
+    "max_carry_days": 5,
+    "prices": {
+      "SPY": {
+        "dates": [
+          "2026-03-02",
+          "2026-03-03",
+          "2026-03-04",
+          "2026-03-05"
+        ],
+        "values": [
+          "100",
+          "110",
+          "99",
+          "105"
+        ]
+      }
+    }
+  }
+}

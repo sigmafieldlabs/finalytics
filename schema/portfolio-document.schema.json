@@ -56,6 +56,13 @@
           "$ref": "#/$defs/LotMethod",
           "description": "How sales in this account choose lots, unless a sale says otherwise.",
           "default": "fifo"
+        },
+        "classifications": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Classifications by scheme, for grouping accounts: for example `owner: Alice` or\n`wrapper: ISA`."
         }
       },
       "required": [

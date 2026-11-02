@@ -17,6 +17,7 @@ import init, {
   tailRisk,
   type Attribution,
   type BlackLittermanEstimate,
+  type Household,
   type CurrencyAttribution,
   type FactorModelEstimate,
   type Matrix,
@@ -137,3 +138,11 @@ const stressedMatrix: Matrix = stressedCovariance(covariance, { volatility_scale
 void shocked.holdings[0].weight_after;
 void replayed.path?.worst_drawdown?.depth;
 void stressedMatrix;
+
+// Households.
+const household: Household = books.household(undefined, { group_by: ["owner"], timing: "end_of_day" });
+const contribution: number = household.accounts[0].contribution;
+const twr: number | null | undefined = household.groups[0].groups[0].time_weighted;
+void contribution;
+void twr;
+void books.accountSeries().lines[0].flows;

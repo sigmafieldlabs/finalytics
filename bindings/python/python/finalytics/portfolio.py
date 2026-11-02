@@ -74,10 +74,13 @@ class Portfolio(_types.Portfolio):
         instruments: TextOrPath,
         transactions: TextOrPath,
         base_currency: str,
+        accounts: TextOrPath | None = None,
         delimiter: str = ",",
     ) -> Portfolio:
-        """A portfolio from CSV files of instruments and transactions, with one account per
-        account named in the transactions.
+        """A portfolio from CSV files of instruments, transactions and, optionally, accounts
+        (columns `id`, `name`, `lot_method` and `class.<scheme>`). With an accounts file, the
+        portfolio has exactly the accounts it lists; without one, it has one account per account
+        named in the transactions.
 
         Every problem is reported at once, by line and column, in a
         :class:`~finalytics.ValidationError`.
@@ -88,6 +91,7 @@ class Portfolio(_types.Portfolio):
             _text(instruments),
             _text(transactions),
             delimiter,
+            None if accounts is None else _text(accounts),
         )
         return cls.from_json(text)
 
@@ -342,6 +346,29 @@ class Books:
         """Each holding's daily value, trade cash and income on `dates`."""
         dates = self.default_dates() if dates is None else dates
         return loads(_types.HoldingSeries, call(self._native.holding_series, _arrays.dates_to_buffer(dates)))
+
+    def account_series(self, dates: Any = None) -> _types.AccountSeries:
+        """Each account's end-of-day value and external flows on `dates` (by default every price
+        date from the first transaction)."""
+        dates = self.default_dates() if dates is None else dates
+        return loads(_types.AccountSeries, call(self._native.account_series, _arrays.dates_to_buffer(dates)))
+
+    def household(
+        self,
+        dates: Any = None,
+        *,
+        group_by: Sequence[str] = (),
+        timing: _types.FlowTiming = "start_of_day",
+    ) -> _types.Household:
+        """Performance over `dates` (by default every price date from the first transaction):
+        every account together, each account, and the groups of accounts by each classification
+        scheme in `group_by`, such as ``"owner"``. Each has its value, flows, time- and
+        money-weighted returns, and its contribution to the household's time-weighted return;
+        the accounts' contributions add up to that return."""
+        dates = self.default_dates() if dates is None else dates
+        options = _types.HouseholdOptions(group_by=list(group_by), timing=timing)
+        text = call(self._native.household, _arrays.dates_to_buffer(dates), dumps(options))
+        return loads(_types.Household, text)
 
     def realised_gains(self) -> list[_types.RealisedGain]:
         """Every realised gain, by lot, in the order the disposals happened."""

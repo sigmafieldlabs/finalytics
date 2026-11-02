@@ -8,6 +8,11 @@ export interface Account {
   name?: string | null;
   /** How sales in this account choose lots, unless a sale says otherwise. */
   lot_method?: LotMethod;
+  /**
+   * Classifications by scheme, for grouping accounts: for example `owner: Alice` or
+   * `wrapper: ISA`.
+   */
+  classifications?: Record<string, string>;
 }
 
 /**
@@ -17,6 +22,69 @@ export interface Account {
  * exactly (case matters).
  */
 export type AccountId = string;
+
+/** One account's values and external flows on each date of an `AccountSeries`. */
+export interface AccountLine {
+  /** The account. */
+  account: AccountId;
+  /** The account's value at the end of each date, in the base currency. */
+  values: Decimal[];
+  /**
+   * The external flows into the account since the previous date (deposits and transfers in
+   * positive; withdrawals and transfers out negative), each converted at its own date's rate.
+   */
+  flows: Decimal[];
+}
+
+/**
+ * Each account's values and external flows on a set of dates: the input to performance by
+ * account and by group of accounts.
+ */
+export interface AccountSeries {
+  /** The dates. */
+  dates: Date[];
+  /** One line per account, in the portfolio's order. */
+  lines: AccountLine[];
+  /** Prices and rates carried forward from earlier dates. */
+  warnings: ValidationReport;
+}
+
+/** The performance of one account, a group of accounts or the whole household over a period. */
+export interface AccountsPerformance {
+  /** The account's identifier, the group's name, or "household". */
+  name: string;
+  /** The accounts it includes. */
+  accounts: AccountId[];
+  /** The value at the start of the period, in the base currency. */
+  value_start: number;
+  /** The value at the end of the period. */
+  value_end: number;
+  /** The external flows over the period, net: positive when more came in than went out. */
+  flows: number;
+  /** `value_end - value_start - flows`. */
+  gain: number;
+  /**
+   * The share of the household's value at the start, `None` if the household started with
+   * nothing.
+   */
+  weight_start?: number | null;
+  /**
+   * The time-weighted return over the period, `None` when it cannot be measured, such as for
+   * an account that gained or lost value on a day it started with none.
+   */
+  time_weighted?: number | null;
+  /**
+   * The money-weighted return (annualised internal rate of return), `None` when it cannot be
+   * found.
+   */
+  money_weighted?: number | null;
+  /**
+   * The contribution to the household's time-weighted return: each day's gain over the
+   * household's starting value for the day, linked by the household's growth. The
+   * contributions of all accounts add up to the household's return.
+   */
+  contribution: number;
+}
 
 /**
  * How a transaction moved value between holdings, used to measure each holding's
@@ -849,6 +917,33 @@ export interface HoldingSeries {
   warnings: ValidationReport;
 }
 
+/** A household's performance over a period: consolidated, by account and by group of accounts. */
+export interface Household {
+  /** The start of the period: the first date. */
+  start: Date;
+  /** The end of the period: the last date. */
+  end: Date;
+  /** Every account together. */
+  household: AccountsPerformance;
+  /** Each account, in the portfolio's order. */
+  accounts: AccountsPerformance[];
+  /** Each scheme the options group by. */
+  groups: SchemePerformance[];
+  /** Prices and rates carried forward, and returns that could not be measured. */
+  warnings: ValidationReport;
+}
+
+/** Options for `household`. */
+export interface HouseholdOptions {
+  /**
+   * Classification schemes of the accounts to group them by, such as `owner` or `wrapper`.
+   * Accounts without the classification are in the group "unclassified".
+   */
+  group_by?: string[];
+  /** When external flows happen within the day: at the start (the default) or the end. */
+  timing?: FlowTiming;
+}
+
 /** Something a portfolio can hold, other than cash. */
 export interface Instrument {
   /** The caller's identifier. */
@@ -1564,6 +1659,14 @@ export interface SchemeImpact {
   scheme: string;
   /** Each group, in name order. */
   groups: GroupImpact[];
+}
+
+/** Performance by the groups of one classification scheme of the accounts. */
+export interface SchemePerformance {
+  /** The classification scheme. */
+  scheme: string;
+  /** Each group, in name order. */
+  groups: AccountsPerformance[];
 }
 
 /** Risk by the groups of one classification scheme. */

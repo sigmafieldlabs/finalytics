@@ -27,9 +27,9 @@ constraints.
 
 | Area | Includes |
 | --- | --- |
-| Data | Import and validation of instruments, transactions, prices, FX rates and benchmarks (CSV and JSON); a versioned portfolio document |
+| Data | Import and validation of accounts, instruments, transactions, prices, FX rates and benchmarks (CSV and JSON); a versioned portfolio document |
 | Holdings | Positions and tax lots on any date; cost basis; realised and unrealised gains in local and base currency; weights by any classification |
-| Performance | Time-weighted and money-weighted returns, standard periods, contribution, benchmark-relative returns, Brinson–Fachler and currency attribution |
+| Performance | Time-weighted and money-weighted returns, standard periods, contribution, benchmark-relative returns, Brinson–Fachler and currency attribution; households: performance and contribution by account and by group of accounts |
 | Risk | Return statistics, drawdowns, covariance estimators, factor models (regression, statistical and fundamental), value at risk and expected shortfall, risk decomposition by holding, group and factor, ex-ante tracking error; scenarios (shocks to instruments, groups, currencies and factors, historical replay) with their effect on value and risk, including stressed correlations |
 | Optimisation | Minimum variance, mean–variance, maximum Sharpe, target return or volatility, maximum diversification, minimum CVaR, risk parity, hierarchical risk parity, robust mean–variance; Black–Litterman returns; resampled optimisation; budget, bound, group, turnover, tracking-error, factor exposure and trade constraints; linear and quadratic trading costs; factor models in factor form; efficient frontiers; rebalancing trades with fees and tax-aware lot selection, for one account or several together |
 

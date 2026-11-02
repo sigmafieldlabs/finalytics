@@ -63,6 +63,9 @@ fn api() -> Value {
     add::<finalytics::risk::ScenarioOptions>(&mut g);
     add::<finalytics::risk::CorrelationStress>(&mut g);
     add::<finalytics::risk::ScenarioResult>(&mut g);
+    add::<finalytics::AccountSeries>(&mut g);
+    add::<finalytics::HouseholdOptions>(&mut g);
+    add::<finalytics::Household>(&mut g);
     // Risk.
     add::<risk::StatisticsOptions>(&mut g);
     add::<risk::Statistics>(&mut g);
