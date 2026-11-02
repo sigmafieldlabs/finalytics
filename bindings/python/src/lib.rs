@@ -16,7 +16,9 @@ use serde::de::DeserializeOwned;
 use finalytics::formats::{
     CsvOptions, PortfolioDocument, fx_from_csv, portfolio_from_csv, prices_from_csv,
 };
-use finalytics::opt::{Objective, Problem, Rebalance, RebalanceOptions};
+use finalytics::opt::{
+    BlackLitterman, Objective, Problem, Rebalance, RebalanceOptions, Resampling,
+};
 use finalytics::risk::{
     self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
 };
@@ -779,6 +781,34 @@ fn solve(problem: &str, objective: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+fn resampled(problem: &str, objective: &str, resampling: &str) -> PyResult<String> {
+    let problem: Problem = from_json(problem, "problem")?;
+    let objective: Objective = from_json(objective, "objective")?;
+    let resampling: Resampling = from_json(resampling, "resampling")?;
+    to_json(&problem.resampled(&objective, &resampling).map_err(engine)?)
+}
+
+#[pyfunction]
+fn black_litterman(model: &str) -> PyResult<String> {
+    let model: BlackLitterman = from_json(model, "")?;
+    to_json(&model.estimate().map_err(engine)?)
+}
+
+#[pyfunction]
+fn implied_risk_aversion(
+    returns: &[u8],
+    periods_per_year: f64,
+    risk_free_rate: f64,
+) -> PyResult<f64> {
+    finalytics::opt::implied_risk_aversion(
+        &floats(returns, "returns")?,
+        periods_per_year,
+        risk_free_rate,
+    )
+    .map_err(engine)
+}
+
+#[pyfunction]
 fn frontier(problem: &str, points: usize) -> PyResult<String> {
     let problem: Problem = from_json(problem, "problem")?;
     to_json(&problem.frontier(points).map_err(engine)?)
@@ -828,6 +858,9 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(normal_quantile, m)?)?;
     m.add_function(wrap_pyfunction!(solve, m)?)?;
     m.add_function(wrap_pyfunction!(frontier, m)?)?;
+    m.add_function(wrap_pyfunction!(resampled, m)?)?;
+    m.add_function(wrap_pyfunction!(black_litterman, m)?)?;
+    m.add_function(wrap_pyfunction!(implied_risk_aversion, m)?)?;
     m.add_function(wrap_pyfunction!(rebalance_transactions, m)?)?;
     Ok(())
 }

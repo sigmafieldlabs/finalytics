@@ -28,6 +28,7 @@ pub const CHECKS: &[(&str, Check)] = &[
     ("market_document", market_document),
     ("returns", returns),
     ("optimisation", optimisation),
+    ("views", views),
 ];
 
 fn text(data: &[u8]) -> Option<&str> {
@@ -157,6 +158,81 @@ fn numbers(data: &[u8]) -> Vec<f64> {
         .collect()
 }
 
+/// A Black–Litterman model from bytes: the first byte picks the number of assets and views; the
+/// rest are numbers for a factor of the covariance, market weights, the views' portfolios and
+/// returns, and their uncertainties. An estimate must be finite, and its model must read back
+/// equal.
+pub fn views(data: &[u8]) {
+    let Some((&control, rest)) = data.split_first() else {
+        return;
+    };
+    let n = usize::from(control % 4) + 1;
+    let k = usize::from(control / 4 % 4);
+    let values = numbers(rest);
+    if values.len() < n * n + n + k * (n + 2) {
+        return;
+    }
+    let labels: Vec<String> = (0..n).map(|i| format!("a{i}")).collect();
+    let factor = &values[..n * n];
+    let mut covariance = vec![0.0; n * n];
+    for i in 0..n {
+        for j in 0..n {
+            covariance[i * n + j] = (0..n).map(|m| factor[i * n + m] * factor[j * n + m]).sum();
+        }
+    }
+    let Ok(covariance) = Matrix::new(labels.clone(), covariance) else {
+        return;
+    };
+    let mut at = n * n + n;
+    let mut views = Vec::with_capacity(k);
+    for v in 0..k {
+        let portfolio = labels
+            .iter()
+            .zip(&values[at..at + n])
+            .filter(|(_, w)| **w != 0.0)
+            .map(|(l, w)| (l.clone(), *w))
+            .collect();
+        let expected_return = values[at + n];
+        let u = values[at + n + 1];
+        let uncertainty = match (control as usize + v) % 3 {
+            0 => finalytics::opt::ViewUncertainty::Proportional,
+            1 => finalytics::opt::ViewUncertainty::Confidence { confidence: u },
+            _ => finalytics::opt::ViewUncertainty::Variance { variance: u },
+        };
+        views.push(finalytics::opt::View {
+            portfolio,
+            expected_return,
+            uncertainty,
+        });
+        at += n + 2;
+    }
+    let model = finalytics::opt::BlackLitterman {
+        covariance,
+        prior: finalytics::opt::Prior::Market {
+            weights: values[n * n..n * n + n].to_vec(),
+            risk_aversion: 2.5,
+            risk_free_rate: 0.0,
+        },
+        views,
+        tau: 0.05,
+    };
+    if let Ok(estimate) = model.estimate() {
+        assert!(
+            estimate
+                .posterior_returns
+                .iter()
+                .chain(estimate.posterior_covariance.values())
+                .all(|v| v.is_finite()),
+            "an estimate with a non-finite posterior"
+        );
+        // A valid model holds only finite numbers, so it must read back equal.
+        let text = serde_json::to_string(&model).unwrap_or_else(|e| panic!("{e}"));
+        let back: finalytics::opt::BlackLitterman =
+            serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, model, "a model that does not read back equal");
+    }
+}
+
 /// Arbitrary numbers as returns, through every statistic.
 pub fn returns(data: &[u8]) {
     let Some((&control, rest)) = data.split_first() else {
@@ -229,7 +305,7 @@ pub fn optimisation(data: &[u8]) {
     if let Some(c) = &constraints {
         problem = problem.with_constraints(c.clone());
     }
-    let objective = match control / 5 % 8 {
+    let objective = match control / 5 % 10 {
         0 => Objective::MinimumVariance,
         1 => Objective::MeanVariance { risk_aversion: 3.0 },
         2 => Objective::MaximumSharpe {
@@ -241,6 +317,19 @@ pub fn optimisation(data: &[u8]) {
         6 => Objective::HierarchicalRiskParity {
             linkage: Default::default(),
         },
+        7 => Objective::RobustMeanVariance {
+            risk_aversion: 3.0,
+            uncertainty: finalytics::opt::ReturnUncertainty::Ellipsoid {
+                size: values.get(n * n + n + 1).map_or(0.5, |v| v.abs().min(1e6)),
+                covariance: None,
+            },
+        },
+        8 => Objective::RobustMeanVariance {
+            risk_aversion: 3.0,
+            uncertainty: finalytics::opt::ReturnUncertainty::Box {
+                half_widths: values[n * n..n * n + n].iter().map(|v| v.abs()).collect(),
+            },
+        },
         _ => Objective::TargetReturn { target: 0.05 },
     };
     if let Ok(solution) = problem.solve(&objective)
@@ -250,6 +339,20 @@ pub fn optimisation(data: &[u8]) {
             solution.max_violation.is_some(),
             "a solution without its violation"
         );
+    }
+    // A small resampling run, which must account for every simulated problem.
+    let resampling = finalytics::opt::Resampling {
+        samples: 2,
+        observations: 3,
+        seed: u64::from(control),
+    };
+    if let Ok(found) = problem.resampled(&objective, &resampling) {
+        assert_eq!(
+            found.solved + found.failed,
+            2,
+            "a simulated problem went missing"
+        );
+        assert_eq!(found.weights.is_some(), found.solved > 0);
     }
     // The same covariance as a factor model, with the rows of the factor as exposures and
     // uncorrelated unit-variance factors, solved in factor form with an exposure limit.

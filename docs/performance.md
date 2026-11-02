@@ -45,6 +45,8 @@ Median times from `cargo bench -p finalytics-bench`:
 | Optimisation | Hierarchical risk parity, 500 assets | 74 ms |
 | Optimisation | Minimum variance, 500 assets with a 10-factor model, bounds and groups | 9.6 ms |
 | Optimisation | Maximum Sharpe ratio, 500 assets with a 10-factor model, bounds and groups | 12.7 ms |
+| Optimisation | Black–Litterman posterior, 500 assets, 10 views | 51 ms |
+| Optimisation | Resampled mean–variance, 50 assets, 100 simulated histories of 120 periods | 201 ms |
 
 The portfolio holds 2,000 instruments in USD, EUR and GBP across ten accounts that use four lot
 methods, with deposits, currency conversions, purchases, sales and dividends, daily FX rates and
@@ -73,6 +75,8 @@ compare runs on the same machine when judging a change.
   system stays sparse, and the time grows roughly with the number of assets times the square of
   the number of factors, which is why large problems are much faster in factor form.
   Hierarchical risk parity needs no solver.
+- **Resampled optimisation** solves one problem per simulated history, each with a full sample
+  covariance matrix, so it takes about as long as that many dense solves.
 - **A statistical factor model** needs the eigendecomposition of the covariance matrix, which
   grows with the cube of the number of assets; a regression model needs one least-squares fit per
   asset.

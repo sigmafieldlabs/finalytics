@@ -74,6 +74,14 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
 - Optimisation with a factor model in place of a covariance matrix, solved in factor form (a
   500-asset problem with ten factors solves in about 10 ms), and limits on factor exposures,
   absolute or relative to a benchmark.
+- Black–Litterman expected returns: an equilibrium prior implied by market weights, or given prior
+  returns; absolute, relative and portfolio views whose uncertainty is proportional to their
+  variance, set from a confidence (Idzorek) or given; the posterior returns and covariance; and
+  the market's implied risk aversion. Validated against PyPortfolioOpt.
+- Robust mean–variance optimisation, maximising the worst case over an ellipsoid or a box of
+  possible expected returns, and resampled optimisation (Michaud), whose seeded random numbers
+  give the same result on every platform. Validated against CVXPY and an independent
+  reimplementation of the simulation.
 - A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
   with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,

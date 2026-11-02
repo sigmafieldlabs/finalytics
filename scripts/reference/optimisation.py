@@ -3,7 +3,10 @@
 Each problem is formulated afresh in CVXPY, solved to tight tolerances, and compared in
 ``crates/finalytics-opt/tests/reference.rs`` with the result of the Rust formulation. The maximum
 Sharpe ratio portfolio and hierarchical risk parity come from PyPortfolioOpt. The factor model
-cases are formulated in CVXPY in factor form, with the factor exposures as variables.
+cases are formulated in CVXPY in factor form, with the factor exposures as variables. The robust
+cases are formulated in CVXPY with the worst-case expected return written out, and the resampled
+case reimplements the engine's random numbers (SplitMix64 and Box-Muller) and simulation, and
+solves every simulated problem in CVXPY.
 
 Usage:
 
@@ -15,6 +18,7 @@ only when a case is added or a reference library changes, and review the differe
 """
 
 import json
+import math
 import pathlib
 
 import cvxpy as cp
@@ -22,6 +26,7 @@ import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 from pypfopt import EfficientFrontier, HRPOpt
+from scipy import stats
 
 # PyPortfolioOpt 1.6 validates the linkage method against a private SciPy table that SciPy 1.18
 # no longer has.
@@ -137,6 +142,120 @@ def factor_model_cases(labels, mu, model):
         mu @ w.value,
     )
     return cases
+
+
+def robust_cases(labels, cov, mu):
+    """Robust mean-variance problems, with the worst-case expected return written out."""
+    n = len(labels)
+    w = cp.Variable(n)
+    psd = cp.psd_wrap(cov)
+    long_only = [cp.sum(w) == 1, w >= 0, w <= 1]
+    root = np.linalg.cholesky(cov).T
+    cases = []
+
+    def case(name, uncertainty, constraints, extra, shortfall):
+        problem = cp.Problem(cp.Maximize(mu @ w - shortfall(w) - 2.0 * cp.quad_form(w, psd)), long_only + extra)
+        problem.solve(solver=cp.CLARABEL, **TIGHT)
+        assert problem.status == cp.OPTIMAL, problem.status
+        x = w.value
+        cases.append(
+            {
+                "name": name,
+                "problem": {"objective": "robust_mean_variance", "risk_aversion": 4.0, "uncertainty": uncertainty},
+                "constraints": constraints,
+                "weights": x.tolist(),
+                "objective_value": float(problem.value),
+            }
+        )
+
+    case(
+        "ellipsoid of the covariance",
+        {"set": "ellipsoid", "size": 0.3},
+        {},
+        [],
+        lambda x: 0.3 * cp.norm(root @ x),
+    )
+    observations = 60
+    error = np.diag(np.diag(cov)) / observations
+    size = math.sqrt(stats.chi2.ppf(0.95, n))
+    error_root = np.sqrt(np.diag(error))
+    case(
+        "ellipsoid of the estimation error, with a group",
+        {"set": "ellipsoid", "size": size, "covariance": {"labels": labels, "values": error.ravel().tolist()}},
+        {"groups": [{"name": "first three", "assets": labels[:3], "min": 0.0, "max": 0.5}]},
+        [cp.sum(w[:3]) <= 0.5],
+        lambda x: size * cp.norm(cp.multiply(error_root, x)),
+    )
+    half_widths = 0.5 * np.sqrt(np.diag(cov)) / math.sqrt(observations)
+    case(
+        "box",
+        {"set": "box", "half_widths": half_widths.tolist()},
+        {},
+        [],
+        lambda x: half_widths @ cp.abs(x),
+    )
+    return cases
+
+
+class Normal:
+    """The engine's standard normal numbers: SplitMix64 and the Box-Muller transform."""
+
+    MASK = (1 << 64) - 1
+
+    def __init__(self, seed):
+        self.state = seed
+        self.spare = None
+
+    def next_u64(self):
+        self.state = (self.state + 0x9E3779B97F4A7C15) & self.MASK
+        z = self.state
+        z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & self.MASK
+        z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & self.MASK
+        return z ^ (z >> 31)
+
+    def uniform(self):
+        return ((self.next_u64() >> 11) + 0.5) / float(1 << 53)
+
+    def next(self):
+        if self.spare is not None:
+            z, self.spare = self.spare, None
+            return z
+        radius = math.sqrt(-2.0 * math.log(self.uniform()))
+        angle = 2.0 * math.pi * self.uniform()
+        self.spare = radius * math.sin(angle)
+        return radius * math.cos(angle)
+
+
+def resampled_case(labels, cov, mu):
+    """Michaud resampling of a mean-variance problem with a group limit."""
+    n = len(labels)
+    samples, observations, seed = 30, 60, 2026
+    lower = np.linalg.cholesky(cov)
+    normal = Normal(seed)
+    w = cp.Variable(n)
+    solutions = []
+    for _ in range(samples):
+        history = np.empty((observations, n))
+        for t in range(observations):
+            z = np.array([normal.next() for _ in range(n)])
+            history[t] = mu + lower @ z
+        means = history.mean(axis=0)
+        sample = np.cov(history, rowvar=False, ddof=1)
+        problem = cp.Problem(
+            cp.Maximize(means @ w - 2.0 * cp.quad_form(w, cp.psd_wrap(sample))),
+            [cp.sum(w) == 1, w >= 0, w <= 1, cp.sum(w[:3]) <= 0.5],
+        )
+        problem.solve(solver=cp.CLARABEL, **TIGHT)
+        assert problem.status == cp.OPTIMAL, problem.status
+        solutions.append(w.value.copy())
+    solutions = np.array(solutions)
+    return {
+        "problem": {"objective": "mean_variance", "risk_aversion": 4.0},
+        "constraints": {"groups": [{"name": "first three", "assets": labels[:3], "min": 0.0, "max": 0.5}]},
+        "resampling": {"samples": samples, "observations": observations, "seed": seed},
+        "weights": solutions.mean(axis=0).tolist(),
+        "weight_deviations": solutions.std(axis=0, ddof=1).tolist(),
+    }
 
 
 def main():
@@ -286,6 +405,8 @@ def main():
         hrp.append({"covariance": matrix.ravel().tolist(), "results": results})
 
     factor_cases = factor_model_cases(labels, mu, model)
+    robust = robust_cases(labels, cov, mu)
+    resampled = resampled_case(labels, cov, mu)
 
     fixture = {
         "generated_by": "scripts/reference/optimisation.py",
@@ -301,6 +422,8 @@ def main():
             "specific_variances": model[2].tolist(),
             "cases": factor_cases,
         },
+        "robust": robust,
+        "resampled": resampled,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(fixture, indent=1) + "\n")

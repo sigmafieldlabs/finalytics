@@ -7,7 +7,11 @@
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 
-use finalytics::opt::{Linkage, Objective};
+use std::collections::BTreeMap;
+
+use finalytics::opt::{
+    BlackLitterman, Linkage, Objective, Prior, Resampling, View, ViewUncertainty,
+};
 use finalytics::risk::{self, CovarianceMethod, StatisticsOptions, TailMethod};
 use finalytics::{Books, FlowTiming, Performance};
 use finalytics_bench::{factor_returns, large_factor_problem, large_portfolio, large_problem};
@@ -97,6 +101,33 @@ fn optimisation(c: &mut Criterion) {
             )
         });
     }
+    let covariance = problem
+        .covariance
+        .clone()
+        .unwrap_or_else(|| unreachable!("the budget's problem has a covariance matrix"));
+    let views = (0..10)
+        .map(|k| View {
+            portfolio: BTreeMap::from([
+                (problem.labels[k].clone(), 1.0),
+                (problem.labels[k + 10].clone(), -1.0),
+            ]),
+            expected_return: 0.01,
+            uncertainty: ViewUncertainty::Confidence { confidence: 0.5 },
+        })
+        .collect();
+    let black_litterman = BlackLitterman {
+        covariance,
+        prior: Prior::Market {
+            weights: vec![1.0; 500],
+            risk_aversion: 2.5,
+            risk_free_rate: 0.0,
+        },
+        views,
+        tau: 0.05,
+    };
+    group.bench_function("Black-Litterman, 10 views", |b| {
+        b.iter(|| black_litterman.estimate())
+    });
     let factor_problem = large_factor_problem(500);
     for (name, objective) in [
         (
@@ -118,6 +149,23 @@ fn optimisation(c: &mut Criterion) {
             )
         });
     }
+    group.finish();
+
+    let small = large_problem(50);
+    let mut group = c.benchmark_group("optimisation, 50 assets");
+    group.sample_size(10);
+    group.bench_function("resampled mean-variance, 100 samples", |b| {
+        b.iter(|| {
+            small.resampled(
+                &Objective::MeanVariance { risk_aversion: 4.0 },
+                &Resampling {
+                    samples: 100,
+                    observations: 120,
+                    seed: 1,
+                },
+            )
+        })
+    });
     group.finish();
 }
 

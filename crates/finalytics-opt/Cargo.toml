@@ -22,6 +22,7 @@ finalytics-ledger = { workspace = true }
 finalytics-perf = { workspace = true }
 finalytics-risk = { workspace = true }
 clarabel = { workspace = true }
+libm = { workspace = true }
 serde = { workspace = true }
 web-time = { workspace = true }
 schemars = { workspace = true, optional = true }

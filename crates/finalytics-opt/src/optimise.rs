@@ -4,7 +4,7 @@ use web_time::Instant;
 
 use finalytics_core::Result;
 
-use crate::problem::{Objective, Prepared, Problem, RiskModel, Turnover};
+use crate::problem::{Objective, Prepared, Problem, ReturnUncertainty, RiskModel, Turnover};
 use crate::program::{Program, Row};
 use crate::solution::{Method, Solution, SolveStatus};
 use crate::{hrp, risk_budget};
@@ -245,6 +245,14 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
             add_variance(&mut program, &layout, prepared, *risk_aversion);
             add_return_to_objective(&mut program, &layout, mu, costs);
         }
+        Objective::RobustMeanVariance {
+            risk_aversion,
+            uncertainty,
+        } => {
+            add_variance(&mut program, &layout, prepared, *risk_aversion);
+            add_return_to_objective(&mut program, &layout, mu, costs);
+            add_worst_case(&mut program, &layout, prepared, uncertainty);
+        }
         Objective::TargetVolatility { target } => {
             add_return_to_objective(&mut program, &layout, mu, costs);
             let mut rows = vec![Row::new(Vec::new(), *target)];
@@ -287,6 +295,67 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
         Objective::RiskBudgeting { .. } | Objective::HierarchicalRiskParity { .. } => {}
     }
     (program, layout)
+}
+
+/// Adds the worst-case shortfall of the expected return to the objective: `size * t` with
+/// `t >= |R w|` for an ellipsoid, or `sum h_i u_i` with `u_i >= |w_i|` for a box.
+fn add_worst_case(
+    program: &mut Program,
+    layout: &Layout,
+    prepared: &Prepared<'_>,
+    uncertainty: &ReturnUncertainty,
+) {
+    let w = layout.weights;
+    match uncertainty {
+        ReturnUncertainty::Ellipsoid { size, .. } => {
+            let t = program.variables(1);
+            program.linear[t] = *size;
+            let mut rows = vec![Row::new(vec![(t, -1.0)], 0.0)];
+            match &prepared.uncertainty_root {
+                Some(root) => rows.extend(root.rows.iter().map(|r| {
+                    Row::new(
+                        r.iter()
+                            .enumerate()
+                            .filter(|(_, v)| **v != 0.0)
+                            .map(|(i, v)| (w + i, -v))
+                            .collect(),
+                        0.0,
+                    )
+                })),
+                None => rows.extend(risk_rows(prepared, layout, None)),
+            }
+            program.second_order_cone(rows);
+        }
+        ReturnUncertainty::Box { half_widths } => {
+            let u = program.variables(half_widths.len());
+            for (i, h) in half_widths.iter().enumerate() {
+                program.linear[u + i] = *h;
+                program.at_most(Row::new(vec![(w + i, 1.0), (u + i, -1.0)], 0.0));
+                program.at_most(Row::new(vec![(w + i, -1.0), (u + i, -1.0)], 0.0));
+            }
+        }
+    }
+}
+
+/// How much the worst case in `uncertainty` lowers the expected return of `w`.
+fn worst_case_shortfall(
+    prepared: &Prepared<'_>,
+    uncertainty: &ReturnUncertainty,
+    w: &[f64],
+) -> Option<f64> {
+    match uncertainty {
+        ReturnUncertainty::Ellipsoid {
+            size,
+            covariance: Some(s),
+        } => Some(size * s.quadratic_form(w).ok()?.max(0.0).sqrt()),
+        ReturnUncertainty::Ellipsoid {
+            size,
+            covariance: None,
+        } => Some(size * prepared.risk.as_ref()?.variance(w).sqrt()),
+        ReturnUncertainty::Box { half_widths } => {
+            Some(half_widths.iter().zip(w).map(|(h, w)| h * w.abs()).sum())
+        }
+    }
 }
 
 /// Adds `-(mu . w - costs . d)` to the linear objective.
@@ -385,6 +454,14 @@ fn report(
         Objective::MeanVariance { risk_aversion } => {
             Some(expected_return? - risk_aversion / 2.0 * variance?)
         }
+        Objective::RobustMeanVariance {
+            risk_aversion,
+            uncertainty,
+        } => Some(
+            expected_return?
+                - worst_case_shortfall(prepared, uncertainty, w)?
+                - risk_aversion / 2.0 * variance?,
+        ),
         Objective::TargetVolatility { .. } => expected_return,
         Objective::MaximumSharpe { risk_free_rate } => {
             Some((expected_return? - risk_free_rate) / volatility?)

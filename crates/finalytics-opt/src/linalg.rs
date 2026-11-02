@@ -70,9 +70,9 @@ impl Factor {
     }
 }
 
-/// Solves `A x = b` for a symmetric positive definite `A` (`n` by `n`, row by row), overwriting
-/// `b` with `x`. Returns `false` if `A` is not positive definite.
-pub(crate) fn cholesky_solve(a: &[f64], n: usize, b: &mut [f64]) -> bool {
+/// The lower triangular Cholesky factor `L` of a symmetric positive definite `A` (`n` by `n`,
+/// row by row), with `L L' = A`, row by row; `None` if `A` is not positive definite.
+pub(crate) fn cholesky(a: &[f64], n: usize) -> Option<Vec<f64>> {
     let mut l = vec![0.0; n * n];
     for j in 0..n {
         let mut d = a[j * n + j];
@@ -80,7 +80,7 @@ pub(crate) fn cholesky_solve(a: &[f64], n: usize, b: &mut [f64]) -> bool {
             d -= l[j * n + k] * l[j * n + k];
         }
         if d.is_nan() || d <= 0.0 {
-            return false;
+            return None;
         }
         let d = d.sqrt();
         l[j * n + j] = d;
@@ -92,6 +92,15 @@ pub(crate) fn cholesky_solve(a: &[f64], n: usize, b: &mut [f64]) -> bool {
             l[i * n + j] = s / d;
         }
     }
+    Some(l)
+}
+
+/// Solves `A x = b` for a symmetric positive definite `A` (`n` by `n`, row by row), overwriting
+/// `b` with `x`. Returns `false` if `A` is not positive definite.
+pub(crate) fn cholesky_solve(a: &[f64], n: usize, b: &mut [f64]) -> bool {
+    let Some(l) = cholesky(a, n) else {
+        return false;
+    };
     for i in 0..n {
         let mut s = b[i];
         for k in 0..i {

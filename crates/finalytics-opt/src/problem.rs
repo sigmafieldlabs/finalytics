@@ -144,6 +144,32 @@ impl Constraints {
     }
 }
 
+/// Where the true expected returns may lie around the estimates, for robust mean–variance
+/// optimisation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(tag = "set", rename_all = "snake_case")]
+pub enum ReturnUncertainty {
+    /// An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case
+    /// lowers a portfolio's expected return by `size * sqrt(w' S w)`. For estimates that are
+    /// sample means of `T` periods, `S` is the covariance divided by `T`, and `size^2` a
+    /// chi-squared quantile with as many degrees of freedom as assets.
+    Ellipsoid {
+        /// The size of the ellipsoid, not negative.
+        size: f64,
+        /// The covariance `S` of the estimation error, labelled like the problem; without one,
+        /// the problem's covariance matrix or factor model.
+        #[serde(default)]
+        covariance: Option<Matrix>,
+    },
+    /// A box around the estimates, `|mu_i - m_i| <= half_widths_i`: the worst case lowers a
+    /// portfolio's expected return by `sum half_widths_i |w_i|`.
+    Box {
+        /// The half-width for each asset, not negative.
+        half_widths: Vec<f64>,
+    },
+}
+
 /// How clusters are joined in hierarchical risk parity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -171,6 +197,15 @@ pub enum Objective {
     MeanVariance {
         /// The weight on variance, greater than zero.
         risk_aversion: f64,
+    },
+    /// The largest worst-case `expected return - risk_aversion / 2 * variance` over a set of
+    /// possible expected returns around the estimates (robust optimisation), which guards against
+    /// error in the estimates of expected return.
+    RobustMeanVariance {
+        /// The weight on variance, greater than zero.
+        risk_aversion: f64,
+        /// The set of possible expected returns.
+        uncertainty: ReturnUncertainty,
     },
     /// The smallest variance with an expected return of at least `target`.
     TargetReturn {
@@ -219,6 +254,7 @@ impl Objective {
         matches!(
             self,
             Objective::MeanVariance { .. }
+                | Objective::RobustMeanVariance { .. }
                 | Objective::TargetReturn { .. }
                 | Objective::TargetVolatility { .. }
                 | Objective::MaximumSharpe { .. }
@@ -392,13 +428,39 @@ impl Problem {
         }
 
         let bounds = self.check_constraints(&index, objective, &mut report);
-        check_objective(objective, n, &mut report);
+        check_objective(objective, &self.labels, &mut report);
         if report.has_errors() {
             return Err(Error::Validation(report));
         }
 
         let needs_root = self.constraints.tracking_error.is_some()
-            || matches!(objective, Objective::TargetVolatility { .. });
+            || matches!(
+                objective,
+                Objective::TargetVolatility { .. }
+                    | Objective::RobustMeanVariance {
+                        uncertainty: ReturnUncertainty::Ellipsoid {
+                            covariance: None,
+                            ..
+                        },
+                        ..
+                    }
+            );
+        let uncertainty_root = match objective {
+            Objective::RobustMeanVariance {
+                uncertainty:
+                    ReturnUncertainty::Ellipsoid {
+                        covariance: Some(s),
+                        ..
+                    },
+                ..
+            } => Some(Factor::of(s).map_err(|_| {
+                crate::invalid(
+                    "objective.uncertainty.covariance",
+                    "is not positive semidefinite",
+                )
+            })?),
+            _ => None,
+        };
         let risk = match (&self.covariance, &self.factor_model) {
             (Some(matrix), _) => {
                 // Factorising also checks that the matrix is positive semidefinite.
@@ -444,6 +506,7 @@ impl Problem {
             groups,
             risk,
             exposure_limits,
+            uncertainty_root,
         })
     }
 
@@ -579,6 +642,8 @@ pub(crate) struct Prepared<'a> {
     /// For each factor exposure limit, the factor's position and the benchmark's exposure to it
     /// (0 without a benchmark).
     pub(crate) exposure_limits: Vec<(usize, f64)>,
+    /// A factor of the robust objective's own uncertainty covariance, when it has one.
+    pub(crate) uncertainty_root: Option<Factor>,
 }
 
 /// Where a problem's risk comes from.
@@ -710,7 +775,7 @@ fn check_bound(min: f64, max: f64, path: &str, report: &mut ValidationReport) {
     }
 }
 
-fn check_vector(values: &[f64], n: usize, path: &str, report: &mut ValidationReport) {
+pub(crate) fn check_vector(values: &[f64], n: usize, path: &str, report: &mut ValidationReport) {
     if values.len() != n {
         report.error(path, format!("has {} entries for {n} assets", values.len()));
     }
@@ -721,7 +786,7 @@ fn check_vector(values: &[f64], n: usize, path: &str, report: &mut ValidationRep
     }
 }
 
-fn check_symmetric(covariance: &Matrix, report: &mut ValidationReport) {
+pub(crate) fn check_symmetric(covariance: &Matrix, report: &mut ValidationReport) {
     let n = covariance.dimension();
     let scale = covariance
         .values()
@@ -740,7 +805,8 @@ fn check_symmetric(covariance: &Matrix, report: &mut ValidationReport) {
     }
 }
 
-fn check_objective(objective: &Objective, n: usize, report: &mut ValidationReport) {
+fn check_objective(objective: &Objective, labels: &[String], report: &mut ValidationReport) {
+    let n = labels.len();
     let positive = |value: f64, path: &str, report: &mut ValidationReport| {
         if !(value.is_finite() && value > 0.0) {
             report.error(path, "must be greater than zero");
@@ -749,6 +815,38 @@ fn check_objective(objective: &Objective, n: usize, report: &mut ValidationRepor
     match objective {
         Objective::MeanVariance { risk_aversion } => {
             positive(*risk_aversion, "objective.risk_aversion", report);
+        }
+        Objective::RobustMeanVariance {
+            risk_aversion,
+            uncertainty,
+        } => {
+            positive(*risk_aversion, "objective.risk_aversion", report);
+            match uncertainty {
+                ReturnUncertainty::Ellipsoid { size, covariance } => {
+                    if !(size.is_finite() && *size >= 0.0) {
+                        report.error(
+                            "objective.uncertainty.size",
+                            "must be a finite number, not negative",
+                        );
+                    }
+                    if let Some(s) = covariance {
+                        if s.labels() != labels {
+                            report.error(
+                                "objective.uncertainty.covariance.labels",
+                                "must be the problem's labels, in order",
+                            );
+                        } else {
+                            check_symmetric(s, report);
+                        }
+                    }
+                }
+                ReturnUncertainty::Box { half_widths } => {
+                    check_vector(half_widths, n, "objective.uncertainty.half_widths", report);
+                    if half_widths.iter().any(|h| *h < 0.0) {
+                        report.error("objective.uncertainty.half_widths", "must not be negative");
+                    }
+                }
+            }
         }
         Objective::TargetReturn { target } => {
             if !target.is_finite() {

@@ -76,6 +76,10 @@ fn api() -> Value {
     add::<opt::FrontierPoint>(&mut g);
     add::<opt::RebalanceOptions>(&mut g);
     add::<opt::Rebalance>(&mut g);
+    add::<opt::BlackLitterman>(&mut g);
+    add::<opt::BlackLittermanEstimate>(&mut g);
+    add::<opt::Resampling>(&mut g);
+    add::<opt::ResampledSolution>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

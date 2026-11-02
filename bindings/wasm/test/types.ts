@@ -1,15 +1,18 @@
 // Compiled with `tsc -p bindings/wasm/test` to check that the published declarations are usable
 // and strict: it is type-checked, not run.
 import init, {
+  blackLitterman,
   Books,
   factorRisk,
   impliedCovariance,
   MarketData,
   portfolioFromCsv,
+  resampled,
   solve,
   statisticalModel,
   statistics,
   tailRisk,
+  type BlackLittermanEstimate,
   type FactorModelEstimate,
   type Matrix,
   type Objective,
@@ -67,3 +70,22 @@ const factorProblem: Problem = {
 void exposure;
 void implied;
 void factorProblem;
+
+// Black–Litterman, robust and resampled optimisation.
+declare const covariance: Matrix;
+const posterior: BlackLittermanEstimate = blackLitterman({
+  covariance,
+  prior: { prior: "market", weights: [0.6, 0.4], risk_aversion: 2.5 },
+  views: [{ portfolio: { bonds: 1 }, expected_return: 0.05, uncertainty: { method: "confidence", confidence: 0.7 } }],
+});
+const robust: Objective = {
+  objective: "robust_mean_variance",
+  risk_aversion: 3,
+  uncertainty: { set: "ellipsoid", size: 0.5 },
+};
+const average: number[] | null | undefined = resampled(
+  { labels: posterior.labels, covariance: posterior.posterior_covariance, expected_returns: posterior.posterior_returns },
+  robust,
+  { samples: 100, observations: 120, seed: 7 },
+).weights;
+void average;

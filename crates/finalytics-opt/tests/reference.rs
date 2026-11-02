@@ -273,3 +273,104 @@ fn factor_model_problems_are_validated() {
         .unwrap_err();
     assert!(error.to_string().contains("need a factor model"), "{error}");
 }
+
+#[test]
+fn robust_solutions_match_the_reference() {
+    let fixture = fixture();
+    let base = problem(&fixture);
+    for case in fixture["robust"].as_array().unwrap() {
+        let name = case["name"].as_str().unwrap();
+        let objective: Objective = serde_json::from_value(case["problem"].clone()).unwrap();
+        let constraints: Constraints = serde_json::from_value(case["constraints"].clone()).unwrap();
+        let solution = base
+            .clone()
+            .with_constraints(constraints)
+            .solve(&objective)
+            .unwrap();
+        assert_eq!(solution.status, SolveStatus::Optimal, "{name}");
+        let value = solution.objective_value.unwrap();
+        let reference = case["objective_value"].as_f64().unwrap();
+        assert!(
+            (value - reference).abs() <= 1e-7 * reference.abs().max(1.0),
+            "{name}: objective {value} against the reference {reference}"
+        );
+        let weights = solution.weights.unwrap();
+        for (k, (w, r)) in weights.iter().zip(floats(&case["weights"])).enumerate() {
+            assert!(
+                (w - r).abs() < 1e-4,
+                "{name}: weight {k} is {w}, the reference {r}"
+            );
+        }
+    }
+}
+
+#[test]
+fn robustness_lowers_the_weight_on_uncertain_returns() {
+    // With no uncertainty the robust problem is mean-variance; a larger set moves the portfolio
+    // towards minimum variance.
+    let base = problem(&fixture());
+    let robust = |size: f64| {
+        base.solve(&Objective::RobustMeanVariance {
+            risk_aversion: 4.0,
+            uncertainty: ReturnUncertainty::Ellipsoid {
+                size,
+                covariance: None,
+            },
+        })
+        .unwrap()
+    };
+    let plain = base
+        .solve(&Objective::MeanVariance { risk_aversion: 4.0 })
+        .unwrap();
+    let none = robust(0.0);
+    for (a, b) in none.weights.unwrap().iter().zip(plain.weights.unwrap()) {
+        assert!((a - b).abs() < 1e-5);
+    }
+    let minimum = base.solve(&Objective::MinimumVariance).unwrap();
+    let large = robust(50.0);
+    for (a, b) in large.weights.unwrap().iter().zip(minimum.weights.unwrap()) {
+        assert!((a - b).abs() < 1e-2, "{a} against {b}");
+    }
+}
+
+#[test]
+fn resampled_solution_matches_the_reference() {
+    let fixture = fixture();
+    let case = &fixture["resampled"];
+    let objective: Objective = serde_json::from_value(case["problem"].clone()).unwrap();
+    let constraints: Constraints = serde_json::from_value(case["constraints"].clone()).unwrap();
+    let resampling: Resampling = serde_json::from_value(case["resampling"].clone()).unwrap();
+    let problem = problem(&fixture).with_constraints(constraints);
+    let found = problem.resampled(&objective, &resampling).unwrap();
+    assert_eq!((found.solved, found.failed), (resampling.samples, 0));
+    let weights = found.weights.clone().unwrap();
+    for (k, (w, r)) in weights.iter().zip(floats(&case["weights"])).enumerate() {
+        assert!((w - r).abs() < 1e-4, "weight {k} is {w}, the reference {r}");
+    }
+    let deviations = found.weight_deviations.clone().unwrap();
+    for (k, (d, r)) in deviations
+        .iter()
+        .zip(floats(&case["weight_deviations"]))
+        .enumerate()
+    {
+        assert!(
+            (d - r).abs() < 1e-4,
+            "deviation {k} is {d}, the reference {r}"
+        );
+    }
+    assert!(found.max_violation.unwrap() < 1e-7);
+    assert!((weights.iter().sum::<f64>() - 1.0).abs() < 1e-8);
+    // The same seed gives the same result; another seed a different one.
+    assert_eq!(
+        problem.resampled(&objective, &resampling).unwrap().weights,
+        found.weights
+    );
+    let other = Resampling {
+        seed: resampling.seed + 1,
+        ..resampling
+    };
+    assert_ne!(
+        problem.resampled(&objective, &other).unwrap().weights,
+        found.weights
+    );
+}

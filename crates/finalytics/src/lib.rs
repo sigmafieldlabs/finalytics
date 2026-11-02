@@ -58,11 +58,12 @@ pub mod risk {
     };
 }
 
-/// Portfolio optimisation: minimum variance, mean–variance, target return and volatility,
-/// maximum Sharpe ratio and diversification, minimum CVaR, risk budgeting and hierarchical risk
-/// parity, with a covariance matrix or a factor model, under budget, bound, group, leverage,
-/// turnover, tracking-error and factor exposure constraints; the efficient frontier; and the
-/// trades, with lot selection, that move an account to target weights.
+/// Portfolio optimisation: minimum variance, mean–variance and robust mean–variance, target
+/// return and volatility, maximum Sharpe ratio and diversification, minimum CVaR, risk budgeting
+/// and hierarchical risk parity, with a covariance matrix or a factor model, under budget, bound,
+/// group, leverage, turnover, tracking-error and factor exposure constraints; Black–Litterman
+/// expected returns; resampled optimisation; the efficient frontier; and the trades, with lot
+/// selection, that move an account to target weights.
 ///
 /// ```
 /// use finalytics::opt::{Objective, Problem};
@@ -79,9 +80,11 @@ pub mod risk {
 /// ```
 pub mod opt {
     pub use finalytics_opt::{
-        AssetBound, Bound, Constraints, FactorExposureLimit, FrontierPoint, GroupLimit, Linkage,
-        Method, Objective, Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions,
-        Side, Solution, SolveStatus, TrackingErrorLimit, Turnover, rebalance,
+        AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, Constraints,
+        FactorExposureLimit, FrontierPoint, GroupLimit, Linkage, Method, Objective, Prior, Problem,
+        ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, ResampledSolution,
+        Resampling, ReturnUncertainty, Side, Solution, SolveStatus, TrackingErrorLimit, Turnover,
+        View, ViewUncertainty, implied_risk_aversion, rebalance,
     };
 }
 

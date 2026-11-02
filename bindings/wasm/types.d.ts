@@ -78,6 +78,38 @@ export interface AssetFit {
   r_squared?: number | null;
 }
 
+/** The inputs to the Black–Litterman model. */
+export interface BlackLitterman {
+  /**
+   * The covariance matrix of the assets' returns, in the units of the returns wanted, for
+   * example annualised.
+   */
+  covariance: Matrix;
+  /** The prior expected returns. */
+  prior: Prior;
+  /** The views; without any, the posterior returns are the prior. */
+  views?: View[];
+  /** The uncertainty of the prior relative to the covariance, greater than zero. */
+  tau?: number;
+}
+
+/** The posterior of the Black–Litterman model. */
+export interface BlackLittermanEstimate {
+  /** The asset labels, in the order of the covariance matrix. */
+  labels: string[];
+  /** The prior expected returns. */
+  prior_returns: number[];
+  /** The posterior expected returns, which blend the prior with the views. */
+  posterior_returns: number[];
+  /**
+   * The covariance of returns given the views, `C + M`, where `M` is the posterior uncertainty
+   * of the expected returns (He and Litterman, 2002).
+   */
+  posterior_covariance: Matrix;
+  /** The variance of each view, in the order of the views. */
+  view_variances: number[];
+}
+
 /** Lower and upper limits on a weight. */
 export interface Bound {
   /** The smallest weight allowed; negative for a short position. */
@@ -671,6 +703,13 @@ export type Objective =
     risk_aversion: number;
   }
   | {
+    objective: "robust_mean_variance";
+    /** The weight on variance, greater than zero. */
+    risk_aversion: number;
+    /** The set of possible expected returns. */
+    uncertainty: ReturnUncertainty;
+  }
+  | {
     objective: "target_return";
     /** The expected return required. */
     target: number;
@@ -815,6 +854,29 @@ export interface PositionValue {
   unrealised_base: Decimal;
 }
 
+/** The prior expected returns of the Black–Litterman model. */
+export type Prior =
+  | {
+    prior: "market";
+    /**
+     * Each asset's market capitalisation or weight, one per asset; they are scaled to sum to
+     * one.
+     */
+    weights: number[];
+    /**
+     * The market's risk aversion, greater than zero; 2.5 is a common choice, and
+     * `implied_risk_aversion` estimates it from the market's returns.
+     */
+    risk_aversion: number;
+    /** The risk-free rate, added to every implied return. */
+    risk_free_rate?: number;
+  }
+  | {
+    prior: "returns";
+    /** The prior expected returns. */
+    returns: number[];
+  };
+
 /**
  * A portfolio optimisation problem: the assets, estimates of their risk and return, and the
  * constraints.
@@ -956,6 +1018,68 @@ export interface RelativeStatistics {
   /** The correlation of the returns with the benchmark's. */
   correlation?: number | null;
 }
+
+/** The result of resampled optimisation. */
+export interface ResampledSolution {
+  /** The objective each simulated problem was solved for. */
+  objective: Objective;
+  /** The asset labels. */
+  labels: string[];
+  /** The average of the simulated problems' optimal weights, `None` if none was solved. */
+  weights?: number[] | null;
+  /**
+   * The standard deviation of each weight across the simulated problems (divisor `m - 1` for
+   * `m` solved problems), `None` with fewer than two.
+   */
+  weight_deviations?: number[] | null;
+  /** The expected return of the average weights under the problem's own estimates. */
+  expected_return?: number | null;
+  /** The volatility of the average weights under the problem's own estimates. */
+  volatility?: number | null;
+  /** The largest amount by which the average weights break the problem's constraints. */
+  max_violation?: number | null;
+  /** The number of simulated problems solved and averaged. */
+  solved: number;
+  /** The number of simulated problems the solver could not solve, left out of the average. */
+  failed: number;
+  /** The time taken, in seconds. */
+  solve_time: number;
+}
+
+/** How to resample a problem's estimates. */
+export interface Resampling {
+  /** The number of simulated histories, at least 2; 100 to 500 is usual. */
+  samples: number;
+  /**
+   * The number of periods in each simulated history, at least 2: the length of the history
+   * the estimates came from, so that the simulated estimates are as uncertain as the real
+   * ones.
+   */
+  observations: number;
+  /** The seed of the random numbers. The same seed gives the same result on every platform. */
+  seed: number;
+}
+
+/**
+ * Where the true expected returns may lie around the estimates, for robust mean–variance
+ * optimisation.
+ */
+export type ReturnUncertainty =
+  | {
+    set: "ellipsoid";
+    /** The size of the ellipsoid, not negative. */
+    size: number;
+    /**
+     * The covariance `S` of the estimation error, labelled like the problem; without one,
+     * the problem's covariance matrix or factor model.
+     */
+    covariance?: Matrix | null;
+  }
+  | {
+    set: "box";
+    /** The half-width for each asset, not negative. */
+    half_widths: number[];
+  };
 
 /** The returns of several assets over the same periods, one column per asset. */
 export interface ReturnsTable {
@@ -1378,3 +1502,32 @@ export interface ValueSeries {
   /** Prices and rates carried forward from earlier dates. */
   warnings: ValidationReport;
 }
+
+/** A view: the expected return of a portfolio of assets. */
+export interface View {
+  /**
+   * The view portfolio: each asset's weight in it, such as `{"A": 1}` for an absolute view on
+   * asset A, or `{"A": 1, "B": -1}` for a view that A outperforms B.
+   */
+  portfolio: Record<string, number>;
+  /** The expected return of the view portfolio, in the units of the covariance matrix. */
+  expected_return: number;
+  /** How uncertain the view is. */
+  uncertainty?: ViewUncertainty;
+}
+
+/** How uncertain a view is: its variance in the model. */
+export type ViewUncertainty =
+  | {
+    method: "proportional";
+  }
+  | {
+    method: "confidence";
+    /** The confidence, greater than 0 and at most 1. */
+    confidence: number;
+  }
+  | {
+    method: "variance";
+    /** The variance, not negative. */
+    variance: number;
+  };

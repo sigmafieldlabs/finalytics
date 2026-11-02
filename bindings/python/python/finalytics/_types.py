@@ -174,6 +174,47 @@ class AssetFit:
 
 
 @dataclass(frozen=True, kw_only=True)
+class BlackLitterman:
+    """The inputs to the Black–Litterman model."""
+
+    covariance: Matrix
+    """The covariance matrix of the assets' returns, in the units of the returns wanted, for example
+    annualised.
+    """
+
+    prior: Prior
+    """The prior expected returns."""
+
+    views: list[View] = field(default_factory=list)
+    """The views; without any, the posterior returns are the prior."""
+
+    tau: float = 0.05
+    """The uncertainty of the prior relative to the covariance, greater than zero."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlackLittermanEstimate:
+    """The posterior of the Black–Litterman model."""
+
+    labels: list[str]
+    """The asset labels, in the order of the covariance matrix."""
+
+    prior_returns: list[float]
+    """The prior expected returns."""
+
+    posterior_returns: list[float]
+    """The posterior expected returns, which blend the prior with the views."""
+
+    posterior_covariance: Matrix
+    """The covariance of returns given the views, `C + M`, where `M` is the posterior uncertainty of
+    the expected returns (He and Litterman, 2002).
+    """
+
+    view_variances: list[float]
+    """The variance of each view, in the order of the views."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Bound:
     """Lower and upper limits on a weight."""
 
@@ -936,6 +977,23 @@ class MeanVariance:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RobustMeanVariance:
+    """The largest worst-case `expected return - risk_aversion / 2 * variance` over a set of
+    possible expected returns around the estimates (robust optimisation), which guards against
+    error in the estimates of expected return.
+    """
+
+    OBJECTIVE: ClassVar[str] = "robust_mean_variance"
+    """The value of the `objective` tag that identifies this variant."""
+
+    risk_aversion: float
+    """The weight on variance, greater than zero."""
+
+    uncertainty: ReturnUncertainty
+    """The set of possible expected returns."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class TargetReturn:
     """The smallest variance with an expected return of at least `target`."""
 
@@ -1019,7 +1077,7 @@ class HierarchicalRiskParity:
     """How clusters are joined."""
 
 
-Objective = Union[MinimumVariance, MeanVariance, TargetReturn, TargetVolatility, MaximumSharpe, MaximumDiversification, MinimumCvar, RiskBudgeting, HierarchicalRiskParity]
+Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetReturn, TargetVolatility, MaximumSharpe, MaximumDiversification, MinimumCvar, RiskBudgeting, HierarchicalRiskParity]
 """What an optimisation seeks."""
 
 
@@ -1198,6 +1256,43 @@ class PositionValue:
 
     unrealised_base: decimal.Decimal
     """`market_value_base - cost_base`, which includes the currency effect."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MarketPrior:
+    """The equilibrium returns implied by market weights, `pi = risk_aversion * C w + rate`: the
+    returns at which the market portfolio is optimal for an investor with that risk aversion.
+    """
+
+    PRIOR: ClassVar[str] = "market"
+    """The value of the `prior` tag that identifies this variant."""
+
+    weights: list[float]
+    """Each asset's market capitalisation or weight, one per asset; they are scaled to sum to one.
+    """
+
+    risk_aversion: float
+    """The market's risk aversion, greater than zero; 2.5 is a common choice, and
+    `implied_risk_aversion` estimates it from the market's returns.
+    """
+
+    risk_free_rate: float = 0.0
+    """The risk-free rate, added to every implied return."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReturnsPrior:
+    """Given prior returns, one per asset."""
+
+    PRIOR: ClassVar[str] = "returns"
+    """The value of the `prior` tag that identifies this variant."""
+
+    returns: list[float]
+    """The prior expected returns."""
+
+
+Prior = Union[MarketPrior, ReturnsPrior]
+"""The prior expected returns of the Black–Litterman model."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1394,6 +1489,98 @@ class RelativeStatistics:
 
     correlation: float | None = None
     """The correlation of the returns with the benchmark's."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResampledSolution:
+    """The result of resampled optimisation."""
+
+    objective: Objective
+    """The objective each simulated problem was solved for."""
+
+    labels: list[str]
+    """The asset labels."""
+
+    weights: list[float] | None = None
+    """The average of the simulated problems' optimal weights, `None` if none was solved."""
+
+    weight_deviations: list[float] | None = None
+    """The standard deviation of each weight across the simulated problems (divisor `m - 1` for `m`
+    solved problems), `None` with fewer than two.
+    """
+
+    expected_return: float | None = None
+    """The expected return of the average weights under the problem's own estimates."""
+
+    volatility: float | None = None
+    """The volatility of the average weights under the problem's own estimates."""
+
+    max_violation: float | None = None
+    """The largest amount by which the average weights break the problem's constraints."""
+
+    solved: int
+    """The number of simulated problems solved and averaged."""
+
+    failed: int
+    """The number of simulated problems the solver could not solve, left out of the average."""
+
+    solve_time: float
+    """The time taken, in seconds."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Resampling:
+    """How to resample a problem's estimates."""
+
+    samples: int
+    """The number of simulated histories, at least 2; 100 to 500 is usual."""
+
+    observations: int
+    """The number of periods in each simulated history, at least 2: the length of the history the
+    estimates came from, so that the simulated estimates are as uncertain as the real ones.
+    """
+
+    seed: int
+    """The seed of the random numbers. The same seed gives the same result on every platform."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Ellipsoid:
+    """An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case lowers
+    a portfolio's expected return by `size * sqrt(w' S w)`. For estimates that are sample means
+    of `T` periods, `S` is the covariance divided by `T`, and `size^2` a chi-squared quantile
+    with as many degrees of freedom as assets.
+    """
+
+    SET: ClassVar[str] = "ellipsoid"
+    """The value of the `set` tag that identifies this variant."""
+
+    size: float
+    """The size of the ellipsoid, not negative."""
+
+    covariance: Matrix | None = None
+    """The covariance `S` of the estimation error, labelled like the problem; without one, the
+    problem's covariance matrix or factor model.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Box:
+    """A box around the estimates, `|mu_i - m_i| <= half_widths_i`: the worst case lowers a
+    portfolio's expected return by `sum half_widths_i |w_i|`.
+    """
+
+    SET: ClassVar[str] = "box"
+    """The value of the `set` tag that identifies this variant."""
+
+    half_widths: list[float]
+    """The half-width for each asset, not negative."""
+
+
+ReturnUncertainty = Union[Ellipsoid, Box]
+"""Where the true expected returns may lie around the estimates, for robust mean–variance
+optimisation.
+"""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1990,15 +2177,72 @@ class ValueSeries:
     """Prices and rates carried forward from earlier dates."""
 
 
+@dataclass(frozen=True, kw_only=True)
+class View:
+    """A view: the expected return of a portfolio of assets."""
+
+    portfolio: dict[str, float]
+    """The view portfolio: each asset's weight in it, such as `{"A": 1}` for an absolute view on
+    asset A, or `{"A": 1, "B": -1}` for a view that A outperforms B.
+    """
+
+    expected_return: float
+    """The expected return of the view portfolio, in the units of the covariance matrix."""
+
+    uncertainty: ViewUncertainty = field(default_factory=lambda: {'method': 'proportional'})
+    """How uncertain the view is."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Proportional:
+    """Proportional to the variance of the view portfolio, `tau * p' C p` (He and Litterman, 1999).
+    """
+
+    METHOD: ClassVar[str] = "proportional"
+    """The value of the `method` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Confidence:
+    """From a confidence in the view (Idzorek, 2005), as `(1 - c) / c * tau * p' C p`: 1 holds the
+    view with certainty, 0.5 is the proportional uncertainty, and lower confidences move the
+    posterior less.
+    """
+
+    METHOD: ClassVar[str] = "confidence"
+    """The value of the `method` tag that identifies this variant."""
+
+    confidence: float
+    """The confidence, greater than 0 and at most 1."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Variance:
+    """The variance of the view, given directly."""
+
+    METHOD: ClassVar[str] = "variance"
+    """The value of the `method` tag that identifies this variant."""
+
+    variance: float
+    """The variance, not negative."""
+
+
+ViewUncertainty = Union[Proportional, Confidence, Variance]
+"""How uncertain a view is: its variance in the model."""
+
+
 # The tag property and the class of each variant, by union.
 UNIONS = {
     "Allocation": ("allocation", {"exchange": ExchangeAllocation, "income": IncomeAllocation, "trade": TradeAllocation}),
     "CovarianceMethod": ("method", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
     "Effect": ("effect", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
     "HoldingKey": ("holding", {"cash": CashHolding, "instrument": InstrumentHolding}),
-    "Objective": ("objective", {"hierarchical_risk_parity": HierarchicalRiskParity, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
+    "Objective": ("objective", {"hierarchical_risk_parity": HierarchicalRiskParity, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
     "Period": ("period", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
+    "Prior": ("prior", {"market": MarketPrior, "returns": ReturnsPrior}),
+    "ReturnUncertainty": ("set", {"box": Box, "ellipsoid": Ellipsoid}),
     "TransactionKind": ("type", {"buy": Buy, "deposit": Deposit, "dividend": Dividend, "fee": Fee, "fx_conversion": FxConversion, "interest": Interest, "merger": Merger, "return_of_capital": ReturnOfCapital, "sell": Sell, "spin_off": SpinOff, "split": Split, "symbol_change": SymbolChange, "tax": Tax, "transfer_in": TransferIn, "transfer_out": TransferOut, "withdrawal": Withdrawal}),
+    "ViewUncertainty": ("method", {"confidence": Confidence, "proportional": Proportional, "variance": Variance}),
 }
 
 
@@ -2012,12 +2256,16 @@ __all__ = [
     "Allocation",
     "AssetBound",
     "AssetFit",
+    "BlackLitterman",
+    "BlackLittermanEstimate",
     "Bound",
+    "Box",
     "Buy",
     "CashBalance",
     "CashChange",
     "CashHolding",
     "CashValue",
+    "Confidence",
     "Constraints",
     "Contribution",
     "CovarianceEstimate",
@@ -2029,6 +2277,7 @@ __all__ = [
     "DocumentMarketData",
     "Drawdown",
     "Effect",
+    "Ellipsoid",
     "Event",
     "Ewma",
     "ExcessReturn",
@@ -2069,6 +2318,7 @@ __all__ = [
     "LotPick",
     "LotSale",
     "LotSet",
+    "MarketPrior",
     "Matrix",
     "MaximumDiversification",
     "MaximumSharpe",
@@ -2087,7 +2337,9 @@ __all__ = [
     "PortfolioDocument",
     "Position",
     "PositionValue",
+    "Prior",
     "Problem",
+    "Proportional",
     "ProposedConversion",
     "ProposedTrade",
     "QuarterToDate",
@@ -2095,11 +2347,16 @@ __all__ = [
     "Rebalance",
     "RebalanceOptions",
     "RelativeStatistics",
+    "ResampledSolution",
+    "Resampling",
     "ReturnOfCapital",
+    "ReturnUncertainty",
+    "ReturnsPrior",
     "ReturnsTable",
     "RiskBudgeting",
     "RiskContribution",
     "RiskDecomposition",
+    "RobustMeanVariance",
     "Sample",
     "Sell",
     "Severity",
@@ -2130,6 +2387,9 @@ __all__ = [
     "ValidationReport",
     "Valuation",
     "ValueSeries",
+    "Variance",
+    "View",
+    "ViewUncertainty",
     "Withdrawal",
     "YearToDate",
     "Years",

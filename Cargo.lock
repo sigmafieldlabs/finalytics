@@ -496,6 +496,7 @@ dependencies = [
  "finalytics-ledger",
  "finalytics-perf",
  "finalytics-risk",
+ "libm",
  "schemars",
  "serde",
  "serde_json",

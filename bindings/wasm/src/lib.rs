@@ -17,7 +17,9 @@ use wasm_bindgen::prelude::*;
 use finalytics::formats::{
     CsvOptions, MarketDocument, PortfolioDocument, fx_from_csv, portfolio_from_csv, prices_from_csv,
 };
-use finalytics::opt::{Objective, Problem, Rebalance, RebalanceOptions};
+use finalytics::opt::{
+    BlackLitterman, Objective, Problem, Rebalance, RebalanceOptions, Resampling,
+};
 use finalytics::risk::{
     self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
 };
@@ -1088,6 +1090,45 @@ pub fn solve(
     let problem: Problem = from_js(problem, "problem")?;
     let objective: Objective = from_js(objective, "objective")?;
     to_js(&problem.solve(&objective).map_err(error)?)
+}
+
+/// Resampled optimisation: the average of the optimal portfolios for estimates re-made from
+/// simulated histories. The same seed gives the same result on every platform.
+#[wasm_bindgen(unchecked_return_type = "ResampledSolution")]
+pub fn resampled(
+    #[wasm_bindgen(unchecked_param_type = "Problem")] problem: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "Objective")] objective: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "Resampling")] resampling: JsValue,
+) -> Result<JsValue, JsValue> {
+    let problem: Problem = from_js(problem, "problem")?;
+    let objective: Objective = from_js(objective, "objective")?;
+    let resampling: Resampling = from_js(resampling, "resampling")?;
+    to_js(&problem.resampled(&objective, &resampling).map_err(error)?)
+}
+
+/// The Black–Litterman posterior expected returns and covariance.
+#[wasm_bindgen(js_name = blackLitterman, unchecked_return_type = "BlackLittermanEstimate")]
+pub fn black_litterman(
+    #[wasm_bindgen(unchecked_param_type = "BlackLitterman")] model: JsValue,
+) -> Result<JsValue, JsValue> {
+    let model: BlackLitterman = from_js(model, "model")?;
+    to_js(&model.estimate().map_err(error)?)
+}
+
+/// The market's risk aversion implied by its returns: the annualised excess return over the
+/// annualised variance.
+#[wasm_bindgen(js_name = impliedRiskAversion)]
+pub fn implied_risk_aversion(
+    #[wasm_bindgen(unchecked_param_type = "Float64Array | number[]")] returns: &[f64],
+    #[wasm_bindgen(js_name = periodsPerYear)] periods_per_year: Option<f64>,
+    #[wasm_bindgen(js_name = riskFreeRate)] risk_free_rate: Option<f64>,
+) -> Result<f64, JsValue> {
+    finalytics::opt::implied_risk_aversion(
+        returns,
+        periods_per_year.unwrap_or(252.0),
+        risk_free_rate.unwrap_or(0.0),
+    )
+    .map_err(error)
 }
 
 /// The efficient frontier: `points` portfolios (20 by default) from the minimum-variance

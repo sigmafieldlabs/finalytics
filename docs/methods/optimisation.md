@@ -32,6 +32,7 @@ $y = B^\top w$, and the cone is built from a factor of $F$ and the specific vola
 | --- | --- | --- |
 | `minimum_variance` | $\min w^\top \Sigma w$ | Quadratic programme |
 | `mean_variance` | $\max \mu^\top w - \frac{\lambda}{2} w^\top \Sigma w$ | Quadratic programme |
+| `robust_mean_variance` | $\max \min_{\mu \in U} \mu^\top w - \frac{\lambda}{2} w^\top \Sigma w$ over an ellipsoid or a box $U$; see [robust optimisation](robust-optimisation.md) | Second-order cone or quadratic programme |
 | `target_return` | $\min w^\top \Sigma w$ subject to $\mu^\top w \ge R^*$ | Quadratic programme |
 | `target_volatility` | $\max \mu^\top w$ subject to $\lVert R w \rVert \le \sigma^*$ | Second-order cone programme |
 | `maximum_sharpe` | $\max (\mu^\top w - r_f) / \sqrt{w^\top \Sigma w}$ | Quadratic programme after the Charnes–Cooper transformation |
@@ -84,6 +85,13 @@ Following López de Prado (2016):
 
 Risk budgeting and hierarchical risk parity give fully invested, long-only portfolios and take no
 other constraints; assets with no variance must be removed first.
+
+### Resampling and Black–Litterman
+
+`Problem.resampled` solves any of the covariance-based objectives above for estimates re-made from
+simulated histories and averages the weights; see
+[robust and resampled optimisation](robust-optimisation.md).
+[Black–Litterman](black-litterman.md) supplies expected returns and a covariance to optimise with.
 
 ### Efficient frontier
 

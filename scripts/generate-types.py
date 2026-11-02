@@ -47,6 +47,7 @@ VARIANT_NAMES = {
     "HoldingKey": {"instrument": "InstrumentHolding", "cash": "CashHolding"},
     "Effect": {"set_lot": "LotSet", "close_lot": "LotClosed", "cash": "CashChange"},
     "Allocation": {"trade": "TradeAllocation", "income": "IncomeAllocation", "exchange": "ExchangeAllocation"},
+    "Prior": {"market": "MarketPrior", "returns": "ReturnsPrior"},
 }
 
 # For a type whose own fields are flattened together with a tagged union, the name of the Python

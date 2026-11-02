@@ -17,6 +17,8 @@ outputs are the engine's own.
 | [Factor models](factor-models.md) | Regression, statistical and fundamental models; risk by factor; optimisation in factor form with exposure limits |
 | [Risk decomposition](risk-decomposition.md) | Marginal and component risk, ex-ante tracking error, risk by group |
 | [Portfolio optimisation](optimisation.md) | Each objective and constraint, its formulation, and how solutions are reported |
+| [Black–Litterman](black-litterman.md) | Equilibrium returns, views and their uncertainty, the posterior returns and covariance |
+| [Robust and resampled optimisation](robust-optimisation.md) | Worst-case mean–variance over ellipsoids and boxes; Michaud resampling |
 | [Rebalancing](rebalancing.md) | Trades from current holdings to target weights, with lot selection |
 
 ## Conventions used throughout

@@ -176,6 +176,86 @@
       ],
       "description": "How well a factor model explains one asset's returns over the estimation period."
     },
+    "BlackLitterman": {
+      "type": "object",
+      "properties": {
+        "covariance": {
+          "$ref": "#/$defs/Matrix",
+          "description": "The covariance matrix of the assets' returns, in the units of the returns wanted, for\nexample annualised."
+        },
+        "prior": {
+          "$ref": "#/$defs/Prior",
+          "description": "The prior expected returns."
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/View"
+          },
+          "description": "The views; without any, the posterior returns are the prior.",
+          "default": []
+        },
+        "tau": {
+          "type": "number",
+          "format": "double",
+          "description": "The uncertainty of the prior relative to the covariance, greater than zero.",
+          "default": 0.05
+        }
+      },
+      "required": [
+        "covariance",
+        "prior"
+      ],
+      "description": "The inputs to the Black–Litterman model."
+    },
+    "BlackLittermanEstimate": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The asset labels, in the order of the covariance matrix."
+        },
+        "prior_returns": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The prior expected returns."
+        },
+        "posterior_returns": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The posterior expected returns, which blend the prior with the views."
+        },
+        "posterior_covariance": {
+          "$ref": "#/$defs/Matrix",
+          "description": "The covariance of returns given the views, `C + M`, where `M` is the posterior uncertainty\nof the expected returns (He and Litterman, 2002)."
+        },
+        "view_variances": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The variance of each view, in the order of the views."
+        }
+      },
+      "required": [
+        "labels",
+        "prior_returns",
+        "posterior_returns",
+        "posterior_covariance",
+        "view_variances"
+      ],
+      "description": "The posterior of the Black–Litterman model."
+    },
     "Bound": {
       "type": "object",
       "properties": {
@@ -1761,6 +1841,30 @@
           "properties": {
             "objective": {
               "type": "string",
+              "const": "robust_mean_variance"
+            },
+            "risk_aversion": {
+              "type": "number",
+              "format": "double",
+              "description": "The weight on variance, greater than zero."
+            },
+            "uncertainty": {
+              "$ref": "#/$defs/ReturnUncertainty",
+              "description": "The set of possible expected returns."
+            }
+          },
+          "required": [
+            "objective",
+            "risk_aversion",
+            "uncertainty"
+          ],
+          "description": "The largest worst-case `expected return - risk_aversion / 2 * variance` over a set of\npossible expected returns around the estimates (robust optimisation), which guards against\nerror in the estimates of expected return."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "objective": {
+              "type": "string",
               "const": "target_return"
             },
             "target": {
@@ -2201,6 +2305,67 @@
       ],
       "description": "A position valued on a date."
     },
+    "Prior": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "prior": {
+              "type": "string",
+              "const": "market"
+            },
+            "weights": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "description": "Each asset's market capitalisation or weight, one per asset; they are scaled to sum to\none."
+            },
+            "risk_aversion": {
+              "type": "number",
+              "format": "double",
+              "description": "The market's risk aversion, greater than zero; 2.5 is a common choice, and\n`implied_risk_aversion` estimates it from the market's returns."
+            },
+            "risk_free_rate": {
+              "type": "number",
+              "format": "double",
+              "description": "The risk-free rate, added to every implied return.",
+              "default": 0.0
+            }
+          },
+          "required": [
+            "prior",
+            "weights",
+            "risk_aversion"
+          ],
+          "description": "The equilibrium returns implied by market weights, `pi = risk_aversion * C w + rate`: the\nreturns at which the market portfolio is optimal for an investor with that risk aversion."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "prior": {
+              "type": "string",
+              "const": "returns"
+            },
+            "returns": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "description": "The prior expected returns."
+            }
+          },
+          "required": [
+            "prior",
+            "returns"
+          ],
+          "description": "Given prior returns, one per asset."
+        }
+      ],
+      "description": "The prior expected returns of the Black–Litterman model."
+    },
     "Problem": {
       "type": "object",
       "properties": {
@@ -2607,6 +2772,180 @@
         "tracking_error"
       ],
       "description": "Statistics of a returns series against a benchmark's returns over the same periods."
+    },
+    "ResampledSolution": {
+      "type": "object",
+      "properties": {
+        "objective": {
+          "$ref": "#/$defs/Objective",
+          "description": "The objective each simulated problem was solved for."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The asset labels."
+        },
+        "weights": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The average of the simulated problems' optimal weights, `None` if none was solved."
+        },
+        "weight_deviations": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The standard deviation of each weight across the simulated problems (divisor `m - 1` for\n`m` solved problems), `None` with fewer than two."
+        },
+        "expected_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The expected return of the average weights under the problem's own estimates."
+        },
+        "volatility": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The volatility of the average weights under the problem's own estimates."
+        },
+        "max_violation": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The largest amount by which the average weights break the problem's constraints."
+        },
+        "solved": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of simulated problems solved and averaged."
+        },
+        "failed": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of simulated problems the solver could not solve, left out of the average."
+        },
+        "solve_time": {
+          "type": "number",
+          "format": "double",
+          "description": "The time taken, in seconds."
+        }
+      },
+      "required": [
+        "objective",
+        "labels",
+        "solved",
+        "failed",
+        "solve_time"
+      ],
+      "description": "The result of resampled optimisation."
+    },
+    "Resampling": {
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of simulated histories, at least 2; 100 to 500 is usual."
+        },
+        "observations": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of periods in each simulated history, at least 2: the length of the history\nthe estimates came from, so that the simulated estimates are as uncertain as the real\nones."
+        },
+        "seed": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "description": "The seed of the random numbers. The same seed gives the same result on every platform."
+        }
+      },
+      "required": [
+        "samples",
+        "observations",
+        "seed"
+      ],
+      "description": "How to resample a problem's estimates."
+    },
+    "ReturnUncertainty": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "set": {
+              "type": "string",
+              "const": "ellipsoid"
+            },
+            "size": {
+              "type": "number",
+              "format": "double",
+              "description": "The size of the ellipsoid, not negative."
+            },
+            "covariance": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Matrix"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The covariance `S` of the estimation error, labelled like the problem; without one,\nthe problem's covariance matrix or factor model.",
+              "default": null
+            }
+          },
+          "required": [
+            "set",
+            "size"
+          ],
+          "description": "An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case\nlowers a portfolio's expected return by `size * sqrt(w' S w)`. For estimates that are\nsample means of `T` periods, `S` is the covariance divided by `T`, and `size^2` a\nchi-squared quantile with as many degrees of freedom as assets."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set": {
+              "type": "string",
+              "const": "box"
+            },
+            "half_widths": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "description": "The half-width for each asset, not negative."
+            }
+          },
+          "required": [
+            "set",
+            "half_widths"
+          ],
+          "description": "A box around the estimates, `|mu_i - m_i| <= half_widths_i`: the worst case lowers a\nportfolio's expected return by `sum half_widths_i |w_i|`."
+        }
+      ],
+      "description": "Where the true expected returns may lie around the estimates, for robust mean–variance\noptimisation."
     },
     "ReturnsTable": {
       "type": "object",
@@ -3713,6 +4052,92 @@
         "warnings"
       ],
       "description": "Daily values and external flows in the base currency, the input to performance measurement."
+    },
+    "View": {
+      "type": "object",
+      "properties": {
+        "portfolio": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The view portfolio: each asset's weight in it, such as `{\"A\": 1}` for an absolute view on\nasset A, or `{\"A\": 1, \"B\": -1}` for a view that A outperforms B."
+        },
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The expected return of the view portfolio, in the units of the covariance matrix."
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/ViewUncertainty",
+          "description": "How uncertain the view is.",
+          "default": {
+            "method": "proportional"
+          }
+        }
+      },
+      "required": [
+        "portfolio",
+        "expected_return"
+      ],
+      "description": "A view: the expected return of a portfolio of assets."
+    },
+    "ViewUncertainty": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "proportional"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "description": "Proportional to the variance of the view portfolio, `tau * p' C p` (He and Litterman,\n1999)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "confidence"
+            },
+            "confidence": {
+              "type": "number",
+              "format": "double",
+              "description": "The confidence, greater than 0 and at most 1."
+            }
+          },
+          "required": [
+            "method",
+            "confidence"
+          ],
+          "description": "From a confidence in the view (Idzorek, 2005), as `(1 - c) / c * tau * p' C p`: 1 holds the\nview with certainty, 0.5 is the proportional uncertainty, and lower confidences move the\nposterior less."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "variance"
+            },
+            "variance": {
+              "type": "number",
+              "format": "double",
+              "description": "The variance, not negative."
+            }
+          },
+          "required": [
+            "method",
+            "variance"
+          ],
+          "description": "The variance of the view, given directly."
+        }
+      ],
+      "description": "How uncertain a view is: its variance in the model."
     }
   }
 }
