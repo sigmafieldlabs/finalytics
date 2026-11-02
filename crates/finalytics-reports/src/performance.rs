@@ -20,6 +20,7 @@ use crate::shapes::{Grid, Series, Unit};
 /// Returns over one reporting period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct PeriodRow {
     /// The period.
     pub period: Period,
@@ -49,6 +50,7 @@ pub struct PeriodRow {
 /// The return of one calendar year (or the part of it covered).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct YearReturn {
     /// The year.
     pub year: i32,
@@ -70,6 +72,7 @@ pub struct YearReturn {
 /// Contributions added up by the groups of one classification scheme.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct SchemeContributions {
     /// The classification scheme.
     pub scheme: String,
@@ -80,6 +83,7 @@ pub struct SchemeContributions {
 /// External flows and income in one calendar month, in the base currency.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct MonthFlows {
     /// The month, as `YYYY-MM`.
     pub month: String,
@@ -94,6 +98,7 @@ pub struct MonthFlows {
 /// The performance report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct PerformanceReport {
     /// Where the numbers come from.
     pub provenance: Provenance,
@@ -271,10 +276,10 @@ pub fn performance_report(
             .iter()
             .flat_map(|a| a.classifications.keys().cloned())
             .collect();
-        let options = HouseholdOptions {
-            group_by: schemes.into_iter().collect(),
-            timing: options.timing,
-        };
+        let timing = options.timing;
+        let mut options = HouseholdOptions::default();
+        options.group_by = schemes.into_iter().collect();
+        options.timing = timing;
         match household(books, market, &cx.dates, &options) {
             Ok(h) => Some(h),
             Err(e) => {

@@ -60,9 +60,10 @@ fn risk_parity_equalises_risk_shares() {
         assert!((c.share.unwrap() - b).abs() < 1e-12);
     }
 
-    let constrained = problem().with_constraints(Constraints {
-        leverage: Some(1.0),
-        ..Default::default()
+    let constrained = problem().with_constraints({
+        let mut constraints = Constraints::default();
+        constraints.leverage = Some(1.0);
+        constraints
     });
     assert_eq!(
         paths(
@@ -76,10 +77,8 @@ fn risk_parity_equalises_risk_shares() {
 
 #[test]
 fn infeasible_constraints_give_a_status_not_weights() {
-    let constraints = Constraints {
-        bounds: Bound { min: 0.0, max: 0.2 },
-        ..Default::default()
-    };
+    let mut constraints = Constraints::default();
+    constraints.bounds = Bound { min: 0.0, max: 0.2 };
     let solution = problem()
         .with_constraints(constraints)
         .solve(&Objective::MinimumVariance)
@@ -180,22 +179,20 @@ fn minimum_cvar_beats_equal_weights() {
 
 #[test]
 fn invalid_problems_list_every_problem() {
-    let constraints = Constraints {
-        bounds: Bound { min: 0.5, max: 0.2 },
-        groups: vec![GroupLimit {
-            name: "metals".into(),
-            assets: vec!["gold".into(), "silver".into()],
-            min: 0.0,
-            max: 0.3,
-        }],
-        turnover: Some(Turnover {
-            current: vec![0.25; 3],
-            limit: Some(0.1),
-            costs: Some(vec![0.001; 4]),
-            quadratic_costs: None,
-        }),
-        ..Default::default()
-    };
+    let mut constraints = Constraints::default();
+    constraints.bounds = Bound { min: 0.5, max: 0.2 };
+    constraints.groups = vec![GroupLimit {
+        name: "metals".into(),
+        assets: vec!["gold".into(), "silver".into()],
+        min: 0.0,
+        max: 0.3,
+    }];
+    constraints.turnover = Some(Turnover {
+        current: vec![0.25; 3],
+        limit: Some(0.1),
+        costs: Some(vec![0.001; 4]),
+        quadratic_costs: None,
+    });
     let error = Problem::new(covariance())
         .with_constraints(constraints)
         .solve(&Objective::MinimumVariance)
@@ -229,14 +226,15 @@ fn invalid_problems_list_every_problem() {
 
 #[test]
 fn problems_and_solutions_round_trip_through_json() {
-    let problem = problem().with_constraints(Constraints {
-        groups: vec![GroupLimit {
+    let problem = problem().with_constraints({
+        let mut constraints = Constraints::default();
+        constraints.groups = vec![GroupLimit {
             name: "risk assets".into(),
             assets: vec!["equity".into(), "credit".into()],
             min: 0.2,
             max: 0.6,
-        }],
-        ..Default::default()
+        }];
+        constraints
     });
     let text = serde_json::to_string(&problem).unwrap();
     let back: Problem = serde_json::from_str(&text).unwrap();

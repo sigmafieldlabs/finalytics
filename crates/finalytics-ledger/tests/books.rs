@@ -26,14 +26,12 @@ fn usd(s: &str) -> Money {
 }
 
 fn tx(n: usize, date: &str, kind: TransactionKind) -> Transaction {
-    Transaction {
-        id: id(TransactionId::new, &format!("t{n}")),
-        account: id(AccountId::new, "main"),
-        trade_date: d(date),
-        settle_date: None,
+    Transaction::new(
+        id(TransactionId::new, &format!("t{n}")),
+        id(AccountId::new, "main"),
+        d(date),
         kind,
-        note: None,
-    }
+    )
 }
 
 fn buy(instrument: &str, quantity: &str, price: &str, fees: &str) -> TransactionKind {
@@ -65,11 +63,12 @@ fn series(points: &[(&str, &str)]) -> TimeSeries<Decimal> {
 }
 
 fn portfolio(instruments: Vec<Instrument>, transactions: Vec<Transaction>) -> Portfolio {
-    Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![Account::new(id(AccountId::new, "main"))],
-        instruments,
-        transactions,
+    {
+        let mut portfolio = Portfolio::new(Currency::USD);
+        portfolio.accounts = vec![Account::new(id(AccountId::new, "main"))];
+        portfolio.instruments = instruments;
+        portfolio.transactions = transactions;
+        portfolio
     }
 }
 
@@ -192,20 +191,18 @@ fn valuation_marks_to_market() {
 
 #[test]
 fn foreign_holdings_keep_cost_and_gains_in_both_currencies() {
-    let pf = Portfolio {
-        transactions: vec![
-            tx(
-                1,
-                "2026-01-02",
-                TransactionKind::Deposit {
-                    amount: Money::new(dec("10000"), Currency::EUR),
-                },
-            ),
-            tx(2, "2026-01-05", buy("SAP", "10", "100", "0")),
-            tx(3, "2026-02-02", sell("SAP", "10", "110", "0")),
-        ],
-        ..portfolio(vec![equity("SAP", Currency::EUR)], vec![])
-    };
+    let mut pf = portfolio(vec![equity("SAP", Currency::EUR)], vec![]);
+    pf.transactions = vec![
+        tx(
+            1,
+            "2026-01-02",
+            TransactionKind::Deposit {
+                amount: Money::new(dec("10000"), Currency::EUR),
+            },
+        ),
+        tx(2, "2026-01-05", buy("SAP", "10", "100", "0")),
+        tx(3, "2026-02-02", sell("SAP", "10", "110", "0")),
+    ];
     let market = MarketData::new()
         .with_fx(
             Currency::EUR,

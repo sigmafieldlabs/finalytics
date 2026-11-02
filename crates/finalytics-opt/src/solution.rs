@@ -8,6 +8,7 @@ use crate::problem::Objective;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum SolveStatus {
     /// Solved to the solver's full accuracy.
     Optimal,
@@ -36,6 +37,7 @@ impl SolveStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Method {
     /// The Clarabel interior-point solver for convex conic programmes.
     InteriorPoint,
@@ -54,6 +56,7 @@ pub enum Method {
 /// how closely the constraints hold, and the work done.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Solution {
     /// The objective optimised.
     pub objective: Objective,

@@ -188,13 +188,11 @@ fn a_factor_model_gives_the_solutions_of_its_covariance_matrix() {
     let factor_form = Problem::from_factor_model(model.clone()).with_expected_returns(mu.clone());
     let dense = Problem::new(model.covariance()).with_expected_returns(mu);
     let equal = vec![1.0 / 8.0; 8];
-    let tracking = Constraints {
-        tracking_error: Some(TrackingErrorLimit {
-            benchmark: equal,
-            limit: 0.05,
-        }),
-        ..Default::default()
-    };
+    let mut tracking = Constraints::default();
+    tracking.tracking_error = Some(TrackingErrorLimit {
+        benchmark: equal,
+        limit: 0.05,
+    });
     let objectives: Vec<(Objective, Constraints)> = vec![
         (Objective::MinimumVariance, Default::default()),
         (
@@ -255,15 +253,13 @@ fn factor_model_problems_are_validated() {
     let both = Problem::new(model.covariance()).with_factor_model(model.clone());
     let error = both.solve(&Objective::MinimumVariance).unwrap_err();
     assert!(error.to_string().contains("not both"), "{error}");
-    let limits = Constraints {
-        factor_exposures: vec![FactorExposureLimit {
-            factor: "momentum".into(),
-            min: 0.0,
-            max: 1.0,
-            benchmark: None,
-        }],
-        ..Default::default()
-    };
+    let mut limits = Constraints::default();
+    limits.factor_exposures = vec![FactorExposureLimit {
+        factor: "momentum".into(),
+        min: 0.0,
+        max: 1.0,
+        benchmark: None,
+    }];
     let unknown = Problem::from_factor_model(model.clone()).with_constraints(limits.clone());
     let error = unknown.solve(&Objective::MinimumVariance).unwrap_err();
     assert!(error.to_string().contains("no factor momentum"), "{error}");
@@ -407,15 +403,16 @@ fn quadratic_costs_match_the_reference() {
 
 fn trade_problem(limits: TradeLimits) -> (Problem, Vec<f64>) {
     let current = vec![0.125; 8];
-    let problem = problem(&fixture()).with_constraints(Constraints {
-        turnover: Some(Turnover {
+    let problem = problem(&fixture()).with_constraints({
+        let mut constraints = Constraints::default();
+        constraints.turnover = Some(Turnover {
             current: current.clone(),
             limit: None,
             costs: None,
             quadratic_costs: None,
-        }),
-        trades: Some(limits),
-        ..Default::default()
+        });
+        constraints.trades = Some(limits);
+        constraints
     });
     (problem, current)
 }
@@ -476,12 +473,13 @@ fn loose_trade_limits_change_nothing() {
     assert_eq!(a.method, Method::TradeElimination);
     assert_eq!(a.weights, b.weights);
     let error = Problem::new(free.covariance.clone().unwrap())
-        .with_constraints(Constraints {
-            trades: Some(TradeLimits {
+        .with_constraints({
+            let mut constraints = Constraints::default();
+            constraints.trades = Some(TradeLimits {
                 minimum: Some(0.01),
                 maximum_count: None,
-            }),
-            ..Default::default()
+            });
+            constraints
         })
         .solve(&objective)
         .unwrap_err();

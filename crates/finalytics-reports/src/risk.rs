@@ -21,6 +21,7 @@ use crate::shapes::{Amount, Grid, Histogram, Series, Unit, histogram};
 /// Value at risk and expected shortfall by one method at one confidence.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct TailRow {
     /// The confidence.
     pub confidence: f64,
@@ -35,6 +36,7 @@ pub struct TailRow {
 /// The current holdings' risk, from the covariance of their returns.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingsRisk {
     /// The first date of the returns: the first valuation date on which every current holding
     /// has a price.
@@ -59,6 +61,7 @@ pub struct HoldingsRisk {
 /// The risk report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct RiskReport {
     /// Where the numbers come from.
     pub provenance: Provenance,

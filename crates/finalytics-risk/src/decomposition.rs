@@ -11,6 +11,7 @@ use crate::matrix::Matrix;
 /// One asset's share of a portfolio's volatility.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct RiskContribution {
     /// The asset, as labelled in the covariance matrix.
     pub label: String,
@@ -29,6 +30,7 @@ pub struct RiskContribution {
 /// A portfolio's volatility split into each asset's contribution (Euler allocation).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct RiskDecomposition {
     /// The portfolio's volatility, `sqrt(w' C w)`, in the units of the covariance matrix (scale
     /// the matrix to annualise).
@@ -40,6 +42,7 @@ pub struct RiskDecomposition {
 /// A group's share of a portfolio's volatility.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct GroupRisk {
     /// The group.
     pub group: String,

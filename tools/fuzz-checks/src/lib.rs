@@ -40,7 +40,14 @@ fn text(data: &[u8]) -> Option<&str> {
 /// The CSV delimiter: a semicolon when the input starts with one, otherwise a comma.
 fn options(text: &str) -> (CsvOptions, &str) {
     match text.strip_prefix(';') {
-        Some(rest) => (CsvOptions { delimiter: b';' }, rest),
+        Some(rest) => (
+            {
+                let mut csv_options = CsvOptions::default();
+                csv_options.delimiter = b';';
+                csv_options
+            },
+            rest,
+        ),
         None => (CsvOptions::default(), text),
     }
 }
@@ -176,19 +183,19 @@ fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: 
         .iter()
         .map(|i| (finalytics::HoldingKey::Instrument(i.id.clone()), 0.9 / n))
         .collect();
-    let options = finalytics::opt::RebalanceOptions {
-        fees: finalytics::opt::Fees {
-            rate: finalytics::Decimal::new(1, 3),
-            per_trade: finalytics::Decimal::ZERO,
-            minimum: finalytics::Decimal::ONE,
-        },
-        tax: Some(finalytics::opt::TaxRates {
-            short_term: finalytics::Decimal::new(3, 1),
-            long_term: finalytics::Decimal::new(15, 2),
-            long_term_after_days: 365,
-        }),
-        ..Default::default()
+    let mut options = finalytics::opt::RebalanceOptions::default();
+    options.fees = {
+        let mut fees = finalytics::opt::Fees::default();
+        fees.rate = finalytics::Decimal::new(1, 3);
+        fees.per_trade = finalytics::Decimal::ZERO;
+        fees.minimum = finalytics::Decimal::ONE;
+        fees
     };
+    options.tax = Some(finalytics::opt::TaxRates {
+        short_term: finalytics::Decimal::new(3, 1),
+        long_term: finalytics::Decimal::new(15, 2),
+        long_term_after_days: 365,
+    });
     if let Ok(plan) = finalytics::opt::rebalance(books, market, date, &first.id, &targets, &options)
     {
         assert!(
@@ -262,10 +269,8 @@ fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, da
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .collect();
-    let options = finalytics::HouseholdOptions {
-        group_by: schemes,
-        ..Default::default()
-    };
+    let mut options = finalytics::HouseholdOptions::default();
+    options.group_by = schemes;
     let Ok(h) = finalytics::household(books, market, dates, &options) else {
         return;
     };
@@ -300,24 +305,22 @@ fn reports_hold(portfolio: &Portfolio, books: &Books, market: &MarketData) {
         report_tables, risk_report,
     };
     let source = Source::of(portfolio, market);
-    let options = ReportOptions {
-        group_by: portfolio
-            .instruments
-            .iter()
-            .flat_map(|i| i.classifications.keys().cloned())
-            .collect::<std::collections::BTreeSet<_>>()
-            .into_iter()
-            .collect(),
-        benchmark: portfolio
-            .instruments
-            .iter()
-            .map(|i| i.id.clone())
-            .find(|id| market.prices(id).is_some_and(|p| !p.is_empty())),
-        rolling_window: 5,
-        histogram_bins: 10,
-        frontier_points: 2,
-        ..Default::default()
-    };
+    let mut options = ReportOptions::default();
+    options.group_by = portfolio
+        .instruments
+        .iter()
+        .flat_map(|i| i.classifications.keys().cloned())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    options.benchmark = portfolio
+        .instruments
+        .iter()
+        .map(|i| i.id.clone())
+        .find(|id| market.prices(id).is_some_and(|p| !p.is_empty()));
+    options.rolling_window = 5;
+    options.histogram_bins = 10;
+    options.frontier_points = 2;
     fn holds<T>(name: &str, report: &T)
     where
         T: serde::Serialize + serde::de::DeserializeOwned,
@@ -382,17 +385,16 @@ fn portfolio_scenarios(portfolio: &Portfolio, books: &Books, market: &MarketData
             currencies.push((i.currency, -0.1));
         }
     }
-    let shocks = Shocks {
-        instruments: portfolio
-            .instruments
-            .iter()
-            .step_by(2)
-            .map(|i| (i.id.clone(), 0.05))
-            .collect(),
-        groups,
-        currencies,
-        factors: None,
-    };
+    let mut shocks = Shocks::default();
+    shocks.instruments = portfolio
+        .instruments
+        .iter()
+        .step_by(2)
+        .map(|i| (i.id.clone(), 0.05))
+        .collect();
+    shocks.groups = groups;
+    shocks.currencies = currencies;
+    shocks.factors = None;
     let schemes: Vec<String> = portfolio
         .instruments
         .iter()
@@ -400,10 +402,9 @@ fn portfolio_scenarios(portfolio: &Portfolio, books: &Books, market: &MarketData
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .collect();
-    let options = ScenarioOptions {
-        group_by: schemes,
-        risk: None,
-    };
+    let mut options = ScenarioOptions::default();
+    options.group_by = schemes;
+    options.risk = None;
     if let Ok(result) = risk::shock_scenario(books, market, date, &shocks, &options) {
         scenario_holds(&result);
     }
@@ -598,31 +599,32 @@ pub fn scenarios(data: &[u8]) {
             stress,
         })
     };
-    let options = ScenarioOptions {
-        group_by: vec!["asset_class".into()],
-        risk,
-    };
+    let mut options = ScenarioOptions::default();
+    options.group_by = vec!["asset_class".into()];
+    options.risk = risk;
     let date = Date::from_ymd(2026, 1, 7).unwrap_or_else(|e| panic!("{e}"));
     let result = if control & 0x01 == 0 {
-        let shocks = Shocks {
-            instruments: vec![(
+        let shocks = {
+            let mut built = Shocks::default();
+            built.instruments = vec![(
                 finalytics::InstrumentId::new("A").unwrap_or_else(|| unreachable!()),
                 v[0],
-            )],
-            groups: vec![GroupShock {
+            )];
+            built.groups = vec![GroupShock {
                 scheme: "asset_class".into(),
                 value: "Bonds".into(),
                 shock: v[1],
-            }],
-            currencies: vec![(Currency::EUR, v[2])],
-            factors: model.map(|model| FactorShocks {
+            }];
+            built.currencies = vec![(Currency::EUR, v[2])];
+            built.factors = model.map(|model| FactorShocks {
                 model,
                 shocks: vec![("f0".into(), v[3]), ("f1".into(), v[4])]
                     .into_iter()
                     .take(1 + usize::from(control & 0x02 != 0))
                     .collect(),
                 propagate: control & 0x04 != 0,
-            }),
+            });
+            built
         };
         risk::shock_scenario(books, market, date, &shocks, &options)
     } else {
@@ -1002,10 +1004,8 @@ pub fn returns(data: &[u8]) {
         return;
     };
     let values = numbers(rest);
-    let options = StatisticsOptions {
-        periods_per_year: f64::from(control % 13) * 21.0,
-        ..Default::default()
-    };
+    let mut options = StatisticsOptions::default();
+    options.periods_per_year = f64::from(control % 13) * 21.0;
     let _ = risk::statistics(&values, &options);
     let half = values.len() / 2;
     let _ = risk::relative_statistics(&values[..half], &values[half..half * 2], &options);
@@ -1056,23 +1056,24 @@ pub fn optimisation(data: &[u8]) {
         return;
     };
     let expected = values[n * n..n * n + n].to_vec();
-    let constraints = values.get(n * n + n).map(|&bound| Constraints {
-        bounds: finalytics::opt::Bound {
+    let constraints = values.get(n * n + n).map(|&bound| {
+        let mut constraints = Constraints::default();
+        constraints.bounds = finalytics::opt::Bound {
             min: -bound.abs().min(1.0),
             max: 1.0,
-        },
-        leverage: Some(2.0),
-        turnover: (control & 0x80 != 0).then(|| finalytics::opt::Turnover {
+        };
+        constraints.leverage = Some(2.0);
+        constraints.turnover = (control & 0x80 != 0).then(|| finalytics::opt::Turnover {
             current: vec![1.0 / n as f64; n],
             limit: None,
             costs: None,
             quadratic_costs: Some(vec![bound.abs().min(10.0); n]),
-        }),
-        trades: (control & 0x80 != 0).then_some(finalytics::opt::TradeLimits {
+        });
+        constraints.trades = (control & 0x80 != 0).then_some(finalytics::opt::TradeLimits {
             minimum: Some(0.01),
             maximum_count: Some(n.div_ceil(2)),
-        }),
-        ..Default::default()
+        });
+        constraints
     });
     let mut problem = Problem::new(matrix).with_expected_returns(expected.clone());
     if let Some(c) = &constraints {

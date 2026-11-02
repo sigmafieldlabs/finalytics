@@ -53,9 +53,10 @@ fn d(s: &str) -> Date {
 }
 
 fn options() -> ReportOptions {
-    ReportOptions {
-        benchmark: Some(InstrumentId::new("SPY").unwrap()),
-        ..Default::default()
+    {
+        let mut report_options = ReportOptions::default();
+        report_options.benchmark = Some(InstrumentId::new("SPY").unwrap());
+        report_options
     }
 }
 

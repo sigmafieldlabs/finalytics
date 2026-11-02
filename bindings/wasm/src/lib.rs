@@ -172,7 +172,11 @@ fn parse_account(text: &str) -> Result<AccountId, JsValue> {
 fn csv_options(delimiter: Option<String>) -> Result<CsvOptions, JsValue> {
     match delimiter.as_deref().map(str::as_bytes) {
         None => Ok(CsvOptions::default()),
-        Some([byte]) => Ok(CsvOptions { delimiter: *byte }),
+        Some([byte]) => Ok({
+            let mut csv_options = CsvOptions::default();
+            csv_options.delimiter = *byte;
+            csv_options
+        }),
         Some(_) => Err(invalid("delimiter", "must be a single character")),
     }
 }

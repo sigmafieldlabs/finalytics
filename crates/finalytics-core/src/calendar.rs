@@ -8,6 +8,7 @@ use crate::{Date, Error, Result, Weekday};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum BusinessDayConvention {
     /// Leave the date as it is.
     Unadjusted,

@@ -83,9 +83,11 @@ fn main() -> Result<(), finalytics::Error> {
     let expected = returns.columns().iter().map(|r| 12.0 * r.iter().sum::<f64>() / r.len() as f64).collect();
 
     // The portfolio with the highest Sharpe ratio, holding 10% to 60% of each asset.
+    let mut constraints = Constraints::default();
+    constraints.bounds = Bound { min: 0.1, max: 0.6 };
     let solution = Problem::new(estimate.matrix.scaled(12.0))
         .with_expected_returns(expected)
-        .with_constraints(Constraints { bounds: Bound { min: 0.1, max: 0.6 }, ..Default::default() })
+        .with_constraints(constraints)
         .solve(&Objective::MaximumSharpe { risk_free_rate: 0.02 })?;
 
     let weights: Vec<String> = solution.labels.iter().zip(solution.weights.unwrap_or_default())

@@ -138,14 +138,12 @@ pub fn large_portfolio(instruments: usize, transactions: usize, years: usize) ->
     let mut list = Vec::with_capacity(transactions);
     let push = |list: &mut Vec<Transaction>, account: usize, date: Date, kind: TransactionKind| {
         let n = list.len();
-        list.push(Transaction {
-            id: id(TransactionId::new, format!("T{n}")),
-            account: accounts[account].id.clone(),
-            trade_date: date,
-            settle_date: None,
+        list.push(Transaction::new(
+            id(TransactionId::new, format!("T{n}")),
+            accounts[account].id.clone(),
+            date,
             kind,
-            note: None,
-        });
+        ));
     };
     // Fund every account in every currency at the start.
     for a in 0..accounts.len() {
@@ -248,11 +246,12 @@ pub fn large_portfolio(instruments: usize, transactions: usize, years: usize) ->
         }
     }
     LargePortfolio {
-        portfolio: Portfolio {
-            base_currency: Currency::USD,
-            accounts,
-            instruments: instrument_list,
-            transactions: list,
+        portfolio: {
+            let mut portfolio = Portfolio::new(Currency::USD);
+            portfolio.accounts = accounts;
+            portfolio.instruments = instrument_list;
+            portfolio.transactions = list;
+            portfolio
         },
         market: market.with_max_carry_days(10),
         month_ends,
@@ -328,14 +327,13 @@ fn with_budget_constraints(problem: Problem, assets: usize) -> Problem {
             max: 0.2,
         })
         .collect();
-    problem
-        .with_expected_returns(expected)
-        .with_constraints(Constraints {
-            bounds: finalytics::opt::Bound {
-                min: 0.0,
-                max: 0.05,
-            },
-            groups,
-            ..Default::default()
-        })
+    problem.with_expected_returns(expected).with_constraints({
+        let mut constraints = Constraints::default();
+        constraints.bounds = finalytics::opt::Bound {
+            min: 0.0,
+            max: 0.05,
+        };
+        constraints.groups = groups;
+        constraints
+    })
 }

@@ -42,11 +42,12 @@ fn setup() -> (Portfolio, Books, MarketData) {
 }
 
 fn options() -> ReportOptions {
-    ReportOptions {
-        group_by: vec!["asset_class".into(), "region".into()],
-        benchmark: Some(InstrumentId::new("SPY").unwrap()),
-        rolling_window: 20,
-        ..Default::default()
+    {
+        let mut report_options = ReportOptions::default();
+        report_options.group_by = vec!["asset_class".into(), "region".into()];
+        report_options.benchmark = Some(InstrumentId::new("SPY").unwrap());
+        report_options.rolling_window = 20;
+        report_options
     }
 }
 
@@ -293,13 +294,14 @@ fn scenarios_side_by_side() {
         NamedScenario {
             name: "Equities -20%".into(),
             scenario: ScenarioDefinition::Shocks {
-                shocks: Shocks {
-                    groups: vec![GroupShock {
+                shocks: {
+                    let mut shocks = Shocks::default();
+                    shocks.groups = vec![GroupShock {
                         scheme: "asset_class".into(),
                         value: "Equity".into(),
                         shock: -0.2,
-                    }],
-                    ..Default::default()
+                    }];
+                    shocks
                 },
             },
             stress: Some(finalytics::risk::CorrelationStress {
@@ -321,9 +323,10 @@ fn scenarios_side_by_side() {
         NamedScenario {
             name: "Broken".into(),
             scenario: ScenarioDefinition::Shocks {
-                shocks: Shocks {
-                    currencies: vec![(Currency::USD, -0.1)],
-                    ..Default::default()
+                shocks: {
+                    let mut shocks = Shocks::default();
+                    shocks.currencies = vec![(Currency::USD, -0.1)];
+                    shocks
                 },
             },
             stress: None,

@@ -11,6 +11,7 @@ use crate::problem::{Objective, Problem};
 /// A portfolio on the efficient frontier.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct FrontierPoint {
     /// The expected return.
     pub expected_return: f64,

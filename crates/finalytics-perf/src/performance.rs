@@ -25,6 +25,7 @@ pub const DAYS_PER_YEAR: f64 = 365.25;
 /// A return over a reporting period.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct PeriodReturn {
     /// The valuation date the period starts from.
     pub start: Date,
@@ -39,6 +40,7 @@ pub struct PeriodReturn {
 /// A return compared with a benchmark's over the same dates.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ExcessReturn {
     /// The portfolio's cumulative return.
     pub portfolio: f64,

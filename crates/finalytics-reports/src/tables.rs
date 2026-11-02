@@ -16,6 +16,7 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum ColumnKind {
     /// Text.
     Text,
@@ -39,6 +40,7 @@ pub enum ColumnKind {
 /// One column of a [`ReportTable`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Column {
     /// A stable key for the column, such as `value_base`.
     pub key: String,
@@ -52,6 +54,7 @@ pub struct Column {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
+#[non_exhaustive]
 pub enum Cell {
     /// A number.
     Number(f64),
@@ -66,6 +69,7 @@ pub enum Cell {
 /// A table of a report: named, with typed columns and one row of cells per record.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ReportTable {
     /// A stable name, such as `holdings`, usable as a file or sheet name.
     pub name: String,

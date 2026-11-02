@@ -15,6 +15,7 @@ use crate::problem::{Problem, check_symmetric, check_vector};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "prior", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Prior {
     /// The equilibrium returns implied by market weights, `pi = risk_aversion * C w + rate`: the
     /// returns at which the market portfolio is optimal for an investor with that risk aversion.
@@ -40,6 +41,7 @@ pub enum Prior {
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "method", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum ViewUncertainty {
     /// Proportional to the variance of the view portfolio, `tau * p' C p` (He and Litterman,
     /// 1999).
@@ -97,6 +99,7 @@ fn default_tau() -> f64 {
 /// The posterior of the Black–Litterman model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct BlackLittermanEstimate {
     /// The asset labels, in the order of the covariance matrix.
     pub labels: Vec<String>,

@@ -19,14 +19,12 @@ fn id(s: &str) -> InstrumentId {
 }
 
 fn tx(n: usize, kind: TransactionKind) -> Transaction {
-    Transaction {
-        id: TransactionId::new(format!("t{n}")).unwrap(),
-        account: AccountId::new(if n.is_multiple_of(2) { "isa" } else { "main" }).unwrap(),
-        trade_date: d("2026-03-02"),
-        settle_date: None,
+    Transaction::new(
+        TransactionId::new(format!("t{n}")).unwrap(),
+        AccountId::new(if n.is_multiple_of(2) { "isa" } else { "main" }).unwrap(),
+        d("2026-03-02"),
         kind,
-        note: None,
-    }
+    )
 }
 
 fn daily(values: &[&str]) -> TimeSeries<Decimal> {
@@ -55,47 +53,45 @@ fn setup() -> (Books, MarketData) {
             },
         )
     };
-    let portfolio = Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![
-            Account::new(AccountId::new("main").unwrap()),
-            Account::new(AccountId::new("isa").unwrap()),
-        ],
-        instruments: vec![
-            Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD)
-                .classified("asset_class", "Equity"),
-            Instrument::new(id("SAP"), InstrumentKind::Equity, Currency::EUR)
-                .classified("asset_class", "Equity")
-                .classified("region", "Europe"),
-            Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD)
-                .classified("asset_class", "Fixed income"),
-        ],
-        transactions: vec![
-            tx(
-                1,
-                TransactionKind::Deposit {
-                    amount: usd("60000"),
-                },
-            ),
-            tx(
-                2,
-                TransactionKind::Deposit {
-                    amount: usd("40000"),
-                },
-            ),
-            buy(3, "SPY", "60", "500"),
-            buy(4, "SPY", "20", "500"),
-            tx(
-                5,
-                TransactionKind::FxConversion {
-                    sell: usd("22000"),
-                    buy: Money::new(dec("20000"), Currency::EUR),
-                },
-            ),
-            buy(7, "SAP", "50", "200"),
-            buy(6, "BOND", "200", "100"),
-        ],
-    };
+    let mut portfolio = Portfolio::new(Currency::USD);
+    portfolio.accounts = vec![
+        Account::new(AccountId::new("main").unwrap()),
+        Account::new(AccountId::new("isa").unwrap()),
+    ];
+    portfolio.instruments = vec![
+        Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD)
+            .classified("asset_class", "Equity"),
+        Instrument::new(id("SAP"), InstrumentKind::Equity, Currency::EUR)
+            .classified("asset_class", "Equity")
+            .classified("region", "Europe"),
+        Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD)
+            .classified("asset_class", "Fixed income"),
+    ];
+    portfolio.transactions = vec![
+        tx(
+            1,
+            TransactionKind::Deposit {
+                amount: usd("60000"),
+            },
+        ),
+        tx(
+            2,
+            TransactionKind::Deposit {
+                amount: usd("40000"),
+            },
+        ),
+        buy(3, "SPY", "60", "500"),
+        buy(4, "SPY", "20", "500"),
+        tx(
+            5,
+            TransactionKind::FxConversion {
+                sell: usd("22000"),
+                buy: Money::new(dec("20000"), Currency::EUR),
+            },
+        ),
+        buy(7, "SAP", "50", "200"),
+        buy(6, "BOND", "200", "100"),
+    ];
     let market = MarketData::new()
         .with_prices(
             id("SPY"),
@@ -156,16 +152,14 @@ fn validation(result: Result<ScenarioResult, Error>) -> Vec<(String, String)> {
 #[test]
 fn shocks_to_groups_currencies_and_instruments() {
     let (books, market) = setup();
-    let shocks = Shocks {
-        instruments: vec![(id("BOND"), -0.05)],
-        groups: vec![group("asset_class", "Equity", -0.2)],
-        currencies: vec![(Currency::EUR, -0.1)],
-        factors: None,
-    };
-    let options = ScenarioOptions {
-        group_by: vec!["asset_class".into()],
-        risk: None,
-    };
+    let mut shocks = Shocks::default();
+    shocks.instruments = vec![(id("BOND"), -0.05)];
+    shocks.groups = vec![group("asset_class", "Equity", -0.2)];
+    shocks.currencies = vec![(Currency::EUR, -0.1)];
+    shocks.factors = None;
+    let mut options = ScenarioOptions::default();
+    options.group_by = vec!["asset_class".into()];
+    options.risk = None;
     let r = shock_scenario(&books, &market, d("2026-03-07"), &shocks, &options).unwrap();
     close(r.value_before, 101_002.0);
     // SPY 40,560 x 0.8; SAP 11,322 x 0.8 x 0.9; BOND 20,020 x 0.95; EUR cash 11,100 x 0.9.
@@ -208,14 +202,12 @@ fn shocks_to_groups_currencies_and_instruments() {
 #[test]
 fn an_instrument_in_two_shocked_groups_needs_its_own_shock() {
     let (books, market) = setup();
-    let mut shocks = Shocks {
-        groups: vec![
-            group("asset_class", "Equity", -0.2),
-            group("region", "Europe", -0.3),
-            group("region", "Asia", -0.3),
-        ],
-        ..Default::default()
-    };
+    let mut shocks = Shocks::default();
+    shocks.groups = vec![
+        group("asset_class", "Equity", -0.2),
+        group("region", "Europe", -0.3),
+        group("region", "Asia", -0.3),
+    ];
     let date = d("2026-03-07");
     let options = ScenarioOptions::default();
     let issues = validation(shock_scenario(&books, &market, date, &shocks, &options));
@@ -247,11 +239,9 @@ fn an_instrument_in_two_shocked_groups_needs_its_own_shock() {
 #[test]
 fn shocks_are_validated() {
     let (books, market) = setup();
-    let shocks = Shocks {
-        instruments: vec![(id("NOPE"), -0.1), (id("SPY"), -1.5)],
-        currencies: vec![(Currency::USD, 0.1)],
-        ..Default::default()
-    };
+    let mut shocks = Shocks::default();
+    shocks.instruments = vec![(id("NOPE"), -0.1), (id("SPY"), -1.5)];
+    shocks.currencies = vec![(Currency::USD, 0.1)];
     let issues = validation(shock_scenario(
         &books,
         &market,
@@ -294,9 +284,10 @@ fn factor_shocks_with_and_without_propagation() {
     };
     let date = d("2026-03-07");
     let options = ScenarioOptions::default();
-    let shocks = |f: &FactorShocks| Shocks {
-        factors: Some(f.clone()),
-        ..Default::default()
+    let shocks = |f: &FactorShocks| {
+        let mut shocks = Shocks::default();
+        shocks.factors = Some(f.clone());
+        shocks
     };
     let r = shock_scenario(&books, &market, date, &shocks(&factors), &options).unwrap();
     close(impact(&r, &instrument("SPY")).local_return, -0.1);
@@ -334,19 +325,16 @@ fn risk_before_and_after_with_a_stress() {
         volatility_scale: 1.5,
         correlation_shift: 0.5,
     };
-    let options = ScenarioOptions {
-        group_by: vec!["asset_class".into()],
-        risk: Some(ScenarioRiskModel {
-            covariance: Some(covariance.clone()),
-            factor_model: None,
-            confidence: 0.99,
-            stress: Some(stress),
-        }),
-    };
-    let shocks = Shocks {
-        groups: vec![group("asset_class", "Equity", -0.2)],
-        ..Default::default()
-    };
+    let mut options = ScenarioOptions::default();
+    options.group_by = vec!["asset_class".into()];
+    options.risk = Some(ScenarioRiskModel {
+        covariance: Some(covariance.clone()),
+        factor_model: None,
+        confidence: 0.99,
+        stress: Some(stress),
+    });
+    let mut shocks = Shocks::default();
+    shocks.groups = vec![group("asset_class", "Equity", -0.2)];
     let r = shock_scenario(&books, &market, d("2026-03-07"), &shocks, &options).unwrap();
 
     // Holdings are in order BOND, SAP, SPY, then cash EUR, USD; USD cash is riskless.

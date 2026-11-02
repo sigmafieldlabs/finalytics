@@ -22,6 +22,7 @@ use crate::matrix::{Matrix, ReturnsTable};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(try_from = "FactorModelRepr", into = "FactorModelRepr")]
+#[non_exhaustive]
 pub struct FactorModel {
     assets: Vec<String>,
     exposures: Vec<Vec<f64>>,
@@ -307,6 +308,7 @@ fn check_covariance(matrix: &Matrix, name: &str, report: &mut ValidationReport) 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum FactorMethod {
     /// Time-series regression of each asset's returns on given factor returns.
     Regression,
@@ -319,6 +321,7 @@ pub enum FactorMethod {
 /// How well a factor model explains one asset's returns over the estimation period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct AssetFit {
     /// The asset's label.
     pub asset: String,
@@ -333,6 +336,7 @@ pub struct AssetFit {
 /// A factor model estimated from returns, with how well it fits each asset.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct FactorModelEstimate {
     /// How the model was estimated.
     pub method: FactorMethod,
@@ -693,6 +697,7 @@ fn sample_covariance(columns: &[Vec<f64>]) -> Vec<f64> {
 /// One factor's share of a portfolio's volatility.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct FactorContribution {
     /// The factor's name.
     pub factor: String,
@@ -712,6 +717,7 @@ pub struct FactorContribution {
 /// specific (stock-specific) part, and into each asset's contribution (Euler allocation).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct FactorRisk {
     /// The volatility, `sqrt(x' F x + sum d w^2)`, in the units of the model.
     pub volatility: f64,

@@ -216,7 +216,12 @@ fn prices_in_long_and_wide_layouts() {
     assert_eq!(aapl.dates(), [d("2026-11-02"), d("2026-11-03")]);
 
     let wide = "date;AAPL;SAP\n2026-11-02;200;150.5\n2026-11-03;201;\n";
-    let wide = prices_from_csv(wide, CsvOptions { delimiter: b';' }).unwrap();
+    let wide = prices_from_csv(wide, {
+        let mut csv_options = CsvOptions::default();
+        csv_options.delimiter = b';';
+        csv_options
+    })
+    .unwrap();
     assert_eq!(wide, prices);
 
     let report = report(prices_from_csv(
@@ -271,10 +276,8 @@ fn documents_round_trip_with_their_market_data() {
     for (id, series) in prices {
         market = market.with_prices(id, series);
     }
-    let document = PortfolioDocument {
-        portfolio,
-        market: Some(market),
-    };
+    let mut document = PortfolioDocument::new(portfolio);
+    document.market = Some(market);
     let json = document.to_json();
     assert!(json.contains(r#""format": "finalytics.portfolio""#));
     assert_eq!(PortfolioDocument::from_json(&json).unwrap(), document);

@@ -14,6 +14,7 @@ use crate::{AccountId, InstrumentId};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum InstrumentKind {
     /// A share in a company.
     Equity,
@@ -34,6 +35,7 @@ pub enum InstrumentKind {
 /// Something a portfolio can hold, other than cash.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Instrument {
     /// The caller's identifier.
     pub id: InstrumentId,
@@ -91,6 +93,7 @@ fn is_one(value: &Decimal) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum LotMethod {
     /// First in, first out: the oldest lots first.
     #[default]
@@ -110,6 +113,7 @@ pub enum LotMethod {
 /// An account in a portfolio, such as a brokerage or custody account.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Account {
     /// The caller's identifier.
     pub id: AccountId,

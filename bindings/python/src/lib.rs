@@ -120,7 +120,11 @@ fn instrument(text: &str) -> PyResult<InstrumentId> {
 
 fn csv_options(delimiter: &str) -> PyResult<CsvOptions> {
     match delimiter.as_bytes() {
-        [byte] => Ok(CsvOptions { delimiter: *byte }),
+        [byte] => Ok({
+            let mut csv_options = CsvOptions::default();
+            csv_options.delimiter = *byte;
+            csv_options
+        }),
         _ => Err(invalid("delimiter", "must be a single character")),
     }
 }

@@ -26,6 +26,7 @@ pub const FORMAT_VERSION: u32 = 1;
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct PortfolioDocument {
     /// The portfolio.
     pub portfolio: Portfolio,

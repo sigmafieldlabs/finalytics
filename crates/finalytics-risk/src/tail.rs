@@ -11,6 +11,7 @@ use crate::input::{self, Moments, invalid};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum TailMethod {
     /// From the observed returns: the quantile with linear interpolation between order
     /// statistics, and the mean of the worst `floor((n - 1) * alpha) + 1` returns.
@@ -29,6 +30,7 @@ pub enum TailMethod {
 /// means that one period in twenty is expected to lose 2.1% or more.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct TailRisk {
     /// The confidence level, for example 0.95.
     pub confidence: f64,

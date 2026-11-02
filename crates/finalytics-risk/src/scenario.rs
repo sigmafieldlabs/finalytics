@@ -50,6 +50,7 @@ pub struct FactorShocks {
 /// compounds with the instrument's return, and applies to cash in that currency.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Shocks {
     /// Returns of single instruments, by identifier.
     #[serde(default)]
@@ -128,6 +129,7 @@ fn default_confidence() -> f64 {
 /// What to report beyond the effect on each holding.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioOptions {
     /// Classification schemes to add the effect up by, such as `asset_class`. Instruments
     /// without the classification are in the group "unclassified", and cash in "cash".
@@ -142,6 +144,7 @@ pub struct ScenarioOptions {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "source", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum ShockSource {
     /// Its own shock.
     Instrument,
@@ -171,6 +174,7 @@ pub enum ShockSource {
 /// accounts.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingImpact {
     /// The holding.
     pub holding: HoldingKey,
@@ -198,6 +202,7 @@ pub struct HoldingImpact {
 /// What a scenario does to one group of holdings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct GroupImpact {
     /// The group.
     pub group: String,
@@ -220,6 +225,7 @@ pub struct GroupImpact {
 /// The effect of a scenario by the groups of one classification scheme.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct SchemeImpact {
     /// The classification scheme.
     pub scheme: String,
@@ -240,6 +246,7 @@ pub struct SchemeRisk {
 /// A portfolio's risk before or after a scenario.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioRisk {
     /// The volatility of the portfolio's return, in the units of the risk model (scale the
     /// model to annualise).
@@ -256,6 +263,7 @@ pub struct ScenarioRisk {
 /// The hypothetical value of today's holdings over a historical period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioPath {
     /// Every date in the period with a price for a holding, and its start and end.
     pub dates: Vec<Date>,
@@ -269,6 +277,7 @@ pub struct ScenarioPath {
 /// What a scenario does to a portfolio.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioResult {
     /// The date of the holdings.
     pub as_of: Date,

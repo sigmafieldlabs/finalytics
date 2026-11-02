@@ -20,6 +20,7 @@ use crate::shapes::{Amount, Breakdown, Series, Slice, Unit};
 /// The headline figures of the overview.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Headline {
     /// The portfolio's value in the base currency.
     pub value: f64,
@@ -50,6 +51,7 @@ pub struct Headline {
 /// One holding's weight, expected return and risk.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingRiskReturn {
     /// The holding.
     pub holding: HoldingKey,
@@ -68,6 +70,7 @@ pub struct HoldingRiskReturn {
 /// A portfolio's expected return and volatility, for a point on a risk–return chart.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct PortfolioPoint {
     /// The annual expected return.
     pub expected_return: f64,
@@ -78,6 +81,7 @@ pub struct PortfolioPoint {
 /// The overview report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct OverviewReport {
     /// Where the numbers come from.
     pub provenance: Provenance,

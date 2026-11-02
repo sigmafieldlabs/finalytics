@@ -23,14 +23,12 @@ fn usd(a: &str) -> Money {
 }
 
 fn tx(n: usize, account_id: &str, date: &str, kind: TransactionKind) -> Transaction {
-    Transaction {
-        id: TransactionId::new(format!("t{n}")).unwrap(),
-        account: account(account_id),
-        trade_date: d(date),
-        settle_date: None,
+    Transaction::new(
+        TransactionId::new(format!("t{n}")).unwrap(),
+        account(account_id),
+        d(date),
         kind,
-        note: None,
-    }
+    )
 }
 
 fn dates() -> Vec<Date> {
@@ -74,39 +72,37 @@ fn setup() -> (Books, MarketData) {
             },
         )
     };
-    let portfolio = Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![
-            Account::new(account("main"))
-                .classified("owner", "Alice")
-                .classified("wrapper", "taxable"),
-            Account::new(account("isa"))
-                .classified("owner", "Alice")
-                .classified("wrapper", "ISA"),
-            Account::new(account("kid")).classified("owner", "Bob"),
-        ],
-        instruments: vec![Instrument::new(
-            spy.clone(),
-            InstrumentKind::Fund,
-            Currency::USD,
-        )],
-        transactions: vec![
-            deposit(1, "main", "2026-03-02", "10000"),
-            buy(2, "main", "2026-03-02"),
-            deposit(3, "isa", "2026-03-02", "5000"),
-            buy(4, "isa", "2026-03-02"),
-            deposit(5, "kid", "2026-03-03", "1000"),
-            tx(
-                6,
-                "main",
-                "2026-03-04",
-                TransactionKind::Withdrawal {
-                    amount: usd("2000"),
-                },
-            ),
-            deposit(7, "isa", "2026-03-04", "2000"),
-        ],
-    };
+    let mut portfolio = Portfolio::new(Currency::USD);
+    portfolio.accounts = vec![
+        Account::new(account("main"))
+            .classified("owner", "Alice")
+            .classified("wrapper", "taxable"),
+        Account::new(account("isa"))
+            .classified("owner", "Alice")
+            .classified("wrapper", "ISA"),
+        Account::new(account("kid")).classified("owner", "Bob"),
+    ];
+    portfolio.instruments = vec![Instrument::new(
+        spy.clone(),
+        InstrumentKind::Fund,
+        Currency::USD,
+    )];
+    portfolio.transactions = vec![
+        deposit(1, "main", "2026-03-02", "10000"),
+        buy(2, "main", "2026-03-02"),
+        deposit(3, "isa", "2026-03-02", "5000"),
+        buy(4, "isa", "2026-03-02"),
+        deposit(5, "kid", "2026-03-03", "1000"),
+        tx(
+            6,
+            "main",
+            "2026-03-04",
+            TransactionKind::Withdrawal {
+                amount: usd("2000"),
+            },
+        ),
+        deposit(7, "isa", "2026-03-04", "2000"),
+    ];
     let prices = TimeSeries::new(
         dates(),
         ["100", "110", "99", "105"].iter().map(|p| dec(p)).collect(),
@@ -151,10 +147,9 @@ fn account_series_add_up_to_the_value_series() {
 #[test]
 fn performance_by_account_and_by_group() {
     let (books, market) = setup();
-    let options = HouseholdOptions {
-        group_by: vec!["owner".into(), "wrapper".into()],
-        timing: FlowTiming::StartOfDay,
-    };
+    let mut options = HouseholdOptions::default();
+    options.group_by = vec!["owner".into(), "wrapper".into()];
+    options.timing = FlowTiming::StartOfDay;
     let h = household(&books, &market, &dates(), &options).unwrap();
 
     // The household: 17,000 / 16,000, 15,900 / 17,000 and 16,500 / 15,900.
@@ -203,10 +198,8 @@ fn performance_by_account_and_by_group() {
 #[test]
 fn options_are_checked() {
     let (books, market) = setup();
-    let options = HouseholdOptions {
-        group_by: vec!["owner".into(), "owner".into()],
-        ..Default::default()
-    };
+    let mut options = HouseholdOptions::default();
+    options.group_by = vec!["owner".into(), "owner".into()];
     let Err(finalytics_core::Error::Validation(report)) =
         household(&books, &market, &dates()[..1], &options)
     else {

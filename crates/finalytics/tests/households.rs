@@ -89,10 +89,8 @@ fn a_household_matches_the_reference() {
         .iter()
         .map(|d| d.as_str().unwrap().parse().unwrap())
         .collect();
-    let options = HouseholdOptions {
-        group_by: vec!["owner".into(), "wrapper".into()],
-        ..Default::default()
-    };
+    let mut options = HouseholdOptions::default();
+    options.group_by = vec!["owner".into(), "wrapper".into()];
     let h = household(&books, &market, &dates, &options).unwrap();
     compare(&h.household, &f["household"]);
     let accounts = f["accounts"].as_array().unwrap();

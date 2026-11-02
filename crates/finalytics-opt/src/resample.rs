@@ -29,6 +29,7 @@ pub struct Resampling {
 /// The result of resampled optimisation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ResampledSolution {
     /// The objective each simulated problem was solved for.
     pub objective: Objective,

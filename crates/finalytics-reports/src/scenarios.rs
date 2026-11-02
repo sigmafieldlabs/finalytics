@@ -18,6 +18,7 @@ use crate::shapes::{Grid, Unit};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum ScenarioDefinition {
     /// Shocks to instruments, groups, currencies or factors.
     Shocks {
@@ -47,6 +48,7 @@ pub struct NamedScenario {
 /// One scenario's result, or why it could not be run.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioOutcome {
     /// The scenario's name.
     pub name: String,
@@ -59,6 +61,7 @@ pub struct ScenarioOutcome {
 /// One scenario in a line, for a summary table or a bar chart.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenarioSummary {
     /// The scenario's name.
     pub name: String,
@@ -79,6 +82,7 @@ pub struct ScenarioSummary {
 /// The scenarios report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ScenariosReport {
     /// Where the numbers come from.
     pub provenance: Provenance,
@@ -128,13 +132,12 @@ pub fn scenarios_report(
     };
     let mut outcomes = Vec::with_capacity(options.scenarios.len());
     for named in &options.scenarios {
-        let scenario_options = ScenarioOptions {
-            group_by: options.group_by.clone(),
-            risk: risk_model.clone().map(|mut m| {
-                m.stress = named.stress;
-                m
-            }),
-        };
+        let mut scenario_options = ScenarioOptions::default();
+        scenario_options.group_by = options.group_by.clone();
+        scenario_options.risk = risk_model.clone().map(|mut m| {
+            m.stress = named.stress;
+            m
+        });
         let result = match &named.scenario {
             ScenarioDefinition::Shocks { shocks } => {
                 shock_scenario(books, market, cx.as_of, shocks, &scenario_options)

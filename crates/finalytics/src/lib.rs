@@ -5,6 +5,24 @@
 //! The engine performs no input or output: callers supply instruments, transactions, prices and FX
 //! rates, and receive typed results. The same API is available from Python and, through
 //! WebAssembly, from JavaScript and TypeScript.
+//!
+//! # Options and results
+//!
+//! Option types, such as [`opt::Constraints`] and [`risk::StatisticsOptions`], and the results
+//! the engine returns are non-exhaustive, so that later 1.x releases can add fields to them
+//! without breaking code that uses them. Start options from their defaults and set the fields
+//! you need:
+//!
+//! ```
+//! use finalytics::opt::{Bound, Constraints};
+//!
+//! let mut constraints = Constraints::default();
+//! constraints.bounds = Bound { min: 0.0, max: 0.4 };
+//! ```
+//!
+//! Records that are complete as they stand, such as a [`opt::Bound`] or a [`Transaction`]'s kind,
+//! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
+//! non-exhaustive too, so a `match` on one needs a wildcard arm.
 
 // The README's examples run as documentation tests.
 #[cfg(doctest)]

@@ -56,6 +56,7 @@ pub struct AttributionInputs {
 /// The attribution report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct AttributionReport {
     /// Where the numbers come from.
     pub provenance: Provenance,

@@ -17,6 +17,7 @@ use crate::shapes::{Breakdown, Slice};
 /// One holding, added up across accounts.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingRow {
     /// The holding.
     pub holding: HoldingKey,
@@ -53,6 +54,7 @@ pub struct HoldingRow {
 /// One account's holdings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct AccountHoldings {
     /// The account.
     pub account: AccountId,
@@ -73,6 +75,7 @@ pub struct AccountHoldings {
 /// One open tax lot, valued.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct LotRow {
     /// The account.
     pub account: AccountId,
@@ -101,6 +104,7 @@ pub struct LotRow {
 /// How concentrated the portfolio's instruments are.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Concentration {
     /// The largest instrument holdings, largest first, with their share of the portfolio.
     pub largest: Vec<Slice>,
@@ -118,6 +122,7 @@ pub struct Concentration {
 /// Gains realised up to the report's date, in the base currency.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct RealisedSummary {
     /// Every realised gain.
     pub total: Decimal,
@@ -134,6 +139,7 @@ pub struct RealisedSummary {
 /// Income received up to the report's date, net of tax withheld, in the base currency.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct IncomeSummary {
     /// All income.
     pub total: Decimal,
@@ -146,6 +152,7 @@ pub struct IncomeSummary {
 /// The holdings report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingsReport {
     /// Where the numbers come from.
     pub provenance: Provenance,

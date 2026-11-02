@@ -40,6 +40,7 @@ pub struct AttributionPeriod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Linking {
     /// Logarithmic coefficients (Cariño, 1999).
     #[default]
@@ -51,6 +52,7 @@ pub enum Linking {
 /// What one segment added to the excess return.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct SegmentEffects {
     /// The segment's name.
     pub name: String,
@@ -69,6 +71,7 @@ pub struct SegmentEffects {
 /// The attribution of one period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct PeriodAttribution {
     /// The start of the period.
     pub start: Date,
@@ -88,6 +91,7 @@ pub struct PeriodAttribution {
 /// Brinson–Fachler attribution over one or more periods.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Attribution {
     /// How the periods were linked.
     pub linking: Linking,
@@ -554,6 +558,7 @@ pub struct CurrencyAttributionPeriod {
 /// What one currency added to the excess return.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct CurrencyEffect {
     /// The currency.
     pub currency: Currency,
@@ -569,6 +574,7 @@ pub struct CurrencyEffect {
 /// The currency attribution of one period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct CurrencyPeriodAttribution {
     /// The start of the period.
     pub start: Date,
@@ -592,6 +598,7 @@ pub struct CurrencyPeriodAttribution {
 /// Currency attribution over one or more periods.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct CurrencyAttribution {
     /// How the periods were linked.
     pub linking: Linking,

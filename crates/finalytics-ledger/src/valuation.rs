@@ -12,6 +12,7 @@ use crate::{
 /// A position valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct PositionValue {
     /// The account.
     pub account: AccountId,
@@ -42,6 +43,7 @@ pub struct PositionValue {
 /// A cash balance valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct CashValue {
     /// The account.
     pub account: AccountId,
@@ -58,6 +60,7 @@ pub struct CashValue {
 /// The holdings valued on a date.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Valuation {
     /// The valuation date.
     pub date: Date,
@@ -76,6 +79,7 @@ pub struct Valuation {
 /// Daily values and external flows in the base currency, the input to performance measurement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ValueSeries {
     /// The dates.
     pub dates: Vec<Date>,
@@ -91,6 +95,7 @@ pub struct ValueSeries {
 /// One account's values and external flows on each date of an [`AccountSeries`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct AccountLine {
     /// The account.
     pub account: AccountId,
@@ -105,6 +110,7 @@ pub struct AccountLine {
 /// account and by group of accounts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct AccountSeries {
     /// The dates.
     pub dates: Vec<Date>,
@@ -409,6 +415,7 @@ impl Books {
 /// the base currency: the input to contribution analysis.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingSeries {
     /// The dates.
     pub dates: Vec<Date>,
@@ -427,6 +434,7 @@ pub struct HoldingSeries {
 /// trades across all lines add up to the portfolio's external flows plus its income.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct HoldingLine {
     /// The holding.
     pub holding: HoldingKey,

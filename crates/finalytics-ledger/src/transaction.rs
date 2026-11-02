@@ -12,6 +12,7 @@ use crate::{AccountId, InstrumentId, LotId, LotMethod, TransactionId};
 /// reporting.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Transaction {
     /// The caller's identifier, unique within the portfolio.
     pub id: TransactionId,
@@ -30,10 +31,30 @@ pub struct Transaction {
     pub note: Option<String>,
 }
 
+impl Transaction {
+    /// A transaction that settles on its trade date and has no note.
+    pub fn new(
+        id: TransactionId,
+        account: AccountId,
+        trade_date: Date,
+        kind: TransactionKind,
+    ) -> Transaction {
+        Transaction {
+            id,
+            account,
+            trade_date,
+            settle_date: None,
+            kind,
+            note: None,
+        }
+    }
+}
+
 /// What a transaction does. Amounts of instruments are in the instrument's currency.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum TransactionKind {
     /// Buy `quantity` units at `price` per unit, paying `fees` on top.
     Buy {

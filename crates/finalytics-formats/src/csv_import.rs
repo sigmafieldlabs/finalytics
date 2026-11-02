@@ -17,6 +17,7 @@ use finalytics_ledger::{
 
 /// Options for reading CSV.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CsvOptions {
     /// The field delimiter, a comma by default.
     pub delimiter: u8,
@@ -415,14 +416,10 @@ pub fn transactions_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Tran
         else {
             continue;
         };
-        transactions.push(Transaction {
-            id,
-            account,
-            trade_date,
-            settle_date,
-            kind,
-            note: row.raw("note").map(str::to_owned),
-        });
+        let mut transaction = Transaction::new(id, account, trade_date, kind);
+        transaction.settle_date = settle_date;
+        transaction.note = row.raw("note").map(str::to_owned);
+        transactions.push(transaction);
     }
     finish(report, transactions)
 }
@@ -878,12 +875,10 @@ pub fn portfolio_from_csv(
         let named: BTreeSet<AccountId> = transactions.iter().map(|t| t.account.clone()).collect();
         named.into_iter().map(Account::new).collect()
     });
-    let portfolio = Portfolio {
-        base_currency,
-        accounts,
-        instruments,
-        transactions,
-    };
+    let mut portfolio = Portfolio::new(base_currency);
+    portfolio.accounts = accounts;
+    portfolio.instruments = instruments;
+    portfolio.transactions = transactions;
     report.merge("portfolio", portfolio.validate());
     report.into_result(portfolio)
 }

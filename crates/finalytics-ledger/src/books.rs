@@ -15,6 +15,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "effect", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Effect {
     /// A lot was opened or changed; this is its new state.
     SetLot {
@@ -46,6 +47,7 @@ pub enum Effect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum FlowKind {
     /// Cash deposited.
     Deposit,
@@ -60,6 +62,7 @@ pub enum FlowKind {
 /// Value entering (positive) or leaving (negative) the portfolio, in `currency`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Flow {
     /// The account.
     pub account: AccountId,
@@ -89,6 +92,7 @@ pub enum HoldingKey {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "allocation", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Allocation {
     /// `amount` (in `currency`) moved into `holding` (negative: out of it).
     Trade {
@@ -123,6 +127,7 @@ pub enum Allocation {
 /// One transaction as applied to the books.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Event {
     /// The trade date.
     pub date: Date,
@@ -141,6 +146,7 @@ pub struct Event {
 /// A gain or loss realised by a sale, a return of capital or a cash merger, for one lot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct RealisedGain {
     /// The transaction that realised it.
     pub transaction: TransactionId,
@@ -180,6 +186,7 @@ impl RealisedGain {
 /// A position: the open lots of one instrument in one account, added up.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Position {
     /// The account.
     pub account: AccountId,
@@ -198,6 +205,7 @@ pub struct Position {
 /// The part of a lot that a sale would close.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct LotSale {
     /// The lot.
     pub lot: LotId,
@@ -214,6 +222,7 @@ pub struct LotSale {
 /// A cash balance in one account and currency.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct CashBalance {
     /// The account.
     pub account: AccountId,
@@ -225,6 +234,7 @@ pub struct CashBalance {
 
 /// Open lots and cash balances at a point in time.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Holdings {
     lots: BTreeMap<(AccountId, InstrumentId), Vec<Lot>>,
     cash: BTreeMap<(AccountId, Currency), Decimal>,

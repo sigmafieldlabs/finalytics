@@ -14,6 +14,7 @@ use crate::{FlowTiming, Performance};
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
+#[non_exhaustive]
 pub struct HouseholdOptions {
     /// Classification schemes of the accounts to group them by, such as `owner` or `wrapper`.
     /// Accounts without the classification are in the group "unclassified".
@@ -25,6 +26,7 @@ pub struct HouseholdOptions {
 /// The performance of one account, a group of accounts or the whole household over a period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct AccountsPerformance {
     /// The account's identifier, the group's name, or "household".
     pub name: String,
@@ -56,6 +58,7 @@ pub struct AccountsPerformance {
 /// Performance by the groups of one classification scheme of the accounts.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct SchemePerformance {
     /// The classification scheme.
     pub scheme: String,
@@ -66,6 +69,7 @@ pub struct SchemePerformance {
 /// A household's performance over a period: consolidated, by account and by group of accounts.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Household {
     /// The start of the period: the first date.
     pub start: Date,

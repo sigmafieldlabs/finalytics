@@ -170,6 +170,7 @@ impl<T: Clone> TimeSeries<T> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case", tag = "method")]
+#[non_exhaustive]
 pub enum Fill {
     /// Leave it missing.
     #[default]

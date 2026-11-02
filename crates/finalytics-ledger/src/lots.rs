@@ -12,6 +12,7 @@ use crate::{AccountId, InstrumentId, LotId, LotMethod, LotPick, TransactionId};
 /// unit costs means that splitting a lot never loses or creates cost.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Lot {
     /// The lot's identifier.
     pub id: LotId,

@@ -13,6 +13,7 @@ use crate::{
 /// instruments and transactions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Portfolio {
     /// The currency results are reported in.
     pub base_currency: Currency,

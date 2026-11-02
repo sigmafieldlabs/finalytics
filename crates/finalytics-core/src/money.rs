@@ -11,6 +11,7 @@ use crate::{Currency, Error, Result};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Rounding {
     /// To the nearest; halves go to the even neighbour (banker's rounding).
     #[default]

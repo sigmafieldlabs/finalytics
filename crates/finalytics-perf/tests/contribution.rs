@@ -19,14 +19,12 @@ fn id(s: &str) -> InstrumentId {
 }
 
 fn tx(n: usize, date: &str, kind: TransactionKind) -> Transaction {
-    Transaction {
-        id: TransactionId::new(format!("t{n}")).unwrap(),
-        account: AccountId::new("main").unwrap(),
-        trade_date: d(date),
-        settle_date: None,
+    Transaction::new(
+        TransactionId::new(format!("t{n}")).unwrap(),
+        AccountId::new("main").unwrap(),
+        d(date),
         kind,
-        note: None,
-    }
+    )
 }
 
 fn daily(start: &str, values: &[&str]) -> TimeSeries<Decimal> {
@@ -41,112 +39,110 @@ fn daily(start: &str, values: &[&str]) -> TimeSeries<Decimal> {
 }
 
 fn setup() -> (Books, MarketData, Vec<Date>) {
-    let portfolio = Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![Account::new(AccountId::new("main").unwrap())],
-        instruments: vec![
-            Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD)
-                .classified("asset_class", "Equity"),
-            Instrument::new(id("SAP"), InstrumentKind::Equity, Currency::EUR)
-                .classified("asset_class", "Equity"),
-            Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD)
-                .classified("asset_class", "Fixed income"),
-            Instrument::new(id("NEWCO"), InstrumentKind::Equity, Currency::USD)
-                .classified("asset_class", "Equity"),
-        ],
-        transactions: vec![
-            tx(
-                1,
-                "2026-03-02",
-                TransactionKind::Deposit {
-                    amount: Money::new(dec("100000"), Currency::USD),
-                },
-            ),
-            tx(
-                2,
-                "2026-03-02",
-                TransactionKind::Buy {
-                    instrument: id("SPY"),
-                    quantity: dec("100"),
-                    price: dec("500"),
-                    fees: dec("10"),
-                },
-            ),
-            tx(
-                3,
-                "2026-03-02",
-                TransactionKind::FxConversion {
-                    sell: Money::new(dec("22000"), Currency::USD),
-                    buy: Money::new(dec("19900"), Currency::EUR),
-                },
-            ),
-            tx(
-                4,
-                "2026-03-03",
-                TransactionKind::Buy {
-                    instrument: id("SAP"),
-                    quantity: dec("100"),
-                    price: dec("190"),
-                    fees: dec("0"),
-                },
-            ),
-            tx(
-                5,
-                "2026-03-03",
-                TransactionKind::Buy {
-                    instrument: id("BOND"),
-                    quantity: dec("200"),
-                    price: dec("100"),
-                    fees: dec("0"),
-                },
-            ),
-            tx(
-                6,
-                "2026-03-04",
-                TransactionKind::Dividend {
-                    instrument: id("SPY"),
-                    amount: Money::new(dec("150"), Currency::USD),
-                    withholding_tax: dec("22.5"),
-                },
-            ),
-            tx(
-                7,
-                "2026-03-05",
-                TransactionKind::Sell {
-                    instrument: id("SPY"),
-                    quantity: dec("40"),
-                    price: dec("505"),
-                    fees: dec("5"),
-                    lot_method: None,
-                    lots: vec![],
-                },
-            ),
-            tx(
-                8,
-                "2026-03-05",
-                TransactionKind::SpinOff {
-                    instrument: id("SAP"),
-                    new_instrument: id("NEWCO"),
-                    ratio: dec("0.5"),
-                    cost_allocation: dec("0.1"),
-                },
-            ),
-            tx(
-                9,
-                "2026-03-06",
-                TransactionKind::Deposit {
-                    amount: Money::new(dec("5000"), Currency::USD),
-                },
-            ),
-            tx(
-                10,
-                "2026-03-06",
-                TransactionKind::Fee {
-                    amount: Money::new(dec("12"), Currency::USD),
-                },
-            ),
-        ],
-    };
+    let mut portfolio = Portfolio::new(Currency::USD);
+    portfolio.accounts = vec![Account::new(AccountId::new("main").unwrap())];
+    portfolio.instruments = vec![
+        Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD)
+            .classified("asset_class", "Equity"),
+        Instrument::new(id("SAP"), InstrumentKind::Equity, Currency::EUR)
+            .classified("asset_class", "Equity"),
+        Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD)
+            .classified("asset_class", "Fixed income"),
+        Instrument::new(id("NEWCO"), InstrumentKind::Equity, Currency::USD)
+            .classified("asset_class", "Equity"),
+    ];
+    portfolio.transactions = vec![
+        tx(
+            1,
+            "2026-03-02",
+            TransactionKind::Deposit {
+                amount: Money::new(dec("100000"), Currency::USD),
+            },
+        ),
+        tx(
+            2,
+            "2026-03-02",
+            TransactionKind::Buy {
+                instrument: id("SPY"),
+                quantity: dec("100"),
+                price: dec("500"),
+                fees: dec("10"),
+            },
+        ),
+        tx(
+            3,
+            "2026-03-02",
+            TransactionKind::FxConversion {
+                sell: Money::new(dec("22000"), Currency::USD),
+                buy: Money::new(dec("19900"), Currency::EUR),
+            },
+        ),
+        tx(
+            4,
+            "2026-03-03",
+            TransactionKind::Buy {
+                instrument: id("SAP"),
+                quantity: dec("100"),
+                price: dec("190"),
+                fees: dec("0"),
+            },
+        ),
+        tx(
+            5,
+            "2026-03-03",
+            TransactionKind::Buy {
+                instrument: id("BOND"),
+                quantity: dec("200"),
+                price: dec("100"),
+                fees: dec("0"),
+            },
+        ),
+        tx(
+            6,
+            "2026-03-04",
+            TransactionKind::Dividend {
+                instrument: id("SPY"),
+                amount: Money::new(dec("150"), Currency::USD),
+                withholding_tax: dec("22.5"),
+            },
+        ),
+        tx(
+            7,
+            "2026-03-05",
+            TransactionKind::Sell {
+                instrument: id("SPY"),
+                quantity: dec("40"),
+                price: dec("505"),
+                fees: dec("5"),
+                lot_method: None,
+                lots: vec![],
+            },
+        ),
+        tx(
+            8,
+            "2026-03-05",
+            TransactionKind::SpinOff {
+                instrument: id("SAP"),
+                new_instrument: id("NEWCO"),
+                ratio: dec("0.5"),
+                cost_allocation: dec("0.1"),
+            },
+        ),
+        tx(
+            9,
+            "2026-03-06",
+            TransactionKind::Deposit {
+                amount: Money::new(dec("5000"), Currency::USD),
+            },
+        ),
+        tx(
+            10,
+            "2026-03-06",
+            TransactionKind::Fee {
+                amount: Money::new(dec("12"), Currency::USD),
+            },
+        ),
+    ];
     let market = MarketData::new()
         .with_prices(
             id("SPY"),

@@ -8,6 +8,7 @@ use finalytics_core::{Currency, Date};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "unit", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Unit {
     /// An amount of money in a currency.
     Money {
@@ -27,6 +28,7 @@ pub enum Unit {
 /// A labelled series of numbers over time, for a line or bar chart.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Series {
     /// What the series is, such as "Portfolio" or "Rolling volatility (63 days)".
     pub name: String,
@@ -41,6 +43,7 @@ pub struct Series {
 /// One part of a whole, for a pie, bar or treemap chart.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Slice {
     /// The part's name: a holding, a currency, a group.
     pub name: String,
@@ -53,6 +56,7 @@ pub struct Slice {
 /// A whole split into parts by one dimension, such as by currency or by asset class.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Breakdown {
     /// The dimension: "holding", "currency", "kind", "account", or a classification scheme.
     pub by: String,
@@ -63,6 +67,7 @@ pub struct Breakdown {
 /// A table of numbers with labelled rows and columns, for a heatmap.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Grid {
     /// What the grid is, such as "Monthly returns".
     pub name: String,
@@ -79,6 +84,7 @@ pub struct Grid {
 /// One bin of a [`Histogram`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Bin {
     /// The lower edge, included.
     pub lower: f64,
@@ -96,6 +102,7 @@ pub struct Bin {
 /// The distribution of a set of observations.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Histogram {
     /// What the observations are.
     pub name: String,
@@ -108,6 +115,7 @@ pub struct Histogram {
 /// A figure as a fraction and as an amount of money, such as a value at risk.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Amount {
     /// As a fraction of the portfolio's value.
     pub fraction: f64,

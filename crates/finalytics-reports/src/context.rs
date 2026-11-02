@@ -19,6 +19,7 @@ use crate::scenarios::NamedScenario;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum ReportKind {
     /// The holdings report.
     Holdings,
@@ -39,6 +40,7 @@ pub enum ReportKind {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
+#[non_exhaustive]
 pub struct ReportOptions {
     /// The date of the report: the last price date by default.
     pub as_of: Option<Date>,
@@ -111,6 +113,7 @@ impl Default for ReportOptions {
 /// their size. Computing it once and passing it to each report avoids hashing the inputs again.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Source {
     /// The SHA-256 digest, in hexadecimal, of the portfolio document with its market data, as
     /// the engine writes it. The same inputs give the same digest in every language.
@@ -126,10 +129,8 @@ pub struct Source {
 impl Source {
     /// The source of reports on `portfolio` with `market`.
     pub fn of(portfolio: &Portfolio, market: &MarketData) -> Source {
-        let document = PortfolioDocument {
-            portfolio: portfolio.clone(),
-            market: Some(market.clone()),
-        };
+        let mut document = PortfolioDocument::new(portfolio.clone());
+        document.market = Some(market.clone());
         let digest = Sha256::digest(document.to_json().as_bytes());
         Source {
             digest: digest.iter().map(|b| format!("{b:02x}")).collect(),
@@ -143,6 +144,7 @@ impl Source {
 /// Where a report's numbers come from, so that a saved report can be checked to reproduce.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Provenance {
     /// Which report this is.
     pub report: ReportKind,
@@ -291,11 +293,11 @@ impl<'a> Context<'a> {
     }
 
     pub(crate) fn statistics_options(&self) -> StatisticsOptions {
-        StatisticsOptions {
-            periods_per_year: self.options.periods_per_year,
-            risk_free_rate: self.options.risk_free_rate,
-            target_return: 0.0,
-        }
+        let mut options = StatisticsOptions::default();
+        options.periods_per_year = self.options.periods_per_year;
+        options.risk_free_rate = self.options.risk_free_rate;
+        options.target_return = 0.0;
+        options
     }
 
     /// The benchmark's levels on the valuation dates, carried forward as prices are.

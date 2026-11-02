@@ -115,6 +115,7 @@ pub struct FactorExposureLimit {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
+#[non_exhaustive]
 pub struct Constraints {
     /// The sum of the weights; 1 by default.
     pub budget: f64,
@@ -174,6 +175,7 @@ impl Constraints {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "set", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum ReturnUncertainty {
     /// An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case
     /// lowers a portfolio's expected return by `size * sqrt(w' S w)`. For estimates that are
@@ -199,6 +201,7 @@ pub enum ReturnUncertainty {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Linkage {
     /// The distance between the closest members (the method of López de Prado, 2016).
     #[default]
@@ -215,6 +218,7 @@ pub enum Linkage {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "objective", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Objective {
     /// The smallest variance.
     MinimumVariance,

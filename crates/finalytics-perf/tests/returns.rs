@@ -182,42 +182,40 @@ fn performance_from_the_books() {
     use finalytics_core::{Currency, Decimal, Money};
     use finalytics_ledger::*;
     let id = |s: &str| InstrumentId::new(s).unwrap();
-    let tx = |n: &str, date: &str, kind| Transaction {
-        id: TransactionId::new(n).unwrap(),
-        account: AccountId::new("main").unwrap(),
-        trade_date: d(date),
-        settle_date: None,
-        kind,
-        note: None,
+    let tx = |n: &str, date: &str, kind| {
+        Transaction::new(
+            TransactionId::new(n).unwrap(),
+            AccountId::new("main").unwrap(),
+            d(date),
+            kind,
+        )
     };
-    let portfolio = Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![Account::new(AccountId::new("main").unwrap())],
-        instruments: vec![Instrument::new(
-            id("SPY"),
-            InstrumentKind::Fund,
-            Currency::USD,
-        )],
-        transactions: vec![
-            tx(
-                "t1",
-                "2026-01-02",
-                TransactionKind::Deposit {
-                    amount: Money::new(Decimal::from(1000), Currency::USD),
-                },
-            ),
-            tx(
-                "t2",
-                "2026-01-02",
-                TransactionKind::Buy {
-                    instrument: id("SPY"),
-                    quantity: Decimal::from(2),
-                    price: Decimal::from(500),
-                    fees: Decimal::ZERO,
-                },
-            ),
-        ],
-    };
+    let mut portfolio = Portfolio::new(Currency::USD);
+    portfolio.accounts = vec![Account::new(AccountId::new("main").unwrap())];
+    portfolio.instruments = vec![Instrument::new(
+        id("SPY"),
+        InstrumentKind::Fund,
+        Currency::USD,
+    )];
+    portfolio.transactions = vec![
+        tx(
+            "t1",
+            "2026-01-02",
+            TransactionKind::Deposit {
+                amount: Money::new(Decimal::from(1000), Currency::USD),
+            },
+        ),
+        tx(
+            "t2",
+            "2026-01-02",
+            TransactionKind::Buy {
+                instrument: id("SPY"),
+                quantity: Decimal::from(2),
+                price: Decimal::from(500),
+                fees: Decimal::ZERO,
+            },
+        ),
+    ];
     let prices = TimeSeries::new(
         vec![d("2026-01-02"), d("2026-01-05")],
         vec![Decimal::from(500), Decimal::from(510)],

@@ -23,14 +23,12 @@ fn main_account() -> AccountId {
 }
 
 fn tx(n: usize, account: &str, date: &str, kind: TransactionKind) -> Transaction {
-    Transaction {
-        id: TransactionId::new(format!("t{n}")).unwrap(),
-        account: AccountId::new(account).unwrap(),
-        trade_date: d(date),
-        settle_date: None,
+    Transaction::new(
+        TransactionId::new(format!("t{n}")).unwrap(),
+        AccountId::new(account).unwrap(),
+        d(date),
         kind,
-        note: None,
-    }
+    )
 }
 
 fn series(points: &[(&str, &str)]) -> TimeSeries<Decimal> {
@@ -51,18 +49,18 @@ fn portfolio() -> Portfolio {
         price: dec(price),
         fees: Decimal::ZERO,
     };
-    Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![
+    {
+        let mut portfolio = Portfolio::new(Currency::USD);
+        portfolio.accounts = vec![
             Account::new(main_account()),
             Account::new(AccountId::new("isa").unwrap()),
-        ],
-        instruments: vec![
+        ];
+        portfolio.instruments = vec![
             Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD),
             Instrument::new(id("SAP"), InstrumentKind::Equity, Currency::EUR),
             Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD),
-        ],
-        transactions: vec![
+        ];
+        portfolio.transactions = vec![
             tx(
                 1,
                 "main",
@@ -92,7 +90,8 @@ fn portfolio() -> Portfolio {
                 },
             ),
             tx(7, "isa", "2026-03-02", buy("SPY", "10", "400")),
-        ],
+        ];
+        portfolio
     }
 }
 
@@ -132,10 +131,8 @@ fn trades_reach_the_targets_when_applied() {
     let portfolio = portfolio();
     let market = market();
     let books = Books::build(&portfolio, &market).unwrap();
-    let options = RebalanceOptions {
-        lot_method: LotMethod::HighestCost,
-        ..Default::default()
-    };
+    let mut options = RebalanceOptions::default();
+    options.lot_method = LotMethod::HighestCost;
     let plan = rebalance(
         &books,
         &market,
@@ -238,10 +235,8 @@ fn trades_reach_the_targets_when_applied() {
 #[test]
 fn whole_units_and_minimum_trades() {
     let books = Books::build(&portfolio(), &market()).unwrap();
-    let options = RebalanceOptions {
-        whole_units: true,
-        ..Default::default()
-    };
+    let mut options = RebalanceOptions::default();
+    options.whole_units = true;
     let plan = rebalance(
         &books,
         &market(),
@@ -255,10 +250,8 @@ fn whole_units_and_minimum_trades() {
     // First in, first out: the 400 lot goes first.
     assert_eq!(plan.trades[0].lots[0].quantity, dec("82"));
 
-    let options = RebalanceOptions {
-        minimum_trade: dec("20000"),
-        ..Default::default()
-    };
+    let mut options = RebalanceOptions::default();
+    options.minimum_trade = dec("20000");
     let plan = rebalance(
         &books,
         &market(),
@@ -345,27 +338,25 @@ fn lots_portfolio() -> (Portfolio, MarketData) {
             },
         )
     };
-    let portfolio = Portfolio {
-        base_currency: Currency::USD,
-        accounts: vec![Account::new(main_account())],
-        instruments: vec![
-            Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD),
-            Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD),
-        ],
-        transactions: vec![
-            tx(
-                1,
-                "main",
-                "2024-01-02",
-                TransactionKind::Deposit {
-                    amount: Money::new(dec("150000"), Currency::USD),
-                },
-            ),
-            buy(2, "2024-01-02", "300"),
-            buy(3, "2026-01-05", "520"),
-            buy(4, "2026-02-02", "450"),
-        ],
-    };
+    let mut portfolio = Portfolio::new(Currency::USD);
+    portfolio.accounts = vec![Account::new(main_account())];
+    portfolio.instruments = vec![
+        Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD),
+        Instrument::new(id("BOND"), InstrumentKind::Bond, Currency::USD),
+    ];
+    portfolio.transactions = vec![
+        tx(
+            1,
+            "main",
+            "2024-01-02",
+            TransactionKind::Deposit {
+                amount: Money::new(dec("150000"), Currency::USD),
+            },
+        ),
+        buy(2, "2024-01-02", "300"),
+        buy(3, "2026-01-05", "520"),
+        buy(4, "2026-02-02", "450"),
+    ];
     let market = MarketData::new()
         .with_prices(
             id("SPY"),
@@ -390,14 +381,12 @@ fn tax_aware_sales_take_losses_first_and_estimate_the_tax() {
         (HoldingKey::Instrument(id("SPY")), 75_000.0 / 173_000.0),
         (HoldingKey::Instrument(id("BOND")), 0.5),
     ];
-    let options = RebalanceOptions {
-        tax: Some(TaxRates {
-            short_term: dec("0.4"),
-            long_term: dec("0.2"),
-            long_term_after_days: 365,
-        }),
-        ..Default::default()
-    };
+    let mut options = RebalanceOptions::default();
+    options.tax = Some(TaxRates {
+        short_term: dec("0.4"),
+        long_term: dec("0.2"),
+        long_term_after_days: 365,
+    });
     let plan = rebalance(
         &books,
         &market,
@@ -441,14 +430,14 @@ fn fees_are_paid_and_recorded_as_the_books_record_them() {
     let portfolio = portfolio();
     let market = market();
     let books = Books::build(&portfolio, &market).unwrap();
-    let options = RebalanceOptions {
-        lot_method: LotMethod::HighestCost,
-        fees: Fees {
-            rate: dec("0.001"),
-            per_trade: dec("1"),
-            minimum: dec("5"),
-        },
-        ..Default::default()
+    let mut options = RebalanceOptions::default();
+    options.lot_method = LotMethod::HighestCost;
+    options.fees = {
+        let mut fees = Fees::default();
+        fees.rate = dec("0.001");
+        fees.per_trade = dec("1");
+        fees.minimum = dec("5");
+        fees
     };
     let plan = rebalance(
         &books,
@@ -507,18 +496,17 @@ fn invalid_fees_and_tax_rates_are_reported() {
     let portfolio = portfolio();
     let market = market();
     let books = Books::build(&portfolio, &market).unwrap();
-    let options = RebalanceOptions {
-        fees: Fees {
-            rate: dec("-0.001"),
-            ..Default::default()
-        },
-        tax: Some(TaxRates {
-            short_term: dec("1.5"),
-            long_term: dec("0.2"),
-            long_term_after_days: -1,
-        }),
-        ..Default::default()
+    let mut options = RebalanceOptions::default();
+    options.fees = {
+        let mut fees = Fees::default();
+        fees.rate = dec("-0.001");
+        fees
     };
+    options.tax = Some(TaxRates {
+        short_term: dec("1.5"),
+        long_term: dec("0.2"),
+        long_term_after_days: -1,
+    });
     let Err(finalytics_core::Error::Validation(report)) = rebalance(
         &books,
         &market,

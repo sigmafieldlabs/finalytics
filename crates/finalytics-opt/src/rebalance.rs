@@ -16,6 +16,7 @@ use finalytics_ledger::{
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
+#[non_exhaustive]
 pub struct RebalanceOptions {
     /// How sales choose lots; first in, first out by default. Highest cost first defers gains.
     /// Ignored when `tax` is given.
@@ -49,6 +50,7 @@ impl Default for RebalanceOptions {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
+#[non_exhaustive]
 pub struct Fees {
     /// A share of the trade's value, such as 0.001 for 10 basis points.
     pub rate: Decimal,
@@ -112,6 +114,7 @@ pub enum Side {
 /// A proposed trade in one instrument.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ProposedTrade {
     /// The instrument.
     pub instrument: InstrumentId,
@@ -142,6 +145,7 @@ pub struct ProposedTrade {
 /// A proposed currency conversion.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct ProposedConversion {
     /// The amount sold.
     pub sell: Money,
@@ -152,6 +156,7 @@ pub struct ProposedConversion {
 /// The trades that move an account to target weights, and their effects.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Rebalance {
     /// The account.
     pub account: AccountId,
@@ -530,6 +535,7 @@ pub fn rebalance(
 /// one proposal per account.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct CombinedRebalance {
     /// The proposal for each account with value, in the order given.
     pub accounts: Vec<Rebalance>,
@@ -718,19 +724,13 @@ impl Rebalance {
     pub fn transactions(&self, prefix: &str) -> Result<Vec<Transaction>> {
         let mut out = Vec::new();
         let mut next = |kind: TransactionKind| -> Result<()> {
-            out.push(Transaction {
-                id: TransactionId::new(format!("{prefix}{}", out.len() + 1)).ok_or_else(|| {
-                    invalid(
-                        "prefix",
-                        "must make identifiers without surrounding whitespace".into(),
-                    )
-                })?,
-                account: self.account.clone(),
-                trade_date: self.date,
-                settle_date: None,
-                kind,
-                note: None,
-            });
+            let id = TransactionId::new(format!("{prefix}{}", out.len() + 1)).ok_or_else(|| {
+                invalid(
+                    "prefix",
+                    "must make identifiers without surrounding whitespace".into(),
+                )
+            })?;
+            out.push(Transaction::new(id, self.account.clone(), self.date, kind));
             Ok(())
         };
         for t in self.trades.iter().filter(|t| t.side == Side::Sell) {

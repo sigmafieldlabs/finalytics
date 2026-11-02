@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Rust: the result types, the option types and the enumerations that may grow are
+  `#[non_exhaustive]`, so that 1.x releases can add fields and variants without breaking code.
+  Options start from `Default::default()` and have their fields set; `match` on an enumeration
+  needs a wildcard arm. `Transaction::new` builds a transaction as `Instrument::new`,
+  `Account::new` and `Portfolio::new` already do for theirs. Python and JavaScript are unchanged.
+- The descriptions of the shared data types no longer name Rust methods or `None`; they read the
+  same in the JSON Schema, the Python types and the TypeScript declarations.
+
 ## [1.0.0-alpha.0] - 2026-11-02
 
 Finalytics 1.0 is a redesign of the library. See the migration guide (to follow) for moving from

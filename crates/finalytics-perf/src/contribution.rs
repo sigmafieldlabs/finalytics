@@ -11,6 +11,7 @@ use crate::{FlowTiming, Performance};
 /// What one holding added to the portfolio's return over a period.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Contribution {
     /// The holding.
     pub holding: HoldingKey,
@@ -30,6 +31,7 @@ pub struct Contribution {
 /// What a group of holdings (an asset class, a region) added to the portfolio's return.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct GroupContribution {
     /// The group.
     pub group: String,
