@@ -176,6 +176,97 @@
       ],
       "description": "How well a factor model explains one asset's returns over the estimation period."
     },
+    "Attribution": {
+      "type": "object",
+      "properties": {
+        "linking": {
+          "$ref": "#/$defs/Linking",
+          "description": "How the periods were linked."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's return over all the periods, compounded."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's return over all the periods, compounded."
+        },
+        "excess_return": {
+          "type": "number",
+          "format": "double",
+          "description": "`portfolio_return - benchmark_return`, which the linked effects add up to."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SegmentEffects"
+          },
+          "description": "Each segment's effects over all the periods, linked, in the order the segments first\nappear."
+        },
+        "allocation": {
+          "type": "number",
+          "format": "double",
+          "description": "The allocation effects of all the segments, linked."
+        },
+        "selection": {
+          "type": "number",
+          "format": "double",
+          "description": "The selection effects of all the segments, linked."
+        },
+        "interaction": {
+          "type": "number",
+          "format": "double",
+          "description": "The interaction effects of all the segments, linked."
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PeriodAttribution"
+          },
+          "description": "Each period's own attribution, before linking."
+        }
+      },
+      "required": [
+        "linking",
+        "portfolio_return",
+        "benchmark_return",
+        "excess_return",
+        "segments",
+        "allocation",
+        "selection",
+        "interaction",
+        "periods"
+      ],
+      "description": "Brinson–Fachler attribution over one or more periods."
+    },
+    "AttributionPeriod": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Segment"
+          },
+          "description": "The segments."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "segments"
+      ],
+      "description": "The segments over one period. The portfolio weights add up to one, as do the benchmark\nweights."
+    },
     "BlackLitterman": {
       "type": "object",
       "properties": {
@@ -656,6 +747,325 @@
       "type": "string",
       "pattern": "^[A-Z]{3}$",
       "description": "An ISO 4217 currency code, for example \"USD\"."
+    },
+    "CurrencyAttribution": {
+      "type": "object",
+      "properties": {
+        "linking": {
+          "$ref": "#/$defs/Linking",
+          "description": "How the periods were linked."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's return in the base currency over all the periods, compounded."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's return in the base currency over all the periods, compounded."
+        },
+        "excess_return": {
+          "type": "number",
+          "format": "double",
+          "description": "`portfolio_return - benchmark_return`, which the linked effects add up to."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SegmentEffects"
+          },
+          "description": "Each segment's market effects, linked."
+        },
+        "currencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyEffect"
+          },
+          "description": "Each currency's allocation effect, linked, in the order the currencies first appear."
+        },
+        "allocation": {
+          "type": "number",
+          "format": "double",
+          "description": "The market allocation effects, linked."
+        },
+        "selection": {
+          "type": "number",
+          "format": "double",
+          "description": "The market selection effects, linked."
+        },
+        "interaction": {
+          "type": "number",
+          "format": "double",
+          "description": "The market interaction effects, linked."
+        },
+        "currency": {
+          "type": "number",
+          "format": "double",
+          "description": "The currency allocation effects, linked."
+        },
+        "residual": {
+          "type": "number",
+          "format": "double",
+          "description": "The residuals, linked."
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyPeriodAttribution"
+          },
+          "description": "Each period's own attribution, before linking."
+        }
+      },
+      "required": [
+        "linking",
+        "portfolio_return",
+        "benchmark_return",
+        "excess_return",
+        "segments",
+        "currencies",
+        "allocation",
+        "selection",
+        "interaction",
+        "currency",
+        "residual",
+        "periods"
+      ],
+      "description": "Currency attribution over one or more periods."
+    },
+    "CurrencyAttributionPeriod": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencySegment"
+          },
+          "description": "The segments, with returns in their own currencies."
+        },
+        "currencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyReturn"
+          },
+          "description": "The returns of every currency of the segments, and of the base currency."
+        },
+        "portfolio_exposures": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Currency"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "The portfolio's exposure to each currency after any hedging, adding up to one; without\nit, each currency's share of the portfolio's segment weights (no hedging).",
+          "default": null
+        },
+        "benchmark_exposures": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Currency"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "The benchmark's exposure to each currency, as for the portfolio.",
+          "default": null
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "segments",
+        "currencies"
+      ],
+      "description": "One period for currency attribution."
+    },
+    "CurrencyEffect": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency."
+        },
+        "portfolio_exposure": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's exposure to it."
+        },
+        "benchmark_exposure": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's exposure to it."
+        },
+        "allocation": {
+          "type": "number",
+          "format": "double",
+          "description": "`(u - v)(f - F)`, with `f` the currency's return including its interest rate and `F` the\nbenchmark's currency return."
+        }
+      },
+      "required": [
+        "currency",
+        "portfolio_exposure",
+        "benchmark_exposure",
+        "allocation"
+      ],
+      "description": "What one currency added to the excess return."
+    },
+    "CurrencyPeriodAttribution": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's return in the base currency."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's return in the base currency."
+        },
+        "linking_coefficient": {
+          "type": "number",
+          "format": "double",
+          "description": "The coefficient by which the period's effects are multiplied before they are added up\nover the periods (one for a single period)."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SegmentEffects"
+          },
+          "description": "Each segment's market effects, on returns in excess of its currency's cash return."
+        },
+        "currencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyEffect"
+          },
+          "description": "Each currency's effect."
+        },
+        "residual": {
+          "type": "number",
+          "format": "double",
+          "description": "What the model leaves out: the compounding of local and currency returns."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "portfolio_return",
+        "benchmark_return",
+        "linking_coefficient",
+        "segments",
+        "currencies",
+        "residual"
+      ],
+      "description": "The currency attribution of one period."
+    },
+    "CurrencyReturn": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency."
+        },
+        "spot_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The change in its value in the base currency, such as 0.02 when it gains 2% (0 for the\nbase currency)."
+        },
+        "cash_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The return on cash in the currency over the period: its short-term interest rate."
+        }
+      },
+      "required": [
+        "currency",
+        "spot_return",
+        "cash_return"
+      ],
+      "description": "A currency's returns over a period."
+    },
+    "CurrencySegment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The segment's name."
+        },
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency of the segment's assets."
+        },
+        "portfolio_weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's weight in the segment at the start of the period."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The return of the portfolio's holdings in the segment, in the segment's currency."
+        },
+        "benchmark_weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's weight in the segment at the start of the period."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The return of the benchmark's holdings in the segment, in the segment's currency."
+        }
+      },
+      "required": [
+        "name",
+        "currency",
+        "portfolio_weight",
+        "portfolio_return",
+        "benchmark_weight",
+        "benchmark_return"
+      ],
+      "description": "A segment for currency attribution: its returns are in its own currency."
     },
     "Date": {
       "type": "string",
@@ -1717,6 +2127,21 @@
       ],
       "description": "How clusters are joined in hierarchical risk parity."
     },
+    "Linking": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "carino",
+          "description": "Logarithmic coefficients (Cariño, 1999)."
+        },
+        {
+          "type": "string",
+          "const": "menchero",
+          "description": "Coefficients that spread the difference as evenly as possible (Menchero, 2000)."
+        }
+      ],
+      "description": "How the effects of several periods are linked so that they add up to the excess return over\nall of them."
+    },
     "Lot": {
       "type": "object",
       "properties": {
@@ -2213,6 +2638,50 @@
         }
       ],
       "description": "A reporting period ending on an as-of date."
+    },
+    "PeriodAttribution": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The start of the period."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The end of the period."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's return, `sum w r`."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's return, `sum b s`."
+        },
+        "linking_coefficient": {
+          "type": "number",
+          "format": "double",
+          "description": "The coefficient by which the period's effects are multiplied before they are added up\nover the periods (one for a single period)."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SegmentEffects"
+          },
+          "description": "Each segment's effects, in the order given."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "portfolio_return",
+        "benchmark_return",
+        "linking_coefficient",
+        "segments"
+      ],
+      "description": "The attribution of one period."
     },
     "PeriodReturn": {
       "type": "object",
@@ -3213,6 +3682,80 @@
         "contributions"
       ],
       "description": "A portfolio's volatility split into each asset's contribution (Euler allocation)."
+    },
+    "Segment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The segment's name."
+        },
+        "portfolio_weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's weight in the segment at the start of the period."
+        },
+        "portfolio_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The return of the portfolio's holdings in the segment over the period."
+        },
+        "benchmark_weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The benchmark's weight in the segment at the start of the period."
+        },
+        "benchmark_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The return of the benchmark's holdings in the segment over the period."
+        }
+      },
+      "required": [
+        "name",
+        "portfolio_weight",
+        "portfolio_return",
+        "benchmark_weight",
+        "benchmark_return"
+      ],
+      "description": "A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a\nregion or any other grouping."
+    },
+    "SegmentEffects": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The segment's name."
+        },
+        "allocation": {
+          "type": "number",
+          "format": "double",
+          "description": "The effect of weighting the segment differently from the benchmark,\n`(w - b)(s - B)`."
+        },
+        "selection": {
+          "type": "number",
+          "format": "double",
+          "description": "The effect of the portfolio's holdings in the segment returning differently from the\nbenchmark's, `b (r - s)`."
+        },
+        "interaction": {
+          "type": "number",
+          "format": "double",
+          "description": "The joint effect of the two, `(w - b)(r - s)`."
+        },
+        "total": {
+          "type": "number",
+          "format": "double",
+          "description": "The sum of the three."
+        }
+      },
+      "required": [
+        "name",
+        "allocation",
+        "selection",
+        "interaction",
+        "total"
+      ],
+      "description": "What one segment added to the excess return."
     },
     "Severity": {
       "oneOf": [

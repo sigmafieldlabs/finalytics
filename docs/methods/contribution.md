@@ -46,7 +46,8 @@ Contributions add up by any grouping, such as asset class or region, with
 - A holding with no value at the start of a day and no purchase that day has no own return for
   the period (None) if it gains or loses anything; its contribution is still measured.
 - The currency effect is the difference of two returns, not a separate attribution term; the
-  attribution of returns to allocation, selection and currency is planned for 1.1.
+  attribution of returns to allocation, selection and currency against a benchmark is on
+  [its own page](attribution.md).
 
 ## Example
 

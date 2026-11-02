@@ -88,3 +88,11 @@ name = "views"
 path = "fuzz_targets/views.rs"
 test = false
 doc = false
+bench = false
+
+[[bin]]
+name = "attribution"
+path = "fuzz_targets/attribution.rs"
+test = false
+doc = false
+bench = false

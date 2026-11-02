@@ -49,6 +49,11 @@ Derivatives and bonds are supplied already priced; Finalytics does not price the
 Linkage = Literal["single", "complete", "average", "ward"]
 """How clusters are joined in hierarchical risk parity."""
 
+Linking = Literal["carino", "menchero"]
+"""How the effects of several periods are linked so that they add up to the excess return over all
+of them.
+"""
+
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
@@ -171,6 +176,55 @@ class AssetFit:
     """The share of the asset's return variance the factors explain. `None` when the asset's returns
     do not vary.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Attribution:
+    """Brinson–Fachler attribution over one or more periods."""
+
+    linking: Linking
+    """How the periods were linked."""
+
+    portfolio_return: float
+    """The portfolio's return over all the periods, compounded."""
+
+    benchmark_return: float
+    """The benchmark's return over all the periods, compounded."""
+
+    excess_return: float
+    """`portfolio_return - benchmark_return`, which the linked effects add up to."""
+
+    segments: list[SegmentEffects]
+    """Each segment's effects over all the periods, linked, in the order the segments first appear.
+    """
+
+    allocation: float
+    """The allocation effects of all the segments, linked."""
+
+    selection: float
+    """The selection effects of all the segments, linked."""
+
+    interaction: float
+    """The interaction effects of all the segments, linked."""
+
+    periods: list[PeriodAttribution]
+    """Each period's own attribution, before linking."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class AttributionPeriod:
+    """The segments over one period. The portfolio weights add up to one, as do the benchmark
+    weights.
+    """
+
+    start: datetime.date
+    """The start of the period."""
+
+    end: datetime.date
+    """The end of the period."""
+
+    segments: list[Segment]
+    """The segments."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -410,6 +464,161 @@ class Oas:
 
 CovarianceMethod = Union[Sample, Ewma, LedoitWolf, Oas]
 """How a covariance matrix is estimated from returns."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CurrencyAttribution:
+    """Currency attribution over one or more periods."""
+
+    linking: Linking
+    """How the periods were linked."""
+
+    portfolio_return: float
+    """The portfolio's return in the base currency over all the periods, compounded."""
+
+    benchmark_return: float
+    """The benchmark's return in the base currency over all the periods, compounded."""
+
+    excess_return: float
+    """`portfolio_return - benchmark_return`, which the linked effects add up to."""
+
+    segments: list[SegmentEffects]
+    """Each segment's market effects, linked."""
+
+    currencies: list[CurrencyEffect]
+    """Each currency's allocation effect, linked, in the order the currencies first appear."""
+
+    allocation: float
+    """The market allocation effects, linked."""
+
+    selection: float
+    """The market selection effects, linked."""
+
+    interaction: float
+    """The market interaction effects, linked."""
+
+    currency: float
+    """The currency allocation effects, linked."""
+
+    residual: float
+    """The residuals, linked."""
+
+    periods: list[CurrencyPeriodAttribution]
+    """Each period's own attribution, before linking."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CurrencyAttributionPeriod:
+    """One period for currency attribution."""
+
+    start: datetime.date
+    """The start of the period."""
+
+    end: datetime.date
+    """The end of the period."""
+
+    segments: list[CurrencySegment]
+    """The segments, with returns in their own currencies."""
+
+    currencies: list[CurrencyReturn]
+    """The returns of every currency of the segments, and of the base currency."""
+
+    portfolio_exposures: list[tuple[str, float]] | None = None
+    """The portfolio's exposure to each currency after any hedging, adding up to one; without it,
+    each currency's share of the portfolio's segment weights (no hedging).
+    """
+
+    benchmark_exposures: list[tuple[str, float]] | None = None
+    """The benchmark's exposure to each currency, as for the portfolio."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CurrencyEffect:
+    """What one currency added to the excess return."""
+
+    currency: str
+    """The currency."""
+
+    portfolio_exposure: float
+    """The portfolio's exposure to it."""
+
+    benchmark_exposure: float
+    """The benchmark's exposure to it."""
+
+    allocation: float
+    """`(u - v)(f - F)`, with `f` the currency's return including its interest rate and `F` the
+    benchmark's currency return.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class CurrencyPeriodAttribution:
+    """The currency attribution of one period."""
+
+    start: datetime.date
+    """The start of the period."""
+
+    end: datetime.date
+    """The end of the period."""
+
+    portfolio_return: float
+    """The portfolio's return in the base currency."""
+
+    benchmark_return: float
+    """The benchmark's return in the base currency."""
+
+    linking_coefficient: float
+    """The coefficient by which the period's effects are multiplied before they are added up over
+    the periods (one for a single period).
+    """
+
+    segments: list[SegmentEffects]
+    """Each segment's market effects, on returns in excess of its currency's cash return."""
+
+    currencies: list[CurrencyEffect]
+    """Each currency's effect."""
+
+    residual: float
+    """What the model leaves out: the compounding of local and currency returns."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CurrencyReturn:
+    """A currency's returns over a period."""
+
+    currency: str
+    """The currency."""
+
+    spot_return: float
+    """The change in its value in the base currency, such as 0.02 when it gains 2% (0 for the base
+    currency).
+    """
+
+    cash_return: float
+    """The return on cash in the currency over the period: its short-term interest rate."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CurrencySegment:
+    """A segment for currency attribution: its returns are in its own currency."""
+
+    name: str
+    """The segment's name."""
+
+    currency: str
+    """The currency of the segment's assets."""
+
+    portfolio_weight: float
+    """The portfolio's weight in the segment at the start of the period."""
+
+    portfolio_return: float
+    """The return of the portfolio's holdings in the segment, in the segment's currency."""
+
+    benchmark_weight: float
+    """The benchmark's weight in the segment at the start of the period."""
+
+    benchmark_return: float
+    """The return of the benchmark's holdings in the segment, in the segment's currency."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1191,6 +1400,31 @@ Period = Union[MonthToDate, QuarterToDate, YearToDate, Years, SinceInception, Si
 
 
 @dataclass(frozen=True, kw_only=True)
+class PeriodAttribution:
+    """The attribution of one period."""
+
+    start: datetime.date
+    """The start of the period."""
+
+    end: datetime.date
+    """The end of the period."""
+
+    portfolio_return: float
+    """The portfolio's return, `sum w r`."""
+
+    benchmark_return: float
+    """The benchmark's return, `sum b s`."""
+
+    linking_coefficient: float
+    """The coefficient by which the period's effects are multiplied before they are added up over
+    the periods (one for a single period).
+    """
+
+    segments: list[SegmentEffects]
+    """Each segment's effects, in the order given."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class PeriodReturn:
     """A return over a reporting period."""
 
@@ -1704,6 +1938,50 @@ class RiskDecomposition:
 
     contributions: list[RiskContribution]
     """Each asset's contribution, in the order of the covariance matrix."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Segment:
+    """A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a
+    region or any other grouping.
+    """
+
+    name: str
+    """The segment's name."""
+
+    portfolio_weight: float
+    """The portfolio's weight in the segment at the start of the period."""
+
+    portfolio_return: float
+    """The return of the portfolio's holdings in the segment over the period."""
+
+    benchmark_weight: float
+    """The benchmark's weight in the segment at the start of the period."""
+
+    benchmark_return: float
+    """The return of the benchmark's holdings in the segment over the period."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SegmentEffects:
+    """What one segment added to the excess return."""
+
+    name: str
+    """The segment's name."""
+
+    allocation: float
+    """The effect of weighting the segment differently from the benchmark, `(w - b)(s - B)`."""
+
+    selection: float
+    """The effect of the portfolio's holdings in the segment returning differently from the
+    benchmark's, `b (r - s)`.
+    """
+
+    interaction: float
+    """The joint effect of the two, `(w - b)(r - s)`."""
+
+    total: float
+    """The sum of the three."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2373,6 +2651,8 @@ __all__ = [
     "Allocation",
     "AssetBound",
     "AssetFit",
+    "Attribution",
+    "AttributionPeriod",
     "BlackLitterman",
     "BlackLittermanEstimate",
     "Bound",
@@ -2389,6 +2669,12 @@ __all__ = [
     "CovarianceEstimate",
     "CovarianceMethod",
     "Currency",
+    "CurrencyAttribution",
+    "CurrencyAttributionPeriod",
+    "CurrencyEffect",
+    "CurrencyPeriodAttribution",
+    "CurrencyReturn",
+    "CurrencySegment",
     "Deposit",
     "Dividend",
     "DocumentFxRates",
@@ -2430,6 +2716,7 @@ __all__ = [
     "Issue",
     "LedoitWolf",
     "Linkage",
+    "Linking",
     "Lot",
     "LotClosed",
     "LotId",
@@ -2451,6 +2738,7 @@ __all__ = [
     "Oas",
     "Objective",
     "Period",
+    "PeriodAttribution",
     "PeriodReturn",
     "Portfolio",
     "PortfolioDocument",
@@ -2477,6 +2765,8 @@ __all__ = [
     "RiskDecomposition",
     "RobustMeanVariance",
     "Sample",
+    "Segment",
+    "SegmentEffects",
     "Sell",
     "Severity",
     "Side",

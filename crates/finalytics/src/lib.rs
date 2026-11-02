@@ -20,8 +20,10 @@ pub use finalytics_ledger::{
 
 pub use finalytics_formats::PortfolioDocument;
 pub use finalytics_perf::{
-    Contribution, ExcessReturn, FlowTiming, GroupContribution, Performance, Period, PeriodReturn,
-    group_contributions,
+    Attribution, AttributionPeriod, Contribution, CurrencyAttribution, CurrencyAttributionPeriod,
+    CurrencyEffect, CurrencyPeriodAttribution, CurrencyReturn, CurrencySegment, ExcessReturn,
+    FlowTiming, GroupContribution, Linking, Performance, Period, PeriodAttribution, PeriodReturn,
+    Segment, SegmentEffects, brinson_fachler, group_contributions, karnosky_singer,
 };
 
 /// Reading and writing portfolios: CSV import with validation reports, the versioned portfolio

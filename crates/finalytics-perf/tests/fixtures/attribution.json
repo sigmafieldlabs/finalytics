@@ -1,0 +1,1143 @@
+{
+ "generated_by": "scripts/reference/attribution.py",
+ "brinson_fachler": {
+  "periods_input": [
+   {
+    "start": "2026-01-01",
+    "end": "2026-04-01",
+    "segments": [
+     {
+      "name": "equities",
+      "portfolio_weight": 0.4152207211882702,
+      "portfolio_return": 0.04375453136437079,
+      "benchmark_weight": 0.14242206471136512,
+      "benchmark_return": 0.04364731906810684
+     },
+     {
+      "name": "bonds",
+      "portfolio_weight": 0.11575191851030173,
+      "portfolio_return": 0.06618530119405967,
+      "benchmark_weight": 0.5414248561403701,
+      "benchmark_return": 0.0726540884721402
+     },
+     {
+      "name": "property",
+      "portfolio_weight": 0.2384534603395871,
+      "portfolio_return": 0.011695297808359874,
+      "benchmark_weight": 0.1411775913020167,
+      "benchmark_return": 0.016410483120582367
+     },
+     {
+      "name": "cash",
+      "portfolio_weight": 0.23057389996184097,
+      "portfolio_return": -0.0612132780954094,
+      "benchmark_weight": 0.17497548784624814,
+      "benchmark_return": -0.07176040425448159
+     }
+    ]
+   },
+   {
+    "start": "2026-04-01",
+    "end": "2026-07-01",
+    "segments": [
+     {
+      "name": "equities",
+      "portfolio_weight": 0.18663368078207915,
+      "portfolio_return": 0.030291845189075038,
+      "benchmark_weight": 0.1628682619388574,
+      "benchmark_return": 0.022270110482063295
+     },
+     {
+      "name": "bonds",
+      "portfolio_weight": 0.247317605499165,
+      "portfolio_return": 0.03642568352911496,
+      "benchmark_weight": 0.1458455970043813,
+      "benchmark_return": 0.035841883078634354
+     },
+     {
+      "name": "property",
+      "portfolio_weight": 0.3035931648112999,
+      "portfolio_return": 0.08793779734804075,
+      "benchmark_weight": 0.30236081471009535,
+      "benchmark_return": 0.08954801323286139
+     },
+     {
+      "name": "cash",
+      "portfolio_weight": 0.262455548907456,
+      "portfolio_return": -0.02471132385289011,
+      "benchmark_weight": 0.38892532634666593,
+      "benchmark_return": -0.021530060007625997
+     }
+    ]
+   },
+   {
+    "start": "2026-07-01",
+    "end": "2026-10-01",
+    "segments": [
+     {
+      "name": "equities",
+      "portfolio_weight": 0.15141374686695291,
+      "portfolio_return": 0.0552700953011869,
+      "benchmark_weight": 0.2300115464992949,
+      "benchmark_return": 0.05238778942393748
+     },
+     {
+      "name": "bonds",
+      "portfolio_weight": 0.26615122791084506,
+      "portfolio_return": 0.05928384454792607,
+      "benchmark_weight": 0.3461628686060272,
+      "benchmark_return": 0.05809360629769752
+     },
+     {
+      "name": "property",
+      "portfolio_weight": 0.24978797867717897,
+      "portfolio_return": 0.0841077115824811,
+      "benchmark_weight": 0.2848697457546816,
+      "benchmark_return": 0.07652024342556078
+     },
+     {
+      "name": "cash",
+      "portfolio_weight": 0.33264704654502314,
+      "portfolio_return": 0.06512293261816182,
+      "benchmark_weight": 0.13895583913999623,
+      "benchmark_return": 0.05719610967530861
+     }
+    ]
+   },
+   {
+    "start": "2026-10-01",
+    "end": "2027-01-01",
+    "segments": [
+     {
+      "name": "equities",
+      "portfolio_weight": 0.26630187559062674,
+      "portfolio_return": -0.03308842688511249,
+      "benchmark_weight": 0.2055005285414422,
+      "benchmark_return": -0.03070566734897372
+     },
+     {
+      "name": "bonds",
+      "portfolio_weight": 0.3137912676193303,
+      "portfolio_return": 0.0325372774235603,
+      "benchmark_weight": 0.19324399808911938,
+      "benchmark_return": 0.028551660091432757
+     },
+     {
+      "name": "property",
+      "portfolio_weight": 0.29202461868386914,
+      "portfolio_return": 0.030316588983351593,
+      "benchmark_weight": 0.24594320539801195,
+      "benchmark_return": 0.03599107935609399
+     },
+     {
+      "name": "cash",
+      "portfolio_weight": 0.12788223810617388,
+      "portfolio_return": 0.025311984312783576,
+      "benchmark_weight": 0.35531226797142645,
+      "benchmark_return": 0.019211964030206696
+     }
+    ]
+   }
+  ],
+  "periods": [
+   {
+    "portfolio_return": 0.01450346363096152,
+    "benchmark_return": 0.03531355143642806,
+    "allocation": [
+     0.0022734406133126895,
+     -0.015894856092675946,
+     -0.0018388123979004515,
+     -0.00595314191534992
+    ],
+    "selection": [
+     1.5269396596358797e-05,
+     -0.003502362221437402,
+     -0.0006656785049222191,
+     0.0018454885450595818
+    ],
+    "interaction": [
+     2.924737037861035e-05,
+     0.0027535876835645488,
+     -0.0004586737489196306,
+     0.0005864034668272453
+    ]
+   },
+   {
+    "portfolio_return": 0.03487388153179532,
+    "benchmark_return": 0.027556699644793764,
+    "allocation": [
+     -0.0001256380057043266,
+     0.0008407142037795137,
+     7.639500157405739e-05,
+     0.006207991568453518
+    ],
+    "selection": [
+     0.0013064859894656121,
+     8.51447252317708e-05,
+     -0.00048686618679350744,
+     -0.0012372740792141942
+    ],
+    "interaction": [
+     0.0001906398851613428,
+     5.923940427042667e-05,
+     -1.984349708619877e-06,
+     0.00040233373048595753
+    ]
+   },
+   {
+    "portfolio_return": 0.06681916670608565,
+    "benchmark_return": 0.06190568157196102,
+    "allocation": [
+     0.0007480853799725951,
+     0.0003050103971473589,
+     -0.000512704654887742,
+     -0.0009122026670233875
+    ],
+    "selection": [
+     0.0006629636323101461,
+     0.00041201628702373304,
+     0.0021614401247836354,
+     0.0011014783337383424
+    ],
+    "interaction": [
+     -0.00022654289981917163,
+     -9.523291521894898e-05,
+     -0.00026618179058904697,
+     0.0015353559066871073
+    ]
+   },
+   {
+    "portfolio_return": 0.013488546930257994,
+    "benchmark_return": 0.014885414013048394,
+    "allocation": [
+     -0.0027719991602399145,
+     0.0016474286494771878,
+     0.0009725788873458769,
+     -0.0009839873996158217
+    ],
+    "selection": [
+     -0.0004896583440636783,
+     0.0007701966281136163,
+     -0.0013956023512724247,
+     0.0021674120412740927
+    ],
+    "interaction": [
+     -0.0001448749894915271,
+     0.0004804552867802593,
+     -0.0002614885360529602,
+     -0.0013873277950451062
+    ]
+   }
+  ],
+  "portfolio_return": 0.13514310438354316,
+  "benchmark_return": 0.14651739722737855,
+  "carino": {
+   "coefficients": [
+    1.1131335021020363,
+    1.1062923498606427,
+    1.0718368109786691,
+    1.1248625773517966
+   ],
+   "allocation": [
+    7.535787536041769e-05,
+    -0.014582968927739946,
+    -0.001417846606745572,
+    -0.001843371128566511
+   ],
+   "selection": [
+    0.001622142810779069,
+    -0.002496422179701253,
+    -0.000532755150654696,
+    0.004304133998262927
+   ],
+   "interaction": [
+    -0.00016232179901617174,
+    0.0035690188293473735,
+    -0.00109220249753731,
+    0.0011829419323762444
+   ]
+  },
+  "menchero": {
+   "coefficients": [
+    1.1185471968779293,
+    1.0986937185662797,
+    1.1003903546732603,
+    1.1048444820111492
+   ],
+   "allocation": [
+    0.00016547089787212694,
+    -0.014699676360460786,
+    -0.0014624905849265745,
+    -0.0019291209259926524
+   ],
+   "selection": [
+    0.0016410299577653566,
+    -0.0025196832276146376,
+    -0.0004430053382844261,
+    0.00431159014834266
+   ],
+   "interaction": [
+    -0.00016718054611385464,
+    0.0035711387372701483,
+    -0.0010970364698169748,
+    0.001254670868124206
+   ]
+  }
+ },
+ "karnosky_singer": {
+  "periods_input": [
+   {
+    "start": "2026-01-01",
+    "end": "2026-04-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.25916210103550186,
+      "portfolio_return": 0.019163712968070387,
+      "benchmark_weight": 0.06964783718283551,
+      "benchmark_return": 0.02059305186563773
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.2759601931014389,
+      "portfolio_return": 0.018429861909977762,
+      "benchmark_weight": 0.4675087857551544,
+      "benchmark_return": 0.029321110197778805
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.2682343215634751,
+      "portfolio_return": 0.03646476129439153,
+      "benchmark_weight": 0.09474852500474133,
+      "benchmark_return": 0.03655184562173516
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.19664338429958425,
+      "portfolio_return": 0.07038728808470095,
+      "benchmark_weight": 0.3680948520572689,
+      "benchmark_return": 0.07850760046998297
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": 0.02810356098226135,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": -0.03198407764516208,
+      "cash_return": 0.001
+     }
+    ]
+   },
+   {
+    "start": "2026-04-01",
+    "end": "2026-07-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.19132236403625247,
+      "portfolio_return": -0.010612305899302815,
+      "benchmark_weight": 0.13348523308052734,
+      "benchmark_return": -0.02333410623019149
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.2965803053383209,
+      "portfolio_return": 0.043028414250332714,
+      "benchmark_weight": 0.3565983695239432,
+      "benchmark_return": 0.04651657344175412
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.1667672094634233,
+      "portfolio_return": 0.024539936573154845,
+      "benchmark_weight": 0.39090354925818777,
+      "benchmark_return": 0.02552747636399214
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.34533012116200335,
+      "portfolio_return": 0.016202673431858026,
+      "benchmark_weight": 0.11901284813734166,
+      "benchmark_return": 0.014237996538684947
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": -0.008490422142203633,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": -0.0266508852051494,
+      "cash_return": 0.001
+     }
+    ]
+   },
+   {
+    "start": "2026-07-01",
+    "end": "2026-10-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.20647672703610406,
+      "portfolio_return": 0.07393990953256879,
+      "benchmark_weight": 0.27310775611257093,
+      "benchmark_return": 0.06240580509868987
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.32502140936392054,
+      "portfolio_return": 0.01645388730293417,
+      "benchmark_weight": 0.06575027152890488,
+      "benchmark_return": 0.013081322748708116
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.3457079780298695,
+      "portfolio_return": 0.05188469156100832,
+      "benchmark_weight": 0.33358341725213114,
+      "benchmark_return": 0.06008868246075759
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.12279388557010584,
+      "portfolio_return": 0.011159027158187732,
+      "benchmark_weight": 0.3275585551063931,
+      "benchmark_return": 0.0081469603914959
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": -0.000982062788566812,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": -0.006194919108670205,
+      "cash_return": 0.001
+     }
+    ]
+   },
+   {
+    "start": "2026-10-01",
+    "end": "2027-01-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.27382346469511226,
+      "portfolio_return": 0.06162303879969465,
+      "benchmark_weight": 0.35889069202171103,
+      "benchmark_return": 0.0720881741567453
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.4041875458361533,
+      "portfolio_return": -0.01365160884665426,
+      "benchmark_weight": 0.2701351923594008,
+      "benchmark_return": -0.013013753963079215
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.12196987915558383,
+      "portfolio_return": 0.052150692890014436,
+      "benchmark_weight": 0.2520984222542918,
+      "benchmark_return": 0.05704620598919045
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.2000191103131506,
+      "portfolio_return": -0.09819378690742203,
+      "benchmark_weight": 0.11887569336459618,
+      "benchmark_return": -0.11521778052596823
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": -0.072973782684577,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": 0.036140282805827,
+      "cash_return": 0.001
+     }
+    ]
+   }
+  ],
+  "periods": [
+   {
+    "allocation": [
+     -0.005930888997752088,
+     0.003556512087408326,
+     -0.0007523069123420329,
+     -0.005249730262780541
+    ],
+    "selection": [
+     -9.955036281686385e-05,
+     -0.00509175426238777,
+     -8.251111566839246e-06,
+     -0.0029890451861191956
+    ],
+    "interaction": [
+     -0.0002708801089684565,
+     0.002086203281770479,
+     -1.5107893896991607e-05,
+     0.0013922394771075084
+    ],
+    "currency": [
+     -0.0030802098871105677,
+     -0.0029313006747609957,
+     -0.01028237201829474
+    ],
+    "portfolio_return": 0.03859640701479134,
+    "benchmark_return": 0.06904322416954013,
+    "residual": -0.0007803743222380213
+   },
+   {
+    "allocation": [
+     -0.0031626934544994995,
+     -0.001150421948544102,
+     -0.0011607642653404797,
+     -0.002967166248747782
+    ],
+    "selection": [
+     0.0016981724823726051,
+     -0.0012438718803008287,
+     -0.00038603280927198663,
+     0.0002338217927261519
+    ],
+    "interaction": [
+     0.0007357924317301957,
+     0.00020935256224039814,
+     0.00022134355411995837,
+     0.00044464031683749585
+    ],
+    "currency": [
+     0.0011972964299837262,
+     0.0013541456994452718,
+     0.0038050199781544725
+    ],
+    "portfolio_return": 0.010259229137784948,
+    "benchmark_return": 0.010269028364573933,
+    "residual": 0.00016156613230541676
+   },
+   {
+    "allocation": [
+     -0.0011025001729092388,
+     -0.0074613397224694246,
+     0.00030589327231296195,
+     0.006903128314449038
+    ],
+    "selection": [
+     0.0031500533807047276,
+     0.00022174703518912318,
+     -0.0027367153194437473,
+     0.0009866282379815618
+    ],
+    "interaction": [
+     -0.0007685292479047919,
+     0.0008744086493962317,
+     -9.94697862840226e-05,
+     -0.0006167648561028863
+    ],
+    "currency": [
+     -0.0005130979496311597,
+     0.00014774885265536307,
+     -0.00011518973314012861
+    ],
+    "portfolio_return": 0.03722281698909839,
+    "benchmark_return": 0.038036388267081986,
+    "residual": 1.0427767212800587e-05
+   },
+   {
+    "allocation": [
+     -0.003804043180068517,
+     -0.004877340306534881,
+     -0.005293123329388949,
+     -0.011245493601049513
+    ],
+    "selection": [
+     -0.003755839670392785,
+     -0.0001723070516719275,
+     -0.0012341511284274908,
+     0.0020237390452391402
+    ],
+    "interaction": [
+     0.0008902400484218544,
+     -8.55059483198745e-05,
+     0.0006370459873164151,
+     0.001381385012319224
+    ],
+    "currency": [
+     -0.0020266249172802044,
+     -0.011563279890623382,
+     -0.006376328111499794
+    ],
+    "portfolio_return": -0.03954122732500765,
+    "benchmark_return": 0.005540051544429391,
+    "residual": 0.0004203481725236491
+   }
+  ],
+  "portfolio_return": 0.04527468362095255,
+  "benchmark_return": 0.12731232668074854,
+  "carino": {
+   "coefficients": [
+    1.0303967865472186,
+    1.0747456856113455,
+    1.0464014004313518,
+    1.104748754928729
+   ],
+   "allocation": [
+    -0.014866429801570437,
+    -0.010767584365342685,
+    -0.0075501852704568315,
+    -0.01379825623606368
+   ],
+   "selection": [
+    0.0008694882443323433,
+    -0.006541692759295652,
+    -0.004650518680485436,
+    0.0004395287687703085
+   ],
+   "interaction": [
+    0.0006909772514885577,
+    0.003195137765992234,
+    0.0008220113421572941,
+    0.0027931341087596854
+   ],
+   "currency": [
+    -0.004662866964172169,
+    -0.01418495500323735,
+    -0.013670269520817038
+   ],
+   "residual": -0.00015516193985494784
+  }
+ },
+ "karnosky_singer_hedged": {
+  "periods_input": [
+   {
+    "start": "2026-01-01",
+    "end": "2026-04-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.2559299557594688,
+      "portfolio_return": -0.033568959736926265,
+      "benchmark_weight": 0.09152225402049226,
+      "benchmark_return": -0.03209021888445636
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.24809330628136544,
+      "portfolio_return": 0.10085138955060338,
+      "benchmark_weight": 0.45326035824030064,
+      "benchmark_return": 0.10629079653047421
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.24207585240864202,
+      "portfolio_return": -0.0042737705986972685,
+      "benchmark_weight": 0.21415804993912374,
+      "benchmark_return": 0.014038844302251427
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.25390088555052376,
+      "portfolio_return": 0.053474869400466876,
+      "benchmark_weight": 0.24105933780008346,
+      "benchmark_return": 0.04585145973669304
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": -0.029284216004202154,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": 0.05922387066155161,
+      "cash_return": 0.001
+     }
+    ],
+    "portfolio_exposures": [
+     [
+      "USD",
+      0.7
+     ],
+     [
+      "EUR",
+      0.2
+     ],
+     [
+      "JPY",
+      0.1
+     ]
+    ],
+    "benchmark_exposures": [
+     [
+      "USD",
+      0.5
+     ],
+     [
+      "EUR",
+      0.3
+     ],
+     [
+      "JPY",
+      0.2
+     ]
+    ]
+   },
+   {
+    "start": "2026-04-01",
+    "end": "2026-07-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.16022326098894504,
+      "portfolio_return": 0.050325321242722425,
+      "benchmark_weight": 0.3042169557947588,
+      "benchmark_return": 0.040865889706127964
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.3862361567987544,
+      "portfolio_return": -0.002764795741055797,
+      "benchmark_weight": 0.13032291654949046,
+      "benchmark_return": -0.005630753324353223
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.11777480742406879,
+      "portfolio_return": -0.017422806014768467,
+      "benchmark_weight": 0.2751925355436821,
+      "benchmark_return": -0.018833208226887804
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.3357657747882318,
+      "portfolio_return": 0.08499694105679724,
+      "benchmark_weight": 0.2902675921120685,
+      "benchmark_return": 0.09189698337369599
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": 0.015755827790409665,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": -0.012166149020390864,
+      "cash_return": 0.001
+     }
+    ],
+    "portfolio_exposures": [
+     [
+      "USD",
+      0.7
+     ],
+     [
+      "EUR",
+      0.2
+     ],
+     [
+      "JPY",
+      0.1
+     ]
+    ],
+    "benchmark_exposures": [
+     [
+      "USD",
+      0.5
+     ],
+     [
+      "EUR",
+      0.3
+     ],
+     [
+      "JPY",
+      0.2
+     ]
+    ]
+   },
+   {
+    "start": "2026-07-01",
+    "end": "2026-10-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.1566896163353336,
+      "portfolio_return": 0.0489686646664737,
+      "benchmark_weight": 0.3191490133102742,
+      "benchmark_return": 0.05986028419741904
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.5213472775925675,
+      "portfolio_return": 0.040619810149454746,
+      "benchmark_weight": 0.2262941528837792,
+      "benchmark_return": 0.02054281227702481
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.21940752958863102,
+      "portfolio_return": 0.048665074195863425,
+      "benchmark_weight": 0.11495880954116282,
+      "benchmark_return": 0.04869226954634002
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.10255557648346791,
+      "portfolio_return": 0.046767548067740625,
+      "benchmark_weight": 0.3395980242647838,
+      "benchmark_return": 0.0658543985899243
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": 0.041479500538263596,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": 0.012799072119867985,
+      "cash_return": 0.001
+     }
+    ],
+    "portfolio_exposures": [
+     [
+      "USD",
+      0.7
+     ],
+     [
+      "EUR",
+      0.2
+     ],
+     [
+      "JPY",
+      0.1
+     ]
+    ],
+    "benchmark_exposures": [
+     [
+      "USD",
+      0.5
+     ],
+     [
+      "EUR",
+      0.3
+     ],
+     [
+      "JPY",
+      0.2
+     ]
+    ]
+   },
+   {
+    "start": "2026-10-01",
+    "end": "2027-01-01",
+    "segments": [
+     {
+      "name": "equities",
+      "currency": "USD",
+      "portfolio_weight": 0.4169595383253956,
+      "portfolio_return": -0.03895361207777297,
+      "benchmark_weight": 0.21785347480963665,
+      "benchmark_return": -0.02586837595138257
+     },
+     {
+      "name": "bonds",
+      "currency": "EUR",
+      "portfolio_weight": 0.4052241963458337,
+      "portfolio_return": -0.027906367380702967,
+      "benchmark_weight": 0.20226684070416953,
+      "benchmark_return": -0.0336671978477475
+     },
+     {
+      "name": "property",
+      "currency": "JPY",
+      "portfolio_weight": 0.05221477087460581,
+      "portfolio_return": 0.08619526257896606,
+      "benchmark_weight": 0.3374277084804858,
+      "benchmark_return": 0.08971442502250694
+     },
+     {
+      "name": "cash",
+      "currency": "EUR",
+      "portfolio_weight": 0.12560149445416502,
+      "portfolio_return": 0.004685574358424734,
+      "benchmark_weight": 0.242451976005708,
+      "benchmark_return": -0.015609524537480221
+     }
+    ],
+    "currencies": [
+     {
+      "currency": "USD",
+      "spot_return": 0.0,
+      "cash_return": 0.012
+     },
+     {
+      "currency": "EUR",
+      "spot_return": -0.02998710988350838,
+      "cash_return": 0.008
+     },
+     {
+      "currency": "JPY",
+      "spot_return": 0.027927976498334797,
+      "cash_return": 0.001
+     }
+    ],
+    "portfolio_exposures": [
+     [
+      "USD",
+      0.7
+     ],
+     [
+      "EUR",
+      0.2
+     ],
+     [
+      "JPY",
+      0.1
+     ]
+    ],
+    "benchmark_exposures": [
+     [
+      "USD",
+      0.5
+     ],
+     [
+      "EUR",
+      0.3
+     ],
+     [
+      "JPY",
+      0.2
+     ]
+    ]
+   }
+  ],
+  "periods": [
+   {
+    "allocation": [
+     -0.015869145245733275,
+     -0.009408528060921057,
+     -0.0010997956531256404,
+     -0.00018724834774117688
+    ],
+    "selection": [
+     -0.00013533769593023005,
+     -0.002465467556311045,
+     -0.003921793896473312,
+     0.0018376940853280785
+    ],
+    "interaction": [
+     -0.00024311638502211232,
+     0.0011159870944649536,
+     -0.0005112479655050427,
+     9.78963792185198e-05
+    ],
+    "currency": [
+     7.978560264562775e-05,
+     0.0033119561719007666,
+     -0.004868202254544117
+    ],
+    "portfolio_return": 0.0317674149817115,
+    "benchmark_return": 0.06403397870946055,
+    "residual": 0.0
+   },
+   {
+    "allocation": [
+     -0.0004271100155987242,
+     -0.010116371019049721,
+     0.007199173355420374,
+     0.002638770172227294
+    ],
+    "selection": [
+     0.0028777194656117036,
+     0.0003734999509624499,
+     0.0003881321608895387,
+     -0.002002858668797579
+    ],
+    "interaction": [
+     -0.0013620984977168724,
+     0.0007334364915585941,
+     -0.0002220223119667031,
+     -0.0003139393858075164
+    ],
+    "currency": [
+     0.00021422014201248025,
+     -0.0012952975122795317,
+     0.0022107214459348976
+    ],
+    "portfolio_return": 0.037724593117473344,
+    "benchmark_return": 0.03682861734407266,
+    "residual": 0.0
+   },
+   {
+    "allocation": [
+     -0.0007501514977586582,
+     -0.00905813130264865,
+     0.00046473998425853306,
+     -0.003463565885038784
+    ],
+    "selection": [
+     -0.0034760496266521192,
+     0.00454330722599097,
+     -3.126345115843813e-06,
+     -0.006481856726770833
+    ],
+    "interaction": [
+     0.0017694459410778664,
+     0.005923780957032147,
+     -2.840519548522431e-06,
+     0.004524393768214506
+    ],
+    "currency": [
+     -0.0023411550402336924,
+     -0.0026105561341401157,
+     0.0009893904009180576
+    ],
+    "portfolio_return": 0.056976213945647614,
+    "benchmark_return": 0.06694858874606276,
+    "residual": 0.0
+   },
+   {
+    "allocation": [
+     -0.009039665253942694,
+     -0.009985517598254043,
+     -0.023154027074501232,
+     0.003639004909828221
+    ],
+    "selection": [
+     -0.0028506641588387383,
+     0.0011652249784014238,
+     -0.0011874629190945852,
+     0.004920586830543418
+    ],
+    "interaction": [
+     -0.0026053498552997905,
+     0.001169202917891292,
+     0.0010037106584345804,
+     -0.002371492079122682
+    ],
+    "currency": [
+     0.0013753842267612668,
+     0.0027350085628770164,
+     -0.002383282560863942
+    ],
+    "portfolio_return": -0.024913380037211573,
+    "benchmark_return": 0.012655958377968903,
+    "residual": 0.0
+   }
+  ],
+  "portfolio_return": 0.10349997702865843,
+  "benchmark_return": 0.19197703485319972,
+  "carino": {
+   "coefficients": [
+    1.0948180083932053,
+    1.1059441312753253,
+    1.0802438309993943,
+    1.1543814026468404
+   ],
+   "allocation": [
+    -0.029091753791069548,
+    -0.04280085338318692,
+    -0.01946873831430528,
+    0.003172633434083379
+   ],
+   "selection": [
+    -0.004011308047862868,
+    0.003966825447217909,
+    -0.005238560422731029,
+    -0.0015248610272235704
+   ],
+   "interaction": [
+    -0.002868707394437009,
+    0.009781776491016825,
+    0.0003503287116951065,
+    0.001909821402077233
+   ],
+   "currency": [
+    -0.0006170340933119665,
+    0.002530668439727507,
+    -0.0045672952762312235
+   ],
+   "residual": 0.0
+  }
+ }
+}

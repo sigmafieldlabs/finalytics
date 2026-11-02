@@ -11,6 +11,7 @@ outputs are the engine's own.
 | [Valuation and FX rates](valuation.md) | Prices and rates found directly, inverted or crossed; carrying values forward |
 | [Returns](returns.md) | Time-weighted, money-weighted and Modified Dietz returns; periods and annualisation; excess returns |
 | [Contribution to return](contribution.md) | Each holding's share of the return, its own return and the currency effect |
+| [Performance attribution](attribution.md) | Brinson–Fachler allocation, selection and interaction; linking periods; Karnosky–Singer currency attribution |
 | [Return statistics and drawdowns](statistics.md) | Volatility, Sharpe, Sortino and Calmar ratios, moments, statistics against a benchmark, drawdowns |
 | [Value at risk and expected shortfall](tail-risk.md) | Historical, parametric and Cornish–Fisher estimates |
 | [Covariance estimation](covariance.md) | Sample, exponentially weighted, Ledoit–Wolf and OAS estimators |

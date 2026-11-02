@@ -3,8 +3,10 @@
 import init, {
   blackLitterman,
   Books,
+  brinsonFachler,
   factorRisk,
   impliedCovariance,
+  karnoskySinger,
   MarketData,
   portfolioFromCsv,
   resampled,
@@ -12,7 +14,9 @@ import init, {
   statisticalModel,
   statistics,
   tailRisk,
+  type Attribution,
   type BlackLittermanEstimate,
+  type CurrencyAttribution,
   type FactorModelEstimate,
   type Matrix,
   type Objective,
@@ -89,3 +93,33 @@ const average: number[] | null | undefined = resampled(
   { samples: 100, observations: 120, seed: 7 },
 ).weights;
 void average;
+
+// Attribution.
+const attribution: Attribution = brinsonFachler(
+  [
+    {
+      start: "2026-01-01",
+      end: "2026-12-31",
+      segments: [{ name: "UK", portfolio_weight: 1, portfolio_return: 0.2, benchmark_weight: 1, benchmark_return: 0.1 }],
+    },
+  ],
+  "menchero",
+);
+const byCurrency: CurrencyAttribution = karnoskySinger([
+  {
+    start: "2026-01-01",
+    end: "2026-12-31",
+    segments: [
+      { name: "Europe", currency: "EUR", portfolio_weight: 1, portfolio_return: 0.05, benchmark_weight: 1, benchmark_return: 0.04 },
+    ],
+    currencies: [
+      { currency: "USD", spot_return: 0, cash_return: 0.04 },
+      { currency: "EUR", spot_return: 0.03, cash_return: 0.025 },
+    ],
+    portfolio_exposures: [["USD", 0.5], ["EUR", 0.5]],
+  },
+]);
+// @ts-expect-error: an unknown linking method is rejected
+brinsonFachler([], "geometric");
+void attribution.segments[0].allocation;
+void byCurrency.residual;

@@ -29,6 +29,7 @@ pub const CHECKS: &[(&str, Check)] = &[
     ("returns", returns),
     ("optimisation", optimisation),
     ("views", views),
+    ("attribution", attribution),
 ];
 
 fn text(data: &[u8]) -> Option<&str> {
@@ -271,6 +272,278 @@ pub fn views(data: &[u8]) {
         let back: finalytics::opt::BlackLitterman =
             serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, model, "a model that does not read back equal");
+    }
+}
+
+/// Attribution from bytes: the first byte picks the number of segments and periods, the linking
+/// method and whether the attribution is by currency (with or without given exposures); the rest
+/// are numbers for the weights (the last of each side making up the rest of one), returns and
+/// currency returns. In every accepted result, the effects must add up to the excess return in
+/// each period and over all of them, to within rounding of the inputs' size, the linked effects
+/// must be the periods' effects multiplied by their coefficients, and the result must read back
+/// equal from JSON.
+pub fn attribution(data: &[u8]) {
+    use finalytics::{
+        AttributionPeriod, CurrencyAttributionPeriod, CurrencyReturn, CurrencySegment, Linking,
+        Segment, SegmentEffects,
+    };
+    let Some((&control, rest)) = data.split_first() else {
+        return;
+    };
+    let n = usize::from(control % 4) + 1;
+    let periods = usize::from(control / 4 % 4) + 1;
+    let linking = if control & 0x10 == 0 {
+        Linking::Carino
+    } else {
+        Linking::Menchero
+    };
+    let mode = (control >> 5) % 3;
+    let values = numbers(rest);
+    let per_period = 4 * n + 6 + 4;
+    if values.len() < periods * per_period {
+        return;
+    }
+    let currencies = [Currency::USD, Currency::EUR, Currency::JPY];
+    let dates: Vec<Date> = (0..=periods)
+        .map(|k| {
+            Date::from_ymd(2026, 1, 1)
+                .and_then(|d| d.add_days(7 * k as i32))
+                .unwrap_or_else(|e| panic!("{e}"))
+        })
+        .collect();
+    // The last weight makes the others up to one, so that short positions are explored.
+    let weights = |raw: &[f64]| -> Vec<f64> {
+        let mut w = raw.to_vec();
+        w[n - 1] = 1.0 - raw[..n - 1].iter().sum::<f64>();
+        w
+    };
+    let mut plain = Vec::new();
+    let mut by_currency = Vec::new();
+    for k in 0..periods {
+        let v = &values[k * per_period..(k + 1) * per_period];
+        let (w, b) = (weights(&v[..n]), weights(&v[n..2 * n]));
+        let (r, s) = (&v[2 * n..3 * n], &v[3 * n..4 * n]);
+        let segments: Vec<Segment> = (0..n)
+            .map(|i| Segment {
+                name: format!("s{i}"),
+                portfolio_weight: w[i],
+                portfolio_return: r[i],
+                benchmark_weight: b[i],
+                benchmark_return: s[i],
+            })
+            .collect();
+        let rates = &v[4 * n..4 * n + 6];
+        let exposures = |raw: &[f64]| {
+            let mut e = raw.to_vec();
+            e[2] = 1.0 - raw[0] - raw[1];
+            Some(currencies.iter().copied().zip(e).collect())
+        };
+        let hedged = mode == 2;
+        by_currency.push(CurrencyAttributionPeriod {
+            start: dates[k],
+            end: dates[k + 1],
+            segments: segments
+                .iter()
+                .enumerate()
+                .map(|(i, x)| CurrencySegment {
+                    name: x.name.clone(),
+                    currency: currencies[i % 3],
+                    portfolio_weight: x.portfolio_weight,
+                    portfolio_return: x.portfolio_return,
+                    benchmark_weight: x.benchmark_weight,
+                    benchmark_return: x.benchmark_return,
+                })
+                .collect(),
+            currencies: (0..3)
+                .map(|i| CurrencyReturn {
+                    currency: currencies[i],
+                    spot_return: if i == 0 { 0.0 } else { rates[2 * i] },
+                    cash_return: rates[2 * i + 1],
+                })
+                .collect(),
+            portfolio_exposures: if hedged {
+                exposures(&v[4 * n + 6..4 * n + 9])
+            } else {
+                None
+            },
+            benchmark_exposures: if hedged {
+                exposures(&[v[4 * n + 9], v[4 * n + 7], v[4 * n + 8]])
+            } else {
+                None
+            },
+        });
+        plain.push(AttributionPeriod {
+            start: dates[k],
+            end: dates[k + 1],
+            segments,
+        });
+    }
+    // Floating point holds the identities only to within rounding of the numbers involved, so
+    // each period's tolerance scales with the size of its weights and returns.
+    let size = |weights: f64, returns: f64| weights * (1.0 + returns).powi(2) * (1.0 + weights);
+    let magnitudes: Vec<f64> = if mode == 0 {
+        plain
+            .iter()
+            .map(|p| {
+                let w: f64 = p
+                    .segments
+                    .iter()
+                    .map(|x| x.portfolio_weight.abs() + x.benchmark_weight.abs())
+                    .sum();
+                let r = p
+                    .segments
+                    .iter()
+                    .map(|x| x.portfolio_return.abs().max(x.benchmark_return.abs()))
+                    .fold(0.0, f64::max);
+                size(w, r)
+            })
+            .collect()
+    } else {
+        by_currency
+            .iter()
+            .map(|p| {
+                let exposures = |e: &Option<Vec<(Currency, f64)>>| {
+                    e.iter().flatten().map(|(_, w)| w.abs()).sum::<f64>()
+                };
+                let w: f64 = p
+                    .segments
+                    .iter()
+                    .map(|x| x.portfolio_weight.abs() + x.benchmark_weight.abs())
+                    .sum::<f64>()
+                    + exposures(&p.portfolio_exposures)
+                    + exposures(&p.benchmark_exposures);
+                let r = p
+                    .segments
+                    .iter()
+                    .map(|x| x.portfolio_return.abs().max(x.benchmark_return.abs()))
+                    .chain(
+                        p.currencies
+                            .iter()
+                            .map(|c| c.spot_return.abs().max(c.cash_return.abs())),
+                    )
+                    .fold(0.0, f64::max);
+                size(w, r)
+            })
+            .collect()
+    };
+    #[track_caller]
+    fn adds_up(total: f64, expected: f64, tolerance: f64, what: &str) {
+        assert!(
+            (total - expected).abs() <= tolerance,
+            "{what}: the effects add up to {total}, not {expected}"
+        );
+    }
+    #[track_caller]
+    fn linked(linked: f64, periods: impl Iterator<Item = (f64, f64)>, what: &str) {
+        let (mut sum, mut scale) = (0.0, 0.0);
+        for (c, e) in periods {
+            sum += c * e;
+            scale += (c * e).abs();
+        }
+        assert!(
+            (linked - sum).abs() <= 1e-12 * scale,
+            "{what}: {linked} is not the periods' effects linked, {sum}"
+        );
+    }
+    let effects = |e: &SegmentEffects| e.allocation + e.selection + e.interaction;
+    if mode == 0 {
+        let Ok(a) = finalytics::brinson_fachler(&plain, linking) else {
+            return;
+        };
+        let mut overall = 1.0 + a.portfolio_return.abs() + a.benchmark_return.abs();
+        for (p, m) in a.periods.iter().zip(&magnitudes) {
+            let total: f64 = p.segments.iter().map(effects).sum();
+            adds_up(
+                total,
+                p.portfolio_return - p.benchmark_return,
+                1e-12 * m,
+                "a period",
+            );
+            overall += p.linking_coefficient.abs() * m;
+        }
+        for (k, s) in a.segments.iter().enumerate() {
+            let periods = || {
+                a.periods.iter().filter_map(move |p| {
+                    p.segments
+                        .iter()
+                        .find(|x| x.name == s.name)
+                        .map(|x| (p.linking_coefficient, x))
+                })
+            };
+            linked(
+                s.allocation,
+                periods().map(|(c, x)| (c, x.allocation)),
+                &format!("segments[{k}].allocation"),
+            );
+            linked(
+                s.selection,
+                periods().map(|(c, x)| (c, x.selection)),
+                &format!("segments[{k}].selection"),
+            );
+            linked(
+                s.interaction,
+                periods().map(|(c, x)| (c, x.interaction)),
+                &format!("segments[{k}].interaction"),
+            );
+        }
+        let totals = a.allocation + a.selection + a.interaction;
+        adds_up(
+            totals,
+            a.excess_return,
+            1e-10 * overall,
+            "the linked totals",
+        );
+        let text = serde_json::to_string(&a).unwrap_or_else(|e| panic!("{e}"));
+        let back: finalytics::Attribution =
+            serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, a, "an attribution that does not read back equal");
+    } else {
+        let Ok(a) = finalytics::karnosky_singer(&by_currency, linking) else {
+            return;
+        };
+        let mut overall = 1.0 + a.portfolio_return.abs() + a.benchmark_return.abs();
+        for (p, m) in a.periods.iter().zip(&magnitudes) {
+            let market: f64 = p.segments.iter().map(effects).sum();
+            let currency: f64 = p.currencies.iter().map(|c| c.allocation).sum();
+            adds_up(
+                market + currency + p.residual,
+                p.portfolio_return - p.benchmark_return,
+                1e-12 * m,
+                "a period",
+            );
+            overall += p.linking_coefficient.abs() * m;
+        }
+        for (k, x) in a.currencies.iter().enumerate() {
+            let periods = a.periods.iter().filter_map(|p| {
+                p.currencies
+                    .iter()
+                    .find(|y| y.currency == x.currency)
+                    .map(|y| (p.linking_coefficient, y.allocation))
+            });
+            linked(
+                x.allocation,
+                periods,
+                &format!("currencies[{k}].allocation"),
+            );
+        }
+        linked(
+            a.residual,
+            a.periods
+                .iter()
+                .map(|p| (p.linking_coefficient, p.residual)),
+            "residual",
+        );
+        let totals = a.allocation + a.selection + a.interaction + a.currency + a.residual;
+        adds_up(
+            totals,
+            a.excess_return,
+            1e-10 * overall,
+            "the linked totals",
+        );
+        let text = serde_json::to_string(&a).unwrap_or_else(|e| panic!("{e}"));
+        let back: finalytics::CurrencyAttribution =
+            serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(back, a, "an attribution that does not read back equal");
     }
 }
 

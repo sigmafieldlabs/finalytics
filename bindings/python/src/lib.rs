@@ -796,6 +796,20 @@ fn normal_quantile(p: f64) -> f64 {
 }
 
 #[pyfunction]
+fn brinson_fachler(periods: &str, linking: &str) -> PyResult<String> {
+    let periods: Vec<finalytics::AttributionPeriod> = from_json(periods, "periods")?;
+    let linking: finalytics::Linking = named(linking, "linking")?;
+    to_json(&finalytics::brinson_fachler(&periods, linking).map_err(engine)?)
+}
+
+#[pyfunction]
+fn karnosky_singer(periods: &str, linking: &str) -> PyResult<String> {
+    let periods: Vec<finalytics::CurrencyAttributionPeriod> = from_json(periods, "periods")?;
+    let linking: finalytics::Linking = named(linking, "linking")?;
+    to_json(&finalytics::karnosky_singer(&periods, linking).map_err(engine)?)
+}
+
+#[pyfunction]
 fn solve(problem: &str, objective: &str) -> PyResult<String> {
     let problem: Problem = from_json(problem, "problem")?;
     let objective: Objective = from_json(objective, "objective")?;
@@ -879,6 +893,8 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(normal_pdf, m)?)?;
     m.add_function(wrap_pyfunction!(normal_quantile, m)?)?;
     m.add_function(wrap_pyfunction!(solve, m)?)?;
+    m.add_function(wrap_pyfunction!(brinson_fachler, m)?)?;
+    m.add_function(wrap_pyfunction!(karnosky_singer, m)?)?;
     m.add_function(wrap_pyfunction!(frontier, m)?)?;
     m.add_function(wrap_pyfunction!(resampled, m)?)?;
     m.add_function(wrap_pyfunction!(black_litterman, m)?)?;

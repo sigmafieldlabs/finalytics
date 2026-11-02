@@ -78,6 +78,44 @@ export interface AssetFit {
   r_squared?: number | null;
 }
 
+/** Brinson–Fachler attribution over one or more periods. */
+export interface Attribution {
+  /** How the periods were linked. */
+  linking: Linking;
+  /** The portfolio's return over all the periods, compounded. */
+  portfolio_return: number;
+  /** The benchmark's return over all the periods, compounded. */
+  benchmark_return: number;
+  /** `portfolio_return - benchmark_return`, which the linked effects add up to. */
+  excess_return: number;
+  /**
+   * Each segment's effects over all the periods, linked, in the order the segments first
+   * appear.
+   */
+  segments: SegmentEffects[];
+  /** The allocation effects of all the segments, linked. */
+  allocation: number;
+  /** The selection effects of all the segments, linked. */
+  selection: number;
+  /** The interaction effects of all the segments, linked. */
+  interaction: number;
+  /** Each period's own attribution, before linking. */
+  periods: PeriodAttribution[];
+}
+
+/**
+ * The segments over one period. The portfolio weights add up to one, as do the benchmark
+ * weights.
+ */
+export interface AttributionPeriod {
+  /** The start of the period. */
+  start: Date;
+  /** The end of the period. */
+  end: Date;
+  /** The segments. */
+  segments: Segment[];
+}
+
 /** The inputs to the Black–Litterman model. */
 export interface BlackLitterman {
   /**
@@ -240,6 +278,120 @@ export type CovarianceMethod =
 
 /** An ISO 4217 currency code, for example "USD". */
 export type Currency = string;
+
+/** Currency attribution over one or more periods. */
+export interface CurrencyAttribution {
+  /** How the periods were linked. */
+  linking: Linking;
+  /** The portfolio's return in the base currency over all the periods, compounded. */
+  portfolio_return: number;
+  /** The benchmark's return in the base currency over all the periods, compounded. */
+  benchmark_return: number;
+  /** `portfolio_return - benchmark_return`, which the linked effects add up to. */
+  excess_return: number;
+  /** Each segment's market effects, linked. */
+  segments: SegmentEffects[];
+  /** Each currency's allocation effect, linked, in the order the currencies first appear. */
+  currencies: CurrencyEffect[];
+  /** The market allocation effects, linked. */
+  allocation: number;
+  /** The market selection effects, linked. */
+  selection: number;
+  /** The market interaction effects, linked. */
+  interaction: number;
+  /** The currency allocation effects, linked. */
+  currency: number;
+  /** The residuals, linked. */
+  residual: number;
+  /** Each period's own attribution, before linking. */
+  periods: CurrencyPeriodAttribution[];
+}
+
+/** One period for currency attribution. */
+export interface CurrencyAttributionPeriod {
+  /** The start of the period. */
+  start: Date;
+  /** The end of the period. */
+  end: Date;
+  /** The segments, with returns in their own currencies. */
+  segments: CurrencySegment[];
+  /** The returns of every currency of the segments, and of the base currency. */
+  currencies: CurrencyReturn[];
+  /**
+   * The portfolio's exposure to each currency after any hedging, adding up to one; without
+   * it, each currency's share of the portfolio's segment weights (no hedging).
+   */
+  portfolio_exposures?: [Currency, number][] | null;
+  /** The benchmark's exposure to each currency, as for the portfolio. */
+  benchmark_exposures?: [Currency, number][] | null;
+}
+
+/** What one currency added to the excess return. */
+export interface CurrencyEffect {
+  /** The currency. */
+  currency: Currency;
+  /** The portfolio's exposure to it. */
+  portfolio_exposure: number;
+  /** The benchmark's exposure to it. */
+  benchmark_exposure: number;
+  /**
+   * `(u - v)(f - F)`, with `f` the currency's return including its interest rate and `F` the
+   * benchmark's currency return.
+   */
+  allocation: number;
+}
+
+/** The currency attribution of one period. */
+export interface CurrencyPeriodAttribution {
+  /** The start of the period. */
+  start: Date;
+  /** The end of the period. */
+  end: Date;
+  /** The portfolio's return in the base currency. */
+  portfolio_return: number;
+  /** The benchmark's return in the base currency. */
+  benchmark_return: number;
+  /**
+   * The coefficient by which the period's effects are multiplied before they are added up
+   * over the periods (one for a single period).
+   */
+  linking_coefficient: number;
+  /** Each segment's market effects, on returns in excess of its currency's cash return. */
+  segments: SegmentEffects[];
+  /** Each currency's effect. */
+  currencies: CurrencyEffect[];
+  /** What the model leaves out: the compounding of local and currency returns. */
+  residual: number;
+}
+
+/** A currency's returns over a period. */
+export interface CurrencyReturn {
+  /** The currency. */
+  currency: Currency;
+  /**
+   * The change in its value in the base currency, such as 0.02 when it gains 2% (0 for the
+   * base currency).
+   */
+  spot_return: number;
+  /** The return on cash in the currency over the period: its short-term interest rate. */
+  cash_return: number;
+}
+
+/** A segment for currency attribution: its returns are in its own currency. */
+export interface CurrencySegment {
+  /** The segment's name. */
+  name: string;
+  /** The currency of the segment's assets. */
+  currency: Currency;
+  /** The portfolio's weight in the segment at the start of the period. */
+  portfolio_weight: number;
+  /** The return of the portfolio's holdings in the segment, in the segment's currency. */
+  portfolio_return: number;
+  /** The benchmark's weight in the segment at the start of the period. */
+  benchmark_weight: number;
+  /** The return of the benchmark's holdings in the segment, in the segment's currency. */
+  benchmark_return: number;
+}
 
 /** A calendar date in ISO 8601 form, for example "2026-11-02". */
 export type Date = string;
@@ -644,6 +796,12 @@ export interface Issue {
 export type Linkage = "single" | "complete" | "average" | "ward";
 
 /**
+ * How the effects of several periods are linked so that they add up to the excess return over
+ * all of them.
+ */
+export type Linking = "carino" | "menchero";
+
+/**
  * Units of one instrument acquired together, with their remaining cost basis.
  *
  * Costs are totals for the remaining quantity, in the instrument's currency (`cost_local`) and in
@@ -806,6 +964,25 @@ export type Period =
     /** The start of the period. */
     start: Date;
   };
+
+/** The attribution of one period. */
+export interface PeriodAttribution {
+  /** The start of the period. */
+  start: Date;
+  /** The end of the period. */
+  end: Date;
+  /** The portfolio's return, `sum w r`. */
+  portfolio_return: number;
+  /** The benchmark's return, `sum b s`. */
+  benchmark_return: number;
+  /**
+   * The coefficient by which the period's effects are multiplied before they are added up
+   * over the periods (one for a single period).
+   */
+  linking_coefficient: number;
+  /** Each segment's effects, in the order given. */
+  segments: SegmentEffects[];
+}
 
 /** A return over a reporting period. */
 export interface PeriodReturn {
@@ -1179,6 +1356,43 @@ export interface RiskDecomposition {
   volatility: number;
   /** Each asset's contribution, in the order of the covariance matrix. */
   contributions: RiskContribution[];
+}
+
+/**
+ * A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a
+ * region or any other grouping.
+ */
+export interface Segment {
+  /** The segment's name. */
+  name: string;
+  /** The portfolio's weight in the segment at the start of the period. */
+  portfolio_weight: number;
+  /** The return of the portfolio's holdings in the segment over the period. */
+  portfolio_return: number;
+  /** The benchmark's weight in the segment at the start of the period. */
+  benchmark_weight: number;
+  /** The return of the benchmark's holdings in the segment over the period. */
+  benchmark_return: number;
+}
+
+/** What one segment added to the excess return. */
+export interface SegmentEffects {
+  /** The segment's name. */
+  name: string;
+  /**
+   * The effect of weighting the segment differently from the benchmark,
+   * `(w - b)(s - B)`.
+   */
+  allocation: number;
+  /**
+   * The effect of the portfolio's holdings in the segment returning differently from the
+   * benchmark's, `b (r - s)`.
+   */
+  selection: number;
+  /** The joint effect of the two, `(w - b)(r - s)`. */
+  interaction: number;
+  /** The sum of the three. */
+  total: number;
 }
 
 /** How serious a validation issue is. */

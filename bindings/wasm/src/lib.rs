@@ -1119,6 +1119,29 @@ pub fn normal_quantile(p: f64) -> f64 {
     risk::normal_quantile(p)
 }
 
+/// Brinson–Fachler attribution by segment over one or more periods, linked by `linking`
+/// (`"carino"` by default, or `"menchero"`).
+#[wasm_bindgen(js_name = brinsonFachler, unchecked_return_type = "Attribution")]
+pub fn brinson_fachler(
+    #[wasm_bindgen(unchecked_param_type = "AttributionPeriod[]")] periods: JsValue,
+    #[wasm_bindgen(unchecked_optional_param_type = "Linking")] linking: JsValue,
+) -> Result<JsValue, JsValue> {
+    let periods: Vec<finalytics::AttributionPeriod> = from_js(periods, "periods")?;
+    let linking: finalytics::Linking = optional(linking, "linking")?;
+    to_js(&finalytics::brinson_fachler(&periods, linking).map_err(error)?)
+}
+
+/// Currency attribution by the method of Karnosky and Singer over one or more periods.
+#[wasm_bindgen(js_name = karnoskySinger, unchecked_return_type = "CurrencyAttribution")]
+pub fn karnosky_singer(
+    #[wasm_bindgen(unchecked_param_type = "CurrencyAttributionPeriod[]")] periods: JsValue,
+    #[wasm_bindgen(unchecked_optional_param_type = "Linking")] linking: JsValue,
+) -> Result<JsValue, JsValue> {
+    let periods: Vec<finalytics::CurrencyAttributionPeriod> = from_js(periods, "periods")?;
+    let linking: finalytics::Linking = optional(linking, "linking")?;
+    to_js(&finalytics::karnosky_singer(&periods, linking).map_err(error)?)
+}
+
 /// The optimal portfolio for `objective`. A problem with no solution returns a solution whose
 /// `status` says why and whose `weights` are null.
 #[wasm_bindgen(unchecked_return_type = "Solution")]

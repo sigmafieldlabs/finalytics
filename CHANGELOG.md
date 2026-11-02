@@ -88,12 +88,18 @@ Finalytics 1.0 is a redesign of the library. See the migration guide (to follow)
   possible expected returns, and resampled optimisation (Michaud), whose seeded random numbers
   give the same result on every platform. Validated against CVXPY and an independent
   reimplementation of the simulation.
+- Performance attribution: Brinson–Fachler allocation, selection and interaction by segment,
+  linked over periods by Cariño's or Menchero's method so that the effects add up to the excess
+  of the compounded returns; and currency attribution by the method of Karnosky and Singer, with
+  market effects on returns in excess of cash, currency effects that include interest-rate
+  differences, and given currency exposures for hedged portfolios. Validated against an
+  independent NumPy implementation.
 - A JSON reader for any of the engine's types (`formats::from_json`) that reports every problem
   with its path, including those found by a nested value's own checks; both bindings use it.
 - An npm package that runs the engine as WebAssembly, with the same API (`Books`,
   `Performance`, `MarketData` and functions for risk and optimisation), `Float64Array`s for
   series, TypeScript declarations for every data type, and a worker with a promise-based client
-  for running the engine off the main thread. The engine is about 0.6 MB gzipped.
+  for running the engine off the main thread. The engine is about 0.7 MB gzipped.
 - Methods and validation pages (`docs/methods/`) for every model: definitions, conventions,
   references, how each is checked against independent implementations, and examples that run as
   tests.

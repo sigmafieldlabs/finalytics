@@ -1,6 +1,6 @@
 [package]
 name = "finalytics-perf"
-description = "Performance measurement for Finalytics: time- and money-weighted returns, periods, contribution and benchmark comparison."
+description = "Performance measurement for Finalytics: time- and money-weighted returns, periods, contribution, benchmark comparison and attribution."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,10 +19,12 @@ schema = ["dep:schemars", "finalytics-core/schema", "finalytics-ledger/schema"]
 [dependencies]
 finalytics-core = { workspace = true }
 finalytics-ledger = { workspace = true }
+libm = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 proptest = { workspace = true }
 
 [lints]

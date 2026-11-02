@@ -54,6 +54,10 @@ fn api() -> Value {
     add::<finalytics::ExcessReturn>(&mut g);
     add::<finalytics::Contribution>(&mut g);
     add::<finalytics::GroupContribution>(&mut g);
+    add::<finalytics::AttributionPeriod>(&mut g);
+    add::<finalytics::Attribution>(&mut g);
+    add::<finalytics::CurrencyAttributionPeriod>(&mut g);
+    add::<finalytics::CurrencyAttribution>(&mut g);
     // Risk.
     add::<risk::StatisticsOptions>(&mut g);
     add::<risk::Statistics>(&mut g);

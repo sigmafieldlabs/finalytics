@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import json
 import re
 from collections import defaultdict
@@ -188,3 +189,47 @@ def group_contributions(
     return [
         _types.GroupContribution(group=g, contribution=v[0], average_weight=v[1]) for g, v in sorted(totals.items())
     ]
+
+
+_SEGMENT_FIELDS = ("portfolio_weight", "portfolio_return", "benchmark_weight", "benchmark_return")
+
+
+def attribution_period(start: DateLike, end: DateLike, segments: Any) -> _types.AttributionPeriod:
+    """A period for :func:`brinson_fachler` from its dates and segments: a pandas DataFrame
+    indexed by segment name with the columns ``portfolio_weight``, ``portfolio_return``,
+    ``benchmark_weight`` and ``benchmark_return``, or a sequence of
+    :class:`~finalytics.types.Segment`."""
+    if hasattr(segments, "columns"):
+        missing = [c for c in _SEGMENT_FIELDS if c not in segments.columns]
+        if missing:
+            raise ValueError(f"segments needs the columns {', '.join(missing)}")
+        segments = [
+            _types.Segment(name=str(name), **{c: float(row[c]) for c in _SEGMENT_FIELDS})
+            for name, row in segments.iterrows()
+        ]
+    return _types.AttributionPeriod(
+        start=datetime.date.fromisoformat(_arrays.date(start)),
+        end=datetime.date.fromisoformat(_arrays.date(end)),
+        segments=list(segments),
+    )
+
+
+def brinson_fachler(
+    periods: Iterable[_types.AttributionPeriod], linking: _types.Linking = "carino"
+) -> _types.Attribution:
+    """Brinson–Fachler attribution of the excess return over the benchmark, by segment:
+    allocation, selection and interaction in each period, linked over the periods by Cariño's or
+    Menchero's coefficients so that they add up to the excess of the compounded returns."""
+    text = call(_finalytics.brinson_fachler, dumps(list(periods)), str(linking))
+    return loads(_types.Attribution, text)
+
+
+def karnosky_singer(
+    periods: Iterable[_types.CurrencyAttributionPeriod], linking: _types.Linking = "carino"
+) -> _types.CurrencyAttribution:
+    """Currency attribution by the method of Karnosky and Singer: market effects on each
+    segment's return in excess of its currency's cash return, currency effects on each currency's
+    return including its interest rate, and the residual the additive model leaves out, linked
+    over the periods."""
+    text = call(_finalytics.karnosky_singer, dumps(list(periods)), str(linking))
+    return loads(_types.CurrencyAttribution, text)
