@@ -31,6 +31,7 @@ impl Default for CsvOptions {
 
 /// An FX series read from CSV: units of `quote` per unit of `base`.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct FxSeries {
     /// The base currency.
     pub base: Currency,

@@ -290,9 +290,11 @@ pub(crate) fn holdings_risk(cx: &Context<'_>, valuation: &Valuation) -> Result<E
         .options
         .group_by
         .iter()
-        .map(|scheme| SchemeRisk {
-            scheme: scheme.clone(),
-            groups: group_risk(&decomposition, |k, _| group_of(cx.books, &keys[k], scheme)),
+        .map(|scheme| {
+            SchemeRisk::new(
+                scheme.clone(),
+                group_risk(&decomposition, |k, _| group_of(cx.books, &keys[k], scheme)),
+            )
         })
         .collect();
     let tracking_error = if cx.options.benchmark_weights.is_empty() {

@@ -18,7 +18,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `#[non_exhaustive]`, so that 1.x releases can add fields and variants without breaking code.
   Options start from `Default::default()` and have their fields set; `match` on an enumeration
   needs a wildcard arm. `Transaction::new` builds a transaction as `Instrument::new`,
-  `Account::new` and `Portfolio::new` already do for theirs. Python and JavaScript are unchanged.
+  `Account::new` and `Portfolio::new` already do for theirs; `SchemeRisk::new` builds a scheme's
+  risk. Python and JavaScript are unchanged.
 - The descriptions of the shared data types no longer name Rust methods or `None`; they read the
   same in the JSON Schema, the Python types and the TypeScript declarations.
 - The holdings report counts a lot or a gain as long-term when it has been held for more than

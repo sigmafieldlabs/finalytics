@@ -236,11 +236,22 @@ pub struct SchemeImpact {
 /// Risk by the groups of one classification scheme.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct SchemeRisk {
     /// The classification scheme.
     pub scheme: String,
     /// Each group's share of the volatility, in name order.
     pub groups: Vec<GroupRisk>,
+}
+
+impl SchemeRisk {
+    /// The risk of a classification scheme's groups, from the groups' shares in name order.
+    pub fn new(scheme: impl Into<String>, groups: Vec<GroupRisk>) -> Self {
+        SchemeRisk {
+            scheme: scheme.into(),
+            groups,
+        }
+    }
 }
 
 /// A portfolio's risk before or after a scenario.
