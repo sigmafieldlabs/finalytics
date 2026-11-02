@@ -18,9 +18,13 @@ def main() -> int:
     if package["version"] != version:
         problems.append(f"bindings/wasm/package.json has version {package['version']}, Cargo.toml has {version}")
 
+    # Each published package carries its own copy of the licences.
+    packages = [ROOT / "bindings/python", *sorted(p.parent for p in ROOT.glob("crates/*/Cargo.toml"))]
     for name in ("LICENSE-MIT", "LICENSE-APACHE"):
-        if (ROOT / name).read_bytes() != (ROOT / "bindings/python" / name).read_bytes():
-            problems.append(f"bindings/python/{name} differs from {name}")
+        for package in packages:
+            copy = package / name
+            if not copy.exists() or copy.read_bytes() != (ROOT / name).read_bytes():
+                problems.append(f"{copy.relative_to(ROOT)} is missing or differs from {name}")
 
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)

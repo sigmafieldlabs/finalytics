@@ -11,6 +11,8 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 readme = "../../README.md"
+# The tests are left out: they read the shared test data elsewhere in the repository.
+include = ["/src", "/LICENSE-*"]
 
 [features]
 # JSON Schema descriptions of the public types, for the bindings and documentation.
