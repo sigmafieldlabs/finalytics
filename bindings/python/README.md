@@ -57,25 +57,24 @@ The same example is in the READMEs of the
 [npm package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#quick-start), and it runs as a test, so the
 results shown are the engine's.
 
-## Books, performance and risk
+## Portfolios, performance and risk
 
 ```python
 import finalytics as fl
 
 portfolio = fl.Portfolio.from_csv(
-    instruments="instruments.csv", transactions="transactions.csv", base_currency="USD"
+    transactions="transactions.csv",
+    prices="prices.csv",
+    fx="fx.csv",
 )
-market = fl.MarketData.from_csv(prices="prices.csv", fx="fx.csv")
-books = portfolio.books(market)
 
-books.valuation("2026-10-30")          # positions and cash, valued in local and base currency
-performance = books.performance()      # daily time-weighted returns
+portfolio.valuation()                  # positions and cash, in local and base currency
+performance = portfolio.performance()  # daily time-weighted returns
 performance.period("YTD")              # cumulative and, for a year or more, annualised
 performance.contributions()            # by holding; they add up to the return
 
 fl.risk.statistics(performance.returns, risk_free_rate=0.03)
-fl.risk.tail_risk(performance.returns, confidence=0.99, method="cornish_fisher")
-fl.reports.performance(books)          # everything a performance screen shows, ready for charts
+portfolio.report(benchmark="SPY")      # all six reports, ready for charts
 ```
 
 Results are frozen dataclasses with documented fields (see `finalytics.types`). Invalid input

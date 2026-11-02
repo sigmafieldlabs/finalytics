@@ -18,9 +18,10 @@ what replaces each part of 0.9, and works one 0.9 example through in 1.0.
   data: the reports in `finalytics.reports` (Rust: `finalytics::reports`) carry the series,
   breakdowns, grids and tables a screen draws, and you draw them with the plotting library you
   prefer.
-- **Portfolios are kept from transactions.** A 1.0 portfolio is its instruments, accounts and
-  transactions, kept as books with tax lots and several currencies; performance is measured from
-  the books. The starting weights and scheduled cash flows of 0.9 become transactions.
+- **Two front doors.** `Assets` takes the prices or returns of things one might hold, for
+  statistics and optimisation, much as 0.9's `Portfolio` did. A 1.0 `Portfolio` is kept from
+  transactions, as books with tax lots and several currencies, and measures performance, risk and
+  attribution from them. The starting weights and scheduled cash flows of 0.9 become transactions.
 - **Packages.**
   - Rust: a workspace of crates behind the `finalytics` crate, with no async runtime and no
     Polars; the minimum supported Rust version is 1.88.
@@ -37,21 +38,21 @@ what replaces each part of 0.9, and works one 0.9 example through in 1.0.
 | 0.9 | 1.0 |
 | --- | --- |
 | `Screener`; the financials, options and news reports of `Ticker`; technical indicators | Removed, with no equivalent in the library |
-| Downloading prices (`Ticker`, `Tickers` or `Portfolio` with dates and an interval) | Load prices yourself: `MarketData` from CSV, mappings or pandas (Python), `formats::prices_from_csv` (Rust), `MarketData.fromCsv` (JavaScript) |
+| Downloading prices (`Ticker`, `Tickers` or `Portfolio` with dates and an interval) | Load prices yourself and pass them in: `Assets(prices)` from a pandas DataFrame or CSV, `Portfolio.from_csv(transactions=..., prices=...)` |
 | `KLINE` (open, high, low, close, volume) | One price series per instrument: a column per instrument in a CSV file, or a pandas Series |
-| `performance_stats()`; the performance report of `Ticker` | `risk.statistics` and `risk.relative_statistics` on returns; `books.performance()` for a portfolio kept from transactions |
-| `objective_function="max_sharpe"` | `opt.MaximumSharpe(risk_free_rate=...)` |
-| `"min_vol"`, `"min_var"` | `opt.MinimumVariance()`; both have the same optimum |
-| `"min_cvar"` | `opt.MinimumCvar(confidence=...)`, with the historical returns as scenarios |
-| `"risk_parity"` | `opt.RiskBudgeting()`; equal budgets unless you give others |
-| `"max_diversification"` | `opt.MaximumDiversification()` |
-| `"hierarchical_risk_parity"` | `opt.HierarchicalRiskParity()` |
-| `"max_return"`, `"max_sortino"`, `"min_drawdown"` | No direct equivalent. `opt.TargetVolatility` gives the largest expected return within a volatility limit, and `opt.MeanVariance` trades return against variance |
-| `asset_constraints`: (lower, upper) per symbol, in order | `opt.Constraints(bounds=...)` for every asset, `asset_bounds=[opt.AssetBound(asset=..., min=..., max=...)]` for particular ones |
-| `categorical_constraints`: a category per symbol and limits per category | `opt.Constraints(groups=[...])`: one `opt.GroupLimit(name=..., assets=[...], min=..., max=...)` per category |
-| `weights`, `rebalance_strategy`, `scheduled_cash_flows` (a simulated allocation with rebalancing and regular contributions) | Transactions (deposits, purchases, sales) in a `Portfolio`, kept as books. `books.rebalance(...)` proposes the trades back to target weights, with fees and tax-aware lot selection. 1.0 does not simulate a schedule: generate the transactions for the schedule you want |
+| `performance_stats()`; the performance report of `Ticker` | `Assets(prices).statistics()`; `risk.statistics` and `risk.relative_statistics` on returns; `portfolio.performance()` for a portfolio kept from transactions |
+| `objective_function="max_sharpe"` | `assets.optimise(objective="maximum_sharpe")`, with `risk_free_rate` given to `Assets` |
+| `"min_vol"`, `"min_var"` | `objective="minimum_variance"`; both have the same optimum |
+| `"min_cvar"` | `objective="minimum_cvar"`, with the historical returns as scenarios |
+| `"risk_parity"` | `objective="risk_budgeting"`; equal budgets unless you give others |
+| `"max_diversification"` | `objective="maximum_diversification"` |
+| `"hierarchical_risk_parity"` | `objective="hierarchical_risk_parity"` |
+| `"max_return"`, `"max_sortino"`, `"min_drawdown"` | No direct equivalent. `objective="target_volatility"` gives the largest expected return within a volatility limit, and `"mean_variance"` trades return against variance |
+| `asset_constraints`: (lower, upper) per symbol, in order | `bounds=(min, max)` for every asset, `asset_bounds={"SPY": (min, max)}` for particular ones |
+| `categorical_constraints`: a category per symbol and limits per category | `groups={"Defensive": (["AGG", "GLD"], min, max)}`: one entry per category |
+| `weights`, `rebalance_strategy`, `scheduled_cash_flows` (a simulated allocation with rebalancing and regular contributions) | Transactions (deposits, purchases, sales) in a `Portfolio`. `portfolio.rebalance(...)` proposes the trades back to target weights, with fees and tax-aware lot selection. 1.0 does not simulate a schedule: generate the transactions for the schedule you want |
 | `update_dates(...)` for out-of-sample evaluation | Compute the portfolio's returns over the later period from its weights and the assets' returns, then `risk.statistics` |
-| `report("optimization")`, `report("performance")` | `finalytics.reports`: holdings, overview, performance, risk, attribution and scenarios, as data |
+| `report("optimization")`, `report("performance")` | `portfolio.report()`: overview, holdings, performance, risk, attribution and scenarios, as data |
 
 The methods pages in [docs/methods](methods) define each calculation and its conventions.
 
@@ -80,15 +81,13 @@ portfolio = Portfolio(
 portfolio.report("optimization")
 ```
 
-In 1.0, the prices come in as data, the returns and their covariance are estimated explicitly, and
-the solution is returned as numbers. Here the prices are month-end closes, and the defensive
-assets must make up 60% to 90% of the portfolio:
+In 1.0, the prices come in as data and the solution is returned as numbers. Here the prices are
+month-end closes, and the defensive assets must make up 60% to 90% of the portfolio:
 
 ```python
 >>> import io
 >>> import pandas as pd
 >>> import finalytics as fl
->>> from finalytics import opt
 >>> prices = pd.read_csv(io.StringIO("""\
 ... date,SPY,AGG,GLD
 ... 2025-10-31,100.00,100.00,100.00
@@ -105,28 +104,24 @@ assets must make up 60% to 90% of the portfolio:
 ... 2026-09-30,106.62,100.09,107.14
 ... 2026-10-31,108.11,103.29,107.03
 ... """), index_col="date", parse_dates=True)
->>> returns = prices.pct_change().dropna()
->>> estimate = fl.risk.covariance(returns, method="ledoit_wolf")
->>> problem = opt.Problem.from_covariance(
-...     fl.risk.scaled(estimate.matrix, 12),  # annualised
-...     expected_returns=returns.mean() * 12,
-...     constraints=opt.Constraints(
-...         bounds=opt.Bound(min=0.1, max=0.6),
-...         groups=[opt.GroupLimit(name="Defensive", assets=["AGG", "GLD"], min=0.6, max=0.9)],
-...     ),
+>>> assets = fl.Assets(prices, risk_free_rate=0.02)
+>>> result = assets.optimise(
+...     objective="maximum_sharpe",
+...     bounds=(0.1, 0.6),
+...     groups={"Defensive": (["AGG", "GLD"], 0.6, 0.9)},
 ... )
->>> solution = problem.solve(opt.MaximumSharpe(risk_free_rate=0.02))
->>> solution.status
+>>> result.status
 'optimal'
->>> dict(zip(solution.labels, [round(w, 3) for w in solution.weights]))
+>>> {asset: round(w, 3) for asset, w in result.weights.items()}
 {'SPY': 0.4, 'AGG': 0.207, 'GLD': 0.393}
->>> round(solution.expected_return, 4), round(solution.volatility, 4)
+>>> round(result.expected_return, 4), round(result.volatility, 4)
 (0.0693, 0.0651)
 
 ```
 
-The defensive group's limit binds: without it, the same returns give 44% in SPY, as in the
-README's quick start.
+`Assets` detects the monthly frequency from the dates, annualises the mean returns and the
+Ledoit–Wolf covariance by 12, and optimises over them. The defensive group's limit binds: without
+it, the same returns give 44% in SPY, as in the README's quick start.
 
 The same steps work in Rust and JavaScript; the READMEs of the
 [Rust crate](https://github.com/sigmafieldlabs/finalytics#quick-start) and the

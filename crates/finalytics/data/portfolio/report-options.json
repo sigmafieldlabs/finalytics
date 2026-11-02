@@ -1,0 +1,841 @@
+{
+  "group_by": [
+    "asset_class",
+    "region"
+  ],
+  "benchmark": "BENCH",
+  "risk_free_rate": 0.03,
+  "attribution": {
+    "scheme": "asset_class",
+    "periods": [
+      {
+        "start": "2023-11-01",
+        "end": "2023-11-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0150292413
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.012244898
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0204575214
+          }
+        ]
+      },
+      {
+        "start": "2023-11-30",
+        "end": "2023-12-29",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0216132897
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0254692149
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0314900467
+          }
+        ]
+      },
+      {
+        "start": "2023-12-29",
+        "end": "2024-01-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.023757208
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0159585282
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0600411292
+          }
+        ]
+      },
+      {
+        "start": "2024-01-31",
+        "end": "2024-02-29",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0047149118
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0222111056
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0458576574
+          }
+        ]
+      },
+      {
+        "start": "2024-02-29",
+        "end": "2024-03-29",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0033409537
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0072949007
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0292797073
+          }
+        ]
+      },
+      {
+        "start": "2024-03-29",
+        "end": "2024-04-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0635206697
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0145244727
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0390583802
+          }
+        ]
+      },
+      {
+        "start": "2024-04-30",
+        "end": "2024-05-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.005849868
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.023924894
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0462836447
+          }
+        ]
+      },
+      {
+        "start": "2024-05-31",
+        "end": "2024-06-28",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0209587174
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0033137863
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0154176061
+          }
+        ]
+      },
+      {
+        "start": "2024-06-28",
+        "end": "2024-07-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0255421017
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0119359229
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0023728042
+          }
+        ]
+      },
+      {
+        "start": "2024-07-31",
+        "end": "2024-08-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0260126064
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0016554578
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0353453918
+          }
+        ]
+      },
+      {
+        "start": "2024-08-30",
+        "end": "2024-09-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0154629873
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0108683801
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0120860394
+          }
+        ]
+      },
+      {
+        "start": "2024-09-30",
+        "end": "2024-10-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0432929421
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0015857913
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0401106423
+          }
+        ]
+      },
+      {
+        "start": "2024-10-31",
+        "end": "2024-11-29",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.1057981929
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.002744353
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0722093804
+          }
+        ]
+      },
+      {
+        "start": "2024-11-29",
+        "end": "2024-12-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0392747786
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0053105419
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0097042532
+          }
+        ]
+      },
+      {
+        "start": "2024-12-31",
+        "end": "2025-01-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0409822342
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0065492807
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0268026698
+          }
+        ]
+      },
+      {
+        "start": "2025-01-31",
+        "end": "2025-02-28",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0405063681
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0222933333
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0331959146
+          }
+        ]
+      },
+      {
+        "start": "2025-02-28",
+        "end": "2025-03-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.1758152631
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0252919485
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0792371434
+          }
+        ]
+      },
+      {
+        "start": "2025-03-31",
+        "end": "2025-04-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0275239196
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0240498175
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0465364718
+          }
+        ]
+      },
+      {
+        "start": "2025-04-30",
+        "end": "2025-05-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.06251327
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0140814081
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0392707309
+          }
+        ]
+      },
+      {
+        "start": "2025-05-30",
+        "end": "2025-06-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0027183171
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.023728466
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0037870234
+          }
+        ]
+      },
+      {
+        "start": "2025-06-30",
+        "end": "2025-07-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0190800513
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.025563404
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0427973578
+          }
+        ]
+      },
+      {
+        "start": "2025-07-31",
+        "end": "2025-08-29",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0164804312
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0239422762
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0298961802
+          }
+        ]
+      },
+      {
+        "start": "2025-08-29",
+        "end": "2025-09-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0511468725
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.017618407
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0755466016
+          }
+        ]
+      },
+      {
+        "start": "2025-09-30",
+        "end": "2025-10-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0666963375
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0370527207
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0191035563
+          }
+        ]
+      },
+      {
+        "start": "2025-10-31",
+        "end": "2025-11-28",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0464574192
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0143936301
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0075820689
+          }
+        ]
+      },
+      {
+        "start": "2025-11-28",
+        "end": "2025-12-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0761454751
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0327602898
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0945734313
+          }
+        ]
+      },
+      {
+        "start": "2025-12-31",
+        "end": "2026-01-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0116930948
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.001179825
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0228206076
+          }
+        ]
+      },
+      {
+        "start": "2026-01-30",
+        "end": "2026-02-27",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0146204055
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0324835122
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0098678142
+          }
+        ]
+      },
+      {
+        "start": "2026-02-27",
+        "end": "2026-03-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0416621017
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": -0.0218789208
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0004211519
+          }
+        ]
+      },
+      {
+        "start": "2026-03-31",
+        "end": "2026-04-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0369679761
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0403225806
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0685766431
+          }
+        ]
+      },
+      {
+        "start": "2026-04-30",
+        "end": "2026-05-29",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.000906507
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0184344867
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0089024074
+          }
+        ]
+      },
+      {
+        "start": "2026-05-29",
+        "end": "2026-06-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0048214851
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0249222129
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0406682235
+          }
+        ]
+      },
+      {
+        "start": "2026-06-30",
+        "end": "2026-07-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0002288022
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0043863657
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0045444607
+          }
+        ]
+      },
+      {
+        "start": "2026-07-31",
+        "end": "2026-08-31",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0337016164
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.0394989653
+          }
+        ]
+      },
+      {
+        "start": "2026-08-31",
+        "end": "2026-09-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": -0.0476997539
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0194654717
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": -0.066321225
+          }
+        ]
+      },
+      {
+        "start": "2026-09-30",
+        "end": "2026-10-30",
+        "segments": [
+          {
+            "name": "Equity",
+            "benchmark_weight": 0.55,
+            "benchmark_return": 0.0179952932
+          },
+          {
+            "name": "Fixed income",
+            "benchmark_weight": 0.35,
+            "benchmark_return": 0.0078343089
+          },
+          {
+            "name": "Real assets",
+            "benchmark_weight": 0.1,
+            "benchmark_return": 0.0126026699
+          }
+        ]
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "Equity sell-off",
+      "scenario": {
+        "type": "shocks",
+        "shocks": {
+          "groups": [
+            {
+              "scheme": "asset_class",
+              "value": "Equity",
+              "shock": -0.25
+            },
+            {
+              "scheme": "asset_class",
+              "value": "Real assets",
+              "shock": -0.1
+            },
+            {
+              "scheme": "asset_class",
+              "value": "Fixed income",
+              "shock": 0.03
+            }
+          ]
+        }
+      },
+      "stress": {
+        "volatility_scale": 1.5,
+        "correlation_shift": 0.3
+      }
+    },
+    {
+      "name": "Rates up 1%",
+      "scenario": {
+        "type": "shocks",
+        "shocks": {
+          "groups": [
+            {
+              "scheme": "asset_class",
+              "value": "Fixed income",
+              "shock": -0.06
+            },
+            {
+              "scheme": "asset_class",
+              "value": "Equity",
+              "shock": -0.05
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Dollar up 10%",
+      "scenario": {
+        "type": "shocks",
+        "shocks": {
+          "currencies": {
+            "EUR": -0.1
+          }
+        }
+      }
+    },
+    {
+      "name": "Spring 2025 replay",
+      "scenario": {
+        "type": "historical",
+        "window": {
+          "start": "2025-02-28",
+          "end": "2025-04-08"
+        }
+      }
+    }
+  ]
+}

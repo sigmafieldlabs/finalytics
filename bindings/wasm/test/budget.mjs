@@ -4,7 +4,7 @@
 //   cargo run --release -p finalytics-bench --bin budgets -- --write-document large.json
 //   node bindings/wasm/test/budget.mjs large.json
 //
-// The time measured is `new Books(portfolio, market)` from JavaScript objects, as an application
+// The time measured is `new Portfolio(portfolio, market)` from JavaScript objects, as an application
 // would call it: it includes reading the 100,000 transactions out of JavaScript. Each
 // measurement is the median of five runs.
 import { readFile } from "node:fs/promises";
@@ -24,7 +24,7 @@ const document = fl.readDocument(await readFile(path, "utf8"));
 const times = [];
 for (let run = 0; run < 5; run++) {
   const started = performance.now();
-  const books = new fl.Books(document.portfolio, document.market);
+  const books = new fl.Portfolio(document.portfolio, document.market);
   times.push((performance.now() - started) / 1000);
   books.free();
 }

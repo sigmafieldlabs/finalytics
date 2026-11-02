@@ -12,7 +12,13 @@ type Functions = {
   [K in keyof typeof finalytics as (typeof finalytics)[K] extends (...args: never[]) => unknown ? K : never]: (typeof finalytics)[K];
 };
 type Methods<T> = { [K in keyof T as T[K] extends (...args: never[]) => unknown ? K : never]: T[K] };
-type Remote<R> = R extends finalytics.Performance ? RemotePerformance : R extends finalytics.Books ? RemoteBooks : R;
+type Remote<R> = R extends finalytics.Performance
+  ? RemotePerformance
+  : R extends finalytics.Portfolio
+    ? RemotePortfolio
+    : R extends finalytics.Assets
+      ? RemoteAssets
+      : R;
 
 /** An object held in the worker. */
 export interface RemoteObject<T> {
@@ -28,15 +34,20 @@ export interface RemoteObject<T> {
   free(): Promise<void>;
 }
 
-export type RemoteBooks = RemoteObject<finalytics.Books>;
+export type RemotePortfolio = RemoteObject<finalytics.Portfolio>;
+export type RemoteAssets = RemoteObject<finalytics.Assets>;
 export type RemotePerformance = RemoteObject<finalytics.Performance>;
 
 /** The engine running in a worker. */
 export interface Engine {
   /** Calls an exported function in the worker. */
   call<K extends keyof Functions>(name: K, ...args: Parameters<Functions[K]>): Promise<ReturnType<Functions[K]>>;
-  /** Keeps the books of `portfolio` in the worker, with market data in the document format. */
-  books(portfolio: finalytics.Portfolio, market?: finalytics.DocumentMarketData): Promise<RemoteBooks>;
+  /** A portfolio in the worker, from its records and market data in the document format. */
+  portfolio(data: finalytics.PortfolioData, market?: finalytics.DocumentMarketData): Promise<RemotePortfolio>;
+  /** A portfolio in the worker, from the CSV text of its files. */
+  portfolioFromCsv(files: finalytics.PortfolioFiles): Promise<RemotePortfolio>;
+  /** Assets in the worker, from their prices. */
+  assets(prices: finalytics.PriceTable, options?: finalytics.AssetsOptions): Promise<RemoteAssets>;
   /** Stops the worker. */
   terminate(): unknown;
 }

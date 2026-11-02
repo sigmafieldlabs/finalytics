@@ -391,6 +391,57 @@
       ],
       "description": "How well a factor model explains one asset's returns over the estimation period."
     },
+    "AssetGroup": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets in the group."
+        },
+        "min": {
+          "type": "number",
+          "format": "double",
+          "description": "The smallest total weight."
+        },
+        "max": {
+          "type": "number",
+          "format": "double",
+          "description": "The largest total weight."
+        }
+      },
+      "required": [
+        "assets",
+        "min",
+        "max"
+      ],
+      "description": "A group of assets whose total weight is limited."
+    },
+    "AssetStatistics": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "The asset."
+        },
+        "statistics": {
+          "$ref": "#/$defs/Statistics",
+          "description": "Its statistics, annualised with the assets' periods per year and risk-free rate."
+        },
+        "tail_risk": {
+          "$ref": "#/$defs/TailRisk",
+          "description": "Its value at risk and expected shortfall over one period at 95%, from history."
+        }
+      },
+      "required": [
+        "asset",
+        "statistics",
+        "tail_risk"
+      ],
+      "description": "One asset's statistics, with its value at risk and expected shortfall at 95% (historical)."
+    },
     "Attribution": {
       "type": "object",
       "properties": {
@@ -3944,6 +3995,240 @@
       ],
       "description": "What an optimisation seeks."
     },
+    "ObjectiveName": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "minimum_variance",
+          "description": "The smallest variance."
+        },
+        {
+          "type": "string",
+          "const": "mean_variance",
+          "description": "The largest expected return less `risk_aversion / 2` times the variance."
+        },
+        {
+          "type": "string",
+          "const": "robust_mean_variance",
+          "description": "Mean–variance against the worst expected returns within `uncertainty`."
+        },
+        {
+          "type": "string",
+          "const": "target_return",
+          "description": "The smallest variance with an expected return of at least `target`."
+        },
+        {
+          "type": "string",
+          "const": "target_volatility",
+          "description": "The largest expected return with a volatility of at most `target`."
+        },
+        {
+          "type": "string",
+          "const": "maximum_sharpe",
+          "description": "The largest Sharpe ratio."
+        },
+        {
+          "type": "string",
+          "const": "maximum_diversification",
+          "description": "The largest diversification ratio."
+        },
+        {
+          "type": "string",
+          "const": "minimum_cvar",
+          "description": "The smallest conditional value at risk of the periods' returns, at `confidence`."
+        },
+        {
+          "type": "string",
+          "const": "risk_budgeting",
+          "description": "Each asset's share of the risk equal to its budget (equal shares without `budgets`)."
+        },
+        {
+          "type": "string",
+          "const": "hierarchical_risk_parity",
+          "description": "Hierarchical risk parity."
+        }
+      ],
+      "description": "What an optimisation seeks, by name. The parameters some objectives need are given beside\nit, in `OptimiseOptions`."
+    },
+    "OptimisationResult": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/SolveStatus",
+          "description": "How the optimisation ended."
+        },
+        "weights": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights by asset, absent when there is no solution."
+        },
+        "expected_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annual expected return of the weights."
+        },
+        "volatility": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annual volatility of the weights."
+        },
+        "sharpe_ratio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`(expected_return - risk_free_rate) / volatility`."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free rate used."
+        },
+        "solution": {
+          "$ref": "#/$defs/Solution",
+          "description": "The solver's solution, with the objective, its value and the work done."
+        }
+      },
+      "required": [
+        "status",
+        "risk_free_rate",
+        "solution"
+      ],
+      "description": "The result of an optimisation over assets: the weights by asset, with their expected return,\nvolatility and Sharpe ratio, and the solver's full solution."
+    },
+    "OptimiseOptions": {
+      "type": "object",
+      "properties": {
+        "objective": {
+          "$ref": "#/$defs/ObjectiveName",
+          "description": "What to optimise: the largest Sharpe ratio by default.",
+          "default": "maximum_sharpe"
+        },
+        "risk_free_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annual risk-free rate for the Sharpe ratio; by default the assets' own.",
+          "default": null
+        },
+        "target": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The annual expected return (`target_return`) or volatility (`target_volatility`) to aim\nfor.",
+          "default": null
+        },
+        "risk_aversion": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The weight on variance, for mean–variance objectives.",
+          "default": null
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReturnUncertainty"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The uncertainty of the expected returns, for robust mean–variance.",
+          "default": null
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The confidence of the conditional value at risk: 0.95 by default.",
+          "default": null
+        },
+        "budgets": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The risk budgets, by asset, for risk budgeting; equal without them.",
+          "default": null
+        },
+        "linkage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Linkage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How hierarchical risk parity joins clusters: single linkage by default.",
+          "default": null
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Bound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The smallest and largest weight of every asset: 0 and 1 by default.",
+          "default": null
+        },
+        "asset_bounds": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Bound"
+          },
+          "description": "Bounds for particular assets, which take the place of `bounds` for them.",
+          "default": {}
+        },
+        "groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/AssetGroup"
+          },
+          "description": "Limits on the total weight of groups of assets, by group name.",
+          "default": {}
+        },
+        "expected_returns": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Annual expected returns by asset, in place of the historical means.",
+          "default": {}
+        }
+      },
+      "description": "What to optimise, and the limits on the weights. Everything is optional: by default the\nportfolio with the largest Sharpe ratio, fully invested and long only."
+    },
     "OverviewReport": {
       "type": "object",
       "properties": {
@@ -4420,7 +4705,7 @@
       ],
       "description": "Returns over one reporting period."
     },
-    "Portfolio": {
+    "PortfolioData": {
       "type": "object",
       "properties": {
         "base_currency": {
@@ -4455,7 +4740,7 @@
         "instruments",
         "transactions"
       ],
-      "description": "Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,\ninstruments and transactions."
+      "description": "A portfolio's records: its base currency, accounts, instruments and transactions. With market\ndata, they are everything Finalytics needs to keep the portfolio's books."
     },
     "PortfolioDocument": {
       "type": "object",
@@ -4473,7 +4758,7 @@
           "const": 1
         },
         "portfolio": {
-          "$ref": "#/$defs/Portfolio",
+          "$ref": "#/$defs/PortfolioData",
           "description": "The portfolio."
         },
         "market": {
@@ -4514,6 +4799,56 @@
         "volatility"
       ],
       "description": "A portfolio's expected return and volatility, for a point on a risk–return chart."
+    },
+    "PortfolioReport": {
+      "type": "object",
+      "properties": {
+        "overview": {
+          "$ref": "#/$defs/OverviewReport",
+          "description": "Value, returns and risk at a glance."
+        },
+        "holdings": {
+          "$ref": "#/$defs/HoldingsReport",
+          "description": "Holdings, lots, income and realised gains."
+        },
+        "performance": {
+          "$ref": "#/$defs/PerformanceReport",
+          "description": "Returns over periods, contribution and flows."
+        },
+        "risk": {
+          "$ref": "#/$defs/RiskReport",
+          "description": "Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier."
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttributionReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Attribution against the benchmark."
+        },
+        "scenarios": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenariosReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The effect of scenarios on value and risk."
+        }
+      },
+      "required": [
+        "overview",
+        "holdings",
+        "performance",
+        "risk"
+      ],
+      "description": "The six reports on a portfolio. The attribution report needs the benchmark's segments, and\nthe scenarios report needs scenarios, in the report options; without them, they are absent."
     },
     "Position": {
       "type": "object",
@@ -4622,6 +4957,45 @@
         "unrealised_base"
       ],
       "description": "A position valued on a date."
+    },
+    "PriceTable": {
+      "type": "object",
+      "properties": {
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The dates, in increasing order."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets, one per column."
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "description": "The prices of each asset, one per date; absent where there is no price."
+        }
+      },
+      "required": [
+        "dates",
+        "labels",
+        "columns"
+      ],
+      "description": "The prices of several assets on the same dates, one column per asset. A missing price is\nwritten as absent (`null`)."
     },
     "Prior": {
       "oneOf": [

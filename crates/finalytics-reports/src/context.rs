@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 
 use finalytics_core::{Currency, Date, Decimal, Error, Result, TimeSeries, ValidationReport};
 use finalytics_formats::PortfolioDocument;
-use finalytics_ledger::{Books, HoldingKey, InstrumentId, MarketData, Portfolio};
+use finalytics_ledger::{Books, HoldingKey, InstrumentId, MarketData, PortfolioData};
 use finalytics_perf::FlowTiming;
 use finalytics_risk::{CovarianceMethod, StatisticsOptions};
 
@@ -129,7 +129,7 @@ pub struct Source {
 
 impl Source {
     /// The source of reports on `portfolio` with `market`.
-    pub fn of(portfolio: &Portfolio, market: &MarketData) -> Source {
+    pub fn of(portfolio: &PortfolioData, market: &MarketData) -> Source {
         let mut document = PortfolioDocument::new(portfolio.clone());
         document.market = Some(market.clone());
         let digest = Sha256::digest(document.to_json().as_bytes());

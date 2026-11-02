@@ -5,15 +5,15 @@ import { close, engine, json, text } from "./setup.mjs";
 
 const fl = await engine();
 const f = await json("crates/finalytics/tests/fixtures/households.json");
-const portfolio = fl.portfolioFromCsv(
-  await text("tests/scenario/instruments.csv"),
-  await text("tests/scenario/transactions.csv"),
-  "USD",
-  undefined,
-  await text("tests/scenario/accounts.csv"),
-);
-const market = fl.MarketData.fromCsv(await text("tests/scenario/prices.csv"), await text("tests/scenario/fx.csv"));
-const books = new fl.Books(portfolio, market);
+const books = fl.Portfolio.fromCsv({
+  instruments: await text("tests/scenario/instruments.csv"),
+  transactions: await text("tests/scenario/transactions.csv"),
+  accounts: await text("tests/scenario/accounts.csv"),
+  prices: await text("tests/scenario/prices.csv"),
+  fx: await text("tests/scenario/fx.csv"),
+  base_currency: "USD",
+});
+const portfolio = books.data;
 
 function compare(found, expected) {
   assert.deepEqual(found.accounts, expected.accounts);

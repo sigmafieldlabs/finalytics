@@ -172,6 +172,26 @@ export interface AssetFit {
   r_squared?: number | null;
 }
 
+/** A group of assets whose total weight is limited. */
+export interface AssetGroup {
+  /** The assets in the group. */
+  assets: string[];
+  /** The smallest total weight. */
+  min: number;
+  /** The largest total weight. */
+  max: number;
+}
+
+/** One asset's statistics, with its value at risk and expected shortfall at 95% (historical). */
+export interface AssetStatistics {
+  /** The asset. */
+  asset: string;
+  /** Its statistics, annualised with the assets' periods per year and risk-free rate. */
+  statistics: Statistics;
+  /** Its value at risk and expected shortfall over one period at 95%, from history. */
+  tail_risk: TailRisk;
+}
+
 /** Brinson–Fachler attribution over one or more periods. */
 export interface Attribution {
   /** How the periods were linked. */
@@ -1503,6 +1523,67 @@ export type Objective =
     linkage?: Linkage;
   };
 
+/**
+ * What an optimisation seeks, by name. The parameters some objectives need are given beside
+ * it, in `OptimiseOptions`.
+ */
+export type ObjectiveName = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "risk_budgeting" | "hierarchical_risk_parity";
+
+/**
+ * The result of an optimisation over assets: the weights by asset, with their expected return,
+ * volatility and Sharpe ratio, and the solver's full solution.
+ */
+export interface OptimisationResult {
+  /** How the optimisation ended. */
+  status: SolveStatus;
+  /** The weights by asset, absent when there is no solution. */
+  weights?: Record<string, number> | null;
+  /** The annual expected return of the weights. */
+  expected_return?: number | null;
+  /** The annual volatility of the weights. */
+  volatility?: number | null;
+  /** `(expected_return - risk_free_rate) / volatility`. */
+  sharpe_ratio?: number | null;
+  /** The annual risk-free rate used. */
+  risk_free_rate: number;
+  /** The solver's solution, with the objective, its value and the work done. */
+  solution: Solution;
+}
+
+/**
+ * What to optimise, and the limits on the weights. Everything is optional: by default the
+ * portfolio with the largest Sharpe ratio, fully invested and long only.
+ */
+export interface OptimiseOptions {
+  /** What to optimise: the largest Sharpe ratio by default. */
+  objective?: ObjectiveName;
+  /** The annual risk-free rate for the Sharpe ratio; by default the assets' own. */
+  risk_free_rate?: number | null;
+  /**
+   * The annual expected return (`target_return`) or volatility (`target_volatility`) to aim
+   * for.
+   */
+  target?: number | null;
+  /** The weight on variance, for mean–variance objectives. */
+  risk_aversion?: number | null;
+  /** The uncertainty of the expected returns, for robust mean–variance. */
+  uncertainty?: ReturnUncertainty | null;
+  /** The confidence of the conditional value at risk: 0.95 by default. */
+  confidence?: number | null;
+  /** The risk budgets, by asset, for risk budgeting; equal without them. */
+  budgets?: Record<string, number> | null;
+  /** How hierarchical risk parity joins clusters: single linkage by default. */
+  linkage?: Linkage | null;
+  /** The smallest and largest weight of every asset: 0 and 1 by default. */
+  bounds?: Bound | null;
+  /** Bounds for particular assets, which take the place of `bounds` for them. */
+  asset_bounds?: Record<string, Bound>;
+  /** Limits on the total weight of groups of assets, by group name. */
+  groups?: Record<string, AssetGroup>;
+  /** Annual expected returns by asset, in place of the historical means. */
+  expected_returns?: Record<string, number>;
+}
+
 /** The overview report. */
 export interface OverviewReport {
   /** Where the numbers come from. */
@@ -1653,10 +1734,10 @@ export interface PeriodRow {
 }
 
 /**
- * Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
- * instruments and transactions.
+ * A portfolio's records: its base currency, accounts, instruments and transactions. With market
+ * data, they are everything Finalytics needs to keep the portfolio's books.
  */
-export interface Portfolio {
+export interface PortfolioData {
   /** The currency results are reported in. */
   base_currency: Currency;
   /** The accounts. */
@@ -1677,7 +1758,7 @@ export interface PortfolioDocument {
   /** The version of the format, 1 for this release. */
   format_version: 1;
   /** The portfolio. */
-  portfolio: Portfolio;
+  portfolio: PortfolioData;
   /** Market data stored with the portfolio. */
   market?: DocumentMarketData | null;
 }
@@ -1688,6 +1769,25 @@ export interface PortfolioPoint {
   expected_return: number;
   /** The annualised volatility. */
   volatility: number;
+}
+
+/**
+ * The six reports on a portfolio. The attribution report needs the benchmark's segments, and
+ * the scenarios report needs scenarios, in the report options; without them, they are absent.
+ */
+export interface PortfolioReport {
+  /** Value, returns and risk at a glance. */
+  overview: OverviewReport;
+  /** Holdings, lots, income and realised gains. */
+  holdings: HoldingsReport;
+  /** Returns over periods, contribution and flows. */
+  performance: PerformanceReport;
+  /** Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier. */
+  risk: RiskReport;
+  /** Attribution against the benchmark. */
+  attribution?: AttributionReport | null;
+  /** The effect of scenarios on value and risk. */
+  scenarios?: ScenariosReport | null;
 }
 
 /** A position: the open lots of one instrument in one account, added up. */
@@ -1732,6 +1832,19 @@ export interface PositionValue {
   unrealised_local: Decimal;
   /** `market_value_base - cost_base`, which includes the currency effect. */
   unrealised_base: Decimal;
+}
+
+/**
+ * The prices of several assets on the same dates, one column per asset. A missing price is
+ * written as absent (`null`).
+ */
+export interface PriceTable {
+  /** The dates, in increasing order. */
+  dates: Date[];
+  /** The assets, one per column. */
+  labels: string[];
+  /** The prices of each asset, one per date; absent where there is no price. */
+  columns: ((number | null)[])[];
 }
 
 /** The prior expected returns of the Black–Litterman model. */

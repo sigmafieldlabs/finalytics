@@ -80,8 +80,8 @@ fn reads_transactions_of_each_shape() {
 #[test]
 fn a_portfolio_from_csv_builds_books() {
     let portfolio = portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         TRANSACTIONS,
         None,
         CsvOptions::default(),
@@ -130,12 +130,56 @@ fn missing_columns_are_reported_once() {
 }
 
 #[test]
+fn a_portfolio_needs_only_dated_transactions() {
+    let csv = "date,type,instrument,quantity,price,amount,currency
+2026-01-02,deposit,,,,10000,EUR
+2026-01-02,buy,ASML,5,640,,
+2026-03-02,dividend,ASML,,,8.10,EUR
+2026-01-05,buy,VOO,10,500,,
+2026-01-05,dividend,VOO,,,1.50,USD
+";
+    let portfolio = portfolio_from_csv(None, None, csv, None, CsvOptions::default()).unwrap();
+    assert_eq!(portfolio.base_currency, Currency::EUR);
+    let ids: Vec<&str> = portfolio
+        .transactions
+        .iter()
+        .map(|t| t.id.as_str())
+        .collect();
+    assert_eq!(ids, ["t1", "t2", "t3", "t4", "t5"]);
+    assert!(
+        portfolio
+            .transactions
+            .iter()
+            .all(|t| t.account.as_str() == "main")
+    );
+    let currencies: Vec<(&str, Currency)> = portfolio
+        .instruments
+        .iter()
+        .map(|i| (i.id.as_str(), i.currency))
+        .collect();
+    assert_eq!(
+        currencies,
+        [("ASML", Currency::EUR), ("VOO", Currency::USD)]
+    );
+    let without = "date,type,instrument,quantity,price\n2026-01-02,buy,VOO,1,500\n";
+    let report = report(portfolio_from_csv(
+        None,
+        None,
+        without,
+        None,
+        CsvOptions::default(),
+    ));
+    assert_eq!(paths(&report).len(), 1);
+    assert!(paths(&report)[0].starts_with("base_currency:"));
+}
+
+#[test]
 fn structural_problems_come_back_under_their_file() {
     let transactions =
         "id,account,trade_date,type,instrument,quantity,price\nt1,main,2026-01-02,buy,MSFT,1,10\n";
     let report = report(portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         transactions,
         None,
         CsvOptions::default(),
@@ -153,8 +197,8 @@ fn accounts_with_classifications() {
                     isa,Stocks and shares ISA,,Alice,ISA\n\
                     spare,,,Bob,\n";
     let portfolio = portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         TRANSACTIONS,
         Some(accounts),
         CsvOptions::default(),
@@ -178,8 +222,8 @@ fn accounts_with_classifications() {
 
     // With an accounts file, a transaction in an account it does not list is an error.
     let unlisted = report(portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         TRANSACTIONS,
         Some("id\nisa\n"),
         CsvOptions::default(),
@@ -260,8 +304,8 @@ fn fx_rates_in_long_and_wide_layouts() {
 #[test]
 fn documents_round_trip_with_their_market_data() {
     let portfolio = portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         TRANSACTIONS,
         None,
         CsvOptions::default(),

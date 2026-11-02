@@ -39,7 +39,7 @@ fn daily(start: &str, values: &[&str]) -> TimeSeries<Decimal> {
 }
 
 fn setup() -> (Books, MarketData, Vec<Date>) {
-    let mut portfolio = Portfolio::new(Currency::USD);
+    let mut portfolio = PortfolioData::new(Currency::USD);
     portfolio.accounts = vec![Account::new(AccountId::new("main").unwrap())];
     portfolio.instruments = vec![
         Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD)

@@ -10,14 +10,14 @@ HOUSEHOLDS = json.loads((FIXTURES / "finalytics/tests/fixtures/households.json")
 
 
 @pytest.fixture(scope="module")
-def household_books(market) -> fl.Books:
-    portfolio = fl.Portfolio.from_csv(
+def household_books(market) -> fl.Portfolio:
+    portfolio = fl.PortfolioData.from_csv(
         instruments=SCENARIO / "instruments.csv",
         transactions=SCENARIO / "transactions.csv",
         accounts=SCENARIO / "accounts.csv",
         base_currency="USD",
     )
-    return portfolio.books(market)
+    return fl.Portfolio(portfolio, market)
 
 
 def compare(found, expected):
@@ -28,7 +28,7 @@ def compare(found, expected):
 
 
 def test_accounts_from_csv_keep_their_classifications(household_books):
-    accounts = household_books.portfolio.accounts
+    accounts = household_books.data.accounts
     assert [a.id for a in accounts] == ["main", "isa"]
     assert accounts[1].classifications == {"owner": "Alice", "wrapper": "ISA"}
     assert accounts[0].name == "Brokerage account"

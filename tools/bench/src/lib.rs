@@ -9,7 +9,7 @@ use finalytics::opt::{Constraints, GroupLimit, Problem};
 use finalytics::risk::{Matrix, ReturnsTable};
 use finalytics::{
     Account, AccountId, Currency, Date, Decimal, Instrument, InstrumentId, InstrumentKind,
-    LotMethod, MarketData, Money, Portfolio, TimeSeries, Transaction, TransactionId,
+    LotMethod, MarketData, Money, PortfolioData, TimeSeries, Transaction, TransactionId,
     TransactionKind,
 };
 
@@ -75,7 +75,7 @@ fn decimal(value: f64, places: u32) -> Decimal {
 /// A portfolio of the budget's size and the market data to value it.
 pub struct LargePortfolio {
     /// The portfolio.
-    pub portfolio: Portfolio,
+    pub portfolio: PortfolioData,
     /// Daily FX rates and month-end prices for every instrument.
     pub market: MarketData,
     /// The month ends of the ten years, for valuation.
@@ -247,7 +247,7 @@ pub fn large_portfolio(instruments: usize, transactions: usize, years: usize) ->
     }
     LargePortfolio {
         portfolio: {
-            let mut portfolio = Portfolio::new(Currency::USD);
+            let mut portfolio = PortfolioData::new(Currency::USD);
             portfolio.accounts = accounts;
             portfolio.instruments = instrument_list;
             portfolio.transactions = list;

@@ -574,7 +574,8 @@ pub struct CombinedRebalance {
 /// its target is bought in proportion to the value each account has free, its value less what it
 /// keeps. Each account is then rebalanced to its share with [`rebalance`] and `options`, so sales
 /// choose lots, pay fees and estimate tax as they would in one account, and purchases are made
-/// with each account's own cash. Trades do not move cash between accounts.
+/// with each account's own cash. Trades do not move cash between accounts. With one account,
+/// the proposal is [`rebalance`]'s.
 pub fn rebalance_accounts(
     books: &Books,
     market: &MarketData,
@@ -595,6 +596,10 @@ pub fn rebalance_accounts(
         }
     }
     report.into_result(())?;
+    if let [account] = accounts {
+        let proposal = rebalance(books, market, date, account, targets, options)?;
+        return Ok(combine(vec![proposal], options));
+    }
     let valuation = books.value_on(date, market)?;
     // Each account's value of each holding other than base cash, and its total value.
     let mut held: BTreeMap<&AccountId, BTreeMap<HoldingKey, f64>> = BTreeMap::new();
@@ -698,6 +703,11 @@ pub fn rebalance_accounts(
         )?);
     }
 
+    Ok(combine(proposals, options))
+}
+
+/// The proposals of several accounts as one.
+fn combine(proposals: Vec<Rebalance>, options: &RebalanceOptions) -> CombinedRebalance {
     let value_base: Decimal = proposals.iter().map(|p| p.value_base).sum();
     let combine = |pick: fn(&Rebalance) -> &BTreeMap<HoldingKey, f64>| {
         let mut out: BTreeMap<HoldingKey, f64> = BTreeMap::new();
@@ -714,7 +724,7 @@ pub fn rebalance_accounts(
         .iter()
         .map(|p| p.turnover * to_f64(p.value_base))
         .sum();
-    Ok(CombinedRebalance {
+    CombinedRebalance {
         weights_before: combine(|p| &p.weights_before),
         weights_after: combine(|p| &p.weights_after),
         turnover: traded / to_f64(value_base),
@@ -726,7 +736,7 @@ pub fn rebalance_accounts(
             .map(|_| proposals.iter().filter_map(|p| p.tax_base).sum()),
         value_base,
         accounts: proposals,
-    })
+    }
 }
 
 impl Rebalance {

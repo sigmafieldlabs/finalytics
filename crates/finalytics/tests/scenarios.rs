@@ -17,8 +17,14 @@ const FX: &str = include_str!("../../../tests/scenario/fx.csv");
 
 fn setup() -> (Books, MarketData) {
     let options = CsvOptions::default();
-    let portfolio =
-        portfolio_from_csv(Currency::USD, INSTRUMENTS, TRANSACTIONS, None, options).unwrap();
+    let portfolio = portfolio_from_csv(
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
+        TRANSACTIONS,
+        None,
+        options,
+    )
+    .unwrap();
     let mut market = MarketData::new();
     for (id, prices) in prices_from_csv(PRICES, options).unwrap() {
         market = market.with_prices(id, prices);

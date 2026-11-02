@@ -23,10 +23,10 @@ $\sqrt{(w - b)^\top \Sigma (w - b)}$, and decomposes the same way with $w - b$ i
 Components and shares add up by any grouping, such as asset class, region or currency, with
 `group_risk`.
 
-### From a portfolio's books
+### From a portfolio
 
-`Books.weights(date)` gives each holding's share of the portfolio's value, and
-`Books.holding_returns(holdings, dates)` the holdings' returns in the base currency between
+`Portfolio.weights(date)` gives each holding's share of the portfolio's value, and
+`Portfolio.holding_returns(holdings, dates)` the holdings' returns in the base currency between
 consecutive dates: an instrument's price return converted at each date's rate, and a foreign cash
 balance's change in its exchange rate (zero for base-currency cash). A covariance matrix estimated
 from those returns decomposes the portfolio's risk by holding. Supply total-return prices to

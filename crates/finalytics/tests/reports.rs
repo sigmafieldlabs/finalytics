@@ -9,7 +9,7 @@ use finalytics::formats::{CsvOptions, fx_from_csv, portfolio_from_csv, prices_fr
 use finalytics::performance::{FlowTiming, Performance};
 use finalytics::reports::*;
 use finalytics::risk::{GroupShock, HistoricalWindow, Shocks};
-use finalytics::{Books, Currency, Date, Decimal, InstrumentId, MarketData, Portfolio};
+use finalytics::{Books, Currency, Date, Decimal, InstrumentId, MarketData, PortfolioData};
 
 const ACCOUNTS: &str = include_str!("../../../tests/scenario/accounts.csv");
 const INSTRUMENTS: &str = include_str!("../../../tests/scenario/instruments.csv");
@@ -21,11 +21,11 @@ fn d(s: &str) -> Date {
     s.parse().unwrap()
 }
 
-fn setup() -> (Portfolio, Books, MarketData) {
+fn setup() -> (PortfolioData, Books, MarketData) {
     let options = CsvOptions::default();
     let portfolio = portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         TRANSACTIONS,
         Some(ACCOUNTS),
         options,

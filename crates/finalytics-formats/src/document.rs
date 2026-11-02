@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use finalytics_core::{Currency, Decimal, Error, Result, TimeSeries, ValidationReport};
-use finalytics_ledger::{InstrumentId, MarketData, Portfolio};
+use finalytics_ledger::{InstrumentId, MarketData, PortfolioData};
 use serde::{Deserialize, Serialize};
 
 /// The value of the document's `format` field.
@@ -29,7 +29,7 @@ pub const FORMAT_VERSION: u32 = 1;
 #[non_exhaustive]
 pub struct PortfolioDocument {
     /// The portfolio.
-    pub portfolio: Portfolio,
+    pub portfolio: PortfolioData,
     /// Market data stored with the portfolio, if any.
     pub market: Option<MarketData>,
 }
@@ -44,7 +44,7 @@ struct DocumentRepr {
     #[cfg_attr(feature = "schema", schemars(extend("const" = FORMAT_VERSION)))]
     format_version: u32,
     /// The portfolio.
-    portfolio: Portfolio,
+    portfolio: PortfolioData,
     /// Market data stored with the portfolio.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     market: Option<MarketRepr>,
@@ -182,7 +182,7 @@ impl schemars::JsonSchema for PortfolioDocument {
 
 impl PortfolioDocument {
     /// A document holding `portfolio` without market data.
-    pub fn new(portfolio: Portfolio) -> PortfolioDocument {
+    pub fn new(portfolio: PortfolioData) -> PortfolioDocument {
         PortfolioDocument {
             portfolio,
             market: None,
@@ -206,7 +206,7 @@ impl PortfolioDocument {
     /// Reads a document, reporting where it is malformed (for example
     /// `portfolio.transactions[3].quantity`).
     ///
-    /// The portfolio's structure is validated as well ([`Portfolio::validate`]); its problems
+    /// The portfolio's structure is validated as well ([`PortfolioData::validate`]); its problems
     /// are reported with paths under `portfolio`.
     pub fn from_json(text: &str) -> Result<PortfolioDocument> {
         // A well-formed document of this version reads directly; anything else is read again,

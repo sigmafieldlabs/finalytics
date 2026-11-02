@@ -12,7 +12,7 @@ use finalytics_core::{
 };
 use finalytics_ledger::{
     Account, AccountId, Instrument, InstrumentId, InstrumentKind, LotId, LotMethod, LotPick,
-    Portfolio, Transaction, TransactionId, TransactionKind,
+    MarketData, PortfolioData, Transaction, TransactionId, TransactionKind,
 };
 
 /// Options for reading CSV.
@@ -40,6 +40,9 @@ pub struct FxSeries {
     /// The rates.
     pub rates: TimeSeries<Decimal>,
 }
+
+/// The account of transactions read without an `account` column.
+const DEFAULT_ACCOUNT: &str = "main";
 
 /// Points read for one series, before sorting: date, value and the line they came from.
 type Points = Vec<(Date, Decimal, u64)>;
@@ -91,6 +94,15 @@ impl Table {
             names,
             rows,
         })
+    }
+
+    /// Reads column `alias` as `name` when the file has no column `name`.
+    fn alias(&mut self, alias: &str, name: &str) {
+        if !self.columns.contains_key(name)
+            && let Some(&i) = self.columns.get(alias)
+        {
+            self.columns.insert(name.to_owned(), i);
+        }
     }
 
     fn require(&self, names: &[&str], report: &mut ValidationReport) -> bool {
@@ -359,7 +371,7 @@ pub fn accounts_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Account>
     finish(report, accounts)
 }
 
-/// Reads transactions. Every row needs `id`, `account`, `trade_date` and `type`; the other
+/// Reads transactions. Every row needs a `trade_date` (or `date`) and a `type`; the other
 /// columns depend on the type:
 ///
 /// | type | columns |
@@ -378,30 +390,43 @@ pub fn accounts_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Account>
 /// | `symbol_change` | `instrument`, `new_instrument` |
 /// | `return_of_capital` | `instrument`, `amount`, `currency` |
 ///
-/// Optional on every row: `settle_date` and `note`. `lots` names lots for specific
-/// identification as `lot:quantity` pairs separated by semicolons.
+/// Optional on every row:
+///
+/// - `id`: the transaction's identifier, `t1`, `t2` and so on by row when left out;
+/// - `account`: the account, `main` when left out;
+/// - `settle_date` and `note`.
+///
+/// `lots` names lots for specific identification as `lot:quantity` pairs separated by
+/// semicolons.
 pub fn transactions_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Transaction>> {
     let mut report = ValidationReport::new();
-    let Some(table) = Table::read(text, options, &mut report) else {
+    let Some(mut table) = Table::read(text, options, &mut report) else {
         return Err(Error::Validation(report));
     };
-    if !table.require(&["id", "account", "trade_date", "type"], &mut report) {
+    table.alias("date", "trade_date");
+    if !table.require(&["trade_date", "type"], &mut report) {
         return Err(Error::Validation(report));
     }
     let mut transactions = Vec::new();
-    for (line, values) in &table.rows {
+    for (number, (line, values)) in table.rows.iter().enumerate() {
         let mut row = Row {
             table: &table,
             line: *line,
             values,
             report: &mut report,
         };
-        let id = row.required("id", |t| {
-            TransactionId::new(t).ok_or_else(|| format!("{t:?} is not a valid identifier"))
-        });
-        let account = row.required("account", |t| {
-            AccountId::new(t).ok_or_else(|| format!("{t:?} is not a valid identifier"))
-        });
+        let id = match row.raw("id") {
+            None => TransactionId::new(format!("t{}", number + 1)),
+            Some(_) => row.required("id", |t| {
+                TransactionId::new(t).ok_or_else(|| format!("{t:?} is not a valid identifier"))
+            }),
+        };
+        let account = match row.raw("account") {
+            None => AccountId::new(DEFAULT_ACCOUNT),
+            Some(_) => row.required("account", |t| {
+                AccountId::new(t).ok_or_else(|| format!("{t:?} is not a valid identifier"))
+            }),
+        };
         let trade_date = row.date("trade_date");
         let settle_date = row.optional("settle_date", parse_date);
         let kind_name = row.raw("type").map(str::to_ascii_lowercase);
@@ -605,6 +630,16 @@ pub fn prices_from_csv(
     text: &str,
     options: CsvOptions,
 ) -> Result<BTreeMap<InstrumentId, TimeSeries<Decimal>>> {
+    Ok(price_columns_from_csv(text, options)?.into_iter().collect())
+}
+
+/// Reads prices like [`prices_from_csv`], keeping the order of the file: the order of the
+/// columns in the wide layout, and of each instrument's first row in the long layout.
+pub fn price_columns_from_csv(
+    text: &str,
+    options: CsvOptions,
+) -> Result<Vec<(InstrumentId, TimeSeries<Decimal>)>> {
+    let mut order: Vec<InstrumentId> = Vec::new();
     let mut report = ValidationReport::new();
     let Some(table) = Table::read(text, options, &mut report) else {
         return Err(Error::Validation(report));
@@ -634,6 +669,9 @@ pub fn prices_from_csv(
                 row.decimal(price_column),
             );
             if let (Some(date), Some(instrument), Some(price)) = (date, instrument, price) {
+                if !points.contains_key(&instrument) {
+                    order.push(instrument.clone());
+                }
                 points
                     .entry(instrument)
                     .or_default()
@@ -653,7 +691,10 @@ pub fn prices_from_csv(
         {
             // Use the header as written: identifiers are case-sensitive.
             match original_header(text, options, i).and_then(InstrumentId::new) {
-                Some(id) => columns.push((i, id)),
+                Some(id) => {
+                    order.push(id.clone());
+                    columns.push((i, id));
+                }
                 None => report.error(
                     "line 1",
                     format!("column {name:?} is not a valid instrument identifier"),
@@ -684,8 +725,12 @@ pub fn prices_from_csv(
             }
         }
     }
-    let series = build_series(points, &mut report, "price", |id| id.to_string());
-    finish(report, series)
+    let mut series = build_series(points, &mut report, "price", |id| id.to_string());
+    let ordered = order
+        .into_iter()
+        .filter_map(|id| series.remove(&id).map(|s| (id, s)))
+        .collect();
+    finish(report, ordered)
 }
 
 /// Reads FX rates, in either layout:
@@ -829,20 +874,27 @@ fn original_header(text: &str, options: CsvOptions, index: usize) -> Option<Stri
         .and_then(|h| h.get(index).map(str::to_owned))
 }
 
-/// Builds a portfolio from instruments, transactions and, optionally, accounts read from CSV.
-/// With an accounts file, the portfolio has exactly the accounts it lists, and a transaction in
-/// any other account is an error; without one, an account is created for every account the
-/// transactions name, with first-in, first-out lot relief.
+/// Builds a portfolio from transactions and, optionally, instruments and accounts read from
+/// CSV.
+///
+/// - Without a base currency, the portfolio's is the currency of the first deposit, or failing
+///   that of the first transaction with a `currency`.
+/// - Without an instruments file, every instrument the transactions name is an instrument of
+///   kind `other`, in the `currency` of the first transaction that gives one with it, or else in
+///   the base currency.
+/// - With an accounts file, the portfolio has exactly the accounts it lists, and a transaction
+///   in any other account is an error; without one, an account is created for every account the
+///   transactions name, with first-in, first-out lot relief.
 ///
 /// Problems in every file and in the portfolio's structure are reported together, with paths
 /// under `accounts`, `instruments`, `transactions` and `portfolio`.
 pub fn portfolio_from_csv(
-    base_currency: Currency,
-    instruments_csv: &str,
+    base_currency: Option<Currency>,
+    instruments_csv: Option<&str>,
     transactions_csv: &str,
     accounts_csv: Option<&str>,
     options: CsvOptions,
-) -> Result<Portfolio> {
+) -> Result<PortfolioData> {
     let mut report = ValidationReport::new();
     let listed = match accounts_csv.map(|text| accounts_from_csv(text, options)) {
         None => None,
@@ -853,13 +905,14 @@ pub fn portfolio_from_csv(
         }
         Some(Err(e)) => return Err(e),
     };
-    let instruments = match instruments_from_csv(instruments_csv, options) {
-        Ok(v) => v,
-        Err(Error::Validation(r)) => {
+    let instruments = match instruments_csv.map(|text| instruments_from_csv(text, options)) {
+        None => None,
+        Some(Ok(v)) => Some(v),
+        Some(Err(Error::Validation(r))) => {
             report.merge("instruments", r);
-            Vec::new()
+            Some(Vec::new())
         }
-        Err(e) => return Err(e),
+        Some(Err(e)) => return Err(e),
     };
     let transactions = match transactions_from_csv(transactions_csv, options) {
         Ok(v) => v,
@@ -872,14 +925,130 @@ pub fn portfolio_from_csv(
     if report.has_errors() {
         return Err(Error::Validation(report));
     }
+    let named = Currencies::read(transactions_csv, options);
+    let Some(base_currency) = base_currency.or(named.deposit).or(named.first) else {
+        report.error(
+            "base_currency",
+            "give the base currency: no transaction has a currency to take it from",
+        );
+        return Err(Error::Validation(report));
+    };
+    let instruments = instruments.unwrap_or_else(|| {
+        let mut ids: Vec<InstrumentId> = Vec::new();
+        for transaction in &transactions {
+            for id in instruments_named(&transaction.kind) {
+                if !ids.contains(id) {
+                    ids.push(id.clone());
+                }
+            }
+        }
+        ids.into_iter()
+            .map(|id| {
+                let currency = named.of.get(&id).copied().unwrap_or(base_currency);
+                Instrument::new(id, InstrumentKind::Other, currency)
+            })
+            .collect()
+    });
     let accounts = listed.unwrap_or_else(|| {
         let named: BTreeSet<AccountId> = transactions.iter().map(|t| t.account.clone()).collect();
         named.into_iter().map(Account::new).collect()
     });
-    let mut portfolio = Portfolio::new(base_currency);
+    let mut portfolio = PortfolioData::new(base_currency);
     portfolio.accounts = accounts;
     portfolio.instruments = instruments;
     portfolio.transactions = transactions;
     report.merge("portfolio", portfolio.validate());
     report.into_result(portfolio)
+}
+
+/// Builds market data from prices and FX rates read from CSV (see [`prices_from_csv`] and
+/// [`fx_from_csv`] for the layouts). Problems in both files are reported together, with paths
+/// under `prices` and `fx`.
+pub fn market_from_csv(
+    prices_csv: Option<&str>,
+    fx_csv: Option<&str>,
+    options: CsvOptions,
+) -> Result<MarketData> {
+    let mut report = ValidationReport::new();
+    let mut market = MarketData::new();
+    match prices_csv.map(|text| prices_from_csv(text, options)) {
+        None => {}
+        Some(Ok(series)) => {
+            for (id, prices) in series {
+                market = market.with_prices(id, prices);
+            }
+        }
+        Some(Err(Error::Validation(r))) => report.merge("prices", r),
+        Some(Err(e)) => return Err(e),
+    }
+    match fx_csv.map(|text| fx_from_csv(text, options)) {
+        None => {}
+        Some(Ok(series)) => {
+            for s in series {
+                market = market.with_fx(s.base, s.quote, s.rates);
+            }
+        }
+        Some(Err(Error::Validation(r))) => report.merge("fx", r),
+        Some(Err(e)) => return Err(e),
+    }
+    report.into_result(market)
+}
+
+/// The instruments a transaction names, including those it creates.
+fn instruments_named(kind: &TransactionKind) -> Vec<&InstrumentId> {
+    use TransactionKind::*;
+    let mut ids: Vec<&InstrumentId> = kind.instrument().into_iter().collect();
+    match kind {
+        SpinOff { new_instrument, .. } | SymbolChange { new_instrument, .. } => {
+            ids.push(new_instrument);
+        }
+        Merger {
+            new_instrument,
+            ratio,
+            ..
+        } if !ratio.is_zero() => ids.push(new_instrument),
+        _ => {}
+    }
+    ids
+}
+
+/// The currencies a transactions file names: of its first deposit, of its first row with one,
+/// and of the first row that gives one with each instrument.
+#[derive(Default)]
+struct Currencies {
+    deposit: Option<Currency>,
+    first: Option<Currency>,
+    of: BTreeMap<InstrumentId, Currency>,
+}
+
+impl Currencies {
+    fn read(text: &str, options: CsvOptions) -> Currencies {
+        let mut found = Currencies::default();
+        let mut report = ValidationReport::new();
+        let Some(table) = Table::read(text, options, &mut report) else {
+            return found;
+        };
+        let column = |name: &str| table.columns.get(name).copied();
+        let (Some(currency), kind, instrument) =
+            (column("currency"), column("type"), column("instrument"))
+        else {
+            return found;
+        };
+        for (_, values) in &table.rows {
+            let cell = |i: Option<usize>| i.and_then(|i| values.get(i)).filter(|v| !v.is_empty());
+            let Some(code) = cell(Some(currency)).and_then(|c| Currency::new(c).ok()) else {
+                continue;
+            };
+            found.first.get_or_insert(code);
+            if found.deposit.is_none()
+                && cell(kind).is_some_and(|k| k.eq_ignore_ascii_case("deposit"))
+            {
+                found.deposit = Some(code);
+            }
+            if let Some(id) = cell(instrument).and_then(|t| InstrumentId::new(t.as_str())) {
+                found.of.entry(id).or_insert(code);
+            }
+        }
+        found
+    }
 }

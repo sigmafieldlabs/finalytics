@@ -1,14 +1,15 @@
 // Compiled with `tsc -p bindings/wasm/test` to check that the published declarations are usable
 // and strict: it is type-checked, not run.
 import init, {
+  Assets,
   blackLitterman,
-  Books,
+  datasets,
   brinsonFachler,
   factorRisk,
   impliedCovariance,
   karnoskySinger,
   MarketData,
-  portfolioFromCsv,
+  Portfolio,
   reportTables,
   resampled,
   solve,
@@ -23,6 +24,8 @@ import init, {
   type FactorModelEstimate,
   type Matrix,
   type Objective,
+  type OptimisationResult,
+  type PortfolioReport,
   type PerformanceReport,
   type Problem,
   type ScenarioResult,
@@ -47,24 +50,35 @@ export async function example(worker: Worker): Promise<void> {
   );
   const doubled = solution.weights?.map((w) => w * 2);
   const tail = tailRisk([0.01, -0.02], 0.99, "cornish_fisher");
-  const portfolio = portfolioFromCsv("id,kind,currency\n", "id,account,trade_date,type\n", "USD");
-  const books = new Books(portfolio, new MarketData());
+  const books = Portfolio.fromCsv({ transactions: "date,type,amount,currency\n", base_currency: "USD" });
+  const portfolio = books.data;
   const performance = books.performance();
   const returns: Float64Array = performance.returns;
   const dates: string[] = performance.dates;
   const threeYears = performance.period("3Y");
-  const plan = books.rebalance("main", { SPY: 1 }, { lot_method: "highest_cost" });
+  const plan = books.rebalance({ SPY: 1 }, { accounts: ["main"], lot_method: "highest_cost" });
+  const traded: Portfolio = books.withRebalance(plan);
+  const report: PortfolioReport = traded.report({ benchmark: "SPY", group_by: ["asset_class"] });
+  const assets = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
+  const result: OptimisationResult = assets.optimise({
+    objective: "maximum_sharpe",
+    bounds: { min: 0, max: 0.4 },
+    groups: { Equity: { assets: ["US Equity", "Intl Equity"], min: 0.3, max: 0.6 } },
+  });
+  const weights: Record<string, number> | null | undefined = result.weights;
+  // @ts-expect-error: an unknown objective name is rejected.
+  assets.optimise({ objective: "maximum_profit" });
 
   const engine = createEngine(worker);
   const remote = await engine.call("statistics", [0.01, 0.02]);
-  const remoteBooks = await engine.books(portfolio);
-  const remotePerformance = await remoteBooks.call("performance");
+  const remotePortfolio = await engine.portfolio(portfolio);
+  const remotePerformance = await remotePortfolio.call("performance");
   const remoteReturns: Float64Array = await remotePerformance.get("returns");
 
   // @ts-expect-error: an unknown objective is rejected.
   const unknown: Objective = { type: "maximum_profit" };
 
-  console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown);
+  console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown, report, weights);
 }
 
 // Factor models: estimation, risk and a problem with exposure limits.
@@ -131,7 +145,7 @@ void attribution.segments[0].allocation;
 void byCurrency.residual;
 
 // Scenarios.
-declare const books: Books;
+declare const books: Portfolio;
 const shocked: ScenarioResult = books.shockScenario(
   { groups: [{ scheme: "asset_class", value: "Equity", shock: -0.2 }], currencies: { EUR: -0.1 } },
   { date: "2026-10-30", group_by: ["asset_class"], risk: { covariance, stress: { correlation_shift: 0.5 } } },

@@ -18,7 +18,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
 use finalytics::formats::{
-    CsvOptions, MarketDocument, PortfolioDocument, fx_from_csv, portfolio_from_csv, prices_from_csv,
+    CsvOptions, MarketDocument, PortfolioDocument, fx_from_csv, prices_from_csv,
 };
 use finalytics::opt::{
     BlackLitterman, Objective, Problem, Rebalance, RebalanceOptions, Resampling,
@@ -29,7 +29,7 @@ use finalytics::risk::{
 };
 use finalytics::{
     AccountId, Currency, Date, Decimal, Error, HoldingKey, HoldingSeries, InstrumentId, LotMethod,
-    MarketData as EngineMarket, Observation, Portfolio, TimeSeries, ValidationReport,
+    MarketData as EngineMarket, Observation, PortfolioData, TimeSeries, ValidationReport,
 };
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -54,19 +54,67 @@ export interface Holdings {
   cash: CashBalance[];
 }
 
-/** A portfolio document: a portfolio and, optionally, its market data. */
+/** A portfolio document: a portfolio's records and, optionally, its market data. */
 export interface Document {
-  portfolio: Portfolio;
+  portfolio: PortfolioData;
   market?: MarketData;
 }
 
-/** Choices for `Books.rebalance`, all optional. */
+/** Choices for `Portfolio.rebalance`, all optional. */
 export interface RebalanceChoices extends Partial<RebalanceOptions> {
+  /** The accounts to rebalance together; every account by default. */
+  accounts?: string[];
   /** The date of the prices used; the last price date by default. */
   date?: Date;
 }
 
-/** Choices for `Books.shockScenario` and `Books.historicalScenario`, all optional. */
+/**
+ * The CSV text of a portfolio's files, for `Portfolio.fromCsv`. Only the transactions are
+ * required; `datasets.file("portfolio/transactions.csv")` and the other dataset files show each
+ * layout.
+ */
+export interface PortfolioFiles {
+  /**
+   * One row per transaction: a `date` (or `trade_date`), a `type` and the columns the type
+   * needs, such as `instrument`, `quantity` and `price` for a `buy`, or `amount` and `currency`
+   * for a `deposit`. Rows may give an `id` (`t1`, `t2` and so on by default) and an `account`
+   * (`main` by default).
+   */
+  transactions: string;
+  /** A `date` column and one column per instrument, or `date`, `instrument` and `price`. */
+  prices?: string;
+  /** A `date` column and one column per currency pair, such as `EUR/USD`. */
+  fx?: string;
+  /**
+   * `id`, `kind` and `currency`, with `class.<scheme>` columns such as `class.asset_class`.
+   * Without it, each instrument is in the currency given with it in the transactions, or else in
+   * the base currency.
+   */
+  instruments?: string;
+  /** `id`, with `name`, `lot_method` and `class.<scheme>` columns. */
+  accounts?: string;
+  /** The currency results are reported in; by default, that of the first deposit. */
+  base_currency?: string;
+  /** The field delimiter: a comma by default. */
+  delimiter?: string;
+}
+
+/** The settings of `Assets`, all optional. */
+export interface AssetsOptions {
+  /** The annual risk-free rate, for Sharpe ratios; 0 by default. */
+  risk_free_rate?: number;
+  /**
+   * One of the assets, such as T-bills, as the risk-free asset instead: its mean return is the
+   * risk-free rate, and optimisation leaves it out.
+   */
+  risk_free_asset?: string;
+  /** 252 for daily returns, 52 for weekly, 12 for monthly; detected from the dates by default. */
+  periods_per_year?: number;
+  /** `"ledoit_wolf"` (the default), `"sample"`, `"oas"` or `"ewma"`, or a `CovarianceMethod`. */
+  covariance?: CovarianceMethod["type"] | CovarianceMethod;
+}
+
+/** Choices for `Portfolio.shockScenario` and `Portfolio.historicalScenario`, all optional. */
 export interface ScenarioChoices extends Partial<ScenarioOptions> {
   /** The date of the holdings; the last price date by default. */
   date?: Date;
@@ -355,37 +403,171 @@ impl Default for MarketData {
     }
 }
 
-/// The books of a portfolio: its transactions applied in order, with the market data used to
-/// value them.
+/// A portfolio: its records (base currency, accounts, instruments and transactions), the market
+/// data that values it, and the books kept from them. It does not change: `withTransactions` and
+/// `withRebalance` return new portfolios.
 #[wasm_bindgen]
-pub struct Books {
-    books: finalytics::Books,
-    market: EngineMarket,
-    first_trade: Option<Date>,
-    portfolio: Portfolio,
+pub struct Portfolio {
+    inner: finalytics::Portfolio,
     /// The digest of the inputs, computed for the first report that needs it.
     source: std::cell::OnceCell<finalytics::reports::Source>,
 }
 
+impl From<finalytics::Portfolio> for Portfolio {
+    fn from(inner: finalytics::Portfolio) -> Portfolio {
+        Portfolio {
+            inner,
+            source: std::cell::OnceCell::new(),
+        }
+    }
+}
+
+/// The CSV text of a portfolio's files, for `Portfolio.fromCsv`.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PortfolioFiles {
+    transactions: String,
+    #[serde(default)]
+    prices: Option<String>,
+    #[serde(default)]
+    fx: Option<String>,
+    #[serde(default)]
+    instruments: Option<String>,
+    #[serde(default)]
+    accounts: Option<String>,
+    #[serde(default)]
+    base_currency: Option<String>,
+    #[serde(default)]
+    delimiter: Option<String>,
+}
+
 #[wasm_bindgen]
-impl Books {
-    /// Keeps the books of `portfolio`, using `market` for FX rates and for the prices that
-    /// transfers without a cost basis need (pass `new MarketData()` for none).
+impl Portfolio {
+    /// A portfolio from its records and market data (pass `new MarketData()` for none): the
+    /// books are kept by applying the transactions in order.
     #[wasm_bindgen(constructor)]
     pub fn new(
-        #[wasm_bindgen(unchecked_param_type = "Portfolio")] portfolio: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "PortfolioData")] data: JsValue,
         market: &MarketData,
-    ) -> Result<Books, JsValue> {
-        let portfolio: Portfolio = from_js(portfolio, "portfolio")?;
-        let market = market.inner.clone();
-        let books = finalytics::Books::build(&portfolio, &market).map_err(error)?;
-        Ok(Books {
-            books,
-            first_trade: portfolio.transactions.iter().map(|t| t.trade_date).min(),
-            market,
-            portfolio,
-            source: std::cell::OnceCell::new(),
+    ) -> Result<Portfolio, JsValue> {
+        let data: PortfolioData = from_js(data, "portfolio")?;
+        Ok(finalytics::Portfolio::new(data, market.inner.clone())
+            .map_err(error)?
+            .into())
+    }
+
+    /// A portfolio from the CSV text of its files; only the transactions are required. Every
+    /// problem in every file is reported at once, by file, line and column.
+    #[wasm_bindgen(js_name = fromCsv)]
+    pub fn from_csv(
+        #[wasm_bindgen(unchecked_param_type = "PortfolioFiles")] files: JsValue,
+    ) -> Result<Portfolio, JsValue> {
+        let files: PortfolioFiles = from_js(files, "files")?;
+        let mut csv = finalytics::PortfolioCsv::new(&files.transactions);
+        if let Some(text) = &files.prices {
+            csv = csv.prices(text);
+        }
+        if let Some(text) = &files.fx {
+            csv = csv.fx(text);
+        }
+        if let Some(text) = &files.instruments {
+            csv = csv.instruments(text);
+        }
+        if let Some(text) = &files.accounts {
+            csv = csv.accounts(text);
+        }
+        if let Some(code) = &files.base_currency {
+            csv = csv.base_currency(currency(code)?);
+        }
+        csv = csv.delimiter(csv_options(files.delimiter)?.delimiter);
+        Ok(finalytics::Portfolio::from_csv(&csv).map_err(error)?.into())
+    }
+
+    /// A portfolio from a portfolio document in JSON text.
+    #[wasm_bindgen(js_name = fromJson)]
+    pub fn from_json(text: &str) -> Result<Portfolio, JsValue> {
+        Ok(finalytics::Portfolio::from_json(text)
+            .map_err(error)?
+            .into())
+    }
+
+    /// The portfolio document of the portfolio and its market data, in JSON text.
+    #[wasm_bindgen(js_name = toJson)]
+    pub fn to_json(&self) -> String {
+        self.inner.to_json()
+    }
+
+    /// The records: base currency, accounts, instruments and transactions.
+    #[wasm_bindgen(getter, unchecked_return_type = "PortfolioData")]
+    pub fn data(&self) -> Result<JsValue, JsValue> {
+        to_js(self.inner.data())
+    }
+
+    /// The market data.
+    #[wasm_bindgen(getter)]
+    pub fn market(&self) -> MarketData {
+        MarketData {
+            inner: self.inner.market().clone(),
+        }
+    }
+
+    /// The last date with a price: the date the portfolio is valued on when no other is given.
+    #[wasm_bindgen(getter, js_name = asOf)]
+    pub fn as_of(&self) -> Option<String> {
+        self.inner.as_of().map(|d| d.to_string())
+    }
+
+    /// The same portfolio with more transactions, applied after its own.
+    #[wasm_bindgen(js_name = withTransactions)]
+    pub fn with_transactions(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Transaction[]")] transactions: JsValue,
+    ) -> Result<Portfolio, JsValue> {
+        let transactions: Vec<finalytics::Transaction> = from_js(transactions, "transactions")?;
+        Ok(self
+            .inner
+            .with_transactions(transactions)
+            .map_err(error)?
+            .into())
+    }
+
+    /// The same portfolio with the trades of a rebalancing proposal made on its date.
+    #[wasm_bindgen(js_name = withRebalance)]
+    pub fn with_rebalance(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "CombinedRebalance")] proposal: JsValue,
+    ) -> Result<Portfolio, JsValue> {
+        let proposal: finalytics::opt::CombinedRebalance = from_js(proposal, "proposal")?;
+        Ok(self.inner.with_rebalance(&proposal).map_err(error)?.into())
+    }
+
+    /// The same portfolio valued with other market data.
+    #[wasm_bindgen(js_name = withMarket)]
+    pub fn with_market(&self, market: &MarketData) -> Result<Portfolio, JsValue> {
+        Ok(self
+            .inner
+            .with_market(market.inner.clone())
+            .map_err(error)?
+            .into())
+    }
+
+    /// The instruments held at the last price date, as `Assets`: their price returns in the
+    /// base currency on the portfolio's dates, for statistics and optimisation.
+    pub fn assets(&self) -> Result<Assets, JsValue> {
+        Ok(Assets {
+            inner: self.inner.assets().map_err(error)?,
         })
+    }
+
+    /// Every report on the portfolio, from one set of options. The attribution report needs
+    /// `attribution` and the scenarios report `scenarios`; without them, they are absent.
+    #[wasm_bindgen(unchecked_return_type = "PortfolioReport")]
+    pub fn report(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<ReportOptions>")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options = report_options(options)?;
+        to_js(&self.inner.report(&options).map_err(error)?)
     }
 
     /// The digest and size of the inputs the reports are computed from.
@@ -403,8 +585,8 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let options = report_options(options)?;
         let r = finalytics::reports::holdings_report(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             self.report_source(),
             &options,
         );
@@ -420,8 +602,8 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let options = report_options(options)?;
         let r = finalytics::reports::overview_report(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             self.report_source(),
             &options,
         );
@@ -437,8 +619,8 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let options = report_options(options)?;
         let r = finalytics::reports::performance_report(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             self.report_source(),
             &options,
         );
@@ -454,8 +636,8 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let options = report_options(options)?;
         let r = finalytics::reports::risk_report(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             self.report_source(),
             &options,
         );
@@ -470,8 +652,8 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let options = report_options(options)?;
         let r = finalytics::reports::attribution_report(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             self.report_source(),
             &options,
         );
@@ -486,8 +668,8 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let options = report_options(options)?;
         let r = finalytics::reports::scenarios_report(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             self.report_source(),
             &options,
         );
@@ -497,28 +679,29 @@ impl Books {
     /// The currency results are reported in.
     #[wasm_bindgen(getter, js_name = baseCurrency)]
     pub fn base_currency(&self) -> String {
-        self.books.base_currency().to_string()
+        self.inner.books().base_currency().to_string()
     }
 
-    /// The dates performance is measured on when none are given: every date with a price, from
-    /// the first transaction to the last price.
-    #[wasm_bindgen(js_name = defaultDates)]
-    pub fn default_dates(&self) -> Vec<String> {
-        let mut all: Vec<Date> = self
-            .market
-            .all_prices()
-            .flat_map(|(_, s)| s.dates().iter().copied())
-            .filter(|d| self.first_trade.is_none_or(|first| *d >= first))
-            .collect();
-        all.sort();
-        all.dedup();
-        date_strings(&all)
+    /// The dates the portfolio is measured on when none are given: every date with a price,
+    /// from the first transaction to the last price.
+    pub fn dates(&self) -> Vec<String> {
+        date_strings(&self.inner.dates())
     }
 
     fn dates_or_default(&self, given: Option<Vec<String>>) -> Result<Vec<Date>, JsValue> {
         match given {
             Some(d) => parse_dates(d, "dates"),
-            None => parse_dates(self.default_dates(), "dates"),
+            None => Ok(self.inner.dates()),
+        }
+    }
+
+    fn date_or_last(&self, date: Option<String>) -> Result<Date, JsValue> {
+        match date {
+            Some(d) => parse_date(&d),
+            None => self
+                .inner
+                .as_of()
+                .ok_or_else(|| invalid("date", "give a date: the portfolio has no prices")),
         }
     }
 
@@ -526,8 +709,8 @@ impl Books {
     #[wasm_bindgen(unchecked_return_type = "Holdings")]
     pub fn holdings(&self, date: Option<String>) -> Result<JsValue, JsValue> {
         let holdings = match optional_date(date)? {
-            Some(d) => self.books.holdings_on(d),
-            None => self.books.holdings().clone(),
+            Some(d) => self.inner.books().holdings_on(d),
+            None => self.inner.books().holdings().clone(),
         };
         let lots: Vec<_> = holdings.lots().collect();
         to_js(&serde_json::json!({
@@ -537,25 +720,26 @@ impl Books {
         }))
     }
 
-    /// The holdings valued at the end of `date`.
+    /// The holdings valued at the end of `date`, by default the last price date.
     #[wasm_bindgen(unchecked_return_type = "Valuation")]
-    pub fn valuation(&self, date: &str) -> Result<JsValue, JsValue> {
+    pub fn valuation(&self, date: Option<String>) -> Result<JsValue, JsValue> {
         to_js(
             &self
-                .books
-                .value_on(parse_date(date)?, &self.market)
+                .inner
+                .valuation(Some(self.date_or_last(date)?))
                 .map_err(error)?,
         )
     }
 
-    /// End-of-day values and external flows on `dates` (by default `defaultDates()`).
+    /// End-of-day values and external flows on `dates` (by default `dates()`).
     #[wasm_bindgen(js_name = valueSeries, unchecked_return_type = "ValueSeries")]
     pub fn value_series(&self, dates: Option<Vec<String>>) -> Result<JsValue, JsValue> {
         let dates = self.dates_or_default(dates)?;
         to_js(
             &self
-                .books
-                .value_series(&dates, &self.market)
+                .inner
+                .books()
+                .value_series(&dates, self.inner.market())
                 .map_err(error)?,
         )
     }
@@ -566,8 +750,9 @@ impl Books {
         let dates = self.dates_or_default(dates)?;
         to_js(
             &self
-                .books
-                .holding_series(&dates, &self.market)
+                .inner
+                .books()
+                .holding_series(&dates, self.inner.market())
                 .map_err(error)?,
         )
     }
@@ -575,29 +760,30 @@ impl Books {
     /// Every realised gain, by lot.
     #[wasm_bindgen(js_name = realisedGains, unchecked_return_type = "RealisedGain[]")]
     pub fn realised_gains(&self) -> Result<JsValue, JsValue> {
-        to_js(self.books.realised_gains())
+        to_js(self.inner.books().realised_gains())
     }
 
     /// What each transaction did to the books, in the order applied.
     #[wasm_bindgen(unchecked_return_type = "Event[]")]
     pub fn events(&self) -> Result<JsValue, JsValue> {
-        to_js(self.books.events())
+        to_js(self.inner.books().events())
     }
 
     /// Each account's end-of-day value and external flows on `dates` (by default
-    /// `defaultDates()`).
+    /// `dates()`).
     #[wasm_bindgen(js_name = accountSeries, unchecked_return_type = "AccountSeries")]
     pub fn account_series(&self, dates: Option<Vec<String>>) -> Result<JsValue, JsValue> {
         let dates = self.dates_or_default(dates)?;
         to_js(
             &self
-                .books
-                .account_series(&dates, &self.market)
+                .inner
+                .books()
+                .account_series(&dates, self.inner.market())
                 .map_err(error)?,
         )
     }
 
-    /// Performance over `dates` (by default `defaultDates()`): every account together, each
+    /// Performance over `dates` (by default `dates()`): every account together, each
     /// account, and the groups of accounts by each classification scheme in the options, with
     /// each one's contribution to the household's time-weighted return.
     #[wasm_bindgen(unchecked_return_type = "Household")]
@@ -609,12 +795,17 @@ impl Books {
         let dates = self.dates_or_default(optional(dates, "dates")?)?;
         let options: finalytics::performance::HouseholdOptions = optional(options, "options")?;
         to_js(
-            &finalytics::performance::household(&self.books, &self.market, &dates, &options)
-                .map_err(error)?,
+            &finalytics::performance::household(
+                self.inner.books(),
+                self.inner.market(),
+                &dates,
+                &options,
+            )
+            .map_err(error)?,
         )
     }
 
-    /// Time-weighted performance on `dates` (by default `defaultDates()`), with flows at the
+    /// Time-weighted performance on `dates` (by default `dates()`), with flows at the
     /// start (default) or end of the day.
     pub fn performance(
         &self,
@@ -624,12 +815,14 @@ impl Books {
         let dates = self.dates_or_default(optional(dates, "dates")?)?;
         let timing: FlowTiming = named(timing.as_deref().unwrap_or("start_of_day"), "timing")?;
         let values = self
-            .books
-            .value_series(&dates, &self.market)
+            .inner
+            .books()
+            .value_series(&dates, self.inner.market())
             .map_err(error)?;
         let holdings = self
-            .books
-            .holding_series(&dates, &self.market)
+            .inner
+            .books()
+            .holding_series(&dates, self.inner.market())
             .map_err(error)?;
         Ok(Performance {
             inner: finalytics::performance::Performance::from_values(&values, timing)
@@ -639,14 +832,16 @@ impl Books {
         })
     }
 
-    /// Each holding's share of the portfolio's value on `date`.
+    /// Each holding's share of the portfolio's value at the end of `date`, by default the last
+    /// price date.
     #[wasm_bindgen(unchecked_return_type = "Record<HoldingKey, number>")]
-    pub fn weights(&self, date: &str) -> Result<JsValue, JsValue> {
-        let valuation = self
-            .books
-            .value_on(parse_date(date)?, &self.market)
-            .map_err(error)?;
-        to_js(&risk::holding_weights(&valuation).map_err(error)?)
+    pub fn weights(&self, date: Option<String>) -> Result<JsValue, JsValue> {
+        to_js(
+            &self
+                .inner
+                .weights(Some(self.date_or_last(date)?))
+                .map_err(error)?,
+        )
     }
 
     /// Price returns of `holdings` in the base currency between consecutive `dates`.
@@ -658,7 +853,10 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let holdings: Vec<HoldingKey> = from_js(holdings, "holdings")?;
         let dates = self.dates_or_default(dates)?;
-        to_js(&risk::holding_returns(&self.books, &holdings, &dates, &self.market).map_err(error)?)
+        to_js(
+            &risk::holding_returns(self.inner.books(), &holdings, &dates, self.inner.market())
+                .map_err(error)?,
+        )
     }
 
     /// The lots a sale would close, chosen by `method` (first in, first out by default).
@@ -674,57 +872,48 @@ impl Books {
         let quantity: Decimal = from_js(quantity, "quantity")?;
         let method: LotMethod = named(method.as_deref().unwrap_or("fifo"), "method")?;
         let sale = self
-            .books
+            .inner
+            .books()
             .holdings_on(parse_date(date)?)
             .lots_for_sale(&parse_account(account)?, &instrument(id)?, quantity, method)
             .map_err(error)?;
         to_js(&sale)
     }
 
-    /// The trades that move `account` to `targets`, weights by holding, as shares of the
-    /// account's value.
-    #[wasm_bindgen(unchecked_return_type = "Rebalance")]
+    /// The trades that move the accounts (by default every account; `choices.accounts` names
+    /// others) together to `targets`, weights by holding, as shares of their combined value:
+    /// one proposal per account. `withRebalance` makes its trades.
+    #[wasm_bindgen(unchecked_return_type = "CombinedRebalance")]
     pub fn rebalance(
         &self,
-        account: &str,
         #[wasm_bindgen(unchecked_param_type = "Record<HoldingKey, number>")] targets: JsValue,
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
         let targets: BTreeMap<HoldingKey, f64> = from_js(targets, "targets")?;
         let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
-        let (on, options) = self.rebalance_choices(choices)?;
-        let plan = finalytics::opt::rebalance(
-            &self.books,
-            &self.market,
-            on,
-            &parse_account(account)?,
-            &targets,
-            &options,
-        )
-        .map_err(error)?;
-        to_js(&plan)
-    }
-
-    /// The trades that move several accounts together to `targets`, as shares of their combined
-    /// value: one proposal per account.
-    #[wasm_bindgen(js_name = rebalanceAccounts, unchecked_return_type = "CombinedRebalance")]
-    pub fn rebalance_accounts(
-        &self,
-        #[wasm_bindgen(unchecked_param_type = "string[]")] accounts: JsValue,
-        #[wasm_bindgen(unchecked_param_type = "Record<HoldingKey, number>")] targets: JsValue,
-        #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let accounts: Vec<String> = from_js(accounts, "accounts")?;
-        let accounts = accounts
-            .iter()
-            .map(|a| parse_account(a))
-            .collect::<Result<Vec<_>, _>>()?;
-        let targets: BTreeMap<HoldingKey, f64> = from_js(targets, "targets")?;
-        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
-        let (on, options) = self.rebalance_choices(choices)?;
+        let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
+        let accounts = match choices.remove("accounts") {
+            None | Some(serde_json::Value::Null) => self
+                .inner
+                .data()
+                .accounts
+                .iter()
+                .map(|a| a.id.clone())
+                .collect(),
+            Some(value) => {
+                let names: Vec<String> =
+                    finalytics::formats::from_json(&value.to_string(), "accounts")
+                        .map_err(error)?;
+                names
+                    .iter()
+                    .map(|a| parse_account(a))
+                    .collect::<Result<Vec<_>, _>>()?
+            }
+        };
+        let (on, options) = self.dated_choices::<RebalanceOptions>(choices)?;
         let plan = finalytics::opt::rebalance_accounts(
-            &self.books,
-            &self.market,
+            self.inner.books(),
+            self.inner.market(),
             on,
             &accounts,
             &targets,
@@ -744,9 +933,14 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let shocks: finalytics::risk::Shocks = from_js(shocks, "shocks")?;
         let (on, options) = self.scenario_choices(choices)?;
-        let result =
-            finalytics::risk::shock_scenario(&self.books, &self.market, on, &shocks, &options)
-                .map_err(error)?;
+        let result = finalytics::risk::shock_scenario(
+            self.inner.books(),
+            self.inner.market(),
+            on,
+            &shocks,
+            &options,
+        )
+        .map_err(error)?;
         to_js(&result)
     }
 
@@ -760,45 +954,39 @@ impl Books {
     ) -> Result<JsValue, JsValue> {
         let window: finalytics::risk::HistoricalWindow = from_js(window, "window")?;
         let (on, options) = self.scenario_choices(choices)?;
-        let result =
-            finalytics::risk::historical_scenario(&self.books, &self.market, on, &window, &options)
-                .map_err(error)?;
+        let result = finalytics::risk::historical_scenario(
+            self.inner.books(),
+            self.inner.market(),
+            on,
+            &window,
+            &options,
+        )
+        .map_err(error)?;
         to_js(&result)
     }
 }
 
-impl Books {
+impl Portfolio {
     fn report_source(&self) -> &finalytics::reports::Source {
         self.source
-            .get_or_init(|| finalytics::reports::Source::of(&self.portfolio, &self.market))
-    }
-
-    /// The date and options of `Books.rebalance` and `Books.rebalanceAccounts`.
-    fn rebalance_choices(&self, choices: JsValue) -> Result<(Date, RebalanceOptions), JsValue> {
-        self.dated_choices(choices)
+            .get_or_init(|| finalytics::reports::Source::of(self.inner.data(), self.inner.market()))
     }
 
     fn scenario_choices(
         &self,
         choices: JsValue,
     ) -> Result<(Date, finalytics::risk::ScenarioOptions), JsValue> {
-        self.dated_choices(choices)
+        self.dated_choices(optional(choices, "choices")?)
     }
 
     /// Options with an optional `date` among them, by default the last price date.
-    fn dated_choices<T: DeserializeOwned>(&self, choices: JsValue) -> Result<(Date, T), JsValue> {
-        let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
+    fn dated_choices<T: DeserializeOwned>(
+        &self,
+        mut choices: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<(Date, T), JsValue> {
         let on = match choices.remove("date") {
             Some(serde_json::Value::String(d)) => parse_date(&d)?,
-            _ => match self.default_dates().last() {
-                Some(last) => parse_date(last)?,
-                None => {
-                    return Err(invalid(
-                        "date",
-                        "give a date: the market data has no prices",
-                    ));
-                }
-            },
+            _ => self.date_or_last(None)?,
         };
         let options = finalytics::formats::from_json(
             &serde_json::Value::Object(choices).to_string(),
@@ -806,6 +994,251 @@ impl Books {
         )
         .map_err(error)?;
         Ok((on, options))
+    }
+}
+
+/// The settings of `Assets`.
+#[derive(Default, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct AssetsOptions {
+    risk_free_rate: Option<f64>,
+    risk_free_asset: Option<String>,
+    periods_per_year: Option<f64>,
+    covariance: Option<serde_json::Value>,
+}
+
+impl AssetsOptions {
+    fn apply(self, mut assets: finalytics::Assets) -> Result<finalytics::Assets, JsValue> {
+        if let Some(periods) = self.periods_per_year {
+            assets = assets.with_periods_per_year(periods);
+        }
+        if let Some(method) = self.covariance {
+            let method = match method {
+                serde_json::Value::String(name) => serde_json::json!({ "type": name }),
+                other => other,
+            };
+            let method: CovarianceMethod =
+                finalytics::formats::from_json(&method.to_string(), "options.covariance")
+                    .map_err(error)?;
+            assets = assets.with_covariance(method);
+        }
+        match (self.risk_free_rate, self.risk_free_asset) {
+            (Some(_), Some(_)) => Err(invalid(
+                "options.risk_free_asset",
+                "give a risk_free_rate or a risk_free_asset, not both",
+            )),
+            (_, Some(asset)) => assets.with_risk_free_asset(&asset).map_err(error),
+            (rate, None) => Ok(assets.with_risk_free_rate(rate.unwrap_or(0.0))),
+        }
+    }
+}
+
+/// The prices or returns of several assets over the same periods, with the settings that turn
+/// them into annual figures, for statistics and optimisation.
+#[wasm_bindgen]
+pub struct Assets {
+    inner: finalytics::Assets,
+}
+
+#[wasm_bindgen]
+impl Assets {
+    /// Assets from prices: dates, labels and one column of prices per asset (`null` where there
+    /// is none). Dates on which an asset has no price are left out, with a warning.
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        #[wasm_bindgen(unchecked_param_type = "PriceTable")] prices: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "AssetsOptions")] options: JsValue,
+    ) -> Result<Assets, JsValue> {
+        let prices: finalytics::PriceTable = from_js(prices, "prices")?;
+        let assets = finalytics::Assets::from_prices(&prices).map_err(error)?;
+        let options: AssetsOptions = optional(options, "options")?;
+        Ok(Assets {
+            inner: options.apply(assets)?,
+        })
+    }
+
+    /// Assets from prices in CSV text: a `date` column and one column per asset.
+    #[wasm_bindgen(js_name = fromCsv)]
+    pub fn from_csv(
+        text: &str,
+        #[wasm_bindgen(unchecked_optional_param_type = "AssetsOptions")] options: JsValue,
+    ) -> Result<Assets, JsValue> {
+        let assets = finalytics::Assets::from_csv(text).map_err(error)?;
+        let options: AssetsOptions = optional(options, "options")?;
+        Ok(Assets {
+            inner: options.apply(assets)?,
+        })
+    }
+
+    /// Assets from their returns: the date each return ends on, the labels, and one column of
+    /// returns per asset.
+    #[wasm_bindgen(js_name = fromReturns)]
+    pub fn from_returns(
+        dates: Vec<String>,
+        labels: Vec<String>,
+        #[wasm_bindgen(unchecked_param_type = "(Float64Array | number[])[]")] columns: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "AssetsOptions")] options: JsValue,
+    ) -> Result<Assets, JsValue> {
+        let columns: Vec<Vec<f64>> = from_js(columns, "columns")?;
+        let table = ReturnsTable::new(labels, columns).map_err(error)?;
+        let assets =
+            finalytics::Assets::from_returns(parse_dates(dates, "dates")?, table).map_err(error)?;
+        let options: AssetsOptions = optional(options, "options")?;
+        Ok(Assets {
+            inner: options.apply(assets)?,
+        })
+    }
+
+    /// The assets.
+    #[wasm_bindgen(getter)]
+    pub fn labels(&self) -> Vec<String> {
+        self.inner.labels().to_vec()
+    }
+
+    /// The date each return ends on.
+    #[wasm_bindgen(getter)]
+    pub fn dates(&self) -> Vec<String> {
+        date_strings(self.inner.dates())
+    }
+
+    /// The returns, one array per asset.
+    #[wasm_bindgen(getter, unchecked_return_type = "Float64Array[]")]
+    pub fn returns(&self) -> js_sys::Array {
+        self.inner
+            .returns()
+            .columns()
+            .iter()
+            .map(|c| JsValue::from(js_sys::Float64Array::from(c.as_slice())))
+            .collect()
+    }
+
+    /// The number of return periods in a year.
+    #[wasm_bindgen(getter, js_name = periodsPerYear)]
+    pub fn periods_per_year(&self) -> f64 {
+        self.inner.periods_per_year()
+    }
+
+    /// The annual risk-free rate.
+    #[wasm_bindgen(getter, js_name = riskFreeRate)]
+    pub fn risk_free_rate(&self) -> f64 {
+        self.inner.risk_free_rate()
+    }
+
+    /// The risk-free asset, if one of the assets is.
+    #[wasm_bindgen(getter, js_name = riskFreeAsset)]
+    pub fn risk_free_asset(&self) -> Option<String> {
+        self.inner.risk_free_asset().map(str::to_owned)
+    }
+
+    /// Problems met reading the prices that did not stop the assets being built.
+    #[wasm_bindgen(getter, unchecked_return_type = "Issue[]")]
+    pub fn warnings(&self) -> Result<JsValue, JsValue> {
+        to_js(self.inner.warnings().issues())
+    }
+
+    /// Each asset's statistics, with its value at risk and expected shortfall over one period
+    /// at 95%, in the order of the assets.
+    #[wasm_bindgen(unchecked_return_type = "AssetStatistics[]")]
+    pub fn statistics(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.inner.statistics().map_err(error)?)
+    }
+
+    /// The covariance of the assets' returns, annualised.
+    #[wasm_bindgen(unchecked_return_type = "CovarianceEstimate")]
+    pub fn covariance(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.inner.covariance().map_err(error)?)
+    }
+
+    /// The correlation of the assets' returns.
+    #[wasm_bindgen(unchecked_return_type = "Matrix")]
+    pub fn correlation(&self) -> Result<JsValue, JsValue> {
+        to_js(&self.inner.correlation().map_err(error)?)
+    }
+
+    /// Each asset's historical mean return, annualised.
+    #[wasm_bindgen(js_name = meanReturns, unchecked_return_type = "Record<string, number>")]
+    pub fn mean_returns(&self) -> Result<JsValue, JsValue> {
+        let means: BTreeMap<&str, f64> = self
+            .inner
+            .labels()
+            .iter()
+            .map(String::as_str)
+            .zip(self.inner.mean_returns())
+            .collect();
+        to_js(&means)
+    }
+
+    /// The weights of the risky assets that best meet the objective of `options` (the largest
+    /// Sharpe ratio by default), fully invested, within its bounds and group limits.
+    #[wasm_bindgen(unchecked_return_type = "OptimisationResult")]
+    pub fn optimise(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
+        options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options: finalytics::OptimiseOptions = optional(options, "options")?;
+        to_js(&self.inner.optimise(&options).map_err(error)?)
+    }
+
+    /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
+    /// the limits of `options`.
+    #[wasm_bindgen(unchecked_return_type = "FrontierPoint[]")]
+    pub fn frontier(
+        &self,
+        points: Option<usize>,
+        #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
+        options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options: finalytics::OptimiseOptions = optional(options, "options")?;
+        to_js(
+            &self
+                .inner
+                .frontier(points.unwrap_or(20), &options)
+                .map_err(error)?,
+        )
+    }
+}
+
+/// Illustrative datasets, for examples, tests and practice. The data is synthetic, drawn with a
+/// fixed seed: it is not the history of any market, index or fund.
+#[wasm_bindgen(js_name = datasets)]
+pub struct Datasets;
+
+#[wasm_bindgen(js_class = datasets)]
+impl Datasets {
+    /// The names of the dataset files, for `datasets.file`.
+    pub fn files() -> Vec<String> {
+        finalytics::datasets::FILES
+            .iter()
+            .map(|f| (*f).to_owned())
+            .collect()
+    }
+
+    /// The text of a dataset file, such as `"portfolio/transactions.csv"`: an example of the
+    /// layout each file takes.
+    pub fn file(name: &str) -> Result<String, JsValue> {
+        finalytics::datasets::file(name)
+            .map(str::to_owned)
+            .ok_or_else(|| invalid("name", format!("{name:?} is not a dataset file")))
+    }
+
+    /// Month-end levels, from October 1996 to October 2026, of six asset-class indices that
+    /// start at 100: US Equity, Intl Equity, Bonds, T-Bills, Gold and Real Estate.
+    #[wasm_bindgen(js_name = assetClassPrices, unchecked_return_type = "PriceTable")]
+    pub fn asset_class_prices() -> Result<JsValue, JsValue> {
+        to_js(&finalytics::datasets::asset_class_prices())
+    }
+
+    /// A portfolio of two accounts in US dollars and euros, from November 2023 to October 2026,
+    /// with daily prices and a balanced benchmark, `BENCH`.
+    pub fn portfolio() -> Portfolio {
+        finalytics::datasets::portfolio().into()
+    }
+
+    /// The options of the full report on `datasets.portfolio()`.
+    #[wasm_bindgen(js_name = reportOptions, unchecked_return_type = "ReportOptions")]
+    pub fn report_options() -> Result<JsValue, JsValue> {
+        to_js(&finalytics::datasets::report_options())
     }
 }
 
@@ -1042,30 +1475,8 @@ pub fn write_document(
 pub fn validate_portfolio(
     #[wasm_bindgen(unchecked_param_type = "Portfolio")] portfolio: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let portfolio: Portfolio = from_js(portfolio, "portfolio")?;
+    let portfolio: PortfolioData = from_js(portfolio, "portfolio")?;
     to_js(portfolio.validate().issues())
-}
-
-/// A portfolio from CSV text of instruments, transactions and, optionally, accounts. With
-/// accounts, the portfolio has exactly the accounts listed; without, one per account the
-/// transactions name.
-#[wasm_bindgen(js_name = portfolioFromCsv, unchecked_return_type = "Portfolio")]
-pub fn portfolio_from_csv_text(
-    instruments: &str,
-    transactions: &str,
-    #[wasm_bindgen(js_name = baseCurrency)] base_currency: &str,
-    delimiter: Option<String>,
-    accounts: Option<String>,
-) -> Result<JsValue, JsValue> {
-    let portfolio = portfolio_from_csv(
-        currency(base_currency)?,
-        instruments,
-        transactions,
-        accounts.as_deref(),
-        csv_options(delimiter)?,
-    )
-    .map_err(error)?;
-    to_js(&portfolio)
 }
 
 fn statistics_options(value: JsValue) -> Result<StatisticsOptions, JsValue> {

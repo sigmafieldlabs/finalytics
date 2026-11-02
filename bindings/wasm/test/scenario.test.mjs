@@ -7,7 +7,7 @@ const fl = await engine();
 const expected = await json("tests/scenario/expected.json");
 
 function results(portfolio, market) {
-  const books = new fl.Books(portfolio, market);
+  const books = new fl.Portfolio(portfolio, market);
   const dates = market.priceDates;
   const last = dates[dates.length - 1];
   const performance = books.performance(dates);
@@ -26,11 +26,10 @@ function results(portfolio, market) {
   const sample = fl.covariance(assets.table, { type: "sample" }).matrix;
   const covariance = { labels: sample.labels, values: sample.values.map((v) => v * 252) };
   const problem = { labels: covariance.labels, covariance };
-  const plan = books.rebalance(
-    "main",
+  const [plan] = books.rebalance(
     { SPY: 0.4, BOND: 0.4, SAP: 0.15 },
-    { date: last, lot_method: "highest_cost" },
-  );
+    { accounts: ["main"], date: last, lot_method: "highest_cost" },
+  ).accounts;
   return {
     valuation_total_base: books.valuation(last).total_base,
     realised_gains_base: books.realisedGains().map((g) => g.gain_base),

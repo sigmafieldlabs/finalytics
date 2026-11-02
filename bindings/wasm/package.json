@@ -28,6 +28,7 @@
     "finalytics_bg.wasm.d.ts",
     "finalytics.js",
     "finalytics.d.ts",
+    "node.js",
     "worker.js",
     "client.js",
     "client.d.ts",
@@ -39,6 +40,7 @@
   "exports": {
     ".": {
       "types": "./finalytics.d.ts",
+      "node": "./node.js",
       "default": "./finalytics.js"
     },
     "./worker.js": "./worker.js",

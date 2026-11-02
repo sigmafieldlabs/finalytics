@@ -15,7 +15,7 @@ use finalytics::formats::{
 use finalytics::opt::{Constraints, Objective, Problem};
 use finalytics::performance::{FlowTiming, Performance};
 use finalytics::risk::{self, Matrix, ReturnsTable, StatisticsOptions, TailMethod};
-use finalytics::{Books, Currency, Date, Decimal, MarketData, Portfolio};
+use finalytics::{Books, Currency, Date, Decimal, MarketData, PortfolioData};
 
 /// A check: it takes any bytes and panics if what must hold does not.
 pub type Check = fn(&[u8]);
@@ -98,8 +98,8 @@ pub fn csv_portfolio(data: &[u8]) {
         None => (rest, None),
     };
     if let Ok(portfolio) = portfolio_from_csv(
-        Currency::USD,
-        instruments,
+        Some(Currency::USD),
+        Some(instruments),
         transactions,
         accounts,
         CsvOptions::default(),
@@ -136,7 +136,7 @@ pub fn market_document(data: &[u8]) {
 }
 
 /// Keeps the books and exercises what reads them, on at most a few dates.
-fn books(portfolio: &Portfolio, market: &MarketData) {
+fn books(portfolio: &PortfolioData, market: &MarketData) {
     let Ok(books) = Books::build(portfolio, market) else {
         return;
     };
@@ -176,7 +176,7 @@ fn books(portfolio: &Portfolio, market: &MarketData) {
 /// Rebalances the first account, and all of them together, to equal weights in every instrument,
 /// with fees and tax rates. A proposal must turn into transactions, and a sale must report its
 /// tax.
-fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: Date) {
+fn rebalancing(portfolio: &PortfolioData, books: &Books, market: &MarketData, date: Date) {
     let Some(first) = portfolio.accounts.first() else {
         return;
     };
@@ -215,7 +215,7 @@ fn rebalancing(portfolio: &Portfolio, books: &Books, market: &MarketData, date: 
 /// Measures the household by every scheme of its accounts' classifications, and checks that
 /// the accounts' series add up to the portfolio's, that the accounts' contributions add up to
 /// the household's return, and that the result reads back equal from JSON.
-fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, dates: &[Date]) {
+fn household_holds(portfolio: &PortfolioData, books: &Books, market: &MarketData, dates: &[Date]) {
     if let (Ok(accounts), Ok(whole)) = (
         books.account_series(dates, market),
         books.value_series(dates, market),
@@ -301,7 +301,7 @@ fn household_holds(portfolio: &Portfolio, books: &Books, market: &MarketData, da
 /// Computes the holdings, performance, risk and overview reports, broken down by every
 /// classification scheme and measured against the first instrument with prices, and checks that
 /// each writes JSON that reads back as the same report and turns into rectangular tables.
-fn reports_hold(portfolio: &Portfolio, books: &Books, market: &MarketData) {
+fn reports_hold(portfolio: &PortfolioData, books: &Books, market: &MarketData) {
     use finalytics::reports::{
         ReportOptions, ReportTable, Source, holdings_report, overview_report, performance_report,
         report_tables, risk_report,
@@ -362,7 +362,7 @@ fn reports_hold(portfolio: &Portfolio, books: &Books, market: &MarketData) {
 
 /// Shocks every instrument, every classification and every foreign currency of the portfolio,
 /// replays the period of its prices, and checks what holds for any scenario that runs.
-fn portfolio_scenarios(portfolio: &Portfolio, books: &Books, market: &MarketData, date: Date) {
+fn portfolio_scenarios(portfolio: &PortfolioData, books: &Books, market: &MarketData, date: Date) {
     use finalytics::risk::{GroupShock, HistoricalWindow, ScenarioOptions, Shocks};
     let mut groups: Vec<GroupShock> = Vec::new();
     for i in &portfolio.instruments {
@@ -476,9 +476,11 @@ fn scenario_books() -> &'static (Books, MarketData) {
     BOOKS.get_or_init(|| {
         let options = CsvOptions::default();
         let portfolio = portfolio_from_csv(
-            Currency::USD,
-            "id,kind,currency,class.asset_class\nA,equity,USD,Equity\nB,equity,EUR,Equity\n\
-             C,bond,USD,Bonds\n",
+            Some(Currency::USD),
+            Some(
+                "id,kind,currency,class.asset_class\nA,equity,USD,Equity\nB,equity,EUR,Equity\n\
+                 C,bond,USD,Bonds\n",
+            ),
             "id,account,trade_date,type,instrument,quantity,price,amount,currency,sell_amount,\
              sell_currency,buy_amount,buy_currency\n\
              t1,main,2026-01-02,deposit,,,,100000,USD,,,,\n\

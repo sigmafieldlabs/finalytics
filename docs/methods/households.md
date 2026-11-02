@@ -56,7 +56,7 @@ group's contribution is its accounts' added up.
 
 ```python
 >>> import finalytics as fl
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     accounts=(
 ...         "id,name,class.owner,class.wrapper\n"
 ...         "main,Brokerage,Alice,taxable\n"
@@ -79,7 +79,7 @@ group's contribution is its accounts' added up.
 >>> market = fl.MarketData(
 ...     prices={"SPY": {"2026-03-02": 100, "2026-03-03": 110, "2026-03-04": 99, "2026-03-05": 105}}
 ... )
->>> household = portfolio.books(market).household(group_by=["owner"])
+>>> household = fl.Portfolio(data, market).household(group_by=["owner"])
 >>> round(household.household.time_weighted, 6), household.household.flows
 (0.03125, 1000.0)
 >>> for a in household.accounts:

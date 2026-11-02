@@ -1,4 +1,4 @@
-"""Portfolios, market data and the books kept from them."""
+"""Portfolios: their records, the market data that values them, and the books kept from them."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import math
 import os
 import pathlib
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numpy as np
 
@@ -18,6 +18,9 @@ from finalytics import _arrays, _finalytics, _types
 from finalytics._arrays import DateArray, DateLike
 from finalytics._convert import dumps, from_json, loads, to_json
 from finalytics._errors import call
+
+if TYPE_CHECKING:
+    from finalytics.assets import Assets
 
 TextOrPath = str | os.PathLike[str]
 """CSV or JSON given as text, or as the path of a file holding it."""
@@ -41,21 +44,21 @@ def cash(currency: str) -> _types.HoldingKey:
     return f"{currency} cash"
 
 
-class Portfolio(_types.Portfolio):
-    """Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
-    instruments and transactions.
+class PortfolioData(_types.PortfolioData):
+    """A portfolio's records: its base currency, accounts, instruments and transactions. With
+    :class:`MarketData`, they make a :class:`Portfolio`.
 
-    Build one from dataclasses, from JSON, from a portfolio document, or from CSV files.
+    Build them from dataclasses, from JSON, or from CSV files.
     """
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> Portfolio:
-        """A portfolio from decoded JSON in the portfolio format."""
+    def from_dict(cls, data: Mapping[str, Any]) -> PortfolioData:
+        """Records from decoded JSON in the portfolio format."""
         return from_json(cls, data)
 
     @classmethod
-    def from_json(cls, text: str) -> Portfolio:
-        """A portfolio from JSON text in the portfolio format (the ``portfolio`` member of a
+    def from_json(cls, text: str) -> PortfolioData:
+        """Records from JSON text in the portfolio format (the ``portfolio`` member of a
         portfolio document)."""
         return loads(cls, text)
 
@@ -63,47 +66,40 @@ class Portfolio(_types.Portfolio):
     def from_csv(
         cls,
         *,
-        instruments: TextOrPath,
         transactions: TextOrPath,
-        base_currency: str,
+        instruments: TextOrPath | None = None,
         accounts: TextOrPath | None = None,
+        base_currency: str | None = None,
         delimiter: str = ",",
-    ) -> Portfolio:
-        """A portfolio from CSV files of instruments, transactions and, optionally, accounts
-        (columns `id`, `name`, `lot_method` and `class.<scheme>`). With an accounts file, the
-        portfolio has exactly the accounts it lists; without one, it has one account per account
-        named in the transactions.
+    ) -> PortfolioData:
+        """Records from CSV files; see :meth:`Portfolio.from_csv` for what each holds and what
+        is assumed without it.
 
         Every problem is reported at once, by line and column, in a
         :class:`~finalytics.ValidationError`.
         """
         text = call(
             _finalytics.read_portfolio_csv,
-            base_currency,
-            _text(instruments),
             _text(transactions),
             delimiter,
+            None if instruments is None else _text(instruments),
             None if accounts is None else _text(accounts),
+            base_currency,
         )
         return cls.from_json(text)
 
     def to_json(self) -> str:
-        """The portfolio as JSON text."""
+        """The records as JSON text."""
         return dumps(self)
 
     def validate(self) -> list[_types.Issue]:
-        """Every structural problem in the portfolio, without applying its transactions.
+        """Every structural problem in the records, without applying the transactions.
 
         Problems found only by applying the transactions in order, such as selling more than is
-        held, are reported when the books are built.
+        held, are reported when the :class:`Portfolio` is built.
         """
         report = loads(_types.ValidationReport, call(_finalytics.validate_portfolio, self.to_json()))
         return report.issues
-
-    def books(self, market: MarketData | None = None) -> Books:
-        """Keeps the books: applies the transactions, using `market` for FX rates and for the
-        prices that transfers without a cost basis need."""
-        return Books(self, market or MarketData())
 
 
 class Observed(NamedTuple):
@@ -260,20 +256,20 @@ def _observed(text: str | None) -> Observed | None:
 
 
 class Document(NamedTuple):
-    """A portfolio document: a portfolio and, optionally, its market data."""
+    """A portfolio document: a portfolio's records and, optionally, its market data."""
 
-    portfolio: Portfolio
+    portfolio: PortfolioData
     market: MarketData | None
 
 
 def read_document(source: TextOrPath) -> Document:
     """Reads a portfolio document (``"format": "finalytics.portfolio"``), reporting where a
-    malformed one goes wrong."""
+    malformed one goes wrong. :meth:`Portfolio.read` reads one into a portfolio."""
     portfolio, market = call(_finalytics.read_document, _text(source))
-    return Document(Portfolio.from_json(portfolio), None if market is None else MarketData._wrap(market))
+    return Document(PortfolioData.from_json(portfolio), None if market is None else MarketData._wrap(market))
 
 
-def write_document(portfolio: Portfolio, market: MarketData | None = None) -> str:
+def write_document(portfolio: PortfolioData, market: MarketData | None = None) -> str:
     """A portfolio document holding `portfolio` and, optionally, `market`, as JSON text."""
     return call(_finalytics.write_document, portfolio.to_json(), None if market is None else market._native)
 
@@ -290,30 +286,139 @@ class Holdings:
     """Cash balances by account and currency."""
 
 
-class Books:
-    """The books of a portfolio: its transactions applied in order, with the market data used to
-    value them."""
+class Portfolio:
+    """A portfolio: its records (base currency, accounts, instruments and transactions), the
+    market data that values it, and the books kept from them. Everything Finalytics measures
+    about a portfolio starts here.
 
-    def __init__(self, portfolio: Portfolio, market: MarketData):
-        self.portfolio = portfolio
-        """The portfolio."""
-        self.market = market
-        """The market data used for valuation."""
-        self._native = call(_finalytics.NativeBooks, portfolio.to_json(), market._native)
+    Read one from CSV files with :meth:`from_csv` (only the transactions are required), from a
+    portfolio document with :meth:`read`, or build one from :class:`PortfolioData` and
+    :class:`MarketData`. A portfolio does not change: :meth:`with_transactions` and
+    :meth:`with_rebalance` return new ones.
+    """
+
+    def __init__(self, data: PortfolioData, market: MarketData | None = None):
+        native = call(_finalytics.NativePortfolio, data.to_json(), (market or MarketData())._native)
+        self._native = native
+        self._data: PortfolioData | None = data
+        self._market: MarketData | None = market
+
+    @classmethod
+    def _wrap(cls, native: Any) -> Portfolio:
+        portfolio = cls.__new__(cls)
+        portfolio._native = native
+        portfolio._data = None
+        portfolio._market = None
+        return portfolio
+
+    @classmethod
+    def from_csv(
+        cls,
+        *,
+        transactions: TextOrPath,
+        prices: TextOrPath | None = None,
+        fx: TextOrPath | None = None,
+        instruments: TextOrPath | None = None,
+        accounts: TextOrPath | None = None,
+        base_currency: str | None = None,
+        delimiter: str = ",",
+    ) -> Portfolio:
+        """A portfolio from CSV files, each given as a path or as text.
+
+        - `transactions`: one row per transaction, with a ``date`` (or ``trade_date``), a
+          ``type`` and the columns the type needs, such as ``instrument``, ``quantity`` and
+          ``price`` for a ``buy``, or ``amount`` and ``currency`` for a ``deposit``. Rows may
+          give an ``id`` (``t1``, ``t2`` and so on by default) and an ``account`` (``main``).
+        - `prices`: a ``date`` column and one column per instrument, or ``date``,
+          ``instrument`` and ``price`` columns.
+        - `fx`: a ``date`` column and one column per pair, such as ``EUR/USD``, for instruments
+          and cash in other currencies.
+        - `instruments`: ``id``, ``kind`` and ``currency``, with ``class.<scheme>`` columns such
+          as ``class.asset_class`` for grouping. Without it, each instrument is in the currency
+          given with it in the transactions, or else in the base currency.
+        - `accounts`: ``id``, with ``name``, ``lot_method`` and ``class.<scheme>`` columns.
+          Without it, each account the transactions name is created.
+        - `base_currency`: the currency results are reported in; by default, that of the first
+          deposit.
+
+        ``fl.datasets.file("portfolio/transactions.csv")`` and the other dataset files show each
+        layout. Every problem in every file is reported at once, by line and column, in a
+        :class:`~finalytics.ValidationError`.
+        """
+        native = call(
+            _finalytics.NativePortfolio.from_csv,
+            _text(transactions),
+            delimiter,
+            None if instruments is None else _text(instruments),
+            None if accounts is None else _text(accounts),
+            None if prices is None else _text(prices),
+            None if fx is None else _text(fx),
+            base_currency,
+        )
+        return cls._wrap(native)
+
+    @classmethod
+    def read(cls, source: TextOrPath) -> Portfolio:
+        """A portfolio from a portfolio document (``"format": "finalytics.portfolio"``), given
+        as a path or as JSON text."""
+        return cls._wrap(call(_finalytics.NativePortfolio.from_document, _text(source)))
+
+    def to_json(self) -> str:
+        """The portfolio document of the portfolio and its market data, as JSON text."""
+        return self._native.to_document()
+
+    @property
+    def data(self) -> PortfolioData:
+        """The records: base currency, accounts, instruments and transactions."""
+        if self._data is None:
+            self._data = PortfolioData.from_json(self._native.data())
+        return self._data
+
+    @property
+    def market(self) -> MarketData:
+        """The market data."""
+        if self._market is None:
+            self._market = MarketData._wrap(self._native.market())
+        return self._market
 
     @property
     def base_currency(self) -> str:
         """The currency results are reported in."""
         return self._native.base_currency()
 
-    def default_dates(self) -> DateArray:
-        """The dates performance is measured on when none are given: every date with a price,
+    @property
+    def as_of(self) -> datetime.date | None:
+        """The last date with a price: the date the portfolio is valued on when no other is
+        given."""
+        found = self._native.as_of()
+        return None if found is None else datetime.date.fromisoformat(found)
+
+    def dates(self) -> DateArray:
+        """The dates the portfolio is measured on when none are given: every date with a price,
         from the first transaction to the last price."""
-        dates = self.market.price_dates
-        if not self.portfolio.transactions:
-            return dates
-        first = np.datetime64(min(t.trade_date for t in self.portfolio.transactions), "D")
-        return dates[dates >= first]
+        return _arrays.dates_from_buffer(self._native.dates())
+
+    def with_transactions(self, transactions: Iterable[_types.Transaction]) -> Portfolio:
+        """The same portfolio with more transactions, applied after its own."""
+        text = dumps(list(transactions))
+        return Portfolio._wrap(call(self._native.with_transactions, text))
+
+    def with_rebalance(self, proposal: _types.CombinedRebalance) -> Portfolio:
+        """The same portfolio with the trades of a rebalancing proposal (from :meth:`rebalance`)
+        made on its date."""
+        return Portfolio._wrap(call(self._native.with_rebalance, dumps(proposal)))
+
+    def with_market(self, market: MarketData) -> Portfolio:
+        """The same portfolio valued with other market data."""
+        return Portfolio._wrap(call(self._native.with_market, market._native))
+
+    def assets(self) -> Assets:
+        """The instruments held at the last price date, as :class:`~finalytics.Assets`: their
+        price returns in the base currency on the portfolio's dates, for statistics and
+        optimisation."""
+        from finalytics.assets import Assets
+
+        return Assets._wrap(call(self._native.assets))
 
     def holdings(self, date: DateLike | None = None) -> Holdings:
         """Positions, lots and cash at the end of `date`, or after the last transaction."""
@@ -324,25 +429,25 @@ class Books:
             cash=from_json(list[_types.CashBalance], found["cash"]),
         )
 
-    def valuation(self, date: DateLike) -> _types.Valuation:
-        """The holdings valued at the end of `date`. Missing prices and rates are an error;
-        carried ones are listed in the valuation's warnings."""
-        return loads(_types.Valuation, call(self._native.valuation, _arrays.date(date)))
+    def valuation(self, date: DateLike | None = None) -> _types.Valuation:
+        """The holdings valued at the end of `date` (by default the last price date). Missing
+        prices and rates are an error; carried ones are listed in the valuation's warnings."""
+        return loads(_types.Valuation, call(self._native.valuation, self._date_or_last_price(date)))
 
     def value_series(self, dates: Any = None) -> _types.ValueSeries:
         """End-of-day values and external flows on `dates` (strictly increasing)."""
-        dates = self.default_dates() if dates is None else dates
+        dates = self.dates() if dates is None else dates
         return loads(_types.ValueSeries, call(self._native.value_series, _arrays.dates_to_buffer(dates)))
 
     def holding_series(self, dates: Any = None) -> _types.HoldingSeries:
         """Each holding's daily value, trade cash and income on `dates`."""
-        dates = self.default_dates() if dates is None else dates
+        dates = self.dates() if dates is None else dates
         return loads(_types.HoldingSeries, call(self._native.holding_series, _arrays.dates_to_buffer(dates)))
 
     def account_series(self, dates: Any = None) -> _types.AccountSeries:
         """Each account's end-of-day value and external flows on `dates` (by default every price
         date from the first transaction)."""
-        dates = self.default_dates() if dates is None else dates
+        dates = self.dates() if dates is None else dates
         return loads(_types.AccountSeries, call(self._native.account_series, _arrays.dates_to_buffer(dates)))
 
     def household(
@@ -357,7 +462,7 @@ class Books:
         scheme in `group_by`, such as ``"owner"``. Each has its value, flows, time- and
         money-weighted returns, and its contribution to the household's time-weighted return;
         the accounts' contributions add up to that return."""
-        dates = self.default_dates() if dates is None else dates
+        dates = self.dates() if dates is None else dates
         options = _types.HouseholdOptions(group_by=list(group_by), timing=timing)
         text = call(self._native.household, _arrays.dates_to_buffer(dates), dumps(options))
         return loads(_types.Household, text)
@@ -372,20 +477,21 @@ class Books:
 
     def performance(self, dates: Any = None, *, timing: _types.FlowTiming = "start_of_day"):
         """Time-weighted performance measured on `dates` (by default, every price date from the
-        first transaction), with flows at the start or the end of the day."""
+        first transaction), with external flows at the start or the end of the day."""
         from finalytics.performance import Performance
 
-        dates = self.default_dates() if dates is None else dates
+        dates = self.dates() if dates is None else dates
         return Performance._wrap(call(self._native.performance, _arrays.dates_to_buffer(dates), timing))
 
-    def weights(self, date: DateLike) -> dict[_types.HoldingKey, float]:
-        """Each holding's share of the portfolio's value on `date`, in the base currency."""
-        return loads(dict[str, float], call(self._native.holding_weights, _arrays.date(date)))
+    def weights(self, date: DateLike | None = None) -> dict[_types.HoldingKey, float]:
+        """Each holding's share of the portfolio's value at the end of `date` (by default the
+        last price date), in the base currency."""
+        return loads(dict[str, float], call(self._native.holding_weights, self._date_or_last_price(date)))
 
     def holding_returns(self, holdings: Iterable[_types.HoldingKey], dates: Any = None) -> _types.HoldingReturns:
         """Price returns of `holdings` (instrument identifiers, or ``"USD cash"`` and the like) in
         the base currency between consecutive `dates`, the input to covariance estimation."""
-        dates = self.default_dates() if dates is None else dates
+        dates = self.dates() if dates is None else dates
         text = call(self._native.holding_returns, dumps(list(holdings)), _arrays.dates_to_buffer(dates))
         return loads(_types.HoldingReturns, text)
 
@@ -403,35 +509,9 @@ class Books:
 
     def rebalance(
         self,
-        account: str,
         targets: Mapping[_types.HoldingKey, float],
         *,
-        date: DateLike | None = None,
-        lot_method: _types.LotMethod = "fifo",
-        whole_units: bool = False,
-        minimum_trade: decimal.Decimal | int | str = 0,
-        fees: _types.Fees | None = None,
-        tax: _types.TaxRates | None = None,
-    ) -> _types.Rebalance:
-        """The trades that move `account` to `targets`: weights by holding (an instrument's
-        identifier, or ``"USD cash"`` and the like), as shares of the account's value on `date`
-        (by default the last price date).
-
-        Instruments held but not listed are sold; base-currency cash takes the weight the targets
-        leave, and other currencies are converted to their targets (zero if not listed). Each
-        trade pays `fees`; with `tax` rates, sales take the lots that cost the least tax, and the
-        tax is estimated.
-        """
-        options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
-        weights = {k: float(w) for k, w in targets.items()}
-        text = call(self._native.rebalance, self._date_or_last_price(date), account, dumps(weights), dumps(options))
-        return loads(_types.Rebalance, text)
-
-    def rebalance_accounts(
-        self,
-        accounts: Sequence[str],
-        targets: Mapping[_types.HoldingKey, float],
-        *,
+        accounts: Sequence[str] | None = None,
         date: DateLike | None = None,
         lot_method: _types.LotMethod = "fifo",
         whole_units: bool = False,
@@ -439,17 +519,25 @@ class Books:
         fees: _types.Fees | None = None,
         tax: _types.TaxRates | None = None,
     ) -> _types.CombinedRebalance:
-        """The trades that move several `accounts` together to `targets`, as shares of their
-        combined value: one proposal per account. A holding above its target is sold from the
-        accounts that hold it in proportion to their holdings, and one below is bought in
-        proportion to the value each account has free; trades do not move cash between
-        accounts."""
+        """The trades that move `accounts` (by default every account) together to `targets`:
+        weights by holding (an instrument's identifier, or ``"USD cash"`` and the like), as
+        shares of their combined value on `date` (by default the last price date). The proposal
+        has one rebalance per account; :meth:`with_rebalance` makes its trades.
+
+        Instruments held but not listed are sold; base-currency cash takes the weight the
+        targets leave, and other currencies are converted to their targets (zero if not
+        listed). A holding above its target is sold from the accounts that hold it in
+        proportion to their holdings, and one below is bought in proportion to the value each
+        account has free; trades do not move cash between accounts. Each trade pays `fees`;
+        with `tax` rates, sales take the lots that cost the least tax, and the tax is estimated.
+        """
         options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
         weights = {k: float(w) for k, w in targets.items()}
+        chosen = [a.id for a in self.data.accounts] if accounts is None else list(accounts)
         text = call(
             self._native.rebalance_accounts,
             self._date_or_last_price(date),
-            json.dumps(list(accounts)),
+            json.dumps(chosen),
             dumps(weights),
             dumps(options),
         )
@@ -551,10 +639,9 @@ class Books:
 
     def _date_or_last_price(self, date: DateLike | None) -> str:
         if date is None:
-            dates = self.market.price_dates
-            if len(dates) == 0:
-                raise ValueError("give a date: the market data has no prices")
-            date = dates[-1]
+            date = self.as_of
+            if date is None:
+                raise ValueError("give a date: the portfolio has no prices")
         return _arrays.date(date)
 
     @staticmethod
@@ -573,10 +660,72 @@ class Books:
             tax=tax,
         )
 
+    def report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.PortfolioReport:
+        """Every report on the portfolio, from one set of options: the fields of
+        :class:`~finalytics.reports.ReportOptions`, given as keywords or as a ``ReportOptions``,
+        such as ``benchmark="SPX"``, ``group_by=["asset_class"]`` and ``risk_free_rate=0.03``.
+        The attribution report needs ``attribution`` (the benchmark's segments) and the
+        scenarios report needs ``scenarios``; without them, they are ``None``."""
+        from finalytics.reports import _options
+
+        text = call(self._native.report_all, dumps(_options(options, keywords)))
+        return loads(_types.PortfolioReport, text)
+
+    def overview_report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.OverviewReport:
+        """Headline figures, value and growth against the benchmark, allocation, risk by
+        holding and by group, each holding's expected return and risk, and the efficient
+        frontier with the current portfolio."""
+        from finalytics.reports import _report
+
+        return _report(self, "overview", _types.OverviewReport, options, keywords)
+
+    def holdings_report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.HoldingsReport:
+        """Positions, lots and cash by holding and by account; allocation by holding, currency,
+        instrument kind, account and each scheme of ``group_by``; concentration; and realised
+        gains and income to date."""
+        from finalytics.reports import _report
+
+        return _report(self, "holdings", _types.HoldingsReport, options, keywords)
+
+    def performance_report(
+        self, options: _types.ReportOptions | None = None, **keywords: Any
+    ) -> _types.PerformanceReport:
+        """Value and growth over time, returns over the standard periods against the benchmark,
+        monthly and calendar-year returns, contribution by holding and by group, flows and
+        income by month, and the household by account."""
+        from finalytics.reports import _report
+
+        return _report(self, "performance", _types.PerformanceReport, options, keywords)
+
+    def risk_report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.RiskReport:
+        """Statistics, drawdowns, value at risk and expected shortfall by every method, the
+        return distribution, the holdings' covariance, correlation and risk decomposition, and
+        rolling statistics."""
+        from finalytics.reports import _report
+
+        return _report(self, "risk", _types.RiskReport, options, keywords)
+
+    def attribution_report(
+        self, options: _types.ReportOptions | None = None, **keywords: Any
+    ) -> _types.AttributionReport:
+        """Brinson–Fachler attribution against the benchmark segments given as
+        ``attribution``, with the portfolio's segments measured from its books."""
+        from finalytics.reports import _report
+
+        return _report(self, "attribution", _types.AttributionReport, options, keywords)
+
+    def scenarios_report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.ScenariosReport:
+        """The ``scenarios`` given, run together on the current holdings with the holdings'
+        covariance as the risk model, side by side."""
+        from finalytics.reports import _report
+
+        return _report(self, "scenarios", _types.ScenariosReport, options, keywords)
+
     def __repr__(self) -> str:
+        data = self.data
         return (
-            f"Books({len(self.portfolio.transactions)} transactions, "
-            f"{len(self.portfolio.accounts)} accounts, base {self.base_currency})"
+            f"Portfolio({len(data.transactions)} transactions, "
+            f"{len(data.accounts)} accounts, base {self.base_currency})"
         )
 
 

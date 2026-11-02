@@ -18,14 +18,22 @@ def rectangular(tables):
 def test_every_report_runs_and_exports(books):
     options = fl.reports.ReportOptions(group_by=["asset_class"], benchmark="SPY", rolling_window=20)
     for name in ("holdings", "overview", "performance", "risk"):
-        report = getattr(fl.reports, name)(books, options)
+        report = getattr(books, f"{name}_report")(options)
         assert report.provenance.report == name
         assert report.provenance.source == fl.reports.source(books)
         rectangular(fl.reports.tables(report))
 
 
+def test_one_call_gives_every_report(books):
+    options = fl.reports.ReportOptions(group_by=["asset_class"], benchmark="SPY", rolling_window=20)
+    report = books.report(options)
+    assert report.risk == books.risk_report(options)
+    assert report.attribution is None and report.scenarios is None
+    rectangular(fl.reports.tables(report))
+
+
 def test_performance_matches_the_reference(books):
-    report = fl.reports.performance(books, benchmark="SPY", as_of="2026-10-30")
+    report = books.performance_report(benchmark="SPY", as_of="2026-10-30")
     september, october = report.monthly.values[0][8:10]
     assert september == pytest.approx(REFERENCE["months"]["2026-09"], rel=1e-12)
     assert october == pytest.approx(REFERENCE["months"]["2026-10"], rel=1e-12)
@@ -35,7 +43,7 @@ def test_performance_matches_the_reference(books):
 
 
 def test_holdings_and_concentration(books):
-    report = fl.reports.holdings(books, group_by=["region"])
+    report = books.holdings_report(group_by=["region"])
     c = report.concentration
     assert c.herfindahl == pytest.approx(REFERENCE["concentration"]["herfindahl"], rel=1e-12)
     assert sum(h.value_base for h in report.holdings) == report.value
@@ -57,7 +65,7 @@ def test_attribution_and_scenarios(books):
             )
         ],
     )
-    report = fl.reports.attribution(books, attribution=inputs)
+    report = books.attribution_report(attribution=inputs)
     expected = REFERENCE["attribution"][0]["segments"]
     found = {s.name: s for s in report.periods[0].segments}
     for e in expected:
@@ -71,7 +79,7 @@ def test_attribution_and_scenarios(books):
             shocks=fl.risk.Shocks(groups=[fl.risk.GroupShock(scheme="asset_class", value="Equity", shock=-0.2)])
         ),
     )
-    report = fl.reports.scenarios(books, scenarios=[equities])
+    report = books.scenarios_report(scenarios=[equities])
     assert report.summary[0].name == "Equities -20%"
     assert report.summary[0].change < 0
     assert report.scenarios[0].result.risk_after is not None
@@ -80,7 +88,7 @@ def test_attribution_and_scenarios(books):
 
 def test_options_are_checked(books):
     with pytest.raises(fl.ValidationError) as caught:
-        fl.reports.risk(books, confidences=[1.5], benchmark="NOPE")
+        books.risk_report(confidences=[1.5], benchmark="NOPE")
     paths = [i.path for i in caught.value.issues]
     assert paths == ["options.confidences[0]", "options.benchmark"]
     with pytest.raises(TypeError):

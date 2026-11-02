@@ -14,6 +14,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Reporting periods are read from their labels by the engine (`Period` implements `FromStr` and
   `Display` in Rust), so Python and JavaScript accept the same labels, now including
   `since 2026-01-31`.
+- Two front doors to the library. `Assets` takes the prices or returns of things one might hold
+  (a pandas DataFrame, CSV or a `PriceTable`), detects their frequency, annualises them, and
+  gives each asset's statistics, the covariance and correlation, and optimisation by objective
+  name with bounds, per-asset bounds and group limits given by name, such as
+  `assets.optimise(objective="maximum_sharpe", bounds=(0.0, 0.4))`; one asset, such as T-bills,
+  may serve as the risk-free asset. `Portfolio` holds a portfolio's records, its market data and
+  the books kept from them, and gives its valuation, weights, performance, rebalancing (with
+  `with_rebalance` to make the trades), all six reports in one call (`report`) and the
+  instruments it holds as `Assets`. Rust has builders (`assets.optimiser().maximum_sharpe()`,
+  `PortfolioCsv::new(transactions).prices(prices)`), Python keyword arguments, and JavaScript
+  options objects.
+- Illustrative datasets (`finalytics::datasets`, `fl.datasets`, `datasets` in JavaScript):
+  30 years of month-end levels of six asset-class indices, and a three-year, two-account
+  portfolio in US dollars and euros with the options of its full report. The data is synthetic,
+  drawn with a fixed seed by `scripts/datasets.py`; each file is also available as text, as an
+  example of the layout Finalytics reads.
+- A portfolio can be read from its transactions alone: `date` may stand for `trade_date`, `id`
+  and `account` may be left out (`t1`, `t2` and so on, and `main`), the instruments file may be
+  left out (each instrument takes the currency given with it in the transactions, or the base
+  currency), and the base currency may be left out (that of the first deposit).
+- `formats::market_from_csv` builds market data from price and FX files, and
+  `formats::price_columns_from_csv` reads prices in the order of the file.
+- In Node.js the npm package is ready on import: its `node` entry point loads the WebAssembly
+  file, so `init` is needed only in browsers.
 - Rust constructors for inputs that gained `#[non_exhaustive]`: `TaxRates::new`,
   `BlackLitterman::new`, `Resampling::new`, `Turnover::new`, `HistoricalWindow::new`,
   `FactorShocks::new`, `ScenarioRiskModel::from_covariance` and `from_factor_model`;
@@ -25,8 +49,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `#[non_exhaustive]`, so that 1.x releases can add fields and variants without breaking code.
   Options start from `Default::default()` and have their fields set; `match` on an enumeration
   needs a wildcard arm. `Transaction::new` builds a transaction as `Instrument::new`,
-  `Account::new` and `Portfolio::new` already do for theirs; `SchemeRisk::new` builds a scheme's
-  risk. Python and JavaScript are unchanged.
+  `Account::new` and `PortfolioData::new` already do for theirs; `SchemeRisk::new` builds a
+  scheme's risk. Python and JavaScript are unchanged.
 - The descriptions of the shared data types no longer name Rust methods or `None`; they read the
   same in the JSON Schema, the Python types and the TypeScript declarations.
 - The holdings report counts a lot or a gain as long-term when it has been held for more than
@@ -54,6 +78,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rust: `Problem`, `TaxRates`, `BlackLitterman`, `Resampling`, `Turnover`, `TradeLimits`,
   `ScenarioRiskModel`, `HistoricalWindow` and `FactorShocks` are `#[non_exhaustive]`. A new
   parameter of an enumeration's variant will arrive as a new variant.
+- The input records of a portfolio (base currency, accounts, instruments and transactions) are
+  named `PortfolioData`, in Rust, Python, TypeScript and the JSON Schema, so that `Portfolio` can
+  name the portfolio itself. The portfolio document's `portfolio` member is unchanged.
+- Python: `Portfolio` replaces `Books` (`fl.Portfolio(data, market)` or
+  `fl.Portfolio.from_csv(transactions=..., prices=...)`), and the reports are its methods
+  (`portfolio.performance_report(...)`) rather than functions of `fl.reports`; `rebalance` takes
+  the targets and, optionally, the `accounts` (every account by default), and returns one
+  proposal for all of them. `valuation` and `weights` default to the last price date.
+- JavaScript: the `Portfolio` class replaces `Books`, with `Portfolio.fromCsv(files)` in place of
+  `portfolioFromCsv`; `rebalance(targets, { accounts })` replaces `rebalance` and
+  `rebalanceAccounts`, and `dates()` replaces `defaultDates()`. The worker client's `books` is
+  `portfolio`.
+- `formats::portfolio_from_csv` takes the base currency and the instruments file as options.
+- Rebalancing one account through `rebalance_accounts` gives exactly `rebalance`'s proposal.
 - Rust: the performance types and functions are in `finalytics::performance` rather than at the
   crate's root, and `finalytics::numeric` is no longer public. Semantic versioning covers the
   `finalytics` crate; the crates it is built from say that their own API may change in any

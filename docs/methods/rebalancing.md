@@ -48,7 +48,9 @@ rules (such as wash sales) are applied.
 
 ### Several accounts
 
-`rebalance_accounts` moves several accounts together to target weights of their combined value
+Rebalancing several accounts (`Portfolio::rebalance` in Rust, `portfolio.rebalance(...)` in
+Python and JavaScript, which take every account by default) moves them together to target weights
+of their combined value
 $V = \sum_a V_a$. Each holding $k$ with target value $T_k = w_k V$ is spread across the accounts
 by a simple rule:
 
@@ -72,7 +74,7 @@ weights before and after, turnover, realised gains, fees and tax.
 
 ```python
 >>> import finalytics as fl
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     instruments="id,kind,currency\nSPY,fund,USD\nBOND,bond,USD\nSAP,equity,EUR\n",
 ...     transactions=(
 ...         "id,account,trade_date,type,instrument,quantity,price,amount,currency\n"
@@ -86,9 +88,11 @@ weights before and after, turnover, realised gains, fees and tax.
 ...     prices={"SPY": {"2026-03-10": 500}, "BOND": {"2026-03-10": 100}, "SAP": {"2026-03-10": 210}},
 ...     fx=[("EUR", "USD", {"2026-03-02": "1.10", "2026-03-10": "1.10"})],
 ... )
->>> plan = portfolio.books(market).rebalance(
-...     "main", {"SPY": 0.5, "BOND": 0.3, "SAP": 0.15}, lot_method="highest_cost", whole_units=True
+>>> portfolio = fl.Portfolio(data, market)
+>>> proposal = portfolio.rebalance(
+...     {"SPY": 0.5, "BOND": 0.3, "SAP": 0.15}, lot_method="highest_cost", whole_units=True
 ... )
+>>> [plan] = proposal.accounts
 >>> plan.value_base, round(plan.turnover, 6), plan.realised_gain_base
 (Decimal('112500'), 0.613893, Decimal('1850'))
 >>> for trade in plan.trades:
@@ -111,7 +115,7 @@ of SPY, now at 500: one bought at 300 more than two years ago, one at 520 and on
 
 ```python
 >>> import decimal
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     instruments="id,kind,currency\nSPY,fund,USD\nBOND,bond,USD\n",
 ...     transactions=(
 ...         "id,account,trade_date,type,instrument,quantity,price,amount,currency\n"
@@ -122,14 +126,15 @@ of SPY, now at 500: one bought at 300 more than two years ago, one at 520 and on
 ...     ),
 ...     base_currency="USD",
 ... )
->>> books = portfolio.books(fl.MarketData(prices={"SPY": {"2026-03-10": 500}, "BOND": {"2026-03-10": 100}}))
+>>> market = fl.MarketData(prices={"SPY": {"2026-03-10": 500}, "BOND": {"2026-03-10": 100}})
+>>> portfolio = fl.Portfolio(data, market)
 >>> targets = {"SPY": 0.4, "BOND": 0.5}
->>> fifo = books.rebalance("main", targets, whole_units=True)
+>>> [fifo] = portfolio.rebalance(targets, whole_units=True).accounts
 >>> [(l.lot, l.quantity) for l in fifo.trades[0].lots], fifo.realised_gain_base
 ([('t2', Decimal('100')), ('t3', Decimal('61'))], Decimal('18780'))
 >>> tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
 >>> fees = fl.opt.Fees(rate=decimal.Decimal("0.0005"), minimum=decimal.Decimal("5"))
->>> plan = books.rebalance("main", targets, whole_units=True, tax=tax, fees=fees)
+>>> [plan] = portfolio.rebalance(targets, whole_units=True, tax=tax, fees=fees).accounts
 >>> [(l.lot, l.quantity) for l in plan.trades[0].lots], plan.realised_gain_base, plan.tax_base, plan.fees_base
 ([('t3', Decimal('100')), ('t4', Decimal('61'))], Decimal('1009.75'), Decimal('403.900'), Decimal('83.45'))
 

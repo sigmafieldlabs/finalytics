@@ -14,7 +14,7 @@
       "const": 1
     },
     "portfolio": {
-      "$ref": "#/$defs/Portfolio",
+      "$ref": "#/$defs/PortfolioData",
       "description": "The portfolio."
     },
     "market": {
@@ -321,7 +321,7 @@
       ],
       "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until they are rounded."
     },
-    "Portfolio": {
+    "PortfolioData": {
       "type": "object",
       "properties": {
         "base_currency": {
@@ -356,7 +356,7 @@
         "instruments",
         "transactions"
       ],
-      "description": "Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,\ninstruments and transactions."
+      "description": "A portfolio's records: its base currency, accounts, instruments and transactions. With market\ndata, they are everything Finalytics needs to keep the portfolio's books."
     },
     "TimeSeries": {
       "type": "object",

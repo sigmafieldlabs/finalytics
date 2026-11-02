@@ -12,8 +12,8 @@ mod document;
 mod json;
 
 pub use csv_import::{
-    CsvOptions, FxSeries, accounts_from_csv, fx_from_csv, instruments_from_csv, portfolio_from_csv,
-    prices_from_csv, transactions_from_csv,
+    CsvOptions, FxSeries, accounts_from_csv, fx_from_csv, instruments_from_csv, market_from_csv,
+    portfolio_from_csv, price_columns_from_csv, prices_from_csv, transactions_from_csv,
 };
 pub use document::{FORMAT, FORMAT_VERSION, MarketDocument, PortfolioDocument};
 pub use json::from_json;

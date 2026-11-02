@@ -451,6 +451,8 @@ dependencies = [
  "finalytics-perf",
  "finalytics-reports",
  "finalytics-risk",
+ "schemars",
+ "serde",
  "serde_json",
 ]
 

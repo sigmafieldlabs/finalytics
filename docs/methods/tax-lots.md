@@ -73,7 +73,7 @@ Dividends and interest are cash, net of tax withheld; they do not change lots.
 
 ```python
 >>> import finalytics as fl
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     instruments="id,kind,currency\nAAPL,equity,USD\n",
 ...     transactions=(
 ...         "id,account,trade_date,type,instrument,quantity,price,fees,amount,currency,lot_method\n"
@@ -84,8 +84,8 @@ Dividends and interest are cash, net of tax withheld; they do not change lots.
 ...     ),
 ...     base_currency="USD",
 ... )
->>> books = portfolio.books()
->>> for gain in books.realised_gains():
+>>> portfolio = fl.Portfolio(data)
+>>> for gain in portfolio.realised_gains():
 ...     print(gain.lot, gain.quantity, gain.cost_local, gain.proceeds_local, gain.gain_local)
 t3 10 2005 1895 -110
 t2 2 301 379 78
@@ -96,9 +96,9 @@ The sale of 12 units at 190, less 6 of fees, raises 2,274. Highest cost first cl
 (10 units costing 200.50 each) and takes 2 units of `t2` (150.50 each). What remains:
 
 ```python
->>> [(lot.id, lot.quantity, lot.cost_local) for lot in books.holdings().lots]
+>>> [(lot.id, lot.quantity, lot.cost_local) for lot in portfolio.holdings().lots]
 [('t2', Decimal('8'), Decimal('1204'))]
->>> [(s.lot, s.quantity, s.cost_local) for s in books.lots_for_sale("2026-06-30", "main", "AAPL", 5)]
+>>> [(s.lot, s.quantity, s.cost_local) for s in portfolio.lots_for_sale("2026-06-30", "main", "AAPL", 5)]
 [('t2', Decimal('5'), Decimal('752.50'))]
 
 ```

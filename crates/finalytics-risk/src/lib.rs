@@ -22,6 +22,7 @@ mod holdings;
 mod input;
 mod linalg;
 mod matrix;
+mod prices;
 mod rolling;
 mod scenario;
 mod statistics;
@@ -40,6 +41,7 @@ pub use factor::{
 };
 pub use holdings::{HoldingReturns, holding_returns, holding_weights};
 pub use matrix::{Matrix, ReturnsTable};
+pub use prices::{PriceReturns, PriceTable, periods_per_year};
 pub use rolling::{rolling, rolling_relative_statistics, rolling_statistics, rolling_tail_risk};
 pub use scenario::{
     CorrelationStress, FactorShocks, GroupImpact, GroupShock, HistoricalWindow, HoldingImpact,

@@ -95,7 +95,7 @@ Cash balances of zero are left out of the holdings and the allocation.
 
 ```python
 >>> import finalytics as fl
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     instruments="id,kind,currency,class.asset_class\nSPY,fund,USD,Equity\nAGG,fund,USD,Bonds\n",
 ...     transactions=(
 ...         "id,account,trade_date,type,instrument,quantity,price,amount,currency\n"
@@ -112,8 +112,8 @@ Cash balances of zero are left out of the holdings and the allocation.
 ...         "INDEX": {"2026-01-30": 1000, "2026-02-27": 1030, "2026-03-31": 1000, "2026-04-30": 1050},
 ...     }
 ... )
->>> books = portfolio.books(market)
->>> report = fl.reports.performance(books, benchmark="INDEX", group_by=["asset_class"])
+>>> portfolio = fl.Portfolio(data, market)
+>>> report = portfolio.performance_report(benchmark="INDEX", group_by=["asset_class"])
 >>> report.provenance.report, report.provenance.as_of.isoformat(), len(report.provenance.source.digest)
 ('performance', '2026-04-30', 64)
 >>> [(p.label, round(p.cumulative, 4), round(p.benchmark, 4)) for p in report.periods if p.cumulative is not None]
@@ -122,7 +122,7 @@ Cash balances of zero are left out of the holdings and the allocation.
 [None, 0.0272, -0.0323, 0.0463, None]
 >>> [(g.group, round(g.contribution, 4)) for g in report.groups[0].groups]
 [('Bonds', 0.004), ('Equity', 0.036), ('cash', 0.0)]
->>> holdings = fl.reports.holdings(books, group_by=["asset_class"])
+>>> holdings = portfolio.holdings_report(group_by=["asset_class"])
 >>> [(s.name, round(s.weight, 4)) for s in holdings.breakdowns[-1].slices]
 [('Equity', 0.6115), ('Bonds', 0.3885)]
 >>> round(holdings.concentration.effective_holdings, 3)

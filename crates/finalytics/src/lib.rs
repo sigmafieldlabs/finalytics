@@ -6,6 +6,33 @@
 //! rates, and receive typed results. The same API is available from Python and, through
 //! WebAssembly, from JavaScript and TypeScript.
 //!
+//! # Where to start
+//!
+//! There are two front doors:
+//!
+//! - [`Assets`]: the prices or returns of things one might hold, for their statistics, covariance
+//!   and correlation, and for optimisation by objective with bounds and group limits;
+//! - [`Portfolio`]: a portfolio's transactions with the market data that values them, for its
+//!   valuation, performance, risk, rebalancing and reports.
+//!
+//! ```
+//! use finalytics::{Assets, datasets};
+//!
+//! let assets = Assets::from_prices(&datasets::asset_class_prices())?
+//!     .with_risk_free_asset("T-Bills")?;
+//! let result = assets.optimiser().maximum_sharpe().bounds(0.0, 0.4).solve()?;
+//! assert!(result.sharpe_ratio.is_some());
+//!
+//! let portfolio = datasets::portfolio();
+//! let report = portfolio.report(&datasets::report_options())?;
+//! assert!(report.risk.provenance.source.transactions > 0);
+//! # Ok::<(), finalytics::Error>(())
+//! ```
+//!
+//! The modules beneath them, such as [`risk`], [`opt`] and [`performance`], give each method on
+//! its own, for analysis the front doors do not cover. [`datasets`] has illustrative data to
+//! practise on.
+//!
 //! # Options and results
 //!
 //! Option types, such as [`opt::Constraints`] and [`risk::StatisticsOptions`], and the results
@@ -37,12 +64,23 @@ pub use finalytics_core::{
 pub use finalytics_ledger::{
     Account, AccountId, AccountLine, AccountSeries, Allocation, Books, CashBalance, CashValue,
     Effect, Event, Flow, FlowKind, HoldingKey, HoldingLine, HoldingSeries, Holdings, Instrument,
-    InstrumentId, InstrumentKind, Lot, LotId, LotMethod, LotPick, LotSale, MarketData, Portfolio,
-    Position, PositionValue, RealisedGain, Transaction, TransactionId, TransactionKind, Valuation,
-    ValueSeries,
+    InstrumentId, InstrumentKind, Lot, LotId, LotMethod, LotPick, LotSale, MarketData,
+    PortfolioData, Position, PositionValue, RealisedGain, Transaction, TransactionId,
+    TransactionKind, Valuation, ValueSeries,
 };
 
 pub use finalytics_formats::PortfolioDocument;
+
+mod assets;
+pub mod datasets;
+mod portfolio;
+
+pub use assets::{
+    AssetGroup, AssetStatistics, Assets, ObjectiveName, OptimisationResult, OptimiseOptions,
+    Optimiser,
+};
+pub use finalytics_risk::PriceTable;
+pub use portfolio::{Portfolio, PortfolioCsv, PortfolioReport};
 
 /// Performance measurement: time- and money-weighted returns over reporting periods,
 /// contribution by holding and by group, households of accounts, and attribution against a
@@ -63,8 +101,8 @@ pub mod performance {
 pub mod formats {
     pub use finalytics_formats::{
         CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument,
-        accounts_from_csv, from_json, fx_from_csv, instruments_from_csv, portfolio_from_csv,
-        prices_from_csv, transactions_from_csv,
+        accounts_from_csv, from_json, fx_from_csv, instruments_from_csv, market_from_csv,
+        portfolio_from_csv, price_columns_from_csv, prices_from_csv, transactions_from_csv,
     };
 }
 
@@ -83,13 +121,13 @@ pub mod risk {
         AssetFit, CorrelationStress, CovarianceEstimate, CovarianceMethod, Drawdown,
         FactorContribution, FactorMethod, FactorModel, FactorModelEstimate, FactorRisk,
         FactorShocks, GroupImpact, GroupRisk, GroupShock, HistoricalWindow, HoldingImpact,
-        HoldingReturns, Matrix, RelativeStatistics, ReturnsTable, RiskContribution,
-        RiskDecomposition, ScenarioOptions, ScenarioPath, ScenarioResult, ScenarioRisk,
-        ScenarioRiskModel, SchemeImpact, SchemeRisk, ShockSource, Shocks, Statistics,
+        HoldingReturns, Matrix, PriceReturns, PriceTable, RelativeStatistics, ReturnsTable,
+        RiskContribution, RiskDecomposition, ScenarioOptions, ScenarioPath, ScenarioResult,
+        ScenarioRisk, ScenarioRiskModel, SchemeImpact, SchemeRisk, ShockSource, Shocks, Statistics,
         StatisticsOptions, TailMethod, TailRisk, covariance, drawdown_series, drawdowns,
         factor_risk, factor_tracking_error, fundamental_model, group_risk, historical_scenario,
         holding_returns, holding_weights, max_drawdown, normal_cdf, normal_pdf, normal_quantile,
-        regression_model, relative_statistics, risk_decomposition, rolling,
+        periods_per_year, regression_model, relative_statistics, risk_decomposition, rolling,
         rolling_relative_statistics, rolling_statistics, rolling_tail_risk, shock_scenario,
         statistical_model, statistics, stressed_covariance, tail_risk, total_return,
         tracking_error_decomposition,

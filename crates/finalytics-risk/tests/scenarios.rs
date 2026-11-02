@@ -55,7 +55,7 @@ fn setup() -> (Books, MarketData) {
             },
         )
     };
-    let mut portfolio = Portfolio::new(Currency::USD);
+    let mut portfolio = PortfolioData::new(Currency::USD);
     portfolio.accounts = vec![
         Account::new(AccountId::new("main").unwrap()),
         Account::new(AccountId::new("isa").unwrap()),

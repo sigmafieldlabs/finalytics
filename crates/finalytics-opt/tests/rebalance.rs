@@ -41,7 +41,7 @@ fn series(points: &[(&str, &str)]) -> TimeSeries<Decimal> {
 
 const DATE: &str = "2026-03-10";
 
-fn portfolio() -> Portfolio {
+fn portfolio() -> PortfolioData {
     let usd = |a: &str| Money::new(dec(a), Currency::USD);
     let buy = |instrument: &str, quantity: &str, price: &str| TransactionKind::Buy {
         instrument: id(instrument),
@@ -50,7 +50,7 @@ fn portfolio() -> Portfolio {
         fees: Decimal::ZERO,
     };
     {
-        let mut portfolio = Portfolio::new(Currency::USD);
+        let mut portfolio = PortfolioData::new(Currency::USD);
         portfolio.accounts = vec![
             Account::new(main_account()),
             Account::new(AccountId::new("isa").unwrap()),
@@ -321,7 +321,7 @@ fn invalid_targets_are_reported() {
 
 /// One account holding three lots of SPY, now at 500: bought at 300 more than a year ago (a
 /// long-term gain), at 520 recently (a short-term loss) and at 450 recently (a short-term gain).
-fn lots_portfolio() -> (Portfolio, MarketData) {
+fn lots_portfolio() -> (PortfolioData, MarketData) {
     let buy = |n: usize, date: &str, price: &str| {
         tx(
             n,
@@ -335,7 +335,7 @@ fn lots_portfolio() -> (Portfolio, MarketData) {
             },
         )
     };
-    let mut portfolio = Portfolio::new(Currency::USD);
+    let mut portfolio = PortfolioData::new(Currency::USD);
     portfolio.accounts = vec![Account::new(main_account())];
     portfolio.instruments = vec![
         Instrument::new(id("SPY"), InstrumentKind::Fund, Currency::USD),

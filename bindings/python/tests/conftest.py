@@ -12,8 +12,8 @@ FIXTURES = ROOT / "crates"
 
 
 @pytest.fixture(scope="session")
-def portfolio() -> fl.Portfolio:
-    return fl.Portfolio.from_csv(
+def portfolio() -> fl.PortfolioData:
+    return fl.PortfolioData.from_csv(
         instruments=SCENARIO / "instruments.csv",
         transactions=SCENARIO / "transactions.csv",
         base_currency="USD",
@@ -26,5 +26,5 @@ def market() -> fl.MarketData:
 
 
 @pytest.fixture(scope="session")
-def books(portfolio, market) -> fl.Books:
-    return portfolio.books(market)
+def books(portfolio, market) -> fl.Portfolio:
+    return fl.Portfolio(portfolio, market)

@@ -25,7 +25,11 @@ const objects = new Map();
 let next = 1;
 
 function keep(value) {
-  if (value instanceof finalytics.Books || value instanceof finalytics.Performance) {
+  if (
+    value instanceof finalytics.Portfolio ||
+    value instanceof finalytics.Assets ||
+    value instanceof finalytics.Performance
+  ) {
     objects.set(next, value);
     return { handle: next++ };
   }
@@ -49,12 +53,18 @@ async function handle(message) {
       case "call":
         value = finalytics[name](...args);
         break;
-      case "books": {
-        const [portfolio, market] = args;
-        const data = market === undefined ? undefined : finalytics.MarketData.fromDocument(market);
-        value = keep(new finalytics.Books(portfolio, data));
+      case "portfolio": {
+        const [data, market] = args;
+        const prices = market === undefined ? new finalytics.MarketData() : finalytics.MarketData.fromDocument(market);
+        value = keep(new finalytics.Portfolio(data, prices));
         break;
       }
+      case "portfolioFromCsv":
+        value = keep(finalytics.Portfolio.fromCsv(...args));
+        break;
+      case "assets":
+        value = keep(new finalytics.Assets(...args));
+        break;
       case "method":
         value = keep(target(which)[name](...args));
         break;

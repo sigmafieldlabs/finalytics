@@ -17,8 +17,8 @@ const FX: &str = include_str!("../../../tests/scenario/fx.csv");
 fn setup() -> (Books, MarketData) {
     let options = CsvOptions::default();
     let portfolio = portfolio_from_csv(
-        Currency::USD,
-        INSTRUMENTS,
+        Some(Currency::USD),
+        Some(INSTRUMENTS),
         TRANSACTIONS,
         Some(ACCOUNTS),
         options,

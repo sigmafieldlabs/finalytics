@@ -1,7 +1,7 @@
 //! Portfolio accounting: instruments, accounts, transactions and corporate actions, tax lots,
 //! positions, cash in several currencies, and valuation with caller-supplied prices and FX rates.
 //!
-//! A [`Portfolio`] holds the static data and the transactions. [`Books::build`] applies the
+//! A [`PortfolioData`] holds the static data and the transactions. [`Books::build`] applies the
 //! transactions in order and keeps every lot, cash balance and realised gain; [`Books::value_on`]
 //! and [`Books::value_series`] value the result with [`MarketData`].
 //!
@@ -26,7 +26,7 @@ pub use ids::{AccountId, InstrumentId, LotId, TransactionId};
 pub use instrument::{Account, Instrument, InstrumentKind, LotMethod};
 pub use lots::Lot;
 pub use market::MarketData;
-pub use portfolio::Portfolio;
+pub use portfolio::PortfolioData;
 pub use transaction::{LotPick, Transaction, TransactionKind};
 pub use valuation::{
     AccountLine, AccountSeries, CashValue, HoldingLine, HoldingSeries, PositionValue, Valuation,

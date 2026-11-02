@@ -1,0 +1,6 @@
+id,kind,currency,name,class.asset_class,class.region
+USEQ,fund,USD,US Equity Index Fund,Equity,North America
+INTL,fund,EUR,European Equity Fund,Equity,Europe
+BOND,fund,USD,US Aggregate Bond Fund,Fixed income,North America
+GOLD,fund,USD,Gold Trust,Real assets,Global
+REIT,fund,USD,Real Estate Fund,Real assets,North America

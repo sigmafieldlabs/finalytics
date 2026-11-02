@@ -14,9 +14,9 @@ test("the worker gives the same results as the engine in the page", async () => 
     const returns = [0.01, -0.004, 0.007, -0.012, 0.003];
     assert.deepEqual(await remote.call("statistics", returns), fl.statistics(returns));
 
-    const books = await remote.books(portfolio, market.toDocument());
+    const books = await remote.portfolio(portfolio, market.toDocument());
     const perf = await books.call("performance");
-    const local = new fl.Books(portfolio, market).performance();
+    const local = new fl.Portfolio(portfolio, market).performance();
     assert.deepEqual(await perf.get("returns"), local.returns);
     assert.equal(await perf.call("timeWeighted"), local.timeWeighted());
     await perf.free();

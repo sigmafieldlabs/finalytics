@@ -9,12 +9,12 @@ use crate::{
     Account, AccountId, Instrument, InstrumentId, LotMethod, LotPick, Transaction, TransactionKind,
 };
 
-/// Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
-/// instruments and transactions.
+/// A portfolio's records: its base currency, accounts, instruments and transactions. With market
+/// data, they are everything Finalytics needs to keep the portfolio's books.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
-pub struct Portfolio {
+pub struct PortfolioData {
     /// The currency results are reported in.
     pub base_currency: Currency,
     /// The accounts.
@@ -26,10 +26,10 @@ pub struct Portfolio {
     pub transactions: Vec<Transaction>,
 }
 
-impl Portfolio {
+impl PortfolioData {
     /// An empty portfolio reporting in `base_currency`.
-    pub fn new(base_currency: Currency) -> Portfolio {
-        Portfolio {
+    pub fn new(base_currency: Currency) -> PortfolioData {
+        PortfolioData {
             base_currency,
             accounts: Vec::new(),
             instruments: Vec::new(),

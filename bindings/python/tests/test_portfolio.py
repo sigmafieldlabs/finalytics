@@ -26,7 +26,7 @@ def test_csv_import_builds_the_portfolio(portfolio):
 
 def test_csv_problems_are_reported_together():
     with pytest.raises(fl.ValidationError) as caught:
-        fl.Portfolio.from_csv(
+        fl.PortfolioData.from_csv(
             instruments="id,kind,currency\nAAPL,equity,usd\n",
             transactions="id,account,trade_date,type,instrument,quantity,price\nt1,main,2026-01-02,buy,AAPL,ten,1\n",
             base_currency="USD",
@@ -37,9 +37,9 @@ def test_csv_problems_are_reported_together():
 
 
 def test_portfolios_round_trip_through_dataclasses_and_json(portfolio):
-    again = fl.Portfolio.from_json(portfolio.to_json())
+    again = fl.PortfolioData.from_json(portfolio.to_json())
     assert again == portfolio
-    built = fl.Portfolio(
+    built = fl.PortfolioData(
         base_currency="USD",
         accounts=[t.Account(id="main")],
         instruments=[t.Instrument(id="AAPL", kind="equity", currency="USD")],
@@ -69,7 +69,7 @@ def test_portfolios_round_trip_through_dataclasses_and_json(portfolio):
         "price": "150",
         "fees": "0",
     }
-    books = built.books()
+    books = fl.Portfolio(built)
     assert books.holdings().cash[0].amount == decimal.Decimal("250")
 
 
@@ -117,16 +117,18 @@ def test_holdings_and_valuation(books):
 def test_lot_preview_and_rebalancing(books, portfolio, market):
     lots = books.lots_for_sale("2026-10-30", "main", "SPY", 10)
     assert [(l.lot, l.quantity) for l in lots] == [("t2", 10)]
-    plan = books.rebalance("main", {"SPY": 0.4, "BOND": 0.4, "SAP": 0.15}, lot_method="highest_cost")
+    proposal = books.rebalance({"SPY": 0.4, "BOND": 0.4, "SAP": 0.15}, accounts=["main"], lot_method="highest_cost")
+    [plan] = proposal.accounts
     assert plan.date == datetime.date(2026, 10, 30)
     assert {trade.instrument for trade in plan.trades} == {"SPY", "BOND", "SAP"}
-    after = fl.Portfolio(
+    after = fl.PortfolioData(
         base_currency=portfolio.base_currency,
         accounts=portfolio.accounts,
         instruments=portfolio.instruments,
         transactions=[*portfolio.transactions, *fl.opt.transactions(plan)],
     )
-    rebuilt = after.books(market)
+    rebuilt = fl.Portfolio(after, market)
+    assert rebuilt.valuation().total_base == books.with_rebalance(proposal).valuation().total_base
     main = [p for p in rebuilt.valuation(plan.date).positions if p.account == "main"]
     value = {p.instrument: p.market_value_base for p in main}
     assert abs(float(value["SPY"] / plan.value_base) - 0.4) < 1e-6
@@ -135,25 +137,25 @@ def test_lot_preview_and_rebalancing(books, portfolio, market):
 def test_rebalancing_with_fees_and_tax(books, portfolio, market):
     fees = fl.opt.Fees(rate=decimal.Decimal("0.001"), minimum=decimal.Decimal("5"))
     tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
-    plan = books.rebalance("main", {"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, fees=fees, tax=tax)
+    [plan] = books.rebalance({"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, accounts=["main"], fees=fees, tax=tax).accounts
     assert all(t.fees_local >= 5 for t in plan.trades)
     sales = [t for t in plan.trades if t.side == "sell"]
     assert sales and all(t.tax_base is not None for t in sales)
     assert plan.tax_base == sum(t.tax_base for t in sales)
-    after = fl.Portfolio(
+    after = fl.PortfolioData(
         base_currency=portfolio.base_currency,
         accounts=portfolio.accounts,
         instruments=portfolio.instruments,
         transactions=[*portfolio.transactions, *fl.opt.transactions(plan)],
     )
-    rebuilt = after.books(market)
+    rebuilt = fl.Portfolio(after, market)
     gains = sum(g.gain_base for g in rebuilt.realised_gains() if g.transaction.startswith("rebalance-"))
     assert gains == plan.realised_gain_base
 
 
 def test_rebalancing_several_accounts(books):
-    accounts = sorted({a.id for a in books.portfolio.accounts})
-    plan = books.rebalance_accounts(accounts, {"SPY": 0.3, "BOND": 0.4})
+    accounts = sorted({a.id for a in books.data.accounts})
+    plan = books.rebalance({"SPY": 0.3, "BOND": 0.4}, accounts=accounts)
     assert [p.account for p in plan.accounts] == [a for a in accounts if any(p.account == a for p in plan.accounts)]
     after = dict(plan.weights_after)
     assert abs(after["SPY"] - 0.3) < 1e-6

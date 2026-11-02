@@ -62,9 +62,9 @@ fn series(points: &[(&str, &str)]) -> TimeSeries<Decimal> {
     .unwrap()
 }
 
-fn portfolio(instruments: Vec<Instrument>, transactions: Vec<Transaction>) -> Portfolio {
+fn portfolio(instruments: Vec<Instrument>, transactions: Vec<Transaction>) -> PortfolioData {
     {
-        let mut portfolio = Portfolio::new(Currency::USD);
+        let mut portfolio = PortfolioData::new(Currency::USD);
         portfolio.accounts = vec![Account::new(id(AccountId::new, "main"))];
         portfolio.instruments = instruments;
         portfolio.transactions = transactions;
@@ -77,7 +77,7 @@ fn equity(name: &str, currency: Currency) -> Instrument {
 }
 
 /// Deposits, two buys, a dividend, a split, a FIFO sale and a withdrawal, in US dollars.
-fn single_currency() -> Portfolio {
+fn single_currency() -> PortfolioData {
     portfolio(
         vec![equity("AAPL", Currency::USD)],
         vec![
@@ -408,7 +408,7 @@ fn portfolios_round_trip_through_json() {
         ),
         "{json}"
     );
-    let back: Portfolio = serde_json::from_str(&json).unwrap();
+    let back: PortfolioData = serde_json::from_str(&json).unwrap();
     assert_eq!(back, pf);
     let numbers = r#"{"id":"x","account":"main","trade_date":"2026-01-05","type":"buy","instrument":"AAPL","quantity":10,"price":150.5}"#;
     let parsed: Transaction = serde_json::from_str(numbers).unwrap();

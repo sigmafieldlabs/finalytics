@@ -6,7 +6,7 @@ import { close, engine, json, scenario } from "./setup.mjs";
 const fl = await engine();
 const f = await json("crates/finalytics/tests/fixtures/scenarios.json");
 const { portfolio, market } = await scenario(fl);
-const books = new fl.Books(portfolio, market);
+const books = new fl.Portfolio(portfolio, market);
 
 function compare(result, expected, what) {
   close(result.value_before, expected.value_before, 1e-12, `${what} value before`);

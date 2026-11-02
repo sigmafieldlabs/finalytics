@@ -36,7 +36,7 @@ fn api() -> Value {
     // Foundations and the ledger.
     add::<finalytics::ValidationReport>(&mut g);
     add::<finalytics::Money>(&mut g);
-    add::<finalytics::Portfolio>(&mut g);
+    add::<finalytics::PortfolioData>(&mut g);
     add::<PortfolioDocument>(&mut g);
     add::<finalytics::Position>(&mut g);
     add::<finalytics::Lot>(&mut g);
@@ -102,6 +102,12 @@ fn api() -> Value {
     add::<opt::BlackLittermanEstimate>(&mut g);
     add::<opt::Resampling>(&mut g);
     add::<opt::ResampledSolution>(&mut g);
+    // The front doors.
+    add::<finalytics::PriceTable>(&mut g);
+    add::<finalytics::AssetStatistics>(&mut g);
+    add::<finalytics::OptimiseOptions>(&mut g);
+    add::<finalytics::OptimisationResult>(&mut g);
+    add::<finalytics::PortfolioReport>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

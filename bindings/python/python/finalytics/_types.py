@@ -62,6 +62,11 @@ of them.
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
+ObjectiveName = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "risk_budgeting", "hierarchical_risk_parity"]
+"""What an optimisation seeks, by name. The parameters some objectives need are given beside it, in
+`OptimiseOptions`.
+"""
+
 ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
 """Which report a report is."""
 
@@ -302,6 +307,34 @@ class AssetFit:
     """The share of the asset's return variance the factors explain. Absent when the asset's returns
     do not vary.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class AssetGroup:
+    """A group of assets whose total weight is limited."""
+
+    assets: list[str]
+    """The assets in the group."""
+
+    min: float
+    """The smallest total weight."""
+
+    max: float
+    """The largest total weight."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class AssetStatistics:
+    """One asset's statistics, with its value at risk and expected shortfall at 95% (historical)."""
+
+    asset: str
+    """The asset."""
+
+    statistics: Statistics
+    """Its statistics, annualised with the assets' periods per year and risk-free rate."""
+
+    tail_risk: TailRisk
+    """Its value at risk and expected shortfall over one period at 95%, from history."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2110,6 +2143,78 @@ Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetRetur
 
 
 @dataclass(frozen=True, kw_only=True)
+class OptimisationResult:
+    """The result of an optimisation over assets: the weights by asset, with their expected return,
+    volatility and Sharpe ratio, and the solver's full solution.
+    """
+
+    status: SolveStatus
+    """How the optimisation ended."""
+
+    weights: dict[str, float] | None = None
+    """The weights by asset, absent when there is no solution."""
+
+    expected_return: float | None = None
+    """The annual expected return of the weights."""
+
+    volatility: float | None = None
+    """The annual volatility of the weights."""
+
+    sharpe_ratio: float | None = None
+    """`(expected_return - risk_free_rate) / volatility`."""
+
+    risk_free_rate: float
+    """The annual risk-free rate used."""
+
+    solution: Solution
+    """The solver's solution, with the objective, its value and the work done."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class OptimiseOptions:
+    """What to optimise, and the limits on the weights. Everything is optional: by default the
+    portfolio with the largest Sharpe ratio, fully invested and long only.
+    """
+
+    objective: ObjectiveName = "maximum_sharpe"
+    """What to optimise: the largest Sharpe ratio by default."""
+
+    risk_free_rate: float | None = None
+    """The annual risk-free rate for the Sharpe ratio; by default the assets' own."""
+
+    target: float | None = None
+    """The annual expected return (`target_return`) or volatility (`target_volatility`) to aim for.
+    """
+
+    risk_aversion: float | None = None
+    """The weight on variance, for mean–variance objectives."""
+
+    uncertainty: ReturnUncertainty | None = None
+    """The uncertainty of the expected returns, for robust mean–variance."""
+
+    confidence: float | None = None
+    """The confidence of the conditional value at risk: 0.95 by default."""
+
+    budgets: dict[str, float] | None = None
+    """The risk budgets, by asset, for risk budgeting; equal without them."""
+
+    linkage: Linkage | None = None
+    """How hierarchical risk parity joins clusters: single linkage by default."""
+
+    bounds: Bound | None = None
+    """The smallest and largest weight of every asset: 0 and 1 by default."""
+
+    asset_bounds: dict[str, Bound] = field(default_factory=dict)
+    """Bounds for particular assets, which take the place of `bounds` for them."""
+
+    groups: dict[str, AssetGroup] = field(default_factory=dict)
+    """Limits on the total weight of groups of assets, by group name."""
+
+    expected_returns: dict[str, float] = field(default_factory=dict)
+    """Annual expected returns by asset, in place of the historical means."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class OverviewReport:
     """The overview report."""
 
@@ -2339,9 +2444,9 @@ class PeriodRow:
 
 
 @dataclass(frozen=True, kw_only=True)
-class Portfolio:
-    """Everything Finalytics needs to keep a portfolio's books: its base currency, accounts,
-    instruments and transactions.
+class PortfolioData:
+    """A portfolio's records: its base currency, accounts, instruments and transactions. With market
+    data, they are everything Finalytics needs to keep the portfolio's books.
     """
 
     base_currency: str
@@ -2369,7 +2474,7 @@ class PortfolioDocument:
     format_version: int
     """The version of the format, 1 for this release."""
 
-    portfolio: Portfolio
+    portfolio: PortfolioData
     """The portfolio."""
 
     market: DocumentMarketData | None = None
@@ -2385,6 +2490,31 @@ class PortfolioPoint:
 
     volatility: float
     """The annualised volatility."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PortfolioReport:
+    """The six reports on a portfolio. The attribution report needs the benchmark's segments, and
+    the scenarios report needs scenarios, in the report options; without them, they are absent.
+    """
+
+    overview: OverviewReport
+    """Value, returns and risk at a glance."""
+
+    holdings: HoldingsReport
+    """Holdings, lots, income and realised gains."""
+
+    performance: PerformanceReport
+    """Returns over periods, contribution and flows."""
+
+    risk: RiskReport
+    """Volatility, tail risk, drawdowns, risk decomposition and the efficient frontier."""
+
+    attribution: AttributionReport | None = None
+    """Attribution against the benchmark."""
+
+    scenarios: ScenariosReport | None = None
+    """The effect of scenarios on value and risk."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2449,6 +2579,22 @@ class PositionValue:
 
     unrealised_base: decimal.Decimal
     """`market_value_base - cost_base`, which includes the currency effect."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PriceTable:
+    """The prices of several assets on the same dates, one column per asset. A missing price is
+    written as absent (`null`).
+    """
+
+    dates: list[datetime.date]
+    """The dates, in increasing order."""
+
+    labels: list[str]
+    """The assets, one per column."""
+
+    columns: list[list[float | None]]
+    """The prices of each asset, one per date; absent where there is no price."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4242,6 +4388,8 @@ __all__ = [
     "Amount",
     "AssetBound",
     "AssetFit",
+    "AssetGroup",
+    "AssetStatistics",
     "Attribution",
     "AttributionInputs",
     "AttributionPeriod",
@@ -4371,17 +4519,22 @@ __all__ = [
     "NumberColumn",
     "Oas",
     "Objective",
+    "ObjectiveName",
+    "OptimisationResult",
+    "OptimiseOptions",
     "OverviewReport",
     "PerformanceReport",
     "Period",
     "PeriodAttribution",
     "PeriodReturn",
     "PeriodRow",
-    "Portfolio",
+    "PortfolioData",
     "PortfolioDocument",
     "PortfolioPoint",
+    "PortfolioReport",
     "Position",
     "PositionValue",
+    "PriceTable",
     "Prior",
     "Problem",
     "Proportional",

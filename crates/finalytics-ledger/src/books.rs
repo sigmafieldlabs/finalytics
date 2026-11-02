@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::lots::{Relief, ReliefError, derived, relieve};
 use crate::{
     Account, AccountId, Instrument, InstrumentId, Lot, LotId, LotMethod, LotPick, MarketData,
-    Portfolio, Transaction, TransactionId, TransactionKind,
+    PortfolioData, Transaction, TransactionId, TransactionKind,
 };
 
 /// A change to the books made by one transaction.
@@ -511,7 +511,7 @@ impl Holdings {
 /// The books of a portfolio: every transaction applied in order, with the lots, cash and gains
 /// that result.
 ///
-/// Building the books checks the portfolio's structure first ([`Portfolio::validate`]), then
+/// Building the books checks the portfolio's structure first ([`PortfolioData::validate`]), then
 /// applies the transactions in trade-date order. Applying stops at the first transaction that
 /// cannot be applied, such as a sale of more units than are held, and reports it with its
 /// position in the transaction list.
@@ -528,7 +528,7 @@ pub struct Books {
 impl Books {
     /// Applies the portfolio's transactions, using `market` for FX rates (to record cost in the
     /// base currency) and for prices where a transfer needs a market value.
-    pub fn build(portfolio: &Portfolio, market: &MarketData) -> Result<Books> {
+    pub fn build(portfolio: &PortfolioData, market: &MarketData) -> Result<Books> {
         portfolio.validate().into_result(())?;
         let mut order: Vec<(usize, &Transaction)> =
             portfolio.transactions.iter().enumerate().collect();
@@ -620,7 +620,7 @@ impl Books {
 }
 
 struct Engine<'a> {
-    portfolio: &'a Portfolio,
+    portfolio: &'a PortfolioData,
     market: &'a MarketData,
     instruments: HashMap<InstrumentId, &'a Instrument>,
     holdings: Holdings,

@@ -6,7 +6,7 @@ import { close, engine, json, scenario } from "./setup.mjs";
 const fl = await engine();
 const reference = await json("crates/finalytics/tests/fixtures/reports.json");
 const { portfolio, market } = await scenario(fl);
-const books = new fl.Books(portfolio, market);
+const books = new fl.Portfolio(portfolio, market);
 
 function rectangular(tables) {
   assert.ok(tables.length > 0);

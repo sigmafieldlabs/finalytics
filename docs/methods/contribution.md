@@ -53,7 +53,7 @@ Contributions add up by any grouping, such as asset class or region, with
 
 ```python
 >>> import finalytics as fl
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     instruments="id,kind,currency\nAAPL,equity,USD\nSAP,equity,EUR\n",
 ...     transactions=(
 ...         "id,account,trade_date,type,instrument,quantity,price,amount,currency,"
@@ -72,7 +72,7 @@ Contributions add up by any grouping, such as asset class or region, with
 ...     },
 ...     fx=[("EUR", "USD", {"2026-01-02": "1.10", "2026-01-05": "1.12", "2026-01-06": "1.11"})],
 ... )
->>> performance = portfolio.books(market).performance()
+>>> performance = fl.Portfolio(data, market).performance()
 >>> round(performance.time_weighted(), 6)
 0.01738
 >>> for c in performance.contributions():

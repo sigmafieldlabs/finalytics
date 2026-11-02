@@ -29,11 +29,10 @@ Sharpe ratio that holds between 10% and 60% of each asset. Saved as `quick-start
 with `node quick-start.mjs`:
 
 ```js
-import { readFile } from "node:fs/promises";
-import init, { covariance, solve } from "finalytics";
+import { covariance, solve } from "finalytics";
 
-// In a browser, `await init()` loads the engine. In Node, pass it the WebAssembly file:
-await init({ module_or_path: await readFile(new URL("finalytics_bg.wasm", import.meta.resolve("finalytics"))) });
+// In Node.js the engine is ready on import. In a browser, import `init` too and
+// `await init()` first.
 
 // Twelve months of returns for three assets.
 const returns = {
@@ -65,13 +64,13 @@ The same example is in the READMEs of the
 [Python package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/python#quick-start), and it runs as a test, so the
 results shown are the engine's.
 
-## Books, performance and reports
+## Portfolios, performance and reports
 
 ```ts
-const books = new Books(portfolioFromCsv(instrumentsCsv, transactionsCsv, "USD"), MarketData.fromCsv(pricesCsv));
-const performance = books.performance();
+const portfolio = Portfolio.fromCsv({ transactions: transactionsCsv, prices: pricesCsv });
+const performance = portfolio.performance();
 performance.period("YTD");
-const report = books.performanceReport({ benchmark: "SPY" });
+const report = portfolio.performanceReport({ benchmark: "SPY" });
 const tables = reportTables(report); // for CSV, spreadsheet or PDF export
 ```
 
@@ -91,8 +90,8 @@ const engine = createEngine(
   new Worker(new URL("finalytics/worker.js", import.meta.url), { type: "module" }),
 );
 const stats = await engine.call("statistics", returns);
-const books = await engine.books(portfolio, market.toDocument());
-const performance = await books.call("performance");
+const remote = await engine.portfolio(portfolio.data, portfolio.market.toDocument());
+const performance = await remote.call("performance");
 const daily = await performance.get("returns");
 ```
 

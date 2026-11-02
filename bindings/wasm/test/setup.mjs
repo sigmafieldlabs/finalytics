@@ -1,4 +1,5 @@
 // Loads the built package (bindings/wasm/pkg) and the shared test data.
+import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import init, * as finalytics from "../pkg/finalytics.js";
@@ -26,11 +27,14 @@ export function close(actual, expected, tolerance, what) {
 }
 
 export async function scenario(fl) {
-  const portfolio = fl.portfolioFromCsv(
-    await text("tests/scenario/instruments.csv"),
-    await text("tests/scenario/transactions.csv"),
-    "USD",
-  );
+  const loaded = fl.Portfolio.fromCsv({
+    instruments: await text("tests/scenario/instruments.csv"),
+    transactions: await text("tests/scenario/transactions.csv"),
+    prices: await text("tests/scenario/prices.csv"),
+    fx: await text("tests/scenario/fx.csv"),
+    base_currency: "USD",
+  });
   const market = fl.MarketData.fromCsv(await text("tests/scenario/prices.csv"), await text("tests/scenario/fx.csv"));
-  return { portfolio, market };
+  assert.deepEqual(loaded.market.toDocument(), market.toDocument());
+  return { portfolio: loaded.data, market };
 }

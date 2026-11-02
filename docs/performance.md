@@ -13,7 +13,7 @@ that you can judge whether the engine fits your workload.
 | Minimum-variance portfolio | 500 assets, bounds and 10 group limits | 0.5 s | 0.37 s |
 
 Each measurement is the median of five runs. The WebAssembly time includes reading the
-100,000 transactions out of JavaScript, as an application would call `new Books(portfolio,
+100,000 transactions out of JavaScript, as an application would call `new Portfolio(data,
 market)`.
 
 The CI job "Performance budgets" fails when a budget is exceeded:

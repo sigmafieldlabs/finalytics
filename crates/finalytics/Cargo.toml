@@ -11,12 +11,14 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 readme = "../../README.md"
-# The tests are left out: they read the shared test data elsewhere in the repository.
-include = ["/src", "/LICENSE-*"]
+# The tests are left out: they read the shared test data elsewhere in the repository. The
+# datasets are included.
+include = ["/src", "/data", "/LICENSE-*"]
 
 [features]
 # JSON Schema descriptions of the public types, for the bindings and documentation.
 schema = [
+    "dep:schemars",
     "finalytics-core/schema",
     "finalytics-ledger/schema",
     "finalytics-formats/schema",
@@ -34,6 +36,8 @@ finalytics-perf = { workspace = true }
 finalytics-risk = { workspace = true }
 finalytics-opt = { workspace = true }
 finalytics-reports = { workspace = true }
+schemars = { workspace = true, optional = true }
+serde = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

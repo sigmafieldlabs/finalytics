@@ -190,7 +190,7 @@ fn performance_from_the_books() {
             kind,
         )
     };
-    let mut portfolio = Portfolio::new(Currency::USD);
+    let mut portfolio = PortfolioData::new(Currency::USD);
     portfolio.accounts = vec![Account::new(AccountId::new("main").unwrap())];
     portfolio.instruments = vec![Instrument::new(
         id("SPY"),

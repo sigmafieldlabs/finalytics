@@ -1,6 +1,6 @@
 """Risk analytics on returns: statistics, drawdowns, value at risk and expected shortfall,
 covariance estimation, factor models and risk decomposition. Scenarios on a portfolio's holdings
-are methods of :class:`~finalytics.Books`; their types are here.
+are methods of :class:`~finalytics.Portfolio`; their types are here.
 
 Every function takes returns as any one-dimensional sequence of numbers (a list, a NumPy array or
 a pandas Series), one return per period::

@@ -108,7 +108,7 @@ positive semidefinite, $C'$ is positive semidefinite whenever $C$ is.
 
 ```python
 >>> import finalytics as fl
->>> portfolio = fl.Portfolio.from_csv(
+>>> data = fl.PortfolioData.from_csv(
 ...     instruments=(
 ...         "id,kind,currency,class.asset_class,class.region\n"
 ...         "SPY,fund,USD,Equity,North America\n"
@@ -134,8 +134,8 @@ positive semidefinite, $C'$ is positive semidefinite whenever $C$ is.
 ...     },
 ...     fx=[("EUR", "USD", {"2026-01-02": "1.10", "2026-02-02": "1.08", "2026-03-02": "1.09"})],
 ... )
->>> books = portfolio.books(market)
->>> result = books.shock_scenario(
+>>> portfolio = fl.Portfolio(data, market)
+>>> result = portfolio.shock_scenario(
 ...     groups={("asset_class", "Equity"): -0.20},
 ...     instruments={"BOND": 0.02},
 ...     currencies={"EUR": -0.10},
@@ -169,7 +169,7 @@ equities do, passes an equity shock on to the bond:
 ...     assets=["SPY", "SAP", "BOND"],
 ...     factors=["equity", "rates"],
 ... )
->>> result = books.shock_scenario(factors={"equity": -0.15}, factor_model=model, propagate=True)
+>>> result = portfolio.shock_scenario(factors={"equity": -0.15}, factor_model=model, propagate=True)
 >>> result.factor_returns
 {'equity': -0.15, 'rates': 0.006}
 >>> [(h.holding, round(h.return_local, 4)) for h in result.holdings[:3]]
@@ -182,7 +182,7 @@ With this covariance the expected change in rates is $-0.0016 / 0.04 \times -0.1
 January's moves replayed on the March holdings:
 
 ```python
->>> history = books.historical_scenario("2026-01-02", "2026-02-02")
+>>> history = portfolio.historical_scenario("2026-01-02", "2026-02-02")
 >>> round(history.portfolio_return, 4), history.path.worst_drawdown.trough
 (-0.0705, datetime.date(2026, 2, 2))
 
@@ -201,7 +201,7 @@ volatilities 50% higher and correlations half way to one after:
 ...     ],
 ...     ["SPY", "SAP", "BOND", "EUR cash"],
 ... )
->>> stressed = books.shock_scenario(
+>>> stressed = portfolio.shock_scenario(
 ...     groups={("asset_class", "Equity"): -0.20},
 ...     risk=covariance,
 ...     confidence=0.99,
