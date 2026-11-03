@@ -38,7 +38,7 @@ jobs:
           pip install dist/*.whl
       - run: python -m playwright install --with-deps chromium
       - run: python scripts/sample-reports.py site --screenshots
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
