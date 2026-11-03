@@ -216,7 +216,6 @@ fn an_optimisation_without_weights_is_not_a_target() {
 
 #[test]
 fn a_rebalance_has_a_report_and_raw_results() {
-    use finalytics::opt::{Fees, TaxRates};
     let portfolio = datasets::portfolio();
     let target = portfolio
         .assets()
@@ -225,21 +224,37 @@ fn a_rebalance_has_a_report_and_raw_results() {
         .bounds(0.05, 0.4)
         .build()
         .unwrap();
-    let mut fees = Fees::default();
-    fees.rate = "0.0005".parse().unwrap();
-    fees.minimum = "1".parse().unwrap();
     let result = portfolio
         .rebalance(&target)
         .whole_units()
-        .fees(fees)
-        .tax(TaxRates::new(
-            "0.37".parse().unwrap(),
-            "0.2".parse().unwrap(),
-        ))
+        .fee_bps(5.0)
+        .minimum_fee(1.0)
+        .tax(0.37, 0.20)
         .name("Morgan family portfolio")
         .build()
         .unwrap();
     let r = &result.report;
+    // Plain numbers become the exact decimals they are written as.
+    let fees = &r.context.fees;
+    assert_eq!(fees.rate.to_string(), "0.0005");
+    assert_eq!(fees.minimum.to_string(), "1");
+    let tax = r.context.tax.as_ref().unwrap();
+    assert_eq!(
+        (tax.short_term.to_string(), tax.long_term.to_string()),
+        ("0.37".into(), "0.2".into())
+    );
+    assert_eq!(tax.long_term_after_days, 365);
+    // Mistakes are reported at build, by the setting's name.
+    let wrong = portfolio
+        .rebalance(&target)
+        .fee_bps(f64::NAN)
+        .long_term_after_days(400)
+        .build();
+    let Err(Error::Validation(report)) = wrong else {
+        panic!("built with a fee that is not a number");
+    };
+    let paths: Vec<&str> = report.issues().iter().map(|i| i.path.as_str()).collect();
+    assert_eq!(paths, ["fee_bps", "long_term_after_days"]);
     assert_eq!(r.context.method.as_deref(), Some("Minimum variance"));
     assert_eq!(r.context.limits, ["5% to 40% in each asset"]);
     // The report's figures are the proposal's.

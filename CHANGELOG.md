@@ -60,8 +60,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the fees, the realised gains split into long-term and short-term, and the estimated tax by
   account; and what to check before trading. It is data (`RebalanceReport`), prints 80 columns
   wide, shows as a page and exports as tables, and names the method and limits of the
-  optimisation the targets came from. The Rust builder is `RebalanceBuilder`, with `as_of`,
-  `minimum_trade` and `name`; Python and JavaScript take `name`.
+  optimisation the targets came from. Fees and tax rates are plain numbers in every language:
+  `fee_bps`, `fee_per_trade` and `minimum_fee`, the last two in the instrument's currency, and
+  `tax` as the rates on short-term and long-term gains, with `long_term_after_days` (365 unless
+  given); each is checked when the rebalancing is built, with the other inputs. The Rust builder
+  is `RebalanceBuilder`, with `as_of`, `minimum_trade` and `name` too; Python and JavaScript take
+  `name`.
 - Accounts that are not taxable: `taxable: false` in an account's record (a `taxable` column in
   an accounts file), for a retirement or other tax-deferred or tax-exempt account. Tax-aware
   rebalancing estimates no tax on its sales, which close lots by the lot method. The portfolio

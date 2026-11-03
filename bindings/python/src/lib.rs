@@ -573,27 +573,10 @@ impl NativePortfolio {
         to_json(&plan)
     }
 
-    #[pyo3(signature = (on, accounts, targets, options, name=None))]
-    fn rebalance_accounts(
-        &self,
-        on: &str,
-        accounts: &str,
-        targets: &str,
-        options: &str,
-        name: Option<&str>,
-    ) -> PyResult<String> {
-        let accounts: Vec<String> = from_json(accounts, "accounts")?;
+    fn rebalance_accounts(&self, targets: &str, choices: &str) -> PyResult<String> {
         let targets = finalytics::targets_from_json(targets).map_err(engine)?;
-        let options: RebalanceOptions = from_json(options, "options")?;
-        let mut builder = self
-            .portfolio
-            .rebalance(targets)
-            .accounts(accounts)
-            .options(options)
-            .as_of(on);
-        if let Some(name) = name {
-            builder = builder.name(name);
-        }
+        let choices: finalytics::RebalanceChoices = from_json(choices, "choices")?;
+        let builder = choices.apply(self.portfolio.rebalance(targets));
         to_json(&builder.build().map_err(engine)?)
     }
 

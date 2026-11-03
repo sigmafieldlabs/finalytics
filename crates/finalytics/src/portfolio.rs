@@ -11,7 +11,7 @@ use finalytics_ledger::{
     AccountId, Books, HoldingKey, MarketData, PortfolioData, Transaction, Valuation, ValueSeries,
 };
 use finalytics_opt::{
-    Fees, RebalanceOptions, RebalanceResults, SolveStatus, TaxRates, rebalance_accounts,
+    RebalanceOptions, RebalanceResults, SolveStatus, TaxRates, rebalance_accounts,
 };
 use finalytics_perf::{FlowTiming, Performance};
 use finalytics_reports::{
@@ -344,6 +344,7 @@ impl Portfolio {
             as_of: None,
             name: None,
             options: RebalanceOptions::default(),
+            plain: PlainCosts::default(),
         }
     }
 
@@ -677,6 +678,116 @@ pub struct RebalanceBuilder<'a> {
     as_of: Option<String>,
     name: Option<String>,
     options: RebalanceOptions,
+    plain: PlainCosts,
+}
+
+/// A rebalancing's choices as JSON gives them, with the names of the builder's methods: the
+/// Python and JavaScript packages use it; from Rust, use the builder.
+#[doc(hidden)]
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RebalanceChoices {
+    pub accounts: Option<Vec<String>>,
+    pub date: Option<String>,
+    pub name: Option<String>,
+    pub lot_method: Option<LotMethod>,
+    pub whole_units: bool,
+    pub minimum_trade: Option<f64>,
+    pub fee_bps: Option<f64>,
+    pub fee_per_trade: Option<f64>,
+    pub minimum_fee: Option<f64>,
+    pub tax: Option<(f64, f64)>,
+    pub long_term_after_days: Option<u32>,
+}
+
+impl RebalanceChoices {
+    /// `builder` with these choices.
+    pub fn apply(self, mut builder: RebalanceBuilder<'_>) -> RebalanceBuilder<'_> {
+        if let Some(accounts) = self.accounts {
+            builder = builder.accounts(accounts);
+        }
+        if let Some(date) = &self.date {
+            builder = builder.as_of(date);
+        }
+        if let Some(name) = &self.name {
+            builder = builder.name(name);
+        }
+        if let Some(method) = self.lot_method {
+            builder = builder.lot_method(method);
+        }
+        if self.whole_units {
+            builder = builder.whole_units();
+        }
+        builder.plain = PlainCosts {
+            minimum_trade: self.minimum_trade,
+            fee_bps: self.fee_bps,
+            fee_per_trade: self.fee_per_trade,
+            minimum_fee: self.minimum_fee,
+            tax: self.tax,
+            long_term_after_days: self.long_term_after_days,
+        };
+        builder
+    }
+}
+
+/// The costs a rebalancing builder takes as plain numbers, checked and converted at `build`.
+#[derive(Debug, Clone, Default)]
+struct PlainCosts {
+    minimum_trade: Option<f64>,
+    fee_bps: Option<f64>,
+    fee_per_trade: Option<f64>,
+    minimum_fee: Option<f64>,
+    tax: Option<(f64, f64)>,
+    long_term_after_days: Option<u32>,
+}
+
+/// `value` as a decimal, as it is written: 0.37 is exactly 0.37.
+fn decimal(value: f64, path: &str, report: &mut ValidationReport) -> Decimal {
+    match format!("{value}").parse::<Decimal>() {
+        Ok(d) if value.is_finite() => d,
+        _ => {
+            report.error(path, format!("{value} is not a number Finalytics can use"));
+            Decimal::ZERO
+        }
+    }
+}
+
+impl PlainCosts {
+    /// `options` with these costs, each checked into `report`.
+    fn apply(
+        &self,
+        mut options: RebalanceOptions,
+        report: &mut ValidationReport,
+    ) -> RebalanceOptions {
+        if let Some(v) = self.minimum_trade {
+            options.minimum_trade = decimal(v, "minimum_trade", report);
+        }
+        if let Some(v) = self.fee_bps {
+            options.fees.rate = decimal(v, "fee_bps", report) / Decimal::from(10_000);
+        }
+        if let Some(v) = self.fee_per_trade {
+            options.fees.per_trade = decimal(v, "fee_per_trade", report);
+        }
+        if let Some(v) = self.minimum_fee {
+            options.fees.minimum = decimal(v, "minimum_fee", report);
+        }
+        if let Some((short, long)) = self.tax {
+            let mut rates = TaxRates::new(
+                decimal(short, "tax.short_term", report),
+                decimal(long, "tax.long_term", report),
+            );
+            if let Some(days) = self.long_term_after_days {
+                rates.long_term_after_days = i32::try_from(days).unwrap_or(i32::MAX);
+            }
+            options.tax = Some(rates);
+        } else if let (Some(days), Some(rates)) = (self.long_term_after_days, options.tax.as_mut())
+        {
+            rates.long_term_after_days = i32::try_from(days).unwrap_or(i32::MAX);
+        } else if self.long_term_after_days.is_some() {
+            report.error("long_term_after_days", "applies only with tax rates");
+        }
+        options
+    }
 }
 
 impl RebalanceBuilder<'_> {
@@ -703,21 +814,42 @@ impl RebalanceBuilder<'_> {
         self
     }
 
-    /// The fees each trade pays.
-    pub fn fees(mut self, fees: Fees) -> Self {
-        self.options.fees = fees;
+    /// The fee on each trade, in basis points of its value, such as 5 for 0.05%.
+    pub fn fee_bps(mut self, bps: f64) -> Self {
+        self.plain.fee_bps = Some(bps);
         self
     }
 
-    /// Tax-aware rebalancing: sales prefer lots with less tax at these rates.
-    pub fn tax(mut self, tax: TaxRates) -> Self {
-        self.options.tax = Some(tax);
+    /// A fixed fee on each trade, in the instrument's currency.
+    pub fn fee_per_trade(mut self, fee: f64) -> Self {
+        self.plain.fee_per_trade = Some(fee);
+        self
+    }
+
+    /// The smallest fee a trade pays, in the instrument's currency.
+    pub fn minimum_fee(mut self, fee: f64) -> Self {
+        self.plain.minimum_fee = Some(fee);
+        self
+    }
+
+    /// Tax-aware rebalancing at these rates on short-term and long-term gains, such as 0.37 and
+    /// 0.20: sales in taxable accounts take the lots that cost the least tax, and the tax is
+    /// estimated. A gain is long-term after 365 days unless `long_term_after_days` says
+    /// otherwise.
+    pub fn tax(mut self, short_term: f64, long_term: f64) -> Self {
+        self.plain.tax = Some((short_term, long_term));
+        self
+    }
+
+    /// The holding period, in days, after which a gain is long-term: 365 by default.
+    pub fn long_term_after_days(mut self, days: u32) -> Self {
+        self.plain.long_term_after_days = Some(days);
         self
     }
 
     /// Leaves out trades worth less than `value` in the base currency.
     pub fn minimum_trade(mut self, value: f64) -> Self {
-        self.options.minimum_trade = Decimal::try_from(value).unwrap_or(Decimal::MAX);
+        self.plain.minimum_trade = Some(value);
         self
     }
 
@@ -733,9 +865,10 @@ impl RebalanceBuilder<'_> {
         self
     }
 
-    /// Every option at once, in place of those set so far.
+    /// Every option at once, as JSON gives them, in place of those set so far.
     pub fn options(mut self, options: RebalanceOptions) -> Self {
         self.options = options;
+        self.plain = PlainCosts::default();
         self
     }
 
@@ -772,13 +905,14 @@ impl RebalanceBuilder<'_> {
                 .map(|a| a.id.clone())
                 .collect(),
         };
+        let options = self.plain.apply(self.options.clone(), &mut report);
         report.into_result(())?;
         let mut rebalancing = self.portfolio.rebalancing(
             &accounts,
             self.portfolio.date_or_last(date)?,
             &targets,
             (self.targets.method.clone(), self.targets.limits.clone()),
-            &self.options,
+            &options,
         )?;
         rebalancing.report.name.clone_from(&self.name);
         Ok(rebalancing)

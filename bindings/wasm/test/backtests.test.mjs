@@ -163,8 +163,9 @@ test("a rebalance has a report and the raw results", () => {
   const target = portfolio.assets().optimise({ method: "minimum_variance", bounds: { min: 0.05, max: 0.4 } });
   const result = portfolio.rebalance(target, {
     whole_units: true,
-    fees: { rate: "0.0005", minimum: "1" },
-    tax: { short_term: "0.37", long_term: "0.20" },
+    fee_bps: 5,
+    minimum_fee: 1,
+    tax: [0.37, 0.2],
     name: "Morgan family portfolio",
   });
   assert.deepEqual(Object.keys(result), ["report", "results"]);
@@ -179,6 +180,9 @@ test("a rebalance has a report and the raw results", () => {
   assert.ok(!ira.taxable && ira.tax_base == null && ira.realised_gain_base > 0);
   assert.ok(result.report.accounts.every((a) => a.warnings.length === 0));
   assert.equal(result.report.context.method, "Minimum variance");
+  assert.deepEqual(result.report.context.fees, { rate: "0.0005", per_trade: "0", minimum: "1" });
+  assert.deepEqual(result.report.context.tax, { short_term: "0.37", long_term: "0.2", long_term_after_days: 365 });
+  assert.deepEqual(paths(() => portfolio.rebalance(target, { fees: { rate: "0.001" } })), ["choices.fees"]);
   const after = portfolio.withRebalance(result);
   assert.ok(Number(after.valuation().total_base) > 0);
 });

@@ -121,7 +121,6 @@ With tax rates, a sale takes the lots that cost the least tax. Here an account h
 of SPY, now at 500: one bought at 300 more than two years ago, one at 520 and one at 450 this year.
 
 ```python
->>> import decimal
 >>> data = fl.PortfolioData.from_csv(
 ...     instruments="id,kind,currency\nSPY,fund,USD\nBOND,bond,USD\n",
 ...     transactions=(
@@ -139,9 +138,8 @@ of SPY, now at 500: one bought at 300 more than two years ago, one at 520 and on
 >>> [fifo] = portfolio.rebalance(targets, whole_units=True).results.accounts
 >>> [(l.lot, l.quantity) for l in fifo.trades[0].lots], fifo.realised_gain_base
 ([('t2', Decimal('100')), ('t3', Decimal('61'))], Decimal('18780'))
->>> tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
->>> fees = fl.opt.Fees(rate=decimal.Decimal("0.0005"), minimum=decimal.Decimal("5"))
->>> [plan] = portfolio.rebalance(targets, whole_units=True, tax=tax, fees=fees).results.accounts
+>>> result = portfolio.rebalance(targets, whole_units=True, tax=(0.4, 0.2), fee_bps=5, minimum_fee=5)
+>>> [plan] = result.results.accounts
 >>> [(l.lot, l.quantity) for l in plan.trades[0].lots], plan.realised_gain_base, plan.tax_base, plan.fees_base
 ([('t3', Decimal('100')), ('t4', Decimal('61'))], Decimal('1009.75'), Decimal('403.900'), Decimal('83.45'))
 

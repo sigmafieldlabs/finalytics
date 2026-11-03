@@ -1,6 +1,7 @@
 """The front doors: Assets for prices or returns, and Portfolio for a portfolio's transactions."""
 
 import datetime
+import decimal
 
 import numpy as np
 import pandas as pd
@@ -186,9 +187,12 @@ def test_the_sp500_dataset():
 def test_a_rebalance_has_a_report_and_raw_results():
     portfolio = fl.datasets.portfolio()
     target = portfolio.assets().optimise(method="minimum_variance", bounds=(0.05, 0.40))
-    fees = fl.opt.Fees(rate="0.0005", minimum="1")
-    tax = fl.opt.TaxRates(short_term="0.37", long_term="0.20")
-    result = portfolio.rebalance(target, whole_units=True, fees=fees, tax=tax, name="Morgan family portfolio")
+    result = portfolio.rebalance(
+        target, whole_units=True, fee_bps=5, minimum_fee=1, tax=(0.37, 0.20), name="Morgan family portfolio"
+    )
+    context = result.report.context
+    assert context.fees.rate == decimal.Decimal("0.0005") and context.fees.minimum == 1
+    assert (context.tax.short_term, context.tax.long_term) == (decimal.Decimal("0.37"), decimal.Decimal("0.2"))
     assert isinstance(result, fl.types.Rebalancing)
     assert isinstance(result.report, fl.reports.RebalanceReport)
     assert isinstance(result.results, fl.opt.RebalanceResults)

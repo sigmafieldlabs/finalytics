@@ -20,9 +20,7 @@ use wasm_bindgen::prelude::*;
 use finalytics::formats::{
     CsvOptions, MarketDocument, PortfolioDocument, fx_from_csv, prices_from_csv,
 };
-use finalytics::opt::{
-    BlackLitterman, Objective, Problem, Rebalance, RebalanceOptions, Resampling,
-};
+use finalytics::opt::{BlackLitterman, Objective, Problem, Rebalance, Resampling};
 use finalytics::performance::{FlowTiming, Period};
 use finalytics::risk::{
     self, CovarianceMethod, FactorModel, Matrix, ReturnsTable, StatisticsOptions, TailMethod,
@@ -61,13 +59,32 @@ export interface Document {
 }
 
 /** Choices for `Portfolio.rebalance`, all optional. */
-export interface RebalanceChoices extends Partial<RebalanceOptions> {
+export interface RebalanceChoices {
   /** The accounts to rebalance together; every account by default. */
   accounts?: string[];
   /** The date of the prices used; the last price date by default. */
   date?: Date;
   /** The report's title, such as `"Morgan family portfolio"`. */
   name?: string;
+  /** How sales choose lots without tax rates: first in, first out by default. */
+  lot_method?: LotMethod;
+  /** Trade whole units only, rounding each trade towards zero. */
+  whole_units?: boolean;
+  /** Leave out trades worth less than this in the base currency. */
+  minimum_trade?: number;
+  /** The fee on each trade, in basis points of its value, such as 5 for 0.05%. */
+  fee_bps?: number;
+  /** A fixed fee on each trade, in the instrument's currency. */
+  fee_per_trade?: number;
+  /** The smallest fee a trade pays, in the instrument's currency. */
+  minimum_fee?: number;
+  /**
+   * Tax-aware rebalancing at these rates on short-term and long-term gains, such as
+   * `[0.37, 0.2]`: sales in taxable accounts take the lots that cost the least tax.
+   */
+  tax?: [number, number];
+  /** The holding period, in days, after which a gain is long-term: 365 by default. */
+  long_term_after_days?: number;
 }
 
 /**
@@ -1041,30 +1058,8 @@ impl Portfolio {
     ) -> Result<JsValue, JsValue> {
         let targets: serde_json::Value = from_js(targets, "targets")?;
         let targets = finalytics::targets_from_json(&targets.to_string()).map_err(error)?;
-        let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
-        let name = match choices.remove("name") {
-            None | Some(serde_json::Value::Null) => None,
-            Some(serde_json::Value::String(name)) => Some(name),
-            Some(_) => return Err(invalid("choices.name", "must be text")),
-        };
-        let accounts: Option<Vec<String>> = match choices.remove("accounts") {
-            None | Some(serde_json::Value::Null) => None,
-            Some(value) => Some(
-                finalytics::formats::from_json(&value.to_string(), "accounts").map_err(error)?,
-            ),
-        };
-        let (on, options) = self.dated_choices::<RebalanceOptions>(choices)?;
-        let mut builder = self
-            .inner
-            .rebalance(targets)
-            .options(options)
-            .as_of(&on.to_string());
-        if let Some(accounts) = accounts {
-            builder = builder.accounts(accounts);
-        }
-        if let Some(name) = &name {
-            builder = builder.name(name);
-        }
+        let choices: finalytics::RebalanceChoices = optional(choices, "choices")?;
+        let builder = choices.apply(self.inner.rebalance(targets));
         to_js(&builder.build().map_err(error)?)
     }
 

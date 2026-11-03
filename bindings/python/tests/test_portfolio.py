@@ -135,10 +135,8 @@ def test_lot_preview_and_rebalancing(books, portfolio, market):
 
 
 def test_rebalancing_with_fees_and_tax(books, portfolio, market):
-    fees = fl.opt.Fees(rate=decimal.Decimal("0.001"), minimum=decimal.Decimal("5"))
-    tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
     [plan] = books.rebalance(
-        {"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, accounts=["main"], fees=fees, tax=tax
+        {"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, accounts=["main"], fee_bps=10, minimum_fee=5, tax=(0.4, 0.2)
     ).results.accounts
     assert all(t.fees_local >= 5 for t in plan.trades)
     sales = [t for t in plan.trades if t.side == "sell"]

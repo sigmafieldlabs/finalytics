@@ -161,11 +161,11 @@ pub use finalytics_reports::{
 pub use finalytics_risk::PriceTable;
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;
-#[doc(hidden)]
-pub use portfolio::targets_from_json;
 pub use portfolio::{
     Portfolio, PortfolioCsv, RebalanceBuilder, Rebalancing, ReportBuilder, Targets,
 };
+#[doc(hidden)]
+pub use portfolio::{RebalanceChoices, targets_from_json};
 #[cfg(feature = "io")]
 pub use show::Show;
 

@@ -46,8 +46,9 @@ test("rebalancing with fees, tax rates and several accounts", () => {
   const targets = { SPY: 0.2, BOND: 0.5 };
   const [plan] = books.rebalance(targets, {
     accounts: ["main"],
-    fees: { rate: "0.001", minimum: "5" },
-    tax: { short_term: "0.4", long_term: "0.2" },
+    fee_bps: 10,
+    minimum_fee: 5,
+    tax: [0.4, 0.2],
   }).results.accounts;
   assert.ok(plan.trades.every((t) => Number(t.fees_local) >= 5));
   assert.ok(plan.tax_base !== null && plan.tax_base !== undefined);

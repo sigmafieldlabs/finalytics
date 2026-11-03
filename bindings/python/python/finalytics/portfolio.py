@@ -517,9 +517,12 @@ class Portfolio:
         date: DateLike | None = None,
         lot_method: _types.LotMethod = "fifo",
         whole_units: bool = False,
-        minimum_trade: decimal.Decimal | int | str = 0,
-        fees: _types.Fees | None = None,
-        tax: _types.TaxRates | None = None,
+        minimum_trade: float = 0,
+        fee_bps: float = 0,
+        fee_per_trade: float = 0,
+        minimum_fee: float = 0,
+        tax: tuple[float, float] | None = None,
+        long_term_after_days: int | None = None,
         name: str | None = None,
     ) -> _types.Rebalancing:
         """The trades that move `accounts` (by default every account) together to `targets`:
@@ -535,12 +538,29 @@ class Portfolio:
         targets leave, and other currencies are converted to their targets (zero if not
         listed). A holding above its target is sold from the accounts that hold it in
         proportion to their holdings, and one below is bought in proportion to the value each
-        account has free; trades do not move cash between accounts. Each trade pays `fees`,
-        and purchases leave room for them. With `tax` rates, sales in taxable accounts take the
-        lots that cost the least tax, and the tax is estimated; an account that is not taxable,
-        such as a retirement account, pays none.
+        account has free; trades do not move cash between accounts. Trades worth less than
+        `minimum_trade` in the base currency are left out.
+
+        Each trade pays a fee of `fee_bps` basis points of its value plus `fee_per_trade`, and
+        at least `minimum_fee`, in the instrument's currency; purchases leave room for the fees.
+        With `tax`, the rates on short-term and long-term gains such as ``(0.37, 0.20)``, sales
+        in taxable accounts take the lots that cost the least tax, and the tax is estimated; a
+        gain is long-term after `long_term_after_days` (365 by default), and an account that is
+        not taxable, such as a retirement account, pays none.
         """
-        options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
+        choices = {
+            "accounts": [a.id for a in self.data.accounts] if accounts is None else list(accounts),
+            "date": self._date_or_last_price(date),
+            "name": name,
+            "lot_method": lot_method,
+            "whole_units": whole_units,
+            "minimum_trade": float(minimum_trade),
+            "fee_bps": float(fee_bps),
+            "fee_per_trade": float(fee_per_trade),
+            "minimum_fee": float(minimum_fee),
+            "tax": None if tax is None else [float(tax[0]), float(tax[1])],
+            "long_term_after_days": long_term_after_days,
+        }
         if isinstance(targets, _types.Optimisation):
             # The method and limits name the targets in the report.
             text = dumps({"report": {"context": targets.report.context}, "results": targets.results})
@@ -548,15 +568,7 @@ class Portfolio:
             text = dumps(targets)
         else:
             text = dumps({k: float(w) for k, w in targets.items()})
-        chosen = [a.id for a in self.data.accounts] if accounts is None else list(accounts)
-        result = call(
-            self._native.rebalance_accounts,
-            self._date_or_last_price(date),
-            json.dumps(chosen),
-            text,
-            dumps(options),
-            name,
-        )
+        result = call(self._native.rebalance_accounts, text, json.dumps(choices))
         return loads(_types.Rebalancing, result)
 
     def shock_scenario(
@@ -659,22 +671,6 @@ class Portfolio:
             if date is None:
                 raise ValueError("give a date: the portfolio has no prices")
         return _arrays.date(date)
-
-    @staticmethod
-    def _rebalance_options(
-        lot_method: _types.LotMethod,
-        whole_units: bool,
-        minimum_trade: decimal.Decimal | int | str,
-        fees: _types.Fees | None,
-        tax: _types.TaxRates | None,
-    ) -> _types.RebalanceOptions:
-        return _types.RebalanceOptions(
-            lot_method=lot_method,
-            whole_units=whole_units,
-            minimum_trade=decimal.Decimal(str(minimum_trade)),
-            fees=fees or _types.Fees(),
-            tax=tax,
-        )
 
     def report(
         self,
