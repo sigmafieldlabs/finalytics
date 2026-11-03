@@ -100,14 +100,17 @@ pull requests that change the engine, and for longer every week.
 - Examples in the documentation of the library crates use the paths of the `finalytics` crate,
   as users write them, since docs.rs shows them under `finalytics`. A hidden first line maps
   those paths to the crate being tested; copy it from an example in the same crate.
-- The READMEs' code fits 80 columns, and every README program prints the output shown after
-  it. A Rust program in `README.md` is a file in `crates/finalytics/examples`, copied as it is;
+- The READMEs' code fits 80 columns, and every README program runs, printing the output shown
+  after it if there is any. A Rust program in `README.md` is a file in
+  `crates/finalytics/examples`, copied as it is, and a shorter snippet is part of one;
   `python3 scripts/check-consistency.py --run-examples` checks both. The Python and JavaScript
   READMEs are run by `bindings/python/tests/test_readme.py` and
-  `bindings/wasm/test/readme.test.mjs`.
+  `bindings/wasm/test/readme.test.mjs`. The READMEs' screenshots and the reports they link to
+  are built by `scripts/sample-reports.py` from the same programs; if you change a program,
+  change that script to match.
 - Public APIs follow semantic versioning: breaking changes wait for a major release.
 
 ## Licence
 
 By contributing, you agree that your contributions are licensed under the terms of both the MIT
-licence and the Apache License, Version 2.0, as described in the [README](README.md#licence).
+licence and the Apache License, Version 2.0, as described in the [README](README.md#contributing-and-licence).

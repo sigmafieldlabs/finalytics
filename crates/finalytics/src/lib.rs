@@ -115,11 +115,6 @@ pub fn results_text(results: &str) -> Result<String> {
     }
 }
 
-// The README's examples run as documentation tests.
-#[cfg(doctest)]
-#[doc = include_str!("../../../README.md")]
-struct ReadmeExamples;
-
 pub use finalytics_core::{
     BusinessDayConvention, Calendar, Currency, Date, Decimal, Error, Fill, Issue, Money,
     Observation, Result, Rounding, Severity, TimeSeries, ValidationReport, Weekday,

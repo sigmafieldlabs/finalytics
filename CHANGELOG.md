@@ -76,11 +76,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   by formula, and risk parity by name (`Method::RiskParity`, `method="risk_parity"`), risk
   budgeting with equal budgets. `Method::label` names each method in words, and `SolveStatus`
   displays as it is written in JSON.
-- The READMEs open with one workflow in each language: review the portfolio dataset with every
-  report, find the holdings that carry its risk, choose the least risky mix of the same funds,
-  and get each account's trades. The Rust programs in the README are the crate's examples
-  (`cargo run --example workflow`), and the tests run every README program in each language and
-  check that it prints the output shown.
+- The READMEs show each front door in each language as a program that builds its result and
+  shows it: a comparison, a backtest and an optimisation of the asset-class dataset, then the
+  portfolio dataset's report and its rebalancing with fees and tax rates. Each program is followed
+  by a screenshot of its page, in light and dark, which links to the full sample report. The Rust
+  programs are the crate's examples (`cargo run --example compare`, and likewise `backtest`,
+  `optimise`, `report` and `rebalance`), and the tests run every README program in each language.
+- Sample reports: `scripts/sample-reports.py` builds the five reports the READMEs show from the
+  bundled datasets, with an index page and the screenshots, and the "Sample reports" workflow
+  publishes them to GitHub Pages on each version tag.
 - Builders for every front door in Rust, each ending in `build()`: `Assets::builder()`,
   `assets.optimise(Method::MaximumSharpe).max_weight(0.4)`, `assets.compare([...])`,
   `assets.backtest(...)`, `Portfolio::builder()`, `portfolio.report().benchmark("BENCH")` and
@@ -217,9 +221,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rebalancing leaves room for fees. When the trades and their fees would need more
   base-currency cash than an account has, as when the targets leave no cash, the purchases are
   sized again so that they fit, and a shortfall that rounding leaves comes from the largest
-  purchase; before, the proposal took the cash below zero with a warning. The README's workflow,
-  which has no fees, now buys one unit fewer of EXSA in the brokerage account and of BND and
-  EXSA in the retirement account, where whole units had overspent.
+  purchase; before, the proposal took the cash below zero with a warning. Rebalancing the
+  portfolio dataset to its least risky mix, 5% to 40% each, in whole units and without fees, now
+  buys one unit fewer of EXSA in the brokerage account and of BND and EXSA in the retirement
+  account, where whole units had overspent.
 - `CombinedRebalance` is `RebalanceResults`, and records the base currency;
   `Portfolio::rebalance_with` and `rebalance_accounts_with` return the rebalancing with its
   report. In Python and JavaScript, `portfolio.rebalance` returns the rebalancing, with each

@@ -1,16 +1,20 @@
-"""Runs the package README's examples as a reader would, and checks that each prints what the
-README shows after it."""
+"""Runs the package README's examples in order, as a reader would, in a folder that holds the
+portfolio dataset's files. Each example that ends in ``show()`` must open one page, and each
+that the README follows with a text block must print that text."""
 
 import contextlib
 import io
 import os
+import pathlib
 import re
+import shutil
+import webbrowser
 
 from conftest import ROOT
 
 README = ROOT / "bindings" / "python" / "README.md"
+DATASET = ROOT / "crates" / "finalytics" / "data" / "portfolio"
 BLOCK = re.compile(r"```(\w+)\n(.*?)```", re.DOTALL)
-PRICES = "date,VOO,AGG\n2026-01-02,500,98\n2026-01-05,505,98.2\n"
 
 
 def examples(text: str) -> list[tuple[str, str | None]]:
@@ -24,25 +28,29 @@ def examples(text: str) -> list[tuple[str, str | None]]:
     return found
 
 
-def test_the_examples_print_what_the_readme_shows(tmp_path):
-    text = README.read_text(encoding="utf-8")
-    blocks = examples(text)
-    assert len(blocks) >= 3 and all(output is not None for _, output in blocks[:1])
-    # The files the examples read: the transactions as the README shows them.
-    csv = re.search(r"```csv\n(.*?)```", text, re.DOTALL)
-    assert csv, "the README shows a transactions file"
-    (tmp_path / "transactions.csv").write_text(csv.group(1), encoding="utf-8")
-    (tmp_path / "prices.csv").write_text(PRICES, encoding="utf-8")
+def test_the_examples_run_and_show_their_reports(tmp_path, monkeypatch):
+    blocks = examples(README.read_text(encoding="utf-8"))
+    assert len(blocks) >= 5
+    for source in DATASET.glob("*.csv"):
+        shutil.copy(source, tmp_path / source.name)
+    opened: list[str] = []
+    monkeypatch.setattr(webbrowser, "open", lambda url, *args, **kwargs: opened.append(url) or True)
     namespace: dict = {}
     here = os.getcwd()
     os.chdir(tmp_path)
     try:
         for code, expected in blocks:
             printed = io.StringIO()
+            shown = len(opened)
             with contextlib.redirect_stdout(printed):
                 exec(compile(code, str(README), "exec"), namespace)  # noqa: S102
             if expected is not None:
                 assert printed.getvalue() == expected
+            if ".show()" in code:
+                assert len(opened) == shown + 1, code
     finally:
         os.chdir(here)
-    assert (tmp_path / "report.html").read_text(encoding="utf-8").startswith("<!doctype html>")
+    for url in opened:
+        page = pathlib.Path(url.removeprefix("file://"))
+        assert page.read_text(encoding="utf-8").startswith("<!doctype html>")
+        page.unlink()

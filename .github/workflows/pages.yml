@@ -1,0 +1,57 @@
+name: Sample reports
+
+# Builds the sample reports that the READMEs show and link to, from the bundled datasets, with
+# their screenshots, and publishes them to GitHub Pages: on each version tag, and by hand from
+# the Actions tab. Pages must be set to deploy from GitHub Actions in the repository's settings.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build the sample reports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: pip install maturin playwright
+      - name: Build and install the wheel
+        working-directory: bindings/python
+        run: |
+          maturin build --release --out dist
+          pip install dist/*.whl
+      - run: python -m playwright install --with-deps chromium
+      - run: python scripts/sample-reports.py site --screenshots
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

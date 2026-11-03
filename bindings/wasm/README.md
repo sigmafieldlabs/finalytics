@@ -6,206 +6,237 @@
 [![npm](https://img.shields.io/npm/v/finalytics)](https://www.npmjs.com/package/finalytics)
 [![Downloads](https://img.shields.io/npm/dm/finalytics)](https://www.npmjs.com/package/finalytics)
 [![CI](https://github.com/sigmafieldlabs/finalytics/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sigmafieldlabs/finalytics/actions/workflows/ci.yml)
-[![Licence](https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-blue)](https://github.com/sigmafieldlabs/finalytics#licence)
+[![Licence](https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-blue)](https://github.com/sigmafieldlabs/finalytics#contributing-and-licence)
 [![Homepage](https://img.shields.io/badge/homepage-sigmafield.app-0b7a75)](https://sigmafield.app/libraries/finalytics)
 
-Finalytics is a portfolio analytics engine: it keeps the books of a
-multi-currency portfolio from its transactions, measures performance and risk,
-explains returns against a benchmark, and optimises portfolios under real-world
-constraints. This package runs the engine as WebAssembly in browsers, workers
-and Node.js, with TypeScript types included.
-
-> **Status:** 1.0 is in active development. Until 1.0.0 is released,
-> `npm install finalytics` gives 0.2; install a 1.0 pre-release with
-> `npm install finalytics@next`. Coming from 0.2? See the
-> [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md).
+Finalytics is a portfolio analytics engine written in Rust, run here as
+WebAssembly in browsers, workers and Node.js, with TypeScript types included. It
+compares portfolio optimisation methods on returns they have not seen, and keeps
+the books of a real portfolio to report its performance, risk and attribution.
 
 ```sh
 npm install finalytics
 ```
 
-In Node.js the engine is ready on import. In a browser, import the default
-export too and `await init()` once before the first call.
+Until 1.0.0 is released, `npm install finalytics` gives 0.2; install a 1.0
+pre-release with `npm install finalytics@next`. The
+[migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) explains what
+replaces each part of 0.2. In Node.js the engine is ready on import; in a
+browser, import the default export too and `await init()` once before the first
+call.
 
-## A portfolio in four steps
+**Sample reports**, built by the programs below from the bundled datasets:
+[comparison](https://sigmafieldlabs.github.io/finalytics/reports/comparison.html) ·
+[backtest](https://sigmafieldlabs.github.io/finalytics/reports/backtest.html) ·
+[optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
+[portfolio](https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html) ·
+[rebalance](https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html)
 
-Review a portfolio, find where its risk comes from, choose a better mix of the
-same funds, and get the trades that reach it, in each account. The portfolio is
-one of the datasets that come with the package: three years of a brokerage and a
-retirement account, in dollars and euros. Saved as `workflow.mjs`, it runs with
-`node workflow.mjs`:
+## Portfolio optimisation
+
+Compare optimisation methods on the same assets. Each method is refitted every
+quarter on the five years before, and judged on the quarter that follows.
 
 ```js
-import { writeFile } from "node:fs/promises";
-import { datasets, reportHtml } from "finalytics";
+import { Assets, datasets } from "finalytics";
 
-const pct = (x, digits = 1) => `${(100 * x).toFixed(digits)}%`;
-const signed = (x) => (x < 0 ? "" : "+") + pct(x);
-
-// Three years of a two-account portfolio, in dollars and euros.
-const portfolio = datasets.portfolio();
-
-// 1. Review: every report, from one set of options.
-const report = portfolio.report({
-  benchmark: "BENCH",
-  group_by: ["asset_class", "region"],
-  risk_free_rate: 0.03,
+const assets = new Assets(datasets.assetClassPrices(), {
+  risk_free_asset: "T-Bills",
 });
-await writeFile("report.html", reportHtml(report, "Morgan family portfolio"));
-const since = report.performance.periods.at(-1);
-console.log(
-  `Return ${signed(since.cumulative)}, benchmark ${signed(since.benchmark)}`,
-);
 
-// 2. Diagnose: which holdings carry the risk?
-for (const part of report.risk.holdings.decomposition.contributions) {
-  if (part.share > 0.1) {
-    console.log(
-      `${part.label}: ${pct(part.weight, 0)} of value, ` +
-        `${pct(part.share, 0)} of risk`,
-    );
-  }
-}
-
-// 3. Decide: the least risky mix of the same funds, 5% to 40% each.
-const target = portfolio.assets().optimise({
-  method: "minimum_variance",
-  bounds: { min: 0.05, max: 0.4 },
+const comparison = assets.compare({
+  methods: [
+    "equal_weight",
+    "minimum_variance",
+    "maximum_sharpe",
+    "maximum_diversification",
+    "risk_parity",
+    "hierarchical_risk_parity",
+  ],
+  max_weight: 0.4,
+  rebalance: "quarterly",
+  validation: { walk_forward: { years: 5 } },
+  trading_cost_bps: 10,
 });
-const mixes = [["Now", report.overview.current], ["After", target.results]];
-for (const [name, mix] of mixes) {
-  console.log(
-    `${name}: volatility ${pct(mix.volatility)}, ` +
-      `expected return ${pct(mix.expected_return)}`,
-  );
-}
 
-// 4. Trade: what each account buys and sells, in whole units.
-const proposal = portfolio.rebalance(target, { whole_units: true });
-for (const account of proposal.results.accounts) {
-  for (const trade of account.trades) {
-    console.log(account.account, trade.side, trade.quantity, trade.instrument);
-  }
-}
+comparison.show();
 ```
 
-It prints:
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/comparison.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/comparison-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/comparison-light.png" alt="The comparison report: each method's return, volatility, Sharpe ratio, drawdown and turnover out of sample" width="760">
+</picture></a>
 
-```text
-Return +56.1%, benchmark +55.2%
-VTI: 51% of value, 79% of risk
-Now: volatility 9.5%, expected return 14.3%
-After: volatility 7.5%, expected return 11.2%
-brokerage sell 394 VTI
-brokerage buy 898 BND
-brokerage buy 1023 EXSA
-brokerage buy 30 GLD
-brokerage buy 200 VNQ
-ira sell 259 VTI
-ira buy 570 BND
-ira buy 650 EXSA
-ira buy 19 GLD
-ira buy 127 VNQ
+Every result has the same shape: `result.report` is the report, which
+`` `${result}` `` prints as text and `result.show()` opens as a page (in Node.js
+in the default browser; in a browser, in a frame inside the element given), and
+`result.results` holds every return and trade behind it.
+
+To test one allocation, give a method or your own weights. Here, the maximum
+Sharpe ratio fitted to the years before November 2016, held from then on against
+a 60/40 benchmark:
+
+```js
+const backtest = assets.backtest({
+  method: "maximum_sharpe",
+  max_weight: 0.4,
+  benchmark: { "US Equity": 0.6, Bonds: 0.4 },
+  rebalance: "quarterly",
+  validation: { holdout: { start: "2016-11-01" } },
+});
+
+backtest.show();
 ```
 
-`report.html` is one self-contained page: every report, with charts, in light
-and dark, ready to print. `reportText(report)` gives the same reports as text,
-80 columns wide.
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/backtest.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/backtest-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/backtest-light.png" alt="The backtest report: the allocation, its statistics in and out of sample against the benchmark, and its growth" width="760">
+</picture></a>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/report-overview-dark.png">
-  <img src="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/report-overview.png" alt="The overview of the HTML report: value, returns, volatility, drawdown and value at risk, and the growth of 100 against the benchmark" width="760">
-</picture>
+To see the weights a method chooses today, where their risk comes from and
+where they sit on the efficient frontier:
 
-Give the report options the benchmark's segments and some scenarios, as
-`datasets.reportOptions()` does, and the report adds attribution against the
-benchmark and the effect of each scenario.
+```js
+const optimisation = assets.optimise({
+  method: "maximum_sharpe",
+  max_weight: 0.4,
+  frontier: true,
+});
 
-## Your own portfolio
+optimisation.show();
+```
 
-A portfolio needs its transactions and the prices that value them:
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/optimisation-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/optimisation-light.png" alt="The optimisation report: the weights, what they are expected to deliver, and each asset's share of the risk" width="760">
+</picture></a>
+
+## Portfolio analytics
+
+Load a portfolio from its transactions and prices, and report on it: holdings,
+performance, risk, attribution and scenarios.
 
 ```js
 import { readFile } from "node:fs/promises";
 import { Portfolio } from "finalytics";
 
+const read = (file) => readFile(file, "utf8");
 const portfolio = Portfolio.fromCsv({
-  transactions: await readFile("transactions.csv", "utf8"),
-  prices: await readFile("prices.csv", "utf8"),
+  transactions: await read("transactions.csv"),
+  prices: await read("prices.csv"),
+  fx: await read("fx.csv"),
+  instruments: await read("instruments.csv"),
+  accounts: await read("accounts.csv"),
 });
-console.log(portfolio.valuation().total_base);
+
+const report = portfolio.report({
+  benchmark: "BENCH",
+  group_by: ["asset_class", "region"],
+});
+
+report.show();
+```
+
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/portfolio-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/portfolio-light.png" alt="The portfolio report: value, returns, volatility, drawdown and value at risk, and growth against the benchmark" width="760">
+</picture></a>
+
+The files are the portfolio dataset: a household's brokerage and retirement
+accounts, holding five funds in dollars and euros for three years.
+`datasets.file("portfolio/prices.csv")` and the like return each of them, and
+`datasets.portfolio()` loads the same portfolio without them. `BENCH` is a
+column of `prices.csv`, the benchmark's levels; `asset_class` and `region` are
+columns of `instruments.csv` that classify each holding. The sample report adds
+the attribution and scenarios of `datasets.reportOptions()`.
+
+<details>
+<summary>The start of the dataset's files</summary>
+
+```csv
+id,kind,currency,name,class.asset_class,class.region
+VTI,fund,USD,Vanguard Total Stock Market ETF,Equity,North America
+EXSA,fund,EUR,iShares STOXX Europe 600 UCITS ETF (DE),Equity,Europe
 ```
 
 ```csv
-date,type,instrument,quantity,price,amount,currency
-2026-01-02,deposit,,,,20000,USD
-2026-01-02,buy,VOO,20,500,,
-2026-01-02,buy,AGG,100,98,,
+date,VTI,EXSA,BND,GLD,VNQ,BENCH
+2023-11-01,208.86,43.21,68.99,183.51,73.37,100.0000
+2023-11-02,213.01,43.92,69.39,184.12,75.78,101.4345
 ```
 
-Add `fx` for other currencies, `instruments` to classify holdings by asset class
-or region, and `accounts` to name accounts. The
-[data guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md)
-describes every file, column by column, and
-`datasets.file("portfolio/transactions.csv")` returns a complete example of
-each. Invalid input throws an `Error` named `ValidationError` whose `issues`
-list every problem with its file, line and column.
+```csv
+id,name,lot_method,taxable,class.owner,class.wrapper
+brokerage,Brokerage account,fifo,true,Alex,Taxable
+ira,Retirement account,fifo,false,Alex,Tax-deferred
+```
 
-## From prices to a portfolio
+The [data guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md) describes every file, column by
+column.
 
-`Assets` takes prices or returns for statistics, covariance and optimisation.
-Here, the mix of six asset classes with the highest Sharpe ratio, with at most
-40% in any one and 15% in real assets, against the return on T-bills:
+</details>
+
+To move the same funds to their least risky mix, 5% to 40% each, optimise the
+holdings and rebalance the accounts together, with fees and tax rates:
 
 ```js
-import { Assets, datasets } from "finalytics";
-
-// Thirty years of month-end levels of six asset-class indices.
-const prices = datasets.assetClassPrices();
-
-const assets = new Assets(prices, { risk_free_asset: "T-Bills" });
-const result = assets.optimise({
-  method: "maximum_sharpe",
-  bounds: { min: 0, max: 0.4 },
-  groups: {
-    "Real assets": { assets: ["Gold", "Real Estate"], min: 0, max: 0.15 },
-  },
+const target = portfolio.assets().optimise({
+  method: "minimum_variance",
+  bounds: { min: 0.05, max: 0.4 },
 });
-for (const [asset, weight] of Object.entries(result.results.weights)) {
-  const percent = (100 * weight).toFixed(0).padStart(3);
-  console.log(`${asset.padEnd(12)} ${percent}%`);
-}
-console.log(`Sharpe ratio ${result.results.sharpe_ratio.toFixed(2)}`);
+
+const rebalancing = portfolio.rebalance(target, {
+  whole_units: true,
+  fee_bps: 5,
+  minimum_fee: 1,
+  tax: [0.37, 0.2],
+});
+
+rebalancing.show();
 ```
 
-```text
-US Equity     40%
-Intl Equity    5%
-Bonds         40%
-Gold          15%
-Real Estate    0%
-Sharpe ratio 0.55
-```
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/rebalance-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/rebalance-light.png" alt="The rebalance report: the trades, how each holding's weight moves, and what the trades change and cost" width="760">
+</picture></a>
 
-The other objectives are `minimum_variance`, `mean_variance`,
-`robust_mean_variance`, `target_return`, `target_volatility`,
-`maximum_diversification`, `minimum_cvar`, `risk_budgeting` and
-`hierarchical_risk_parity`; `assets.frontier(20)` gives the efficient frontier.
+Sales in the brokerage account take the lots that cost the least tax; the
+retirement account is not taxable (`taxable` is false in `accounts.csv`), so its
+sales pay none. `portfolio.withRebalance(rebalancing)` makes the trades.
 
-## Beneath the front doors
+## What is included
 
-Functions such as `statistics`, `covariance`, `riskDecomposition`, `solve`,
-`blackLitterman` and `brinsonFachler` give each method on its own. The
-[methods pages](https://github.com/sigmafieldlabs/finalytics/tree/main/docs/methods)
-define every model, with examples.
+**Optimisation**
 
-Data objects use the field names of the
-[schema](https://github.com/sigmafieldlabs/finalytics/tree/main/schema)
-(`sharpe_ratio`, `expected_return`); decimals are strings, dates are ISO 8601
-strings, and series of numbers in data objects are arrays. A series of numbers
-returned on its own, such as `performance.returns` or `drawdownSeries(...)`, is
-a `Float64Array`. `reportTables(report)` gives any report as typed tables, for
-CSV, spreadsheet or PDF export.
+- Equal weight, minimum variance, mean–variance and robust mean–variance,
+  maximum Sharpe, target return or volatility, maximum diversification, minimum
+  CVaR, risk parity, hierarchical risk parity
+- Limits on each asset and on groups, turnover, tracking error and factor
+  exposure
+- Black–Litterman and resampled estimates; Ledoit–Wolf, OAS and EWMA covariance
+- Validation in sample, on a holdout, or walk-forward; calendar or drift
+  rebalancing; trading costs
+
+**Analytics**
+
+- Books from transactions: lots, corporate actions, several accounts and
+  currencies
+- Time- and money-weighted returns, contribution, Brinson–Fachler and currency
+  attribution
+- Volatility, drawdowns, value at risk, risk decomposition, factor models and
+  scenarios
+- Rebalancing trades with fees and tax-aware lot selection, across accounts
+
+Every report prints as text, 80 columns wide, and shows as one self-contained
+HTML page, in light and dark. Every model is tested against an independent
+implementation; the [methods pages](https://github.com/sigmafieldlabs/finalytics/tree/main/docs/methods) define each
+one.
+
+Beneath the front doors, functions such as `statistics`, `covariance`, `solve`,
+`blackLitterman` and `brinsonFachler` give each method on its own. Data objects
+use the field names of the [schema](https://github.com/sigmafieldlabs/finalytics/tree/main/schema); decimals are
+strings, dates are ISO 8601 strings, and a series of numbers returned on its own
+is a `Float64Array`.
 
 ## Off the main thread
 
@@ -225,5 +256,17 @@ const report = await portfolio.call("report", { benchmark: "BENCH" });
 const html = await engine.call("reportHtml", report);
 ```
 
-- Source and issues: https://github.com/sigmafieldlabs/finalytics
-- Licence: MIT OR Apache-2.0
+## Documentation
+
+[Data guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md) ·
+[Methods](https://github.com/sigmafieldlabs/finalytics/tree/main/docs/methods) ·
+[Performance](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/performance.md) ·
+[Migrating from 0.9](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) ·
+[Source and issues](https://github.com/sigmafieldlabs/finalytics)
+
+## Contributing and licence
+
+Contributions are welcome: see
+[CONTRIBUTING.md](https://github.com/sigmafieldlabs/finalytics/blob/main/CONTRIBUTING.md). Finalytics is licensed under
+[MIT](https://github.com/sigmafieldlabs/finalytics/blob/main/LICENSE-MIT) or [Apache-2.0](https://github.com/sigmafieldlabs/finalytics/blob/main/LICENSE-APACHE),
+at your option. It provides analysis tools only and is not investment advice.

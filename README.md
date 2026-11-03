@@ -8,305 +8,269 @@
 [![docs.rs](https://img.shields.io/docsrs/finalytics)](https://docs.rs/finalytics)
 [![PyPI](https://img.shields.io/pypi/v/finalytics)](https://pypi.org/project/finalytics/)
 [![npm](https://img.shields.io/npm/v/finalytics)](https://www.npmjs.com/package/finalytics)
-[![Licence](https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-blue)](https://github.com/sigmafieldlabs/finalytics#licence)
+[![Licence](https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-blue)](https://github.com/sigmafieldlabs/finalytics#contributing-and-licence)
 [![Rust 1.88+](https://img.shields.io/badge/rust-1.88%2B-orange)](https://www.rust-lang.org)
 [![Homepage](https://img.shields.io/badge/homepage-sigmafield.app-0b7a75)](https://sigmafield.app/libraries/finalytics)
 
 Finalytics is a portfolio analytics engine written in Rust, with bindings for
-Python and for JavaScript and TypeScript through WebAssembly. It keeps the books
-of a multi-currency portfolio from its transactions, measures performance and
-risk, explains returns against a benchmark, and optimises portfolios under
-real-world constraints.
-
-> **Status:** Finalytics 1.0 is in active development. It is a redesign of the
-> 0.x series; the 0.9 release remains available on the `0.9.x` branch, and the
-> [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md)
-> explains what replaces each part of it.
+Python and JavaScript. It compares portfolio optimisation methods on returns
+they have not seen, and keeps the books of a real portfolio to report its
+performance, risk and attribution.
 
 | Language | Package | Install |
 | --- | --- | --- |
 | Rust | [`finalytics`](https://crates.io/crates/finalytics) | `cargo add finalytics` |
-| Python (3.10+) | [`finalytics`](https://pypi.org/project/finalytics/) | `pip install finalytics` |
-| JavaScript / TypeScript | [`finalytics`](https://www.npmjs.com/package/finalytics) | `npm install finalytics` |
+| Python 3.10+ | [`finalytics`](https://pypi.org/project/finalytics/) | `pip install finalytics` |
+| JavaScript and TypeScript | [`finalytics`](https://www.npmjs.com/package/finalytics) | `npm install finalytics` |
 
-Until 1.0.0 is released, these commands install the 0.x series (0.9 on crates.io
-and PyPI, 0.2 on npm). Install a 1.0 pre-release with
-`cargo add finalytics@<version>`, `pip install --pre finalytics` or
-`npm install finalytics@next`.
+Until 1.0.0 is released, these commands install the 0.x series. Install a 1.0
+pre-release with `cargo add finalytics@<version>`, `pip install --pre finalytics`
+or `npm install finalytics@next`. The
+[migration guide](docs/migrating-from-0.9.md) explains what replaces each part
+of 0.9.
 
-## A portfolio in four steps
+**Sample reports**, built by the programs below from the bundled datasets:
+[comparison](https://sigmafieldlabs.github.io/finalytics/reports/comparison.html) ·
+[backtest](https://sigmafieldlabs.github.io/finalytics/reports/backtest.html) ·
+[optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
+[portfolio](https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html) ·
+[rebalance](https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html)
 
-Review a portfolio, find where its risk comes from, choose a better mix of the
-same funds, and get the trades that reach it, in each account. The portfolio is
-one of the datasets that come with the library: three years of a brokerage and a
-retirement account, in dollars and euros.
+## Portfolio optimisation
 
-```rust,no_run
-//! Review a portfolio, find where its risk comes from, choose a better mix of
-//! the same funds, and get the trades that reach it, in each account.
-
-use finalytics::{Method, Show, datasets};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Three years of a two-account portfolio, in dollars and euros.
-    let portfolio = datasets::portfolio();
-
-    // 1. Review: every report, from one set of options.
-    let report = portfolio
-        .report()
-        .benchmark("BENCH")
-        .group_by(["asset_class", "region"])
-        .risk_free_rate(0.03)
-        .name("Morgan family portfolio")
-        .build()?;
-    report.save_html("report.html")?;
-    let since = report.performance.periods.last().ok_or("no history")?;
-    println!(
-        "Return {:+.1}%, benchmark {:+.1}%",
-        since.cumulative.unwrap_or_default() * 100.0,
-        since.benchmark.unwrap_or_default() * 100.0,
-    );
-
-    // 2. Diagnose: which holdings carry the risk?
-    let risk = report.risk.holdings.as_ref().ok_or("no holdings")?;
-    for part in &risk.decomposition.contributions {
-        let share = part.share.unwrap_or_default();
-        if share > 0.10 {
-            println!(
-                "{}: {:.0}% of value, {:.0}% of risk",
-                part.label,
-                part.weight * 100.0,
-                share * 100.0,
-            );
-        }
-    }
-
-    // 3. Decide: the least risky mix of the same funds, 5% to 40% each.
-    let target = portfolio
-        .assets()?
-        .optimise(Method::MinimumVariance)
-        .bounds(0.05, 0.40)
-        .build()?;
-    let now = report.overview.current.as_ref().ok_or("no estimate")?;
-    let after = (
-        target.results.volatility.unwrap_or_default(),
-        target.results.expected_return.unwrap_or_default(),
-    );
-    for (name, (volatility, expected)) in [
-        ("Now", (now.volatility, now.expected_return)),
-        ("After", after),
-    ] {
-        println!(
-            "{name}: volatility {:.1}%, expected return {:.1}%",
-            volatility * 100.0,
-            expected * 100.0,
-        );
-    }
-
-    // 4. Trade: what each account buys and sells, in whole units.
-    let proposal = portfolio.rebalance(&target).whole_units().build()?;
-    for account in &proposal.results.accounts {
-        for trade in &account.trades {
-            println!(
-                "{} {} {} {}",
-                account.account, trade.side, trade.quantity, trade.instrument
-            );
-        }
-    }
-    Ok(())
-}
-```
-
-It prints:
-
-```text
-Return +56.1%, benchmark +55.2%
-VTI: 51% of value, 79% of risk
-Now: volatility 9.5%, expected return 14.3%
-After: volatility 7.5%, expected return 11.2%
-brokerage sell 394 VTI
-brokerage buy 898 BND
-brokerage buy 1023 EXSA
-brokerage buy 30 GLD
-brokerage buy 200 VNQ
-ira sell 259 VTI
-ira buy 570 BND
-ira buy 650 EXSA
-ira buy 19 GLD
-ira buy 127 VNQ
-```
-
-`report.html` is one self-contained page: every report, with charts, in light
-and dark, ready to print. Each report also prints as text, 80 columns wide.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/report-overview-dark.png">
-  <img src="https://raw.githubusercontent.com/sigmafieldlabs/finalytics/main/docs/assets/report-overview.png" alt="The overview of the HTML report: value, returns, volatility, drawdown and value at risk, and the growth of 100 against the benchmark" width="760">
-</picture>
-
-The same workflow opens the READMEs of the
-[Python](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/python#a-portfolio-in-four-steps)
-and
-[JavaScript](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#a-portfolio-in-four-steps)
-packages and prints the same lines. The programs in this README are the crate's
-[examples](crates/finalytics/examples), and the tests check that they print
-what is shown here.
-
-## Your own portfolio
-
-A portfolio needs its transactions and the prices that value them:
-
-```rust,no_run
-//! A portfolio from its CSV files: run it in a folder that holds
-//! `transactions.csv` and `prices.csv`.
-
-use finalytics::reports::ReportOptions;
-use finalytics::{Portfolio, PortfolioCsv};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let transactions = std::fs::read_to_string("transactions.csv")?;
-    let prices = std::fs::read_to_string("prices.csv")?;
-    let files = PortfolioCsv::new(&transactions).prices(&prices);
-    let portfolio = Portfolio::from_csv(&files)?;
-    print!("{}", portfolio.holdings_report(&ReportOptions::default())?);
-    Ok(())
-}
-```
-
-```csv
-date,type,instrument,quantity,price,amount,currency
-2026-01-02,deposit,,,,20000,USD
-2026-01-02,buy,VOO,20,500,,
-2026-01-02,buy,AGG,100,98,,
-```
-
-Add `.fx(...)` for other currencies, `.instruments(...)` to classify holdings by
-asset class or region, and `.accounts(...)` to name accounts. The
-[data guide](docs/data.md) describes every file, column by column, and
-`finalytics::datasets::file` returns a complete example of each. Invalid input
-gives an `Error::Validation` that lists every problem with its file, line and
-column.
-
-## From prices to a portfolio
-
-`Assets` takes prices or returns for statistics, covariance and optimisation.
-Here, the mix of six asset classes with the highest Sharpe ratio, with at most
-40% in any one and 15% in real assets, against the return on T-bills:
+Compare optimisation methods on the same assets. Each method is refitted every
+quarter on the five years before, and judged on the quarter that follows.
 
 ```rust
-//! The mix of six asset classes with the highest Sharpe ratio, with at most
-//! 40% in any one and 15% in real assets, against the return on T-bills.
+//! Six optimisation methods compared walk-forward on 30 years of six asset
+//! classes.
 
 use finalytics::prelude::*;
 
 fn main() -> Result<()> {
-    // Thirty years of month-end levels of six asset-class indices.
-    let prices = datasets::asset_class_prices();
-
     let assets = Assets::builder()
-        .prices(prices)
+        .prices(datasets::asset_class_prices())
         .risk_free_asset("T-Bills")
         .build()?;
+
     let result = assets
-        .optimise(Method::MaximumSharpe)
-        .max_weight(0.4)
-        .group("Real assets", &["Gold", "Real Estate"], 0.0, 0.15)
+        .compare([
+            Method::EqualWeight,
+            Method::MinimumVariance,
+            Method::MaximumSharpe,
+            Method::MaximumDiversification,
+            Method::RiskParity,
+            Method::HierarchicalRiskParity,
+        ])
+        .max_weight(0.40)
+        .rebalance(Rebalance::Quarterly)
+        .walk_forward(Years(5))
+        .trading_cost_bps(10.0)
         .build()?;
-    for asset in assets.risky_assets() {
-        let weight = result.results.weights.as_ref().map_or(0.0, |w| w[asset]);
-        println!("{asset:12} {:3.0}%", weight * 100.0);
-    }
-    println!(
-        "Sharpe ratio {:.2}",
-        result.results.sharpe_ratio.unwrap_or_default()
-    );
+
+    result.show()?;
     Ok(())
 }
 ```
 
-```text
-US Equity     40%
-Intl Equity    5%
-Bonds         40%
-Gold          15%
-Real Estate    0%
-Sharpe ratio 0.55
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/comparison.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/comparison-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/comparison-light.png" alt="The comparison report: each method's return, volatility, Sharpe ratio, drawdown and turnover out of sample" width="760">
+</picture></a>
+
+Every result has the same shape: `result.report` is the report, which
+`println!("{result}")` prints as text and `result.show()` opens as a page, and
+`result.results` holds every return and trade behind it.
+
+To test one allocation, give a method or your own weights. Here, the maximum
+Sharpe ratio fitted to the years before November 2016, held from then on against
+a 60/40 benchmark:
+
+```rust
+let result = assets
+    .backtest(Method::MaximumSharpe)
+    .max_weight(0.40)
+    .benchmark([("US Equity", 0.60), ("Bonds", 0.40)])
+    .rebalance(Rebalance::Quarterly)
+    .holdout_from("2016-11-01")
+    .build()?;
+
+result.show()?;
 ```
 
-The optimiser also offers minimum variance, mean–variance and robust
-mean–variance, a target return or volatility, maximum diversification, minimum
-CVaR, risk budgeting and hierarchical risk parity; `assets.frontier` gives the
-efficient frontier.
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/backtest.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/backtest-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/backtest-light.png" alt="The backtest report: the allocation, its statistics in and out of sample against the benchmark, and its growth" width="760">
+</picture></a>
 
-## Design
+To see the weights a method chooses today, where their risk comes from and
+where they sit on the efficient frontier:
 
-- **Two front doors.** `Assets` for prices or returns and `Portfolio` for a
-  portfolio's transactions. Beneath them, the `risk`, `opt`, `performance` and
-  `reports` modules give each method on its own, and the
-  [methods pages](docs/methods) define every model.
-- **A pure engine.** Finalytics performs no input or output. You supply
-  transactions, prices and exchange rates; it returns typed results. The same
-  inputs give the same outputs on every platform, apart from the time an
-  optimisation reports it took.
-- **Accounting first.** Tax lots, corporate actions and cash in several
-  currencies are part of the data model, with exact decimal arithmetic in the
-  ledger.
-- **Runs anywhere.** The core compiles to WebAssembly and runs in the browser, in
-  Node and in Python, from one Rust code base.
-- **Validated.** Every model is tested against independent reference
-  implementations, and its methods and tolerances are documented in
-  [docs/methods](docs/methods).
-- **Fast.** The books for 100,000 transactions build in under a second, natively
-  and in WebAssembly, and a 500-asset optimisation solves in under half a second;
-  see [docs/performance.md](docs/performance.md).
+```rust
+let result = assets
+    .optimise(Method::MaximumSharpe)
+    .max_weight(0.40)
+    .with_frontier()
+    .build()?;
 
-## Scope of 1.0
+result.show()?;
+```
 
-| Area | Includes |
-| --- | --- |
-| Data | Import and validation of accounts, instruments, transactions, prices, FX rates and benchmarks (CSV and JSON); a versioned portfolio document; datasets of S&P 500 stocks and a household portfolio |
-| Holdings | Positions and tax lots on any date; cost basis; realised and unrealised gains in local and base currency; weights by any classification |
-| Performance | Time-weighted and money-weighted returns, standard periods, contribution with fees and taxes on their own line, benchmark-relative returns, Brinson–Fachler and currency attribution; households: performance and contribution by account and by group of accounts |
-| Risk | Return statistics, drawdowns, covariance estimators, factor models (regression, statistical and fundamental), value at risk and expected shortfall, risk decomposition by holding, group and factor, ex-ante tracking error; scenarios (shocks to instruments, groups, currencies and factors, historical replay) with their effect on value and risk, including stressed correlations |
-| Optimisation | Minimum variance, mean–variance, maximum Sharpe, target return or volatility, maximum diversification, minimum CVaR, risk parity, hierarchical risk parity, robust mean–variance; Black–Litterman returns; resampled optimisation; budget, bound, group, turnover, tracking-error, factor exposure and trade constraints; linear and quadratic trading costs; factor models in factor form; efficient frontiers; rebalancing trades with fees and tax-aware lot selection, for one account or several together |
-| Reports | Holdings, overview, performance, risk, attribution and scenario reports with chart-ready series, breakdowns, grids and histograms; provenance with a digest of the inputs; typed tables for export; text for printing and one HTML page |
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/optimisation-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/optimisation-light.png" alt="The optimisation report: the weights, what they are expected to deliver, and each asset's share of the risk" width="760">
+</picture></a>
 
-## Repository layout
+## Portfolio analytics
 
-| Path | Contents |
-| --- | --- |
-| `crates/finalytics` | The public Rust API |
-| `crates/finalytics-*` | The layers behind it: core, ledger, formats, performance, risk, optimisation, backtests, reports |
-| `bindings/python` | The Python package |
-| `bindings/wasm` | The WebAssembly module and npm package |
-| `schema` | JSON Schema of the data types, including the portfolio document |
-| `crates/finalytics/data` | The datasets |
-| `crates/finalytics/examples` | The programs in this README |
-| `docs/data.md` | The data guide: every input, column by column |
-| `docs/methods` | How each model is defined and validated |
-| `docs/performance.md` | Performance budgets and benchmark results |
-| `tools` | Benchmarks, fuzz checks and the schema generator |
-| `fuzz` | Fuzz targets and their seed corpus |
+Load a portfolio from its transactions and prices, and report on it: holdings,
+performance, risk, attribution and scenarios.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
+```rust
+//! A portfolio from its CSV files, reported on against its benchmark. Run it
+//! in a folder that holds the files.
 
-## Contributing
+use finalytics::prelude::*;
+
+fn main() -> Result<()> {
+    let portfolio = Portfolio::builder()
+        .transactions("transactions.csv")
+        .prices("prices.csv")
+        .fx("fx.csv")
+        .instruments("instruments.csv")
+        .accounts("accounts.csv")
+        .build()?;
+
+    let report = portfolio
+        .report()
+        .benchmark("BENCH")
+        .group_by(["asset_class", "region"])
+        .build()?;
+
+    report.show()?;
+    Ok(())
+}
+```
+
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/portfolio-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/portfolio-light.png" alt="The portfolio report: value, returns, volatility, drawdown and value at risk, and growth against the benchmark" width="760">
+</picture></a>
+
+The files are the portfolio dataset: a household's brokerage and retirement
+accounts, holding five funds in dollars and euros for three years.
+`finalytics::datasets::file("portfolio/prices.csv")` and the like return each
+of them, and `datasets::portfolio()` loads the same portfolio without them.
+`BENCH` is a column of `prices.csv`, the benchmark's levels; `asset_class` and
+`region` are columns of `instruments.csv` that classify each holding. The sample
+report adds the attribution and scenarios of `datasets::report_options()`.
+
+<details>
+<summary>The start of the dataset's files</summary>
+
+```csv
+id,kind,currency,name,class.asset_class,class.region
+VTI,fund,USD,Vanguard Total Stock Market ETF,Equity,North America
+EXSA,fund,EUR,iShares STOXX Europe 600 UCITS ETF (DE),Equity,Europe
+```
+
+```csv
+date,VTI,EXSA,BND,GLD,VNQ,BENCH
+2023-11-01,208.86,43.21,68.99,183.51,73.37,100.0000
+2023-11-02,213.01,43.92,69.39,184.12,75.78,101.4345
+```
+
+```csv
+id,name,lot_method,taxable,class.owner,class.wrapper
+brokerage,Brokerage account,fifo,true,Alex,Taxable
+ira,Retirement account,fifo,false,Alex,Tax-deferred
+```
+
+The [data guide](docs/data.md) describes every file, column by column.
+
+</details>
+
+To move the same funds to their least risky mix, 5% to 40% each, optimise the
+holdings and rebalance the accounts together, with fees and tax rates:
+
+```rust
+let target = portfolio
+    .assets()?
+    .optimise(Method::MinimumVariance)
+    .bounds(0.05, 0.40)
+    .build()?;
+
+let result = portfolio
+    .rebalance(&target)
+    .whole_units()
+    .fee_bps(5.0)
+    .minimum_fee(1.0)
+    .tax(0.37, 0.20)
+    .build()?;
+
+result.show()?;
+```
+
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/rebalance-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/rebalance-light.png" alt="The rebalance report: the trades, how each holding's weight moves, and what the trades change and cost" width="760">
+</picture></a>
+
+Sales in the brokerage account take the lots that cost the least tax; the
+retirement account is not taxable (`taxable` is false in `accounts.csv`), so its
+sales pay none. `portfolio.with_rebalance(&result)` makes the trades.
+
+## What is included
+
+**Optimisation**
+
+- Equal weight, minimum variance, mean–variance and robust mean–variance,
+  maximum Sharpe, target return or volatility, maximum diversification, minimum
+  CVaR, risk parity, hierarchical risk parity
+- Limits on each asset and on groups, turnover, tracking error and factor
+  exposure
+- Black–Litterman and resampled estimates; Ledoit–Wolf, OAS and EWMA covariance
+- Validation in sample, on a holdout, or walk-forward; calendar or drift
+  rebalancing; trading costs
+
+**Analytics**
+
+- Books from transactions: lots, corporate actions, several accounts and
+  currencies
+- Time- and money-weighted returns, contribution, Brinson–Fachler and currency
+  attribution
+- Volatility, drawdowns, value at risk, risk decomposition, factor models and
+  scenarios
+- Rebalancing trades with fees and tax-aware lot selection, across accounts
+
+Every report prints as text, 80 columns wide, and shows as one self-contained
+HTML page, in light and dark. Every model is tested against an independent
+implementation; the [methods pages](docs/methods) define each one.
+
+## Documentation
+
+[API reference](https://docs.rs/finalytics) ·
+[Python package](bindings/python#readme) ·
+[JavaScript package](bindings/wasm#readme) ·
+[Data guide](docs/data.md) ·
+[Methods](docs/methods) ·
+[Performance](docs/performance.md) ·
+[Architecture](ARCHITECTURE.md) ·
+[Migrating from 0.9](docs/migrating-from-0.9.md)
+
+The programs in this README are the crate's
+[examples](crates/finalytics/examples), and the tests run them.
+
+## Contributing and licence
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [Code of Conduct](CODE_OF_CONDUCT.md) first. To report a security issue, see
 [SECURITY.md](SECURITY.md).
 
-## Licence
-
-Licensed under either of
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-- MIT licence ([LICENSE-MIT](LICENSE-MIT))
-
-at your option.
-
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
-this project, as defined in the Apache-2.0 licence, shall be dual licensed as above, without any
-additional terms or conditions.
+Licensed under either of the [Apache License, Version 2.0](LICENSE-APACHE) or
+the [MIT licence](LICENSE-MIT), at your option. Unless you explicitly state
+otherwise, any contribution intentionally submitted for inclusion in this
+project, as defined in the Apache-2.0 licence, shall be dual licensed as above,
+without any additional terms or conditions.
 
 Finalytics provides analysis tools only. It is not investment advice.

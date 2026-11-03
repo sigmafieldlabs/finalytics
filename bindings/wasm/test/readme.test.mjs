@@ -1,9 +1,10 @@
 // Runs the JavaScript programs in the package's README as a user would, importing "finalytics"
-// from node_modules in a folder that holds the README's CSV files, and checks that each prints
-// the output the README shows after it.
+// from node_modules in a folder that holds the portfolio dataset's files. A block that starts
+// with an import starts a new program; the blocks after it continue that program. Each program
+// must run, and each that the README follows with a text block must print that text.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -12,40 +13,52 @@ import { promisify } from "node:util";
 
 const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
 const pkg = fileURLToPath(new URL("../pkg", import.meta.url));
-
-// The prices that value the README's transactions.
-const PRICES = "date,VOO,AGG\n2026-01-02,500,98\n2026-01-05,505,98.2\n";
+const dataset = fileURLToPath(new URL("../../../crates/finalytics/data/portfolio", import.meta.url));
 
 const blocks = [...readme.matchAll(/```(\w*)\n([\s\S]*?)```/g)].map(([, language, body]) => ({
   language,
   body,
 }));
 
-test("the README's programs print what it shows", async () => {
-  const programs = blocks.flatMap((block, k) =>
-    block.language === "js"
-      ? [{ code: block.body, output: blocks[k + 1]?.language === "text" ? blocks[k + 1].body : undefined }]
-      : [],
-  );
-  assert.ok(programs.filter((p) => p.output !== undefined).length >= 2, "the README shows its output");
-  const transactions = blocks.find((block) => block.language === "csv");
-  assert.ok(transactions, "the README shows a transactions file");
+/** The README's programs: each `js` block that starts with an import, with the blocks after it. */
+function programs() {
+  const found = [];
+  for (const [k, block] of blocks.entries()) {
+    if (block.language !== "js") continue;
+    const output = blocks[k + 1]?.language === "text" ? blocks[k + 1].body : undefined;
+    if (block.body.startsWith("import ") || found.length === 0) {
+      found.push({ code: block.body, output });
+    } else {
+      const last = found[found.length - 1];
+      last.code += `\n${block.body}`;
+      last.output = output ?? last.output;
+    }
+  }
+  return found;
+}
+
+test("the README's programs run and print what it shows", async () => {
+  const found = programs();
+  assert.ok(found.length >= 2, "the README has a program for each part");
 
   const dir = await mkdtemp(join(tmpdir(), "finalytics-readme-"));
   try {
     await mkdir(join(dir, "node_modules"));
     await symlink(pkg, join(dir, "node_modules", "finalytics"), "junction");
-    await writeFile(join(dir, "transactions.csv"), transactions.body);
-    await writeFile(join(dir, "prices.csv"), PRICES);
-    for (const [k, { code, output }] of programs.entries()) {
+    for (const file of await readdir(dataset)) {
+      if (file.endsWith(".csv")) await copyFile(join(dataset, file), join(dir, file));
+    }
+    for (const [k, { code, output }] of found.entries()) {
       const file = join(dir, `program-${k + 1}.mjs`);
       await writeFile(file, code);
-      const { stdout } = await promisify(execFile)(process.execPath, [file], { cwd: dir });
+      const { stdout } = await promisify(execFile)(process.execPath, [file], {
+        cwd: dir,
+        env: { ...process.env, BROWSER: "true" },
+      });
       if (output !== undefined) {
         assert.equal(stdout, output, `program ${k + 1} prints what the README shows`);
       }
     }
-    await access(join(dir, "report.html"));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
