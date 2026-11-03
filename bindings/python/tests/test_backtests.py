@@ -7,6 +7,7 @@ import sys
 import types
 
 import pytest
+from conftest import NO_BROWSER, page_path
 
 import finalytics as fl
 
@@ -148,6 +149,7 @@ def test_mistakes_name_the_option(assets):
     assert [i.path for i in found.value.issues] == ["options.budgets"]
 
 
+@NO_BROWSER
 def test_a_report_shows_in_a_browser_or_a_notebook(monkeypatch):
     report = fl.datasets.portfolio().report(fl.datasets.report_options(), name="Morgan family portfolio")
     assert report.name == "Morgan family portfolio"
@@ -156,7 +158,7 @@ def test_a_report_shows_in_a_browser_or_a_notebook(monkeypatch):
     opened = []
     monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url) or True)
     assert report.show() is None
-    path = pathlib.Path(opened[0].removeprefix("file://"))
+    path = page_path(opened[0])
     assert path.read_text(encoding="utf-8").startswith("<!doctype html>")
     path.unlink()
     frame = report._repr_html_()

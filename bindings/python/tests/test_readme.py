@@ -5,12 +5,11 @@ that the README follows with a text block must print that text."""
 import contextlib
 import io
 import os
-import pathlib
 import re
 import shutil
 import webbrowser
 
-from conftest import ROOT
+from conftest import NO_BROWSER, ROOT, page_path
 
 README = ROOT / "bindings" / "python" / "README.md"
 DATASET = ROOT / "crates" / "finalytics" / "data" / "portfolio"
@@ -28,6 +27,7 @@ def examples(text: str) -> list[tuple[str, str | None]]:
     return found
 
 
+@NO_BROWSER
 def test_the_examples_run_and_show_their_reports(tmp_path, monkeypatch):
     blocks = examples(README.read_text(encoding="utf-8"))
     assert len(blocks) >= 5
@@ -51,6 +51,6 @@ def test_the_examples_run_and_show_their_reports(tmp_path, monkeypatch):
     finally:
         os.chdir(here)
     for url in opened:
-        page = pathlib.Path(url.removeprefix("file://"))
+        page = page_path(url)
         assert page.read_text(encoding="utf-8").startswith("<!doctype html>")
         page.unlink()

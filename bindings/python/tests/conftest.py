@@ -1,6 +1,9 @@
 """Shared inputs: the scenario in ``tests/scenario`` at the repository root."""
 
 import pathlib
+import sys
+import urllib.parse
+import urllib.request
 
 import pytest
 
@@ -9,6 +12,14 @@ import finalytics as fl
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 SCENARIO = ROOT / "tests" / "scenario"
 FIXTURES = ROOT / "crates"
+
+# Pyodide has no browser for show() to open.
+NO_BROWSER = pytest.mark.skipif(sys.platform == "emscripten", reason="no browser to open")
+
+
+def page_path(url: str) -> pathlib.Path:
+    """The file that a ``file:`` URL opened by ``show()`` names, on any platform."""
+    return pathlib.Path(urllib.request.url2pathname(urllib.parse.urlparse(url).path))
 
 
 @pytest.fixture(scope="session")
