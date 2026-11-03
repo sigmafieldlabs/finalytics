@@ -5,11 +5,12 @@ use serde::{Deserialize, Serialize};
 use finalytics_core::{Currency, Date, Decimal, Result};
 use finalytics_ledger::HoldingKey;
 
+use crate::backtests::{RunReport, StrategyReport};
 use crate::context::{ReportKind, invalid, label, to_f64};
 use crate::shapes::{Grid, Unit};
 use crate::{
-    AttributionReport, HoldingsReport, OverviewReport, PerformanceReport, RiskReport,
-    ScenariosReport,
+    AttributionReport, BacktestReport, HoldingsReport, OptimisationReport, OverviewReport,
+    PerformanceReport, RiskReport, ScenariosReport,
 };
 
 /// What a column holds, so that an export can format it.
@@ -88,6 +89,13 @@ pub struct ReportTable {
 pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
     let value: serde_json::Value =
         serde_json::from_str(report).map_err(|e| invalid("report", format!("is not JSON: {e}")))?;
+    match backtest_kind(&value) {
+        Some(Backtests::Optimisation) => {
+            return Ok(read_report::<OptimisationReport>(value)?.tables());
+        }
+        Some(Backtests::Backtest) => return Ok(read_report::<BacktestReport>(value)?.tables()),
+        None => {}
+    }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
         .map_err(|_| invalid("report.provenance.report", "is not a report kind"))?;
     fn read<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> Result<T> {
@@ -115,6 +123,13 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
     if value.get("overview").is_some() {
         return Ok(read::<crate::PortfolioReport>(value)?.to_text(name));
     }
+    match backtest_kind(&value) {
+        Some(Backtests::Optimisation) => {
+            return Ok(read::<OptimisationReport>(value)?.to_text(name));
+        }
+        Some(Backtests::Backtest) => return Ok(read::<BacktestReport>(value)?.to_text(name)),
+        None => {}
+    }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
         .map_err(|_| invalid("report.provenance.report", "is not a report kind"))?;
     let mut page = crate::text::Page::new(name);
@@ -131,13 +146,207 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
     Ok(page.finish())
 }
 
-/// The six reports given as JSON as one HTML page, with the portfolio's `name` if given. The
-/// Python and JavaScript packages use it; from Rust, call `PortfolioReport::to_html`.
+/// The six reports, the optimisation report or the backtest report, given as JSON, as one HTML
+/// page titled with `name` if given. The Python and JavaScript packages use it; from Rust, call
+/// the report's `to_html`.
 #[doc(hidden)]
 pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
-    let report: crate::PortfolioReport = serde_json::from_str(report)
+    let value: serde_json::Value =
+        serde_json::from_str(report).map_err(|e| invalid("report", format!("is not JSON: {e}")))?;
+    match backtest_kind(&value) {
+        Some(Backtests::Optimisation) => {
+            return Ok(read_report::<OptimisationReport>(value)?.to_html(name));
+        }
+        Some(Backtests::Backtest) => return Ok(read_report::<BacktestReport>(value)?.to_html(name)),
+        None => {}
+    }
+    let report: crate::PortfolioReport = serde_json::from_value(value)
         .map_err(|e| invalid("report", format!("is not a full portfolio report: {e}")))?;
     Ok(report.to_html(name))
+}
+
+/// The reports on backtests, told apart by their fields.
+enum Backtests {
+    Optimisation,
+    Backtest,
+}
+
+fn backtest_kind(value: &serde_json::Value) -> Option<Backtests> {
+    value.get("context")?;
+    if value.get("strategies").is_some() {
+        Some(Backtests::Optimisation)
+    } else if value.get("strategy").is_some() {
+        Some(Backtests::Backtest)
+    } else {
+        None
+    }
+}
+
+fn read_report<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> Result<T> {
+    serde_json::from_value(value).map_err(|e| invalid("report", e.to_string()))
+}
+
+/// One row of statistics per run: `(strategy, run, report)`.
+fn statistics_table(runs: &[(&str, &str, &RunReport)]) -> ReportTable {
+    table(
+        "statistics",
+        "Statistics",
+        vec![
+            col("strategy", "Strategy", ColumnKind::Text),
+            col("run", "Run", ColumnKind::Text),
+            col("start", "From", ColumnKind::Date),
+            col("end", "To", ColumnKind::Date),
+            col("return", "Return a year", ColumnKind::Fraction),
+            col("volatility", "Volatility", ColumnKind::Fraction),
+            col("sharpe", "Sharpe ratio", ColumnKind::Number),
+            col("sortino", "Sortino ratio", ColumnKind::Number),
+            col("max_drawdown", "Maximum drawdown", ColumnKind::Fraction),
+            col("calmar", "Calmar ratio", ColumnKind::Number),
+            col("var", "Value at risk, 95%", ColumnKind::Fraction),
+            col("es", "Expected shortfall, 95%", ColumnKind::Fraction),
+            col("tracking_error", "Tracking error", ColumnKind::Fraction),
+            col("information_ratio", "Information ratio", ColumnKind::Number),
+            col("rebalances", "Rebalances", ColumnKind::Integer),
+            col("turnover", "Turnover a year", ColumnKind::Fraction),
+            col("costs", "Trading costs a year", ColumnKind::Fraction),
+        ],
+        runs.iter()
+            .map(|(name, run, r)| {
+                let s = &r.statistics;
+                vec![
+                    t(*name),
+                    t(*run),
+                    date(r.start),
+                    date(r.end),
+                    n(s.annualised_return),
+                    n(s.volatility),
+                    o(s.sharpe_ratio),
+                    o(s.sortino_ratio),
+                    n(s.max_drawdown),
+                    o(s.calmar_ratio),
+                    n(r.tail_risk.value_at_risk),
+                    n(r.tail_risk.expected_shortfall),
+                    o(r.relative.as_ref().map(|x| x.tracking_error)),
+                    o(r.relative.as_ref().and_then(|x| x.information_ratio)),
+                    n(r.rebalances as f64),
+                    n(r.turnover_per_year),
+                    n(r.costs_per_year),
+                ]
+            })
+            .collect(),
+    )
+}
+
+/// The runs of `strategies`: each tested run, and the run in sample where there is one.
+fn runs<'a>(
+    strategies: &[&'a StrategyReport],
+    tested: &'a str,
+) -> Vec<(&'a str, &'a str, &'a RunReport)> {
+    let mut out = Vec::new();
+    for s in strategies {
+        out.push((s.name.as_str(), tested, &s.tested));
+        if let Some(i) = &s.in_sample {
+            out.push((s.name.as_str(), "in sample", i));
+        }
+    }
+    out
+}
+
+/// A strategy's weights at the start and at each refit, one row per date and asset.
+fn weights_table(strategies: &[&StrategyReport]) -> ReportTable {
+    table(
+        "weights",
+        "Weights at each refit",
+        vec![
+            col("strategy", "Strategy", ColumnKind::Text),
+            col("date", "Date", ColumnKind::Date),
+            col("asset", "Asset", ColumnKind::Text),
+            col("weight", "Weight", ColumnKind::Fraction),
+        ],
+        strategies
+            .iter()
+            .flat_map(|s| {
+                s.weights.iter().flat_map(move |w| {
+                    w.weights.iter().map(move |(a, v)| {
+                        vec![t(s.name.as_str()), date(w.date), t(a.as_str()), n(*v)]
+                    })
+                })
+            })
+            .collect(),
+    )
+}
+
+/// The calendar-year returns of each strategy, one row per year.
+fn years_table(strategies: &[&StrategyReport]) -> ReportTable {
+    let mut years: Vec<i32> = strategies
+        .iter()
+        .flat_map(|s| s.tested.years.iter().map(|y| y.year))
+        .collect();
+    years.sort_unstable();
+    years.dedup();
+    let mut columns = vec![col("year", "Year", ColumnKind::Integer)];
+    for (k, s) in strategies.iter().enumerate() {
+        columns.push(col(
+            &format!("strategy_{}", k + 1),
+            &s.name,
+            ColumnKind::Fraction,
+        ));
+    }
+    table(
+        "calendar_years",
+        "Calendar-year returns",
+        columns,
+        years
+            .iter()
+            .map(|y| {
+                std::iter::once(n(f64::from(*y)))
+                    .chain(strategies.iter().map(|s| {
+                        o(s.tested
+                            .years
+                            .iter()
+                            .find(|z| z.year == *y)
+                            .map(|z| z.value))
+                    }))
+                    .collect()
+            })
+            .collect(),
+    )
+}
+
+impl OptimisationReport {
+    /// The report's tables: statistics of every run, calendar-year returns and the weights at
+    /// each refit.
+    pub fn tables(&self) -> Vec<ReportTable> {
+        let tested = crate::backtest_html::tested_label(&self.context).to_lowercase();
+        let mut all: Vec<&StrategyReport> = self.strategies.iter().collect();
+        if let Some(b) = &self.benchmark {
+            all.push(b);
+        }
+        let strategies: Vec<&StrategyReport> = self.strategies.iter().collect();
+        vec![
+            statistics_table(&runs(&all, &tested)),
+            years_table(&all),
+            weights_table(&strategies),
+        ]
+    }
+}
+
+impl BacktestReport {
+    /// The report's tables: statistics in and out of sample, calendar-year and monthly returns,
+    /// and the weights at each refit.
+    pub fn tables(&self) -> Vec<ReportTable> {
+        let tested = crate::backtest_html::tested_label(&self.context).to_lowercase();
+        let mut all: Vec<&StrategyReport> = vec![&self.strategy];
+        if let Some(b) = &self.benchmark {
+            all.push(b);
+        }
+        vec![
+            statistics_table(&runs(&all, &tested)),
+            years_table(&all),
+            grid_table("monthly_returns", "Year", &self.strategy.tested.months),
+            weights_table(&[&self.strategy]),
+        ]
+    }
 }
 
 fn n(x: f64) -> Cell {

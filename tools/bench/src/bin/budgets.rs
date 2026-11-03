@@ -4,7 +4,7 @@
 //!   2 seconds;
 //! - a 500-asset quadratic programme with linear constraints in under 0.5 seconds;
 //! - a walk-forward comparison of seven methods on the S&P 500 dataset (55 stocks, daily, 5-year
-//!   window, 67 quarterly refits each) in under 5 seconds.
+//!   window, 67 quarterly refits each), with its optimisation report, in under 5 seconds.
 //!
 //! ```sh
 //! cargo run --release -p finalytics-bench --bin budgets

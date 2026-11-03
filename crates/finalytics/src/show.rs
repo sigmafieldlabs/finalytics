@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finalytics_core::{Error, Result};
-use finalytics_reports::PortfolioReport;
+use finalytics_reports::{BacktestReport, OptimisationReport, PortfolioReport};
 
 /// A report that lays out as one self-contained HTML page, to save or to show in a browser.
 ///
@@ -43,6 +43,18 @@ pub trait Show {
 }
 
 impl Show for PortfolioReport {
+    fn html(&self) -> String {
+        self.to_html(None)
+    }
+}
+
+impl Show for OptimisationReport {
+    fn html(&self) -> String {
+        self.to_html(None)
+    }
+}
+
+impl Show for BacktestReport {
     fn html(&self) -> String {
         self.to_html(None)
     }

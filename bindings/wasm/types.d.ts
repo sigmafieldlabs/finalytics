@@ -295,6 +295,46 @@ export interface Backtest {
   benchmark?: StrategyResult | null;
 }
 
+/**
+ * What a backtest report describes: the data, how the strategies were tested, and the digest
+ * of the inputs.
+ */
+export interface BacktestContext {
+  /** The engine's version. */
+  version: string;
+  /**
+   * A SHA-256 digest of the assets' returns and the settings, in hexadecimal: the same
+   * inputs give the same report.
+   */
+  digest: string;
+  /** The assets the strategies hold, other than the risk-free asset. */
+  assets: string[];
+  /** The risk-free asset, held as cash, if one of the assets is. */
+  risk_free_asset?: string | null;
+  /** The number of periods in a year. */
+  periods_per_year: number;
+  /** The covariance estimator of the optimisations. */
+  covariance: CovarianceMethod;
+  /** The limits on the weights, in words. */
+  limits: string[];
+  /** How the backtest was run. */
+  settings: Settings;
+  /** The date the first period of the data ends on. */
+  start: Date;
+  /** The date the last period of the data ends on. */
+  end: Date;
+  /** The first period the strategies are scored on. */
+  test_start: Date;
+  /** The last period the strategies are scored on. */
+  test_end: Date;
+  /** For a holdout, the last period the weights were fitted to. */
+  fit_end?: Date | null;
+  /** For walk-forward validation, the periods of history before the first fit. */
+  window?: number | null;
+  /** The annual risk-free return over the test, compounded from the periods' returns. */
+  risk_free_rate: number;
+}
+
 /** What a backtest tests and how. */
 export interface BacktestOptions {
   /** The strategies, in the order of the results. */
@@ -307,6 +347,28 @@ export interface BacktestOptions {
   trading_cost_bps?: number;
   /** What the strategies are compared with, if anything. */
   benchmark?: Benchmark | null;
+}
+
+/** One allocation, tested against its benchmark: the backtest report. */
+export interface BacktestReport {
+  /** What was tested and how. */
+  context: BacktestContext;
+  /** The allocation. */
+  strategy: StrategyReport;
+  /** The benchmark, if one was given, held alike. */
+  benchmark?: StrategyReport | null;
+  /** For a holdout, both periods together, in sample then out of sample. */
+  history?: History | null;
+  /**
+   * The weights held in each period of the test, by asset: the largest few, then the rest
+   * together, then cash; at the same dates as the growth.
+   */
+  held: Series[];
+  /**
+   * The report's title, such as "Maximum Sharpe, fitted to 2016": shown when it is printed
+   * or laid out as a page.
+   */
+  name?: string | null;
 }
 
 /** What the strategies are compared with. */
@@ -412,6 +474,20 @@ export interface Breakdown {
   by: string;
   /** The parts, largest first. */
   slices: Slice[];
+}
+
+/** The return over one calendar year, or the part of it in the run. */
+export interface CalendarReturn {
+  /** The year. */
+  year: number;
+  /** The date the year's first period ends on. */
+  start: Date;
+  /** The date the year's last period ends on. */
+  end: Date;
+  /** Whether the run covers the whole year. */
+  complete: boolean;
+  /** The compounded return. */
+  value: number;
 }
 
 /** A cash balance in one account and currency. */
@@ -1136,6 +1212,16 @@ export interface HistoricalWindow {
   proxies?: Record<string, InstrumentId>;
 }
 
+/** A holdout's two periods together, for the charts of the whole history. */
+export interface History {
+  /** The first period out of sample. */
+  split: Date;
+  /** The allocation over the whole history. */
+  strategy: RunReport;
+  /** The benchmark over the whole history. */
+  benchmark?: RunReport | null;
+}
+
 /**
  * What a scenario does to one holding: an instrument, or cash in one currency, added up across
  * accounts.
@@ -1624,6 +1710,21 @@ export type Objective =
     /** How clusters are joined. */
     linkage?: Linkage;
   };
+
+/** Methods tested the same way, side by side: the optimisation report. */
+export interface OptimisationReport {
+  /** What was tested and how. */
+  context: BacktestContext;
+  /** Each method, in the order given. */
+  strategies: StrategyReport[];
+  /** The benchmark, if one was given, tested alike. */
+  benchmark?: StrategyReport | null;
+  /**
+   * The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a
+   * page.
+   */
+  name?: string | null;
+}
 
 /**
  * The result of an optimisation over assets: the weights by asset, with their expected return,
@@ -2438,6 +2539,49 @@ export interface Run {
   trades: Trade[];
 }
 
+/** One run of a strategy, summarised: its statistics, trading and the series its charts draw. */
+export interface RunReport {
+  /** The date the first period ends on. */
+  start: Date;
+  /** The date the last period ends on. */
+  end: Date;
+  /** Return, risk and ratios, against the risk-free return over the run. */
+  statistics: Statistics;
+  /** Historical value at risk and expected shortfall over one period, at 95%. */
+  tail_risk: TailRisk;
+  /** The annual risk-free return over the run. */
+  risk_free_rate: number;
+  /** Against the benchmark over the same periods, if there is one. */
+  relative?: RelativeStatistics | null;
+  /** The number of trades after the start. */
+  rebalances: number;
+  /** The share of value bought (or sold) in a year. */
+  turnover_per_year: number;
+  /** The cost of trading as a share of value in a year. */
+  costs_per_year: number;
+  /** The largest trade, as a share of value bought. */
+  largest_trade: number;
+  /**
+   * The growth of 100, at the end of each month for daily or weekly returns, and of each
+   * period otherwise.
+   */
+  growth: Series;
+  /**
+   * The fall from the highest value so far: the deepest in each month for daily or weekly
+   * returns, and at each period otherwise.
+   */
+  drawdown: Series;
+  /**
+   * The Sharpe ratio over the past three years, at the same dates as the growth, when the
+   * run is longer than three years.
+   */
+  rolling_sharpe?: Series | null;
+  /** The return in each calendar year. */
+  years: CalendarReturn[];
+  /** The return in each month, a row per year and a column per month. */
+  months: Grid;
+}
+
 /** What a scenario does: shocks, or a historical period replayed. */
 export type ScenarioDefinition =
   | {
@@ -2898,6 +3042,29 @@ export type Strategy =
     weights: Record<string, number>;
   };
 
+/** One strategy, scored on the periods it was tested on, with its weights over time. */
+export interface StrategyReport {
+  /** The strategy's name. */
+  name: string;
+  /**
+   * The run the strategy is scored on: out of sample for a holdout or walk-forward
+   * validation, in sample otherwise.
+   */
+  tested: RunReport;
+  /**
+   * For a holdout or walk-forward validation, the run in sample: on the history before the
+   * test for a holdout, and with weights fitted to the whole history over the same periods
+   * as the test for walk-forward.
+   */
+  in_sample?: RunReport | null;
+  /** The weights bought at the start of the test, then at each refit. */
+  weights: WeightsAt[];
+  /** Each refit that found no weights, when the weights held were kept. */
+  failures: Failure[];
+  /** Anything the reader should know about how the strategy was run. */
+  notes: string[];
+}
+
 /**
  * One strategy's backtest.
  *
@@ -3334,6 +3501,14 @@ export type ViewUncertainty =
     /** The variance, not negative. */
     variance: number;
   };
+
+/** Weights at a date, by asset; what they leave is held in cash. */
+export interface WeightsAt {
+  /** The date at whose end the weights were bought. */
+  date: Date;
+  /** The weights, by asset. */
+  weights: Record<string, number>;
+}
 
 /** The return of one calendar year (or the part of it covered). */
 export interface YearReturn {

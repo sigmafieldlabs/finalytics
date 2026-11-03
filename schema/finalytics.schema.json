@@ -684,6 +684,109 @@
       ],
       "description": "The result of a backtest: every strategy, and the benchmark if one was given, on the same\nassets and dates."
     },
+    "BacktestContext": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "The engine's version."
+        },
+        "digest": {
+          "type": "string",
+          "description": "A SHA-256 digest of the assets' returns and the settings, in hexadecimal: the same\ninputs give the same report."
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets the strategies hold, other than the risk-free asset."
+        },
+        "risk_free_asset": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The risk-free asset, held as cash, if one of the assets is."
+        },
+        "periods_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "The number of periods in a year."
+        },
+        "covariance": {
+          "$ref": "#/$defs/CovarianceMethod",
+          "description": "The covariance estimator of the optimisations."
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The limits on the weights, in words."
+        },
+        "settings": {
+          "$ref": "#/$defs/Settings",
+          "description": "How the backtest was run."
+        },
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the first period of the data ends on."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the last period of the data ends on."
+        },
+        "test_start": {
+          "$ref": "#/$defs/Date",
+          "description": "The first period the strategies are scored on."
+        },
+        "test_end": {
+          "$ref": "#/$defs/Date",
+          "description": "The last period the strategies are scored on."
+        },
+        "fit_end": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a holdout, the last period the weights were fitted to."
+        },
+        "window": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "For walk-forward validation, the periods of history before the first fit."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free return over the test, compounded from the periods' returns."
+        }
+      },
+      "required": [
+        "version",
+        "digest",
+        "assets",
+        "periods_per_year",
+        "covariance",
+        "limits",
+        "settings",
+        "start",
+        "end",
+        "test_start",
+        "test_end",
+        "risk_free_rate"
+      ],
+      "description": "What a backtest report describes: the data, how the strategies were tested, and the digest\nof the inputs."
+    },
     "BacktestOptions": {
       "type": "object",
       "properties": {
@@ -729,6 +832,62 @@
         }
       },
       "description": "What a backtest tests and how."
+    },
+    "BacktestReport": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/BacktestContext",
+          "description": "What was tested and how."
+        },
+        "strategy": {
+          "$ref": "#/$defs/StrategyReport",
+          "description": "The allocation."
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrategyReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark, if one was given, held alike."
+        },
+        "history": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/History"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a holdout, both periods together, in sample then out of sample."
+        },
+        "held": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Series"
+          },
+          "description": "The weights held in each period of the test, by asset: the largest few, then the rest\ntogether, then cash; at the same dates as the growth."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The report's title, such as \"Maximum Sharpe, fitted to 2016\": shown when it is printed\nor laid out as a page.",
+          "default": null
+        }
+      },
+      "required": [
+        "context",
+        "strategy",
+        "held"
+      ],
+      "description": "One allocation, tested against its benchmark: the backtest report."
     },
     "Benchmark": {
       "oneOf": [
@@ -1001,6 +1160,41 @@
         "slices"
       ],
       "description": "A whole split into parts by one dimension, such as by currency or by asset class."
+    },
+    "CalendarReturn": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The year."
+        },
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the year's first period ends on."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the year's last period ends on."
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "Whether the run covers the whole year."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "The compounded return."
+        }
+      },
+      "required": [
+        "year",
+        "start",
+        "end",
+        "complete",
+        "value"
+      ],
+      "description": "The return over one calendar year, or the part of it in the run."
     },
     "CashBalance": {
       "type": "object",
@@ -2975,6 +3169,35 @@
       ],
       "description": "A historical period to replay on today's holdings."
     },
+    "History": {
+      "type": "object",
+      "properties": {
+        "split": {
+          "$ref": "#/$defs/Date",
+          "description": "The first period out of sample."
+        },
+        "strategy": {
+          "$ref": "#/$defs/RunReport",
+          "description": "The allocation over the whole history."
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark over the whole history."
+        }
+      },
+      "required": [
+        "split",
+        "strategy"
+      ],
+      "description": "A holdout's two periods together, for the charts of the whole history."
+    },
     "HoldingImpact": {
       "type": "object",
       "properties": {
@@ -4345,6 +4568,46 @@
         }
       ],
       "description": "What an optimisation seeks."
+    },
+    "OptimisationReport": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/BacktestContext",
+          "description": "What was tested and how."
+        },
+        "strategies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StrategyReport"
+          },
+          "description": "Each method, in the order given."
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrategyReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark, if one was given, tested alike."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The report's title, such as \"S&P 500 stocks\": shown when it is printed or laid out as a\npage.",
+          "default": null
+        }
+      },
+      "required": [
+        "context",
+        "strategies"
+      ],
+      "description": "Methods tested the same way, side by side: the optimisation report."
     },
     "OptimisationResult": {
       "type": "object",
@@ -6609,6 +6872,110 @@
       ],
       "description": "A strategy held over a run of periods, rebalanced on the schedule, net of trading costs."
     },
+    "RunReport": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the first period ends on."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the last period ends on."
+        },
+        "statistics": {
+          "$ref": "#/$defs/Statistics",
+          "description": "Return, risk and ratios, against the risk-free return over the run."
+        },
+        "tail_risk": {
+          "$ref": "#/$defs/TailRisk",
+          "description": "Historical value at risk and expected shortfall over one period, at 95%."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free return over the run."
+        },
+        "relative": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RelativeStatistics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Against the benchmark over the same periods, if there is one."
+        },
+        "rebalances": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of trades after the start."
+        },
+        "turnover_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of value bought (or sold) in a year."
+        },
+        "costs_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "The cost of trading as a share of value in a year."
+        },
+        "largest_trade": {
+          "type": "number",
+          "format": "double",
+          "description": "The largest trade, as a share of value bought."
+        },
+        "growth": {
+          "$ref": "#/$defs/Series",
+          "description": "The growth of 100, at the end of each month for daily or weekly returns, and of each\nperiod otherwise."
+        },
+        "drawdown": {
+          "$ref": "#/$defs/Series",
+          "description": "The fall from the highest value so far: the deepest in each month for daily or weekly\nreturns, and at each period otherwise."
+        },
+        "rolling_sharpe": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Series"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The Sharpe ratio over the past three years, at the same dates as the growth, when the\nrun is longer than three years."
+        },
+        "years": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CalendarReturn"
+          },
+          "description": "The return in each calendar year."
+        },
+        "months": {
+          "$ref": "#/$defs/Grid",
+          "description": "The return in each month, a row per year and a column per month."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "statistics",
+        "tail_risk",
+        "risk_free_rate",
+        "rebalances",
+        "turnover_per_year",
+        "costs_per_year",
+        "largest_trade",
+        "growth",
+        "drawdown",
+        "years",
+        "months"
+      ],
+      "description": "One run of a strategy, summarised: its statistics, trading and the series its charts draw."
+    },
     "ScenarioDefinition": {
       "oneOf": [
         {
@@ -7871,6 +8238,59 @@
       ],
       "description": "A strategy to backtest."
     },
+    "StrategyReport": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The strategy's name."
+        },
+        "tested": {
+          "$ref": "#/$defs/RunReport",
+          "description": "The run the strategy is scored on: out of sample for a holdout or walk-forward\nvalidation, in sample otherwise."
+        },
+        "in_sample": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a holdout or walk-forward validation, the run in sample: on the history before the\ntest for a holdout, and with weights fitted to the whole history over the same periods\nas the test for walk-forward."
+        },
+        "weights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WeightsAt"
+          },
+          "description": "The weights bought at the start of the test, then at each refit."
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Failure"
+          },
+          "description": "Each refit that found no weights, when the weights held were kept."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Anything the reader should know about how the strategy was run."
+        }
+      },
+      "required": [
+        "name",
+        "tested",
+        "weights",
+        "failures",
+        "notes"
+      ],
+      "description": "One strategy, scored on the periods it was tested on, with its weights over time."
+    },
     "StrategyResult": {
       "type": "object",
       "properties": {
@@ -9022,6 +9442,28 @@
         }
       ],
       "description": "How uncertain a view is: its variance in the model."
+    },
+    "WeightsAt": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/Date",
+          "description": "The date at whose end the weights were bought."
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights, by asset."
+        }
+      },
+      "required": [
+        "date",
+        "weights"
+      ],
+      "description": "Weights at a date, by asset; what they leave is held in cash."
     },
     "YearReturn": {
       "type": "object",

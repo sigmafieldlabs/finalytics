@@ -342,6 +342,7 @@ class Assets:
         self,
         *,
         methods: Sequence[_types.Method],
+        name: str | None = None,
         validation: _types.Validation | str = "in_sample",
         rebalance: _types.RebalanceSchedule | str = "quarterly",
         trading_cost_bps: float = 0.0,
@@ -357,9 +358,11 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> _types.Backtest:
-        """Each of `methods` backtested on these assets with the same limits, rebalancing,
-        validation and trading costs, side by side.
+    ) -> _types.OptimisationReport:
+        """The optimisation report: each of `methods` backtested on these assets with the same
+        limits, rebalancing, validation and trading costs, side by side, and scored on the
+        periods it was tested on. `name` titles the report. ``report.show()`` shows it, inline
+        in a notebook or in a browser.
 
         - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
           ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
@@ -391,7 +394,9 @@ class Assets:
         strategies: list[Any] = [
             _types.OptimisedStrategy(options=self._options(method, **limits)) for method in methods
         ]
-        return self._simulate(strategies, validation, rebalance, trading_cost_bps, benchmark)
+        options = _backtest_options(strategies, validation, rebalance, trading_cost_bps, benchmark)
+        report = loads(_types.OptimisationReport, call(self._native.optimisation_report, dumps(options)))
+        return report if name is None else dataclasses.replace(report, name=name)
 
     def backtest(
         self,
@@ -414,11 +419,12 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> _types.Backtest:
-        """One strategy backtested: a `method`, fitted as `validation` says, or fixed `weights`
-        by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the risk-free
-        asset is held as cash). `name` names the strategy in the results. The other keywords
-        are as for :meth:`compare`; fixed weights take no limits or parameters."""
+    ) -> _types.BacktestReport:
+        """The backtest report on one strategy: a `method`, fitted as `validation` says, or
+        fixed `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on
+        the risk-free asset is held as cash), against the `benchmark` if one is given. `name`
+        names the strategy and titles the report. The other keywords are as for
+        :meth:`compare`; fixed weights take no limits or parameters."""
         if (method is None) == (weights is None):
             raise ValueError("give a method or weights, not both")
         limits = dict(
@@ -443,37 +449,42 @@ class Assets:
         else:
             assert method is not None
             strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
-        return self._simulate([strategy], validation, rebalance, trading_cost_bps, benchmark)
+        options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark)
+        return loads(_types.BacktestReport, call(self._native.backtest_report, dumps(options)))
 
-    def _simulate(
-        self,
-        strategies: list[Any],
-        validation: _types.Validation | str,
-        rebalance: _types.RebalanceSchedule | str,
-        trading_cost_bps: float,
-        benchmark: Any,
-    ) -> _types.Backtest:
-        if isinstance(validation, str):
-            validation = _named("validation", validation, {"in_sample": _types.InSample()})
-        if isinstance(rebalance, str):
-            rebalance = _named("rebalance", rebalance, _SCHEDULES)
-        if isinstance(benchmark, Mapping):
-            benchmark = _types.BenchmarkWeights(weights={k: float(v) for k, v in benchmark.items()})
-        elif benchmark is not None and not isinstance(
-            benchmark, (_types.BenchmarkWeights, _types.BenchmarkPrices)
-        ):
-            benchmark = _types.BenchmarkPrices(prices=_price_table(benchmark))
-        options = _types.BacktestOptions(
-            strategies=strategies,
-            validation=validation,
-            rebalance=rebalance,
-            trading_cost_bps=float(trading_cost_bps),
-            benchmark=benchmark,
-        )
+    def simulate(self, options: _types.BacktestOptions) -> _types.Backtest:
+        """The backtest of `options` alone, without a report: every strategy's returns and
+        trades, in and out of sample, as :meth:`compare` and :meth:`backtest` run them."""
         return loads(_types.Backtest, call(self._native.simulate, dumps(options)))
 
     def __repr__(self) -> str:
         return f"Assets({len(self.labels)} assets, {len(self.dates)} periods, {self.periods_per_year:g} a year)"
+
+
+def _backtest_options(
+    strategies: list[Any],
+    validation: _types.Validation | str,
+    rebalance: _types.RebalanceSchedule | str,
+    trading_cost_bps: float,
+    benchmark: Any,
+) -> _types.BacktestOptions:
+    if isinstance(validation, str):
+        validation = _named("validation", validation, {"in_sample": _types.InSample()})
+    if isinstance(rebalance, str):
+        rebalance = _named("rebalance", rebalance, _SCHEDULES)
+    if isinstance(benchmark, Mapping):
+        benchmark = _types.BenchmarkWeights(weights={k: float(v) for k, v in benchmark.items()})
+    elif benchmark is not None and not isinstance(
+        benchmark, (_types.BenchmarkWeights, _types.BenchmarkPrices)
+    ):
+        benchmark = _types.BenchmarkPrices(prices=_price_table(benchmark))
+    return _types.BacktestOptions(
+        strategies=strategies,
+        validation=validation,
+        rebalance=rebalance,
+        trading_cost_bps=float(trading_cost_bps),
+        benchmark=benchmark,
+    )
 
 
 _SCHEDULES: dict[str, Any] = {

@@ -19,6 +19,8 @@ import init, {
   tailRisk,
   type Attribution,
   type Backtest,
+  type BacktestReport,
+  type OptimisationReport,
   type BlackLittermanEstimate,
   type Household,
   type CurrencyAttribution,
@@ -69,19 +71,22 @@ export async function example(worker: Worker): Promise<void> {
   const weights: Record<string, number> | null | undefined = result.weights;
   // @ts-expect-error: an unknown method is rejected.
   assets.optimise({ method: "maximum_profit" });
-  const compared: Backtest = assets.compare({
+  const compared = assets.compare({
     methods: ["equal_weight", "risk_parity"],
     max_weight: 0.4,
     rebalance: "quarterly",
     validation: { walk_forward: { years: 5 } },
     trading_cost_bps: 10,
   });
-  const single: Backtest = assets.backtest({
+  const single: BacktestReport = assets.backtest({
     method: "maximum_sharpe",
     benchmark: { "US Equity": 0.6, Bonds: 0.4 },
     validation: { holdout: { start: "2016-11-01" } },
   });
-  const fixed: Backtest = assets.backtest({ weights: { Bonds: 1 }, rebalance: { drift: { band: 0.05 } } });
+  const fixed: BacktestReport = assets.backtest({ weights: { Bonds: 1 }, rebalance: { drift: { band: 0.05 } } });
+  const comparedData: OptimisationReport = compared;
+  const comparedPage: string = compared.toHtml();
+  const raw: Backtest = assets.simulate({ strategies: [{ type: "weights", weights: { Bonds: 1 } }] });
   // @ts-expect-error: an unknown schedule is rejected.
   assets.compare({ methods: ["equal_weight"], rebalance: "weekly" });
   const named = traded.report({ benchmark: "SPY", name: "Main account" });

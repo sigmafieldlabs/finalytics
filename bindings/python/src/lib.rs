@@ -757,6 +757,16 @@ impl NativeAssets {
         let options: BacktestOptions = from_json(options, "options")?;
         to_json(&self.inner.simulate(&options).map_err(engine)?)
     }
+
+    fn optimisation_report(&self, options: &str) -> PyResult<String> {
+        let options: BacktestOptions = from_json(options, "options")?;
+        to_json(&self.inner.optimisation_report(&options).map_err(engine)?)
+    }
+
+    fn backtest_report(&self, options: &str) -> PyResult<String> {
+        let options: BacktestOptions = from_json(options, "options")?;
+        to_json(&self.inner.backtest_report(&options).map_err(engine)?)
+    }
 }
 
 #[pyfunction]

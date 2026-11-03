@@ -1,5 +1,6 @@
-"""The six reports on a portfolio: overview, holdings, performance, risk, attribution and
-scenarios.
+"""The six reports on a portfolio (overview, holdings, performance, risk, attribution and
+scenarios), and the two reports on backtests: the optimisation report of
+:meth:`Assets.compare` and the backtest report of :meth:`Assets.backtest`.
 
 Each report is computed in one call, by :meth:`Portfolio.report` (all six) or by a method such
 as :meth:`Portfolio.performance_report`, and carries everything a screen draws and exports:
@@ -31,10 +32,12 @@ from finalytics._errors import call
 from finalytics._types import (
     AttributionInputs,
     AttributionReport,
+    BacktestReport,
     BenchmarkPeriod,
     BenchmarkSegment,
     HoldingsReport,
     NamedScenario,
+    OptimisationReport,
     OverviewReport,
     PerformanceReport,
     PortfolioReport,
@@ -49,10 +52,12 @@ from finalytics._types import (
 __all__ = [
     "AttributionInputs",
     "AttributionReport",
+    "BacktestReport",
     "BenchmarkPeriod",
     "BenchmarkSegment",
     "HoldingsReport",
     "NamedScenario",
+    "OptimisationReport",
     "OverviewReport",
     "PerformanceReport",
     "PortfolioReport",
@@ -73,6 +78,8 @@ _KINDS = {
     RiskReport: "risk",
     AttributionReport: "attribution",
     ScenariosReport: "scenarios",
+    OptimisationReport: "optimisation",
+    BacktestReport: "backtest",
 }
 
 

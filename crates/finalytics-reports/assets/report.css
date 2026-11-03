@@ -1,12 +1,15 @@
 :root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;
 --grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
 --muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d0d0d;
 --surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;
---ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--muted-fill:#52514e;--pos:#3987e5;
+--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;--muted-fill:#52514e;--pos:#3987e5;
 --neg:#e66767;--mid:#383835}}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
---grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;
+--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;
 --muted-fill:#52514e;--pos:#3987e5;--neg:#e66767;--mid:#383835}
 *{box-sizing:border-box}html{background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -54,3 +57,5 @@ tbody tr:last-child td{border-bottom:0}.r{text-align:right}
 .foot{margin-top:48px;border-top:1px solid var(--grid);padding-top:16px;color:var(--muted);font-size:12.5px}
 @media print{nav{display:none}html,body{background:#fff}.foot{break-before:avoid;margin-top:16px}section{break-before:page}section:first-of-type{break-before:auto}
 .card,.tile{break-inside:avoid}}
+.cmp td:first-child{white-space:nowrap}.heat thead th{font-size:12.5px;vertical-align:bottom;line-height:1.25}
+table b{font-weight:650}.hollow{background:var(--surface)!important;box-shadow:inset 0 0 0 2px var(--ink2)}

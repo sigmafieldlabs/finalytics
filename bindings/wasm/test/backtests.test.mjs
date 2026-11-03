@@ -1,5 +1,6 @@
-// Comparing methods and backtesting one allocation, as the package's entry for Node.js gives them,
-// and the reports' own methods for laying out and showing a report.
+// Comparing methods and backtesting one allocation, as the package's entry for Node.js gives them:
+// the optimisation and backtest reports, and the reports' own methods for laying out and showing
+// a report.
 import assert from "node:assert/strict";
 import { readFile, rm } from "node:fs/promises";
 import { test } from "node:test";
@@ -19,23 +20,28 @@ function paths(run) {
 }
 
 test("methods compared walk-forward with the same limits and costs", () => {
-  const backtest = assets.compare({
+  const report = assets.compare({
     methods: ["equal_weight", "minimum_variance", "risk_parity"],
     max_weight: 0.4,
     rebalance: "quarterly",
     validation: { walk_forward: { years: 5 } },
     trading_cost_bps: 10,
+    name: "Six asset classes",
   });
+  assert.equal(report.name, "Six asset classes");
   assert.deepEqual(
-    backtest.strategies.map((s) => s.name),
+    report.strategies.map((s) => s.name),
     ["Equal weight", "Minimum variance", "Risk parity"],
   );
-  assert.equal(backtest.settings.validation.type, "walk_forward");
-  assert.equal(backtest.settings.trading_cost_bps, 10);
-  const minimum = backtest.strategies[1];
-  assert.equal(minimum.out_of_sample.dates.length, assets.dates.length - 60);
-  assert.ok(Object.values(minimum.out_of_sample.trades.at(-1).weights).every((w) => w <= 0.4 + 1e-6));
-  assert.equal(backtest.strategies[2].notes.length, 1, "risk parity takes no limits");
+  assert.equal(report.context.settings.validation.type, "walk_forward");
+  assert.equal(report.context.settings.trading_cost_bps, 10);
+  assert.equal(report.context.window, 60);
+  const minimum = report.strategies[1];
+  assert.equal(minimum.tested.growth.dates.length, assets.dates.length - 60);
+  assert.ok(Object.values(minimum.weights.at(-1).weights).every((w) => w <= 0.4 + 1e-6));
+  assert.equal(report.strategies[2].notes.length, 1, "risk parity takes no limits");
+  assert.ok(report.toText().includes("FINALYTICS  ·  OPTIMISATION"));
+  assert.ok(report.toHtml().includes("<title>Six asset classes</title>"));
   // Tagged data gives the same result as the shortcuts.
   const tagged = assets.compare({
     methods: ["equal_weight", "minimum_variance", "risk_parity"],
@@ -43,39 +49,45 @@ test("methods compared walk-forward with the same limits and costs", () => {
     rebalance: { type: "quarterly" },
     validation: { type: "walk_forward", years: 5 },
     trading_cost_bps: 10,
+    name: "Six asset classes",
   });
-  assert.deepEqual(tagged, backtest);
+  assert.deepEqual(tagged, report);
 });
 
 test("one method, or fixed weights, against a benchmark", () => {
-  const backtest = assets.backtest({
+  const report = assets.backtest({
     method: "maximum_sharpe",
     max_weight: 0.4,
     benchmark: { "US Equity": 0.6, Bonds: 0.4 },
     validation: { holdout: { start: "2016-11-01" } },
   });
-  const [strategy] = backtest.strategies;
-  assert.equal(strategy.name, "Maximum Sharpe");
-  assert.equal(strategy.out_of_sample.dates[0], "2016-11-30");
-  assert.equal(backtest.benchmark.name, "Benchmark");
+  assert.equal(report.strategy.name, "Maximum Sharpe");
+  assert.equal(report.strategy.tested.start, "2016-11-30");
+  assert.equal(report.history.split, "2016-11-30");
+  assert.equal(report.benchmark.name, "Benchmark");
+  assert.ok(report.toHtml().includes("Backtest report"));
   const fixed = assets.backtest({
     weights: { "US Equity": 0.6, Bonds: 0.4 },
     name: "60/40",
     rebalance: { drift: { band: 0.05 } },
   });
-  assert.equal(fixed.strategies[0].name, "60/40");
-  assert.deepEqual(fixed.settings.rebalance, { type: "drift", band: 0.05 });
+  assert.equal(fixed.strategy.name, "60/40");
+  assert.deepEqual(fixed.context.settings.rebalance, { type: "drift", band: 0.05 });
+  // The results alone, without a report.
+  const raw = assets.simulate({ strategies: [{ type: "weights", weights: { Bonds: 1 } }] });
+  assert.equal(raw.strategies[0].in_sample.returns.length, assets.dates.length);
 });
 
 test("an index as the benchmark", async () => {
   const sp500 = new Assets(await datasets.sp500(), { risk_free_asset: "T-Bills" });
-  const backtest = sp500.backtest({
+  const report = sp500.backtest({
     method: "equal_weight",
     rebalance: "yearly",
     benchmark: await datasets.sp500Index(),
   });
-  assert.equal(backtest.benchmark.name, "S&P 500");
-  assert.equal(backtest.benchmark.in_sample.returns.length, sp500.dates.length);
+  assert.equal(report.benchmark.name, "S&P 500");
+  assert.equal(report.benchmark.tested.statistics.observations, sp500.dates.length);
+  assert.ok(report.strategy.tested.growth.dates.length < 300, "daily returns are charted by month");
 });
 
 test("mistakes are reported where they were made", () => {
@@ -114,6 +126,9 @@ test("a report lays itself out as text and HTML, and shows", async () => {
     const path = report.show();
     assert.ok((await readFile(path, "utf8")).startsWith("<!doctype html>"));
     await rm(path);
+    const compared = assets.compare({ methods: ["equal_weight", "minimum_variance"] }).show();
+    assert.ok((await readFile(compared, "utf8")).includes("Optimisation report"));
+    await rm(compared);
   } finally {
     if (before === undefined) delete process.env.BROWSER;
     else process.env.BROWSER = before;

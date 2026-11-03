@@ -22,15 +22,15 @@ use crate::{
     RiskReport, ScenariosReport, Unit,
 };
 
-const LOGO_LIGHT: &[u8] = include_bytes!("../assets/logo-light.png");
-const LOGO_DARK: &[u8] = include_bytes!("../assets/logo-dark.png");
+pub(crate) const LOGO_LIGHT: &[u8] = include_bytes!("../assets/logo-light.png");
+pub(crate) const LOGO_DARK: &[u8] = include_bytes!("../assets/logo-dark.png");
 
 /// The first three colours of a chart's series; any further slices of a segmented bar are muted.
 const SERIES: [&str; 3] = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 // ── Text and numbers ─────────────────────────────────────────────────────────────────────────
 
-fn esc(text: &str) -> String {
+pub(crate) fn esc(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for c in text.chars() {
         match c {
@@ -61,7 +61,7 @@ fn compact(x: f64) -> String {
     text.replace('-', "−")
 }
 
-fn base64(bytes: &[u8]) -> String {
+pub(crate) fn base64(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
@@ -83,7 +83,7 @@ fn base64(bytes: &[u8]) -> String {
 }
 
 /// Round numbers for an axis from `lo` to `hi`, about `n` steps apart.
-fn ticks(lo: f64, hi: f64, n: usize) -> Vec<f64> {
+pub(crate) fn ticks(lo: f64, hi: f64, n: usize) -> Vec<f64> {
     let (lo, hi) = if lo.is_finite() && hi.is_finite() {
         (lo.min(hi), lo.max(hi))
     } else {
@@ -109,7 +109,7 @@ fn ticks(lo: f64, hi: f64, n: usize) -> Vec<f64> {
 }
 
 /// A percentage for an axis, with as few decimals as its step needs.
-fn axis_pct(v: f64, signed: bool) -> String {
+pub(crate) fn axis_pct(v: f64, signed: bool) -> String {
     if v.abs() < 1e-12 {
         return "0%".to_owned();
     }
@@ -119,7 +119,7 @@ fn axis_pct(v: f64, signed: bool) -> String {
 
 // ── Charts ───────────────────────────────────────────────────────────────────────────────────
 
-fn legend(items: &[(String, &str)]) -> String {
+pub(crate) fn legend(items: &[(String, &str)]) -> String {
     let mut out = String::from(r#"<div class="legend">"#);
     for (name, colour) in items {
         let _ = write!(
@@ -332,7 +332,7 @@ fn bar_path(x: f64, y: f64, w: f64, h: f64, rightward: bool) -> String {
 }
 
 /// A column with a rounded top, or bottom for a negative value.
-fn column_path(x: f64, y0: f64, w: f64, top: f64, up: bool) -> String {
+pub(crate) fn column_path(x: f64, y0: f64, w: f64, top: f64, up: bool) -> String {
     let h = (y0 - top).abs();
     if h <= 0.0 || w <= 0.0 {
         return String::new();
@@ -522,7 +522,7 @@ fn segmented(slices: &[Slice], names: &dyn Fn(&str) -> String, label: &str, ccy:
 }
 
 /// The style of a heatmap cell: blue for positive, red for negative, grey at zero.
-fn heat(value: Option<f64>, scale: f64) -> String {
+pub(crate) fn heat(value: Option<f64>, scale: f64) -> String {
     let Some(v) = value.filter(|v| v.is_finite()) else {
         return r#"class="na""#.to_owned();
     };
@@ -746,7 +746,7 @@ fn numbers(n: usize) -> Vec<usize> {
     (1..n).collect()
 }
 
-fn tiles(items: &[(String, String, Option<String>)]) -> String {
+pub(crate) fn tiles(items: &[(String, String, Option<String>)]) -> String {
     let mut out = String::from(r#"<div class="tiles">"#);
     for (label, value, sub) in items {
         let _ = write!(
@@ -764,7 +764,7 @@ fn tiles(items: &[(String, String, Option<String>)]) -> String {
     out
 }
 
-fn card(title: &str, body: &str, note: Option<&str>) -> String {
+pub(crate) fn card(title: &str, body: &str, note: Option<&str>) -> String {
     let note = note.map_or_else(String::new, |n| {
         format!(r#"<p class="note">{}</p>"#, esc(n))
     });
@@ -775,7 +775,7 @@ fn card(title: &str, body: &str, note: Option<&str>) -> String {
 }
 
 /// Cards side by side, two to a row.
-fn pairs(cards: &[String]) -> String {
+pub(crate) fn pairs(cards: &[String]) -> String {
     cards
         .chunks(2)
         .map(|c| {
@@ -1789,7 +1789,7 @@ fn scenarios(s: &ScenariosReport) -> String {
     )
 }
 
-const CSS: &str = include_str!("../assets/report.css");
+pub(crate) const CSS: &str = include_str!("../assets/report.css");
 
 impl PortfolioReport {
     /// The six reports as one self-contained HTML page, with the portfolio's `name` (or the

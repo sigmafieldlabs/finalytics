@@ -162,16 +162,16 @@ pub(crate) fn fit(text: &str, max: usize) -> String {
     }
 }
 
-fn pad_right(text: &str, w: usize) -> String {
+pub(crate) fn pad_right(text: &str, w: usize) -> String {
     format!("{text}{}", " ".repeat(w.saturating_sub(width(text))))
 }
 
-fn pad_left(text: &str, w: usize) -> String {
+pub(crate) fn pad_left(text: &str, w: usize) -> String {
     format!("{}{text}", " ".repeat(w.saturating_sub(width(text))))
 }
 
 /// A horizontal bar of `share` of `cells` characters, in eighths.
-fn bar(share: f64, cells: usize) -> String {
+pub(crate) fn bar(share: f64, cells: usize) -> String {
     let filled = if share.is_finite() {
         share.clamp(0.0, 1.0) * cells as f64
     } else {
@@ -187,7 +187,7 @@ fn bar(share: f64, cells: usize) -> String {
 }
 
 /// A sparkline of `values` in `cells` characters.
-fn spark(values: &[f64], cells: usize) -> String {
+pub(crate) fn spark(values: &[f64], cells: usize) -> String {
     let values: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
     if values.is_empty() {
         return " ".repeat(cells);
@@ -255,7 +255,7 @@ pub(crate) fn tail_name(method: &TailMethod) -> &'static str {
 // ── Layout ───────────────────────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq)]
-enum Align {
+pub(crate) enum Align {
     Left,
     Right,
 }
@@ -280,16 +280,16 @@ impl Page {
         text
     }
 
-    fn line(&mut self, text: impl AsRef<str>) {
+    pub(crate) fn line(&mut self, text: impl AsRef<str>) {
         let text = text.as_ref().trim_end();
         self.lines.push(fit(text, WIDTH));
     }
 
-    fn blank(&mut self) {
+    pub(crate) fn blank(&mut self) {
         self.lines.push(String::new());
     }
 
-    fn rule(&mut self, c: char) {
+    pub(crate) fn rule(&mut self, c: char) {
         self.lines.push(c.to_string().repeat(WIDTH));
     }
 
@@ -319,13 +319,13 @@ impl Page {
         self.rule('━');
     }
 
-    fn section(&mut self, title: &str) {
+    pub(crate) fn section(&mut self, title: &str) {
         self.blank();
         self.line(title);
         self.line("─".repeat(width(title).min(WIDTH)));
     }
 
-    fn note(&mut self, text: &str) {
+    pub(crate) fn note(&mut self, text: &str) {
         for line in wrap(text, WIDTH - 2) {
             self.line(format!("  {line}"));
         }
@@ -349,7 +349,7 @@ impl Page {
     }
 
     /// Label and value pairs in two columns.
-    fn pairs(&mut self, items: &[(String, String)]) {
+    pub(crate) fn pairs(&mut self, items: &[(String, String)]) {
         if items.is_empty() {
             return;
         }
@@ -382,7 +382,12 @@ impl Page {
     /// A table: the first column is left-aligned, the others as `aligns` says (right by
     /// default). A table too wide for the page is split into several, each repeating the first
     /// column; long headings wrap onto two lines.
-    fn table(&mut self, headings: &[&str], rows: &[Vec<String>], aligns: Option<&[Align]>) {
+    pub(crate) fn table(
+        &mut self,
+        headings: &[&str],
+        rows: &[Vec<String>],
+        aligns: Option<&[Align]>,
+    ) {
         self.table_spaced(headings, rows, aligns, 2);
     }
 
@@ -537,7 +542,7 @@ fn split_heading(h: &str) -> (String, Option<String>) {
 }
 
 /// `text` in lines of at most `max` characters, broken at spaces.
-fn wrap(text: &str, max: usize) -> Vec<String> {
+pub(crate) fn wrap(text: &str, max: usize) -> Vec<String> {
     let mut lines = Vec::new();
     let mut current = String::new();
     for word in text.split_whitespace() {
@@ -555,8 +560,8 @@ fn wrap(text: &str, max: usize) -> Vec<String> {
     lines
 }
 
-const R: Align = Align::Right;
-const L: Align = Align::Left;
+pub(crate) const R: Align = Align::Right;
+pub(crate) const L: Align = Align::Left;
 
 /// The account names of a holdings report, by account identifier.
 pub(crate) fn account_names(h: &HoldingsReport) -> BTreeMap<String, String> {

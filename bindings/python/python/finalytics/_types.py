@@ -11,7 +11,7 @@ import decimal
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal, Union
 
-from finalytics._printing import PrintedPortfolioReport, PrintedReport
+from finalytics._printing import PrintedReport, ReportPage
 
 
 Currency = str
@@ -477,6 +477,60 @@ class Backtest:
 
 
 @dataclass(frozen=True, kw_only=True)
+class BacktestContext:
+    """What a backtest report describes: the data, how the strategies were tested, and the digest of
+    the inputs.
+    """
+
+    version: str
+    """The engine's version."""
+
+    digest: str
+    """A SHA-256 digest of the assets' returns and the settings, in hexadecimal: the same inputs
+    give the same report.
+    """
+
+    assets: list[str]
+    """The assets the strategies hold, other than the risk-free asset."""
+
+    risk_free_asset: str | None = None
+    """The risk-free asset, held as cash, if one of the assets is."""
+
+    periods_per_year: float
+    """The number of periods in a year."""
+
+    covariance: CovarianceMethod
+    """The covariance estimator of the optimisations."""
+
+    limits: list[str]
+    """The limits on the weights, in words."""
+
+    settings: Settings
+    """How the backtest was run."""
+
+    start: datetime.date
+    """The date the first period of the data ends on."""
+
+    end: datetime.date
+    """The date the last period of the data ends on."""
+
+    test_start: datetime.date
+    """The first period the strategies are scored on."""
+
+    test_end: datetime.date
+    """The last period the strategies are scored on."""
+
+    fit_end: datetime.date | None = None
+    """For a holdout, the last period the weights were fitted to."""
+
+    window: int | None = None
+    """For walk-forward validation, the periods of history before the first fit."""
+
+    risk_free_rate: float
+    """The annual risk-free return over the test, compounded from the periods' returns."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class BacktestOptions:
     """What a backtest tests and how."""
 
@@ -494,6 +548,33 @@ class BacktestOptions:
 
     benchmark: Benchmark | None = None
     """What the strategies are compared with, if anything."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BacktestReport(ReportPage):
+    """One allocation, tested against its benchmark: the backtest report."""
+
+    context: BacktestContext
+    """What was tested and how."""
+
+    strategy: StrategyReport
+    """The allocation."""
+
+    benchmark: StrategyReport | None = None
+    """The benchmark, if one was given, held alike."""
+
+    history: History | None = None
+    """For a holdout, both periods together, in sample then out of sample."""
+
+    held: list[Series]
+    """The weights held in each period of the test, by asset: the largest few, then the rest
+    together, then cash; at the same dates as the growth.
+    """
+
+    name: str | None = None
+    """The report's title, such as "Maximum Sharpe, fitted to 2016": shown when it is printed or
+    laid out as a page.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -642,6 +723,26 @@ class Breakdown:
 
     slices: list[Slice]
     """The parts, largest first."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CalendarReturn:
+    """The return over one calendar year, or the part of it in the run."""
+
+    year: int
+    """The year."""
+
+    start: datetime.date
+    """The date the year's first period ends on."""
+
+    end: datetime.date
+    """The date the year's last period ends on."""
+
+    complete: bool
+    """Whether the run covers the whole year."""
+
+    value: float
+    """The compounded return."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1645,6 +1746,20 @@ class HistoricalWindow:
 
 
 @dataclass(frozen=True, kw_only=True)
+class History:
+    """A holdout's two periods together, for the charts of the whole history."""
+
+    split: datetime.date
+    """The first period out of sample."""
+
+    strategy: RunReport
+    """The allocation over the whole history."""
+
+    benchmark: RunReport | None = None
+    """The benchmark over the whole history."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class HoldingImpact:
     """What a scenario does to one holding: an instrument, or cash in one currency, added up across
     accounts.
@@ -2304,6 +2419,24 @@ Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetRetur
 
 
 @dataclass(frozen=True, kw_only=True)
+class OptimisationReport(ReportPage):
+    """Methods tested the same way, side by side: the optimisation report."""
+
+    context: BacktestContext
+    """What was tested and how."""
+
+    strategies: list[StrategyReport]
+    """Each method, in the order given."""
+
+    benchmark: StrategyReport | None = None
+    """The benchmark, if one was given, tested alike."""
+
+    name: str | None = None
+    """The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a page.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class OptimisationResult:
     """The result of an optimisation over assets: the weights by asset, with their expected return,
     volatility and Sharpe ratio, and the solver's full solution.
@@ -2665,7 +2798,7 @@ class PortfolioPoint:
 
 
 @dataclass(frozen=True, kw_only=True)
-class PortfolioReport(PrintedPortfolioReport):
+class PortfolioReport(ReportPage):
     """The six reports on a portfolio, from one set of options. The attribution report needs the
     benchmark's segments, and the scenarios report needs scenarios, in the options; without them,
     they are absent.
@@ -3424,6 +3557,62 @@ class Run:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RunReport:
+    """One run of a strategy, summarised: its statistics, trading and the series its charts draw."""
+
+    start: datetime.date
+    """The date the first period ends on."""
+
+    end: datetime.date
+    """The date the last period ends on."""
+
+    statistics: Statistics
+    """Return, risk and ratios, against the risk-free return over the run."""
+
+    tail_risk: TailRisk
+    """Historical value at risk and expected shortfall over one period, at 95%."""
+
+    risk_free_rate: float
+    """The annual risk-free return over the run."""
+
+    relative: RelativeStatistics | None = None
+    """Against the benchmark over the same periods, if there is one."""
+
+    rebalances: int
+    """The number of trades after the start."""
+
+    turnover_per_year: float
+    """The share of value bought (or sold) in a year."""
+
+    costs_per_year: float
+    """The cost of trading as a share of value in a year."""
+
+    largest_trade: float
+    """The largest trade, as a share of value bought."""
+
+    growth: Series
+    """The growth of 100, at the end of each month for daily or weekly returns, and of each period
+    otherwise.
+    """
+
+    drawdown: Series
+    """The fall from the highest value so far: the deepest in each month for daily or weekly
+    returns, and at each period otherwise.
+    """
+
+    rolling_sharpe: Series | None = None
+    """The Sharpe ratio over the past three years, at the same dates as the growth, when the run is
+    longer than three years.
+    """
+
+    years: list[CalendarReturn]
+    """The return in each calendar year."""
+
+    months: Grid
+    """The return in each month, a row per year and a column per month."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class ShockScenario:
     """Shocks to instruments, groups, currencies or factors."""
 
@@ -4040,6 +4229,34 @@ class FixedWeights:
 
 Strategy = Union[OptimisedStrategy, FixedWeights]
 """A strategy to backtest."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class StrategyReport:
+    """One strategy, scored on the periods it was tested on, with its weights over time."""
+
+    name: str
+    """The strategy's name."""
+
+    tested: RunReport
+    """The run the strategy is scored on: out of sample for a holdout or walk-forward validation, in
+    sample otherwise.
+    """
+
+    in_sample: RunReport | None = None
+    """For a holdout or walk-forward validation, the run in sample: on the history before the test
+    for a holdout, and with weights fitted to the whole history over the same periods as the test
+    for walk-forward.
+    """
+
+    weights: list[WeightsAt]
+    """The weights bought at the start of the test, then at each refit."""
+
+    failures: list[Failure]
+    """Each refit that found no weights, when the weights held were kept."""
+
+    notes: list[str]
+    """Anything the reader should know about how the strategy was run."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4727,6 +4944,17 @@ ViewUncertainty = Union[Proportional, Confidence, Variance]
 
 
 @dataclass(frozen=True, kw_only=True)
+class WeightsAt:
+    """Weights at a date, by asset; what they leave is held in cash."""
+
+    date: datetime.date
+    """The date at whose end the weights were bought."""
+
+    weights: dict[str, float]
+    """The weights, by asset."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class YearReturn:
     """The return of one calendar year (or the part of it covered)."""
 
@@ -4798,7 +5026,9 @@ __all__ = [
     "AttributionPeriod",
     "AttributionReport",
     "Backtest",
+    "BacktestContext",
     "BacktestOptions",
+    "BacktestReport",
     "Benchmark",
     "BenchmarkPeriod",
     "BenchmarkPrices",
@@ -4812,6 +5042,7 @@ __all__ = [
     "Box",
     "Breakdown",
     "Buy",
+    "CalendarReturn",
     "CashBalance",
     "CashChange",
     "CashSource",
@@ -4882,6 +5113,7 @@ __all__ = [
     "Histogram",
     "HistoricalScenario",
     "HistoricalWindow",
+    "History",
     "HistorySource",
     "HoldingImpact",
     "HoldingKey",
@@ -4939,6 +5171,7 @@ __all__ = [
     "NumberColumn",
     "Oas",
     "Objective",
+    "OptimisationReport",
     "OptimisationResult",
     "OptimiseOptions",
     "OptimisedStrategy",
@@ -4986,6 +5219,7 @@ __all__ = [
     "RiskReport",
     "RobustMeanVariance",
     "Run",
+    "RunReport",
     "Sample",
     "ScenarioDefinition",
     "ScenarioOptions",
@@ -5022,6 +5256,7 @@ __all__ = [
     "Statistics",
     "StatisticsOptions",
     "Strategy",
+    "StrategyReport",
     "StrategyResult",
     "SymbolChange",
     "TailMethod",
@@ -5052,6 +5287,7 @@ __all__ = [
     "View",
     "ViewUncertainty",
     "WalkForward",
+    "WeightsAt",
     "Withdrawal",
     "YearReturn",
     "YearToDate",

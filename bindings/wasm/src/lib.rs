@@ -185,6 +185,8 @@ export interface BacktestSettings {
 export interface CompareChoices extends OptimiseLimits, BacktestSettings {
   /** The methods to compare, such as `["equal_weight", "minimum_variance"]`. */
   methods: Method[];
+  /** The report's title, such as `"S&P 500 stocks"`. */
+  name?: string;
 }
 
 /** Choices for `Assets.backtest`: a method, with its limits, or fixed weights. */
@@ -194,14 +196,14 @@ export type BacktestChoices =
         /** The method, refitted as the validation says. */
         method: Method;
         weights?: undefined;
-        /** The name in the results; the method's own by default. */
+        /** The name of the strategy, and the report's title; the method's own by default. */
         name?: string;
       })
   | (BacktestSettings & {
       /** Fixed weights by asset, adding up to one; a weight on the risk-free asset is cash. */
       weights: Record<string, number>;
       method?: undefined;
-      /** The name in the results: `Weights` by default. */
+      /** The name of the strategy, and the report's title: `Weights` by default. */
       name?: string;
     });
 
@@ -1305,14 +1307,14 @@ impl Assets {
         Ok(value)
     }
 
-    /// Each of `options.methods` backtested on these assets with the same limits, rebalancing,
-    /// validation and trading costs, side by side.
-    #[wasm_bindgen(unchecked_return_type = "Backtest")]
+    /// The optimisation report: each of `options.methods` backtested on these assets with the
+    /// same limits, rebalancing, validation and trading costs, side by side.
+    #[wasm_bindgen(unchecked_return_type = "OptimisationReport & ReportMethods")]
     pub fn compare(
         &self,
         #[wasm_bindgen(unchecked_param_type = "CompareChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut allowed = fields::<finalytics::OptimiseOptions>(&["methods"]);
+        let mut allowed = fields::<finalytics::OptimiseOptions>(&["methods", "name"]);
         allowed.retain(|name| name != "method");
         allowed.extend(SETTINGS.map(str::to_owned));
         let mut choices = object(options, &allowed)?;
@@ -1322,6 +1324,11 @@ impl Assets {
         let methods: Vec<finalytics::Method> =
             finalytics::formats::from_json(&methods.to_string(), "options.methods")
                 .map_err(error)?;
+        let name = match choices.remove("name") {
+            Some(serde_json::Value::String(name)) => Some(name),
+            Some(serde_json::Value::Null) | None => None,
+            Some(_) => return Err(invalid("options.name", "must be a string")),
+        };
         let mut settings = settings(&mut choices);
         let limits = limits(choices)?;
         let strategies = methods
@@ -1336,12 +1343,18 @@ impl Assets {
             "strategies".to_owned(),
             serde_json::Value::Array(strategies),
         );
-        self.simulate(settings)
+        let mut report = self
+            .inner
+            .optimisation_report(&backtest_options(settings)?)
+            .map_err(error)?;
+        report.name = name;
+        to_js(&report)
     }
 
-    /// One strategy backtested: `options.method`, fitted as the validation says, or fixed
-    /// `options.weights` by asset (a weight on the risk-free asset is held as cash).
-    #[wasm_bindgen(unchecked_return_type = "Backtest")]
+    /// The backtest report on one strategy: `options.method`, fitted as the validation says,
+    /// or fixed `options.weights` by asset (a weight on the risk-free asset is held as cash),
+    /// against the benchmark if one is given.
+    #[wasm_bindgen(unchecked_return_type = "BacktestReport & ReportMethods")]
     pub fn backtest(
         &self,
         #[wasm_bindgen(unchecked_param_type = "BacktestChoices")] options: JsValue,
@@ -1381,7 +1394,23 @@ impl Assets {
             "strategies".to_owned(),
             serde_json::Value::Array(vec![strategy]),
         );
-        self.simulate(settings)
+        to_js(
+            &self
+                .inner
+                .backtest_report(&backtest_options(settings)?)
+                .map_err(error)?,
+        )
+    }
+
+    /// The backtest of `options` alone, without a report: every strategy's returns and trades,
+    /// in and out of sample, as `compare` and `backtest` run them.
+    #[wasm_bindgen(unchecked_return_type = "Backtest")]
+    pub fn simulate(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "BacktestOptions")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let options: finalytics::backtest::BacktestOptions = from_js(options, "options")?;
+        to_js(&self.inner.simulate(&options).map_err(error)?)
     }
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
@@ -1403,19 +1432,12 @@ impl Assets {
     }
 }
 
-impl Assets {
-    /// Runs the backtest of `options`, the JSON of `BacktestOptions`.
-    fn simulate(
-        &self,
-        options: serde_json::Map<String, serde_json::Value>,
-    ) -> Result<JsValue, JsValue> {
-        let options: finalytics::backtest::BacktestOptions = finalytics::formats::from_json(
-            &serde_json::Value::Object(options).to_string(),
-            "options",
-        )
-        .map_err(error)?;
-        to_js(&self.inner.simulate(&options).map_err(error)?)
-    }
+/// The options of a backtest, from the JSON of `BacktestOptions`.
+fn backtest_options(
+    options: serde_json::Map<String, serde_json::Value>,
+) -> Result<finalytics::backtest::BacktestOptions, JsValue> {
+    finalytics::formats::from_json(&serde_json::Value::Object(options).to_string(), "options")
+        .map_err(error)
 }
 
 /// How `Assets.compare` and `Assets.backtest` run.
@@ -2050,8 +2072,9 @@ pub fn report_tables(
     to_js(&finalytics::reports::report_tables(&text).map_err(error)?)
 }
 
-/// Any report, or the six from `Portfolio.report`, as text for printing, 80 columns wide, with
-/// the portfolio's `name`, if given, under each title.
+/// Any report, the six from `Portfolio.report`, or the report of `Assets.compare` or
+/// `Assets.backtest`, as text for printing, 80 columns wide, with `name`, if given, under each
+/// title.
 #[wasm_bindgen(js_name = reportText)]
 pub fn report_text(
     #[wasm_bindgen(unchecked_param_type = "object")] report: JsValue,
@@ -2064,12 +2087,13 @@ pub fn report_text(
     finalytics::reports::report_text(&text, name.as_deref()).map_err(error)
 }
 
-/// The six reports from `Portfolio.report` as one self-contained HTML page, with the
-/// portfolio's `name`, if given, as its title: inline styles and SVG charts, no scripts, in light
-/// and dark themes, ready to print.
+/// The six reports from `Portfolio.report`, or the report of `Assets.compare` or
+/// `Assets.backtest`, as one self-contained HTML page, with `name`, if given, as its title:
+/// inline styles and SVG charts, no scripts, in light and dark themes, ready to print.
 #[wasm_bindgen(js_name = reportHtml)]
 pub fn report_html(
-    #[wasm_bindgen(unchecked_param_type = "PortfolioReport")] report: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "PortfolioReport | OptimisationReport | BacktestReport")]
+    report: JsValue,
     name: Option<String>,
 ) -> Result<String, JsValue> {
     let text = js_sys::JSON::stringify(&report)

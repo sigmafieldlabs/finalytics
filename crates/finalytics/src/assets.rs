@@ -333,6 +333,11 @@ impl Assets {
         self
     }
 
+    /// The covariance estimator.
+    pub fn covariance_method(&self) -> CovarianceMethod {
+        self.covariance_method
+    }
+
     /// The assets' labels.
     pub fn labels(&self) -> &[String] {
         self.returns.labels()

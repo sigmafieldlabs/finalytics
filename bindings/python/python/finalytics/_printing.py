@@ -33,15 +33,16 @@ class PrintedReport:
         return self.to_text()
 
 
-class PrintedPortfolioReport(PrintedReport):
-    """The six reports, which print as text and save as one HTML page."""
+class ReportPage(PrintedReport):
+    """A report that prints as text and lays out as one HTML page: the six reports on a
+    portfolio together, the optimisation report and the backtest report."""
 
     __slots__ = ()
 
     def to_html(self, name: str | None = None) -> str:
-        """The six reports as one self-contained HTML page, with the portfolio's `name`, if
-        given, as its title: inline styles and SVG charts with hover details, no scripts or
-        external resources, in the reader's light or dark theme, and laid out for printing."""
+        """The report as one self-contained HTML page, with `name`, if given, as its title:
+        inline styles and SVG charts with hover details, no scripts or external resources, in
+        the reader's light or dark theme, and laid out for printing."""
         from finalytics import _finalytics
         from finalytics._convert import dumps
         from finalytics._errors import call

@@ -13,8 +13,9 @@
 //!
 //! - [`Assets`], the prices or returns of things one might hold: their statistics and
 //!   covariance; [`Assets::optimise`] for weights by a [`Method`]; [`Assets::compare`] to
-//!   backtest several methods side by side; [`Assets::backtest`] for one method or one set of
-//!   weights, in sample, on a holdout or walk-forward.
+//!   backtest several methods side by side, for an [`OptimisationReport`]; and
+//!   [`Assets::backtest`] for a [`BacktestReport`] on one method or one set of weights, in
+//!   sample, on a holdout or walk-forward.
 //! - [`Portfolio`], a portfolio's transactions with the market data that values them: its
 //!   valuation, performance and risk; [`Portfolio::report`] for every report; and
 //!   [`Portfolio::rebalance`] for the trades that reach target weights.
@@ -99,7 +100,7 @@ pub use assets::{
     AssetGroup, AssetStatistics, Assets, AssetsBuilder, Method, OptimisationResult, Optimise,
     OptimiseOptions,
 };
-pub use finalytics_reports::PortfolioReport;
+pub use finalytics_reports::{BacktestReport, OptimisationReport, PortfolioReport};
 pub use finalytics_risk::PriceTable;
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;

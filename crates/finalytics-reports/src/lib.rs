@@ -1,6 +1,7 @@
 //! Report data: one report per workstation screen (holdings, overview, performance, risk,
 //! attribution and scenarios), each computed in one call from a portfolio's books and market
-//! data.
+//! data, and two reports on backtests: the optimisation report, comparing methods, and the
+//! backtest report, on one allocation.
 //!
 //! A report carries everything its screen draws and exports, not only summary figures: series
 //! over time, breakdowns, grids, distributions and tables, each labelled with its units, so a
@@ -15,6 +16,9 @@
 //! follows semantic versioning. This crate's own API may change in any release.
 
 mod attribution;
+mod backtest_html;
+mod backtest_text;
+mod backtests;
 mod context;
 mod holdings;
 mod html;
@@ -29,6 +33,10 @@ mod text;
 
 pub use attribution::{
     AttributionInputs, AttributionReport, BenchmarkPeriod, BenchmarkSegment, attribution_report,
+};
+pub use backtests::{
+    BacktestContext, BacktestReport, BacktestSetup, CalendarReturn, History, OptimisationReport,
+    RunReport, StrategyReport, WeightsAt, backtest_report, optimisation_report,
 };
 pub use context::{Provenance, ReportKind, ReportOptions, Source};
 pub use holdings::{

@@ -575,6 +575,7 @@ dependencies = [
 name = "finalytics-reports"
 version = "1.0.0-alpha.0"
 dependencies = [
+ "finalytics-backtest",
  "finalytics-core",
  "finalytics-formats",
  "finalytics-ledger",

@@ -22,6 +22,7 @@ schema = [
     "finalytics-perf/schema",
     "finalytics-risk/schema",
     "finalytics-opt/schema",
+    "finalytics-backtest/schema",
 ]
 
 [dependencies]
@@ -31,6 +32,7 @@ finalytics-formats = { workspace = true }
 finalytics-perf = { workspace = true }
 finalytics-risk = { workspace = true }
 finalytics-opt = { workspace = true }
+finalytics-backtest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }

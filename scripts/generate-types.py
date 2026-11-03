@@ -145,7 +145,9 @@ BASES = {
     "RiskReport": "PrintedReport",
     "AttributionReport": "PrintedReport",
     "ScenariosReport": "PrintedReport",
-    "PortfolioReport": "PrintedPortfolioReport",
+    "PortfolioReport": "ReportPage",
+    "OptimisationReport": "ReportPage",
+    "BacktestReport": "ReportPage",
 }
 
 
@@ -420,7 +422,7 @@ class Python:
         parts = [
             header,
             "from __future__ import annotations\n\nimport datetime\nimport decimal\nfrom dataclasses import dataclass, field\nfrom typing import ClassVar, Literal, Union\n\n"
-            "from finalytics._printing import PrintedPortfolioReport, PrintedReport",
+            "from finalytics._printing import PrintedReport, ReportPage",
             "\n\n".join(aliases),
             "\n\n".join(literals),
             "\n\n\n".join(self.blocks),
