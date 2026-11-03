@@ -36,6 +36,7 @@ def test_methods_compared_walk_forward(assets):
     assert report.strategies[2].notes == ["Fully invested and long only; the limits on weights do not apply."]
     assert str(report).startswith("━") and "OPTIMISATION" in str(report)
     assert [t.name for t in fl.reports.tables(report)] == ["statistics", "calendar_years", "weights"]
+    assert len(report.results.strategies[1].out_of_sample.returns) == len(assets.dates) - 60
     # The same as the engine reads from JSON.
     same = assets.compare(
         methods=["equal_weight", "minimum_variance", "risk_parity"],
@@ -68,11 +69,10 @@ def test_one_method_or_fixed_weights(assets):
     assert fixed.strategy.name == "60/40" and fixed.context.settings.rebalance == fl.Drift(band=0.05)
     assert fixed.context.settings.validation == fl.InSample()
     assert "<title>60/40</title>" in fixed.to_html()
-    # The results alone, without a report.
-    raw = assets.simulate(
-        fl.types.BacktestOptions(strategies=[fl.types.FixedWeights(name="60/40", weights={"US Equity": 0.6, "Bonds": 0.4})])
-    )
+    # Every return and trade behind the report.
+    raw = fixed.results
     assert isinstance(raw, fl.types.Backtest) and len(raw.strategies[0].in_sample.returns) == len(assets.dates)
+    assert len(report.results.strategies[0].out_of_sample.returns) == len(report.strategy.tested.growth.dates)
 
 
 def test_an_index_as_the_benchmark():

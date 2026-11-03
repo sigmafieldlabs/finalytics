@@ -1308,7 +1308,8 @@ impl Assets {
     }
 
     /// The optimisation report: each of `options.methods` backtested on these assets with the
-    /// same limits, rebalancing, validation and trading costs, side by side.
+    /// same limits, rebalancing, validation and trading costs, side by side. Its `results` hold
+    /// every return and trade behind it.
     #[wasm_bindgen(unchecked_return_type = "OptimisationReport & ReportMethods")]
     pub fn compare(
         &self,
@@ -1353,7 +1354,8 @@ impl Assets {
 
     /// The backtest report on one strategy: `options.method`, fitted as the validation says,
     /// or fixed `options.weights` by asset (a weight on the risk-free asset is held as cash),
-    /// against the benchmark if one is given.
+    /// against the benchmark if one is given. Its `results` hold every return and trade behind
+    /// it.
     #[wasm_bindgen(unchecked_return_type = "BacktestReport & ReportMethods")]
     pub fn backtest(
         &self,
@@ -1400,17 +1402,6 @@ impl Assets {
                 .backtest_report(&backtest_options(settings)?)
                 .map_err(error)?,
         )
-    }
-
-    /// The backtest of `options` alone, without a report: every strategy's returns and trades,
-    /// in and out of sample, as `compare` and `backtest` run them.
-    #[wasm_bindgen(unchecked_return_type = "Backtest")]
-    pub fn simulate(
-        &self,
-        #[wasm_bindgen(unchecked_param_type = "BacktestOptions")] options: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let options: finalytics::backtest::BacktestOptions = from_js(options, "options")?;
-        to_js(&self.inner.simulate(&options).map_err(error)?)
     }
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under

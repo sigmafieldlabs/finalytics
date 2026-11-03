@@ -37,8 +37,8 @@ fn the_optimisation_report_scores_each_method_on_its_test() {
         .trading_cost_bps(10.0)
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
         .name("Six asset classes");
-    let backtest = compare.simulate().unwrap();
     let report = compare.build().unwrap();
+    let backtest = &report.results;
     assert_eq!(report.name.as_deref(), Some("Six asset classes"));
     let c = &report.context;
     assert_eq!(c.window, Some(60));
@@ -121,8 +121,8 @@ fn the_backtest_report_shows_the_whole_history_of_a_holdout() {
         .max_weight(0.4)
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
         .holdout_from("2016-11-01");
-    let backtest = builder.simulate().unwrap();
     let report = builder.build().unwrap();
+    let backtest = &report.results;
     let raw = &backtest.strategies[0];
     let (ins, out) = (&raw.in_sample, raw.out_of_sample.as_ref().unwrap());
     let history = report.history.as_ref().unwrap();

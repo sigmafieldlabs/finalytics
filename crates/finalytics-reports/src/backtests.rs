@@ -206,6 +206,9 @@ pub struct OptimisationReport {
     pub strategies: Vec<StrategyReport>,
     /// The benchmark, if one was given, tested alike.
     pub benchmark: Option<StrategyReport>,
+    /// The backtest behind the report: every return and trade of each method, in and out of
+    /// sample.
+    pub results: Backtest,
     /// The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a
     /// page.
     #[serde(default)]
@@ -223,6 +226,8 @@ pub struct BacktestReport {
     pub strategy: StrategyReport,
     /// The benchmark, if one was given, held alike.
     pub benchmark: Option<StrategyReport>,
+    /// The backtest behind the report: every return and trade, in and out of sample.
+    pub results: Backtest,
     /// For a holdout, both periods together, in sample then out of sample.
     pub history: Option<History>,
     /// The weights held in each period of the test, by asset: the largest few, then the rest
@@ -269,6 +274,7 @@ pub fn optimisation_report(
         context: inputs.context,
         strategies,
         benchmark,
+        results: backtest.clone(),
         name: None,
     })
 }
@@ -311,6 +317,7 @@ pub fn backtest_report(
         context: inputs.context,
         strategy,
         benchmark,
+        results: backtest.clone(),
         history,
         held,
         name: None,

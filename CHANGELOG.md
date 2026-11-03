@@ -11,8 +11,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Backtests: `assets.compare(methods)` tests several optimisation methods side by side under the
   same limits and settings, and `assets.backtest(method)` or `assets.backtest(weights)` tests one
-  allocation, optionally against a benchmark (`finalytics::backtest`; `Assets::simulate` gives
-  the results alone, from `BacktestOptions` as JSON gives them). Optimisation methods are refitted through
+  allocation, optionally against a benchmark (`finalytics::backtest`). Each builds its report,
+  which carries every return and trade behind it as `results`; `Assets::optimisation_report`
+  and `Assets::backtest_report` run the same backtests from `BacktestOptions`, as JSON gives
+  them. Optimisation methods are refitted through
   time, or fixed weights held, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
   band, or never, net of trading costs in basis points of the value traded. Strategies are
   validated in sample, on a holdout from a date, or walk-forward, refitting at each calendar

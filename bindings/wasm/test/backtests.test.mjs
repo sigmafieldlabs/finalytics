@@ -73,9 +73,12 @@ test("one method, or fixed weights, against a benchmark", () => {
   });
   assert.equal(fixed.strategy.name, "60/40");
   assert.deepEqual(fixed.context.settings.rebalance, { type: "drift", band: 0.05 });
-  // The results alone, without a report.
-  const raw = assets.simulate({ strategies: [{ type: "weights", weights: { Bonds: 1 } }] });
-  assert.equal(raw.strategies[0].in_sample.returns.length, assets.dates.length);
+  // Every return and trade behind the report.
+  assert.equal(fixed.results.strategies[0].in_sample.returns.length, assets.dates.length);
+  assert.equal(
+    report.results.strategies[0].out_of_sample.returns.length,
+    report.strategy.tested.growth.dates.length,
+  );
 });
 
 test("an index as the benchmark", async () => {

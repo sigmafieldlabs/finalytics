@@ -362,7 +362,8 @@ class Assets:
         """The optimisation report: each of `methods` backtested on these assets with the same
         limits, rebalancing, validation and trading costs, side by side, and scored on the
         periods it was tested on. `name` titles the report. ``report.show()`` shows it, inline
-        in a notebook or in a browser.
+        in a notebook or in a browser, and ``report.results`` holds every return and trade
+        behind it.
 
         - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
           ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
@@ -424,7 +425,8 @@ class Assets:
         fixed `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on
         the risk-free asset is held as cash), against the `benchmark` if one is given. `name`
         names the strategy and titles the report. The other keywords are as for
-        :meth:`compare`; fixed weights take no limits or parameters."""
+        :meth:`compare`; fixed weights take no limits or parameters. ``report.results`` holds
+        every return and trade behind the report."""
         if (method is None) == (weights is None):
             raise ValueError("give a method or weights, not both")
         limits = dict(
@@ -451,11 +453,6 @@ class Assets:
             strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
         options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark)
         return loads(_types.BacktestReport, call(self._native.backtest_report, dumps(options)))
-
-    def simulate(self, options: _types.BacktestOptions) -> _types.Backtest:
-        """The backtest of `options` alone, without a report: every strategy's returns and
-        trades, in and out of sample, as :meth:`compare` and :meth:`backtest` run them."""
-        return loads(_types.Backtest, call(self._native.simulate, dumps(options)))
 
     def __repr__(self) -> str:
         return f"Assets({len(self.labels)} assets, {len(self.dates)} periods, {self.periods_per_year:g} a year)"

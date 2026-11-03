@@ -357,6 +357,8 @@ export interface BacktestReport {
   strategy: StrategyReport;
   /** The benchmark, if one was given, held alike. */
   benchmark?: StrategyReport | null;
+  /** The backtest behind the report: every return and trade, in and out of sample. */
+  results: Backtest;
   /** For a holdout, both periods together, in sample then out of sample. */
   history?: History | null;
   /**
@@ -1719,6 +1721,11 @@ export interface OptimisationReport {
   strategies: StrategyReport[];
   /** The benchmark, if one was given, tested alike. */
   benchmark?: StrategyReport | null;
+  /**
+   * The backtest behind the report: every return and trade of each method, in and out of
+   * sample.
+   */
+  results: Backtest;
   /**
    * The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a
    * page.

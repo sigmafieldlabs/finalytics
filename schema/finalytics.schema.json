@@ -855,6 +855,10 @@
           ],
           "description": "The benchmark, if one was given, held alike."
         },
+        "results": {
+          "$ref": "#/$defs/Backtest",
+          "description": "The backtest behind the report: every return and trade, in and out of sample."
+        },
         "history": {
           "anyOf": [
             {
@@ -885,6 +889,7 @@
       "required": [
         "context",
         "strategy",
+        "results",
         "held"
       ],
       "description": "One allocation, tested against its benchmark: the backtest report."
@@ -4594,6 +4599,10 @@
           ],
           "description": "The benchmark, if one was given, tested alike."
         },
+        "results": {
+          "$ref": "#/$defs/Backtest",
+          "description": "The backtest behind the report: every return and trade of each method, in and out of\nsample."
+        },
         "name": {
           "type": [
             "string",
@@ -4605,7 +4614,8 @@
       },
       "required": [
         "context",
-        "strategies"
+        "strategies",
+        "results"
       ],
       "description": "Methods tested the same way, side by side: the optimisation report."
     },

@@ -2,7 +2,7 @@
 
 #![allow(clippy::unwrap_used)]
 
-use finalytics::backtest::{BacktestOptions, Benchmark, Rebalance, Strategy, Validation};
+use finalytics::backtest::{Backtest, BacktestOptions, Benchmark, Rebalance, Strategy, Validation};
 use finalytics::opt::Bound;
 use finalytics::{Assets, Error, Method, OptimiseOptions, datasets};
 
@@ -14,6 +14,13 @@ fn method(method: Method, max_weight: f64) -> Strategy {
         max: max_weight,
     });
     Strategy::optimise(options)
+}
+
+/// The backtest of `options`, as the reports carry it.
+fn simulate(assets: &Assets, options: &BacktestOptions) -> Result<Backtest, Error> {
+    assets
+        .optimisation_report(options)
+        .map(|report| report.results)
 }
 
 fn paths(error: Error) -> Vec<String> {
@@ -46,7 +53,7 @@ fn methods_walk_forward_on_the_sp500() {
         name: None,
         prices: datasets::sp500_index(),
     });
-    let backtest = assets.simulate(&options).unwrap();
+    let backtest = simulate(&assets, &options).unwrap();
     let names: Vec<&str> = backtest
         .strategies
         .iter()
@@ -119,7 +126,7 @@ fn a_holdout_tests_fixed_weights_and_a_fitted_method_against_a_benchmark() {
         name: Some("60/40".into()),
         weights: [("US Equity".to_owned(), 0.6), ("Bonds".to_owned(), 0.4)].into(),
     });
-    let backtest = assets.simulate(&options).unwrap();
+    let backtest = simulate(&assets, &options).unwrap();
     let fitted = &backtest.strategies[0];
     assert_eq!(
         fitted.in_sample.dates.last().unwrap().to_string(),
@@ -156,7 +163,7 @@ fn mistakes_in_the_options_are_reported_together() {
         prices: datasets::asset_class_prices(),
     });
     assert_eq!(
-        paths(assets.simulate(&options).unwrap_err()),
+        paths(simulate(&assets, &options).unwrap_err()),
         [
             "strategies[0].weights.Crypto",
             "strategies[0].weights",
@@ -165,7 +172,10 @@ fn mistakes_in_the_options_are_reported_together() {
     );
     options.strategies.remove(0);
     options.benchmark = None;
-    assert_eq!(paths(assets.simulate(&options).unwrap_err()), ["rebalance"]);
+    assert_eq!(
+        paths(simulate(&assets, &options).unwrap_err()),
+        ["rebalance"]
+    );
 }
 
 /// The backtests of `scripts/reference/backtest.py`, simulated independently with NumPy and
@@ -181,7 +191,7 @@ fn backtests_match_the_reference_simulation() {
     for case in fixture["cases"].as_array().unwrap() {
         let name = case["name"].as_str().unwrap();
         let options: BacktestOptions = serde_json::from_value(case["options"].clone()).unwrap();
-        let backtest = assets.simulate(&options).unwrap();
+        let backtest = simulate(&assets, &options).unwrap();
         let expected = &case["expected"];
         // Equal weight, inverse volatility and fixed weights agree to rounding; minimum variance
         // agrees to the solvers' tolerance, which leaves a weight that belongs at a bound a few

@@ -86,7 +86,7 @@ export async function example(worker: Worker): Promise<void> {
   const fixed: BacktestReport = assets.backtest({ weights: { Bonds: 1 }, rebalance: { drift: { band: 0.05 } } });
   const comparedData: OptimisationReport = compared;
   const comparedPage: string = compared.toHtml();
-  const raw: Backtest = assets.simulate({ strategies: [{ type: "weights", weights: { Bonds: 1 } }] });
+  const raw: Backtest = compared.results;
   // @ts-expect-error: an unknown schedule is rejected.
   assets.compare({ methods: ["equal_weight"], rebalance: "weekly" });
   const named = traded.report({ benchmark: "SPY", name: "Main account" });

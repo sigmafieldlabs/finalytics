@@ -563,6 +563,9 @@ class BacktestReport(ReportPage):
     benchmark: StrategyReport | None = None
     """The benchmark, if one was given, held alike."""
 
+    results: Backtest
+    """The backtest behind the report: every return and trade, in and out of sample."""
+
     history: History | None = None
     """For a holdout, both periods together, in sample then out of sample."""
 
@@ -2430,6 +2433,10 @@ class OptimisationReport(ReportPage):
 
     benchmark: StrategyReport | None = None
     """The benchmark, if one was given, tested alike."""
+
+    results: Backtest
+    """The backtest behind the report: every return and trade of each method, in and out of sample.
+    """
 
     name: str | None = None
     """The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a page.
