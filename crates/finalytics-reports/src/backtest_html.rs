@@ -8,7 +8,7 @@ use finalytics_backtest::{Rebalance, Validation};
 use finalytics_core::Date;
 
 use crate::backtests::{
-    BacktestContext, BacktestReport, CalendarReturn, OptimisationReport, RunReport, StrategyReport,
+    BacktestContext, BacktestReport, CalendarReturn, ComparisonReport, RunReport, StrategyReport,
     WeightsAt,
 };
 use crate::html::{
@@ -19,7 +19,7 @@ use crate::shapes::Series;
 use crate::text::{covariance_name, month_name, num, pct, period_word, plural};
 
 /// The colours of the strategies, in order; a benchmark is drawn in the secondary ink.
-const SERIES: [&str; 8] = [
+pub(crate) const SERIES: [&str; 8] = [
     "var(--s1)",
     "var(--s2)",
     "var(--s3)",
@@ -29,15 +29,15 @@ const SERIES: [&str; 8] = [
     "var(--s7)",
     "var(--s8)",
 ];
-const BENCHMARK: &str = "var(--ink2)";
+pub(crate) const BENCHMARK: &str = "var(--ink2)";
 
 /// The most assets a table of weights shows; the rest are shown together.
 const ASSETS: usize = 12;
 
 /// Weights smaller than this are shown as none.
-const TINY: f64 = 5e-4;
+pub(crate) const TINY: f64 = 5e-4;
 
-fn colour(k: usize) -> &'static str {
+pub(crate) fn colour(k: usize) -> &'static str {
     SERIES.get(k).copied().unwrap_or("var(--muted-fill)")
 }
 
@@ -161,7 +161,7 @@ pub(crate) fn capitalise(text: &str) -> String {
     }
 }
 
-fn lower_first(text: &str) -> String {
+pub(crate) fn lower_first(text: &str) -> String {
     let mut chars = text.chars();
     match chars.next() {
         Some(first) => first.to_lowercase().chain(chars).collect(),
@@ -273,14 +273,14 @@ pub(crate) fn shown_assets(
 // ── Charts ───────────────────────────────────────────────────────────────────────────────────
 
 /// One line of a chart over dates.
-struct Line<'a> {
-    name: &'a str,
-    colour: &'a str,
-    series: &'a Series,
+pub(crate) struct Line<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) colour: &'a str,
+    pub(crate) series: &'a Series,
 }
 
 /// A chart's history split in two, with the part before `at` shaded.
-struct Shade<'a> {
+pub(crate) struct Shade<'a> {
     at: Date,
     left: &'a str,
     right: &'a str,
@@ -373,7 +373,7 @@ fn value_at(series: &Series, date: Date) -> Option<f64> {
 
 /// A line chart over dates, with hover bands that show each date's values.
 #[allow(clippy::too_many_arguments)]
-fn lines(
+pub(crate) fn lines(
     series: &[Line<'_>],
     format: &dyn Fn(f64) -> String,
     tick: &dyn Fn(f64) -> String,
@@ -842,7 +842,7 @@ fn stacked(series: &[(&Series, &str)]) -> String {
 }
 
 /// The style of a cell shaded by weight, darker for larger, up to `scale`.
-fn weight_style(v: f64, scale: f64) -> String {
+pub(crate) fn weight_style(v: f64, scale: f64) -> String {
     let p = if scale > 0.0 {
         (v / scale * 100.0).clamp(0.0, 100.0)
     } else {
@@ -913,7 +913,12 @@ fn weight_strip(weights: &[WeightsAt], end: Date, rows: &[String], scale: f64) -
 // ── Layout ───────────────────────────────────────────────────────────────────────────────────
 
 /// A table whose cells are HTML already; the columns from `right_from` on are right-aligned.
-fn table(head: &[String], rows: &[Vec<String>], right_from: usize, class: &str) -> String {
+pub(crate) fn table(
+    head: &[String],
+    rows: &[Vec<String>],
+    right_from: usize,
+    class: &str,
+) -> String {
     let mut out = format!(r#"<div class="tw"><table class="{class}"><thead><tr>"#);
     for (k, h) in head.iter().enumerate() {
         let cls = if k >= right_from { r#" class="r""# } else { "" };
@@ -933,14 +938,14 @@ fn table(head: &[String], rows: &[Vec<String>], right_from: usize, class: &str) 
 }
 
 /// A strategy's name with its colour key.
-fn key(name: &str, colour: &str) -> String {
+pub(crate) fn key(name: &str, colour: &str) -> String {
     format!(
         r#"<span class="key"><i style="background:{colour}"></i>{}</span>"#,
         esc(name)
     )
 }
 
-fn section(anchor: &str, title: &str, subtitle: &str, body: &str) -> String {
+pub(crate) fn section(anchor: &str, title: &str, subtitle: &str, body: &str) -> String {
     format!(
         r#"<section id="{anchor}"><header class="sh"><h2>{}</h2><p>{}</p></header>{body}</section>"#,
         esc(title),
@@ -949,7 +954,7 @@ fn section(anchor: &str, title: &str, subtitle: &str, body: &str) -> String {
 }
 
 /// A table of label and text rows, for the method notes.
-fn notes_table(rows: &[(&str, String)]) -> String {
+pub(crate) fn notes_table(rows: &[(&str, String)]) -> String {
     let mut out = String::from("<table><tbody>");
     for (label, text) in rows {
         let _ = write!(
@@ -963,14 +968,26 @@ fn notes_table(rows: &[(&str, String)]) -> String {
     out
 }
 
-fn page(
-    title: &str,
-    brand: Option<&str>,
-    meta: &str,
-    nav: &[(&str, &str)],
-    body: &str,
-    c: &BacktestContext,
-) -> String {
+/// The parts of a report page around its sections.
+pub(crate) struct Frame<'a> {
+    pub(crate) title: &'a str,
+    pub(crate) brand: Option<&'a str>,
+    pub(crate) meta: &'a str,
+    pub(crate) nav: &'a [(&'a str, &'a str)],
+    pub(crate) version: &'a str,
+    pub(crate) digest: &'a str,
+}
+
+/// A report page: the frame around `body`.
+pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
+    let Frame {
+        title,
+        brand,
+        meta,
+        nav,
+        version,
+        digest,
+    } = *f;
     let nav: String = nav
         .iter()
         .map(|(anchor, label)| format!(r##"<a href="#{anchor}">{}</a>"##, esc(label)))
@@ -978,7 +995,7 @@ fn page(
     let brand = brand.map_or_else(String::new, |b| {
         format!(r#"<div class="brand">{}</div>"#, esc(b))
     });
-    let digest: String = c.digest.chars().take(12).collect();
+    let digest: String = digest.chars().take(12).collect();
     format!(
         r#"<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -992,7 +1009,7 @@ fn page(
 <div class="foot">Every figure is computed by Finalytics {version} from the assets' returns; the same inputs give the same report, identified by the input digest <code>{digest}</code>.</div>
 </div></body></html>
 "#,
-        version = esc(&c.version),
+        version = esc(version),
         title = esc(title),
         light = base64(LOGO_LIGHT),
         dark = base64(LOGO_DARK),
@@ -1050,19 +1067,19 @@ fn bold_best(
         .collect()
 }
 
-fn percent(v: f64) -> String {
+pub(crate) fn percent(v: f64) -> String {
     pct(Some(v), 1, false)
 }
 
-fn ratio(v: f64) -> String {
+pub(crate) fn ratio(v: f64) -> String {
     num(Some(v), 2)
 }
 
-fn level(v: f64) -> String {
+pub(crate) fn level(v: f64) -> String {
     num(Some(v), 0)
 }
 
-fn level_tick(v: f64) -> String {
+pub(crate) fn level_tick(v: f64) -> String {
     num(Some(v), 0)
 }
 
@@ -1181,9 +1198,9 @@ fn method_rows(
     rows
 }
 
-// ── The optimisation report ──────────────────────────────────────────────────────────────────
+// ── The comparison report ────────────────────────────────────────────────────────────────────
 
-impl OptimisationReport {
+impl ComparisonReport {
     /// The report as one self-contained HTML page, titled with `name` (or the report's own):
     /// the methods side by side, their growth, returns by year, drawdowns and rolling Sharpe
     /// ratios, in sample against out of sample, their weights, and how they were tested.
@@ -1699,49 +1716,49 @@ impl OptimisationReport {
         );
 
         let mut nav = vec![
-            ("o-summary", "Summary"),
-            ("o-performance", "Performance"),
-            ("o-risk", "Risk"),
+            ("c-summary", "Summary"),
+            ("c-performance", "Performance"),
+            ("c-risk", "Risk"),
         ];
         let mut body = section(
-            "o-summary",
+            "c-summary",
             "Summary",
             &format!("Each method, scored {}", lower_first(tested)),
             &summary,
         );
         body.push_str(&section(
-            "o-performance",
+            "c-performance",
             "Performance",
             &format!("Growth and returns by year, {}", lower_first(tested)),
             &performance,
         ));
         body.push_str(&section(
-            "o-risk",
+            "c-risk",
             "Risk",
             "How far and how long each method fell",
             &risk,
         ));
         if compared {
-            nav.push(("o-robustness", "In and out of sample"));
+            nav.push(("c-robustness", "In and out of sample"));
             body.push_str(&section(
-                "o-robustness",
+                "c-robustness",
                 "In and out of sample",
                 "How much of each method's promise survived",
                 &robustness,
             ));
         }
         if !weights_html.is_empty() {
-            nav.push(("o-weights", "Weights"));
+            nav.push(("c-weights", "Weights"));
             body.push_str(&section(
-                "o-weights",
+                "c-weights",
                 "Weights",
                 "What each method held, and how often it traded",
                 &weights_html,
             ));
         }
-        nav.push(("o-method", "Method"));
+        nav.push(("c-method", "Method"));
         body.push_str(&section(
-            "o-method",
+            "c-method",
             "Method",
             "How the comparison was run",
             &method,
@@ -1758,14 +1775,24 @@ impl OptimisationReport {
                 .as_ref()
                 .map_or_else(String::new, |a| format!(" · risk-free {}", esc(a)))
         );
-        let title = name.unwrap_or("Optimisation report");
-        let brand = name.map(|_| "Optimisation report");
-        page(title, brand, &meta, &nav, &body, c)
+        let title = name.unwrap_or("Comparison report");
+        let brand = name.map(|_| "Comparison report");
+        frame(
+            &Frame {
+                title,
+                brand,
+                meta: &meta,
+                nav: &nav,
+                version: &c.version,
+                digest: &c.digest,
+            },
+            &body,
+        )
     }
 }
 
 /// A weight as shown in a table: none when tiny.
-fn weight_text(v: f64) -> String {
+pub(crate) fn weight_text(v: f64) -> String {
     if v.abs() < TINY {
         "–".to_owned()
     } else {
@@ -2359,19 +2386,22 @@ impl BacktestReport {
             esc(&costs(c.settings.trading_cost_bps)),
             bench.map_or_else(String::new, |b| format!(" · against {}", esc(&b.name)))
         );
-        page(
-            title,
-            Some("Backtest report"),
-            &meta,
-            &[
-                ("b-summary", "Summary"),
-                ("b-growth", "Growth"),
-                ("b-weights", "Weights"),
-                ("b-returns", "Returns"),
-                ("b-method", "Method"),
-            ],
+        frame(
+            &Frame {
+                title,
+                brand: Some("Backtest report"),
+                meta: &meta,
+                nav: &[
+                    ("b-summary", "Summary"),
+                    ("b-growth", "Growth"),
+                    ("b-weights", "Weights"),
+                    ("b-returns", "Returns"),
+                    ("b-method", "Method"),
+                ],
+                version: &c.version,
+                digest: &c.digest,
+            },
             &body,
-            c,
         )
     }
 }

@@ -72,7 +72,7 @@ const target = portfolio.assets().optimise({
   method: "minimum_variance",
   bounds: { min: 0.05, max: 0.4 },
 });
-const mixes = [["Now", report.overview.current], ["After", target]];
+const mixes = [["Now", report.overview.current], ["After", target.results]];
 for (const [name, mix] of mixes) {
   console.log(
     `${name}: volatility ${pct(mix.volatility)}, ` +
@@ -81,7 +81,7 @@ for (const [name, mix] of mixes) {
 }
 
 // 4. Trade: what each account buys and sells, in whole units.
-const proposal = portfolio.rebalance(target.weights, { whole_units: true });
+const proposal = portfolio.rebalance(target, { whole_units: true });
 for (const account of proposal.accounts) {
   for (const trade of account.trades) {
     console.log(account.account, trade.side, trade.quantity, trade.instrument);
@@ -171,11 +171,11 @@ const result = assets.optimise({
     "Real assets": { assets: ["Gold", "Real Estate"], min: 0, max: 0.15 },
   },
 });
-for (const [asset, weight] of Object.entries(result.weights)) {
+for (const [asset, weight] of Object.entries(result.results.weights)) {
   const percent = (100 * weight).toFixed(0).padStart(3);
   console.log(`${asset.padEnd(12)} ${percent}%`);
 }
-console.log(`Sharpe ratio ${result.sharpe_ratio.toFixed(2)}`);
+console.log(`Sharpe ratio ${result.results.sharpe_ratio.toFixed(2)}`);
 ```
 
 ```text

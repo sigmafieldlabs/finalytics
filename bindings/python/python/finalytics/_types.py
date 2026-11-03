@@ -11,7 +11,7 @@ import decimal
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal, Union
 
-from finalytics._printing import PrintedReport, ReportPage
+from finalytics._printing import PrintedReport, PrintedResults, ReportPage, Result
 
 
 Currency = str
@@ -286,6 +286,28 @@ portfolio's total.
 
 
 @dataclass(frozen=True, kw_only=True)
+class AllocationRow:
+    """One asset in the weights."""
+
+    asset: str
+    """The asset."""
+
+    weight: float
+    """Its weight."""
+
+    expected_return: float
+    """Its annual expected return."""
+
+    volatility: float
+    """Its annual volatility."""
+
+    risk_share: float
+    """Its share of the portfolio's variance: its weight times its covariance with the portfolio,
+    over the portfolio's variance.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class Amount:
     """A figure as a fraction and as an amount of money, such as a value at risk."""
 
@@ -449,31 +471,16 @@ class AttributionReport(PrintedReport):
 
 
 @dataclass(frozen=True, kw_only=True)
-class Backtest:
-    """The result of a backtest: every strategy, and the benchmark if one was given, on the same
-    assets and dates.
+class Backtest(Result):
+    """A backtest: the backtest report on one allocation against its benchmark, and the raw results.
+    Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
     """
 
-    assets: list[str]
-    """The assets the strategies hold."""
+    report: BacktestReport
+    """The backtest report."""
 
-    dates: list[datetime.date]
-    """The date each period of the data ends on."""
-
-    cash: list[float]
-    """The return of cash in each period: the risk-free return."""
-
-    periods_per_year: float
-    """The number of periods in a year."""
-
-    settings: Settings
-    """How the backtest was run."""
-
-    strategies: list[StrategyResult]
-    """Each strategy, in the order given."""
-
-    benchmark: StrategyResult | None = None
-    """The benchmark, if one was given."""
+    results: BacktestResults
+    """The raw results: every return and trade, in and out of sample."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -563,9 +570,6 @@ class BacktestReport(ReportPage):
     benchmark: StrategyReport | None = None
     """The benchmark, if one was given, held alike."""
 
-    results: Backtest
-    """The backtest behind the report: every return and trade, in and out of sample."""
-
     history: History | None = None
     """For a holdout, both periods together, in sample then out of sample."""
 
@@ -578,6 +582,34 @@ class BacktestReport(ReportPage):
     """The report's title, such as "Maximum Sharpe, fitted to 2016": shown when it is printed or
     laid out as a page.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class BacktestResults(PrintedResults):
+    """The result of a backtest: every strategy, and the benchmark if one was given, on the same
+    assets and dates.
+    """
+
+    assets: list[str]
+    """The assets the strategies hold."""
+
+    dates: list[datetime.date]
+    """The date each period of the data ends on."""
+
+    cash: list[float]
+    """The return of cash in each period: the risk-free return."""
+
+    periods_per_year: float
+    """The number of periods in a year."""
+
+    settings: Settings
+    """How the backtest was run."""
+
+    strategies: list[StrategyResult]
+    """Each strategy, in the order given."""
+
+    benchmark: StrategyResult | None = None
+    """The benchmark, if one was given."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -909,6 +941,37 @@ class Company:
 
     industry: str
     """The GICS sub-industry, such as `"Technology Hardware, Storage & Peripherals"`."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Comparison(Result):
+    """A comparison: the comparison report on several methods backtested side by side, and the raw
+    results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+    """
+
+    report: ComparisonReport
+    """The comparison report: each method scored on the periods it was tested on."""
+
+    results: BacktestResults
+    """The raw results: every return and trade of each method, in and out of sample."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ComparisonReport(ReportPage):
+    """Methods tested the same way, side by side: the comparison report."""
+
+    context: BacktestContext
+    """What was tested and how."""
+
+    strategies: list[StrategyReport]
+    """Each method, in the order given."""
+
+    benchmark: StrategyReport | None = None
+    """The benchmark, if one was given, tested alike."""
+
+    name: str | None = None
+    """The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a page.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2422,29 +2485,132 @@ Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetRetur
 
 
 @dataclass(frozen=True, kw_only=True)
-class OptimisationReport(ReportPage):
-    """Methods tested the same way, side by side: the optimisation report."""
-
-    context: BacktestContext
-    """What was tested and how."""
-
-    strategies: list[StrategyReport]
-    """Each method, in the order given."""
-
-    benchmark: StrategyReport | None = None
-    """The benchmark, if one was given, tested alike."""
-
-    results: Backtest
-    """The backtest behind the report: every return and trade of each method, in and out of sample.
+class Optimisation(Result):
+    """An optimisation: the optimisation report on the weights chosen, and the raw results. Printing
+    it prints the report; `Show::show`(crate::Show::show) shows it as a page.
     """
 
-    name: str | None = None
-    """The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a page.
+    report: OptimisationReport
+    """The optimisation report: the weights, what they are expected to deliver, where their risk
+    comes from, the efficient frontier and the history they were fitted to.
+    """
+
+    results: OptimisationResult
+    """The raw results: the weights by asset, their expected return, volatility and Sharpe ratio,
+    and the solver's solution.
     """
 
 
 @dataclass(frozen=True, kw_only=True)
-class OptimisationResult:
+class OptimisationContext:
+    """What an optimisation report describes: the method, the data and estimates, the limits and how
+    the solver ended.
+    """
+
+    version: str
+    """The engine's version."""
+
+    digest: str
+    """A SHA-256 digest of the estimates and limits, in hexadecimal: the same inputs give the same
+    report.
+    """
+
+    method: str
+    """The method's name, such as "Maximum Sharpe"."""
+
+    description: str
+    """What the method does, in a sentence."""
+
+    status: str
+    """How the optimisation ended, such as `optimal`."""
+
+    solver: str
+    """How it was solved, such as `interior_point`."""
+
+    iterations: int
+    """The solver's iterations."""
+
+    assets: list[str]
+    """The assets optimised over, other than the risk-free asset."""
+
+    risk_free_asset: str | None = None
+    """The risk-free asset, if one of the assets is."""
+
+    risk_free_rate: float
+    """The annual risk-free rate of the Sharpe ratio."""
+
+    periods_per_year: float
+    """The number of return periods in a year."""
+
+    covariance: CovarianceMethod
+    """The covariance estimator."""
+
+    historical_means: bool
+    """Whether the expected returns are the historical means (`false` when some were given)."""
+
+    limits: list[str]
+    """The limits on the weights, in words."""
+
+    start: datetime.date
+    """The date the first return period ends on."""
+
+    end: datetime.date
+    """The date the last return period ends on."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class OptimisationHistory:
+    """How the weights, and equal weight, would have done on the history they were fitted to."""
+
+    weights: RunReport
+    """The weights, held from the start and rebalanced quarterly."""
+
+    equal_weight: RunReport
+    """Equal weight, held the same way."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class OptimisationReport(ReportPage):
+    """The weights an optimisation chose, with what they are expected to deliver, where their risk
+    comes from, where they sit on the efficient frontier, and how they would have done on the
+    history they were fitted to.
+    """
+
+    context: OptimisationContext
+    """What was optimised and how."""
+
+    summary: OptimisationSummary | None = None
+    """What the weights are expected to deliver; absent when the optimisation found no weights."""
+
+    allocation: list[AllocationRow]
+    """Each asset's weight, expected return, volatility and share of the risk, the largest weight
+    first.
+    """
+
+    correlation: Grid
+    """The correlation of the assets' returns, from the covariance the optimisation used."""
+
+    frontier: list[RiskReturn]
+    """The efficient frontier under the same limits, from the least volatile portfolio to the one
+    with the largest expected return.
+    """
+
+    equal_weight: RiskReturn | None = None
+    """The equal-weight portfolio of the same assets, for comparison."""
+
+    history: OptimisationHistory | None = None
+    """How the weights, and equal weight, would have done on the history they were fitted to: held
+    from the start and rebalanced quarterly, without trading costs.
+    """
+
+    name: str | None = None
+    """The report's title, such as "Six asset classes": shown when it is printed or laid out as a
+    page.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class OptimisationResult(PrintedResults):
     """The result of an optimisation over assets: the weights by asset, with their expected return,
     volatility and Sharpe ratio, and the solver's full solution.
     """
@@ -2469,6 +2635,36 @@ class OptimisationResult:
 
     solution: Solution
     """The solver's solution, with the objective, its value and the work done."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class OptimisationSummary:
+    """What the weights are expected to deliver."""
+
+    expected_return: float
+    """The annual expected return."""
+
+    volatility: float
+    """The annual volatility."""
+
+    sharpe_ratio: float | None = None
+    """The Sharpe ratio, against the risk-free rate."""
+
+    diversification_ratio: float | None = None
+    """The weighted average of the assets' volatilities over the portfolio's: how much
+    diversification reduces the risk. One for a single asset.
+    """
+
+    effective_assets: float
+    """The number of equal weights with the same concentration: one over the sum of the squared
+    weights.
+    """
+
+    largest_asset: str
+    """The asset with the largest weight."""
+
+    largest_weight: float
+    """Its weight."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3541,6 +3737,17 @@ class RiskReport(PrintedReport):
     rolling: list[Series]
     """Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking error.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskReturn:
+    """A portfolio's volatility and expected return, a year."""
+
+    volatility: float
+    """The annual volatility."""
+
+    expected_return: float
+    """The annual expected return."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -5023,6 +5230,7 @@ __all__ = [
     "AccountSeries",
     "AccountsPerformance",
     "Allocation",
+    "AllocationRow",
     "Amount",
     "AssetBound",
     "AssetFit",
@@ -5036,6 +5244,7 @@ __all__ = [
     "BacktestContext",
     "BacktestOptions",
     "BacktestReport",
+    "BacktestResults",
     "Benchmark",
     "BenchmarkPeriod",
     "BenchmarkPrices",
@@ -5059,6 +5268,8 @@ __all__ = [
     "ColumnKind",
     "CombinedRebalance",
     "Company",
+    "Comparison",
+    "ComparisonReport",
     "Concentration",
     "Confidence",
     "Constraints",
@@ -5178,8 +5389,12 @@ __all__ = [
     "NumberColumn",
     "Oas",
     "Objective",
+    "Optimisation",
+    "OptimisationContext",
+    "OptimisationHistory",
     "OptimisationReport",
     "OptimisationResult",
+    "OptimisationSummary",
     "OptimiseOptions",
     "OptimisedStrategy",
     "OverviewReport",
@@ -5224,6 +5439,7 @@ __all__ = [
     "RiskContribution",
     "RiskDecomposition",
     "RiskReport",
+    "RiskReturn",
     "RobustMeanVariance",
     "Run",
     "RunReport",

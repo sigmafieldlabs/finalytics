@@ -89,8 +89,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
     let now = report.overview.current.as_ref().ok_or("no estimate")?;
     let after = (
-        target.volatility.unwrap_or_default(),
-        target.expected_return.unwrap_or_default(),
+        target.results.volatility.unwrap_or_default(),
+        target.results.expected_return.unwrap_or_default(),
     );
     for (name, (volatility, expected)) in [
         ("Now", (now.volatility, now.expected_return)),
@@ -213,12 +213,12 @@ fn main() -> Result<()> {
         .group("Real assets", &["Gold", "Real Estate"], 0.0, 0.15)
         .build()?;
     for asset in assets.risky_assets() {
-        let weight = result.weights.as_ref().map_or(0.0, |w| w[asset]);
+        let weight = result.results.weights.as_ref().map_or(0.0, |w| w[asset]);
         println!("{asset:12} {:3.0}%", weight * 100.0);
     }
     println!(
         "Sharpe ratio {:.2}",
-        result.sharpe_ratio.unwrap_or_default()
+        result.results.sharpe_ratio.unwrap_or_default()
     );
     Ok(())
 }

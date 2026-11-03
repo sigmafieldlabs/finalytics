@@ -270,8 +270,12 @@ class Assets:
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> _types.OptimisationResult:
-        """The weights of the risky assets that best meet `method`, fully invested:
+        name: str | None = None,
+    ) -> _types.Optimisation:
+        """The optimisation of the risky assets by `method`, fully invested: the weights in
+        ``result.results.weights``, and the optimisation report in ``result.report``, which
+        ``print(result)`` prints and ``result.show()`` shows. `name` titles the report. The
+        methods:
 
         - ``"maximum_sharpe"`` (the default), ``"minimum_variance"``,
           ``"maximum_diversification"`` and ``"hierarchical_risk_parity"`` (with `linkage`);
@@ -307,12 +311,15 @@ class Assets:
             groups=groups,
             expected_returns=expected_returns,
         )
-        result = loads(_types.OptimisationResult, call(self._native.optimise, dumps(options)))
-        if result.weights is not None:
+        result = loads(_types.Optimisation, call(self._native.optimise, dumps(options)))
+        results = result.results
+        if results.weights is not None:
             # In the order of the assets, rather than of their names.
             order = {label: i for i, label in enumerate(self.labels)}
-            weights = dict(sorted(result.weights.items(), key=lambda item: order[item[0]]))
-            result = dataclasses.replace(result, weights=weights)
+            weights = dict(sorted(results.weights.items(), key=lambda item: order[item[0]]))
+            result = dataclasses.replace(result, results=dataclasses.replace(results, weights=weights))
+        if name is not None:
+            result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
         return result
 
     def frontier(
@@ -358,12 +365,12 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> _types.OptimisationReport:
-        """The optimisation report: each of `methods` backtested on these assets with the same
-        limits, rebalancing, validation and trading costs, side by side, and scored on the
-        periods it was tested on. `name` titles the report. ``report.show()`` shows it, inline
-        in a notebook or in a browser, and ``report.results`` holds every return and trade
-        behind it.
+    ) -> _types.Comparison:
+        """The comparison of `methods`, each backtested on these assets with the same limits,
+        rebalancing, validation and trading costs and scored on the periods it was tested on:
+        the comparison report in ``result.report``, and every return and trade in
+        ``result.results``. ``print(result)`` prints the report and ``result.show()`` shows it,
+        inline in a notebook or in a browser. `name` titles the report.
 
         - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
           ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
@@ -396,8 +403,10 @@ class Assets:
             _types.OptimisedStrategy(options=self._options(method, **limits)) for method in methods
         ]
         options = _backtest_options(strategies, validation, rebalance, trading_cost_bps, benchmark)
-        report = loads(_types.OptimisationReport, call(self._native.optimisation_report, dumps(options)))
-        return report if name is None else dataclasses.replace(report, name=name)
+        result = loads(_types.Comparison, call(self._native.compare, dumps(options)))
+        if name is not None:
+            result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
+        return result
 
     def backtest(
         self,
@@ -420,13 +429,13 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> _types.BacktestReport:
-        """The backtest report on one strategy: a `method`, fitted as `validation` says, or
-        fixed `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on
-        the risk-free asset is held as cash), against the `benchmark` if one is given. `name`
+    ) -> _types.Backtest:
+        """The backtest of one strategy: a `method`, fitted as `validation` says, or fixed
+        `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the
+        risk-free asset is held as cash), against the `benchmark` if one is given: the backtest
+        report in ``result.report``, and every return and trade in ``result.results``. `name`
         names the strategy and titles the report. The other keywords are as for
-        :meth:`compare`; fixed weights take no limits or parameters. ``report.results`` holds
-        every return and trade behind the report."""
+        :meth:`compare`; fixed weights take no limits or parameters."""
         if (method is None) == (weights is None):
             raise ValueError("give a method or weights, not both")
         limits = dict(
@@ -452,7 +461,7 @@ class Assets:
             assert method is not None
             strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
         options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark)
-        return loads(_types.BacktestReport, call(self._native.backtest_report, dumps(options)))
+        return loads(_types.Backtest, call(self._native.backtest, dumps(options)))
 
     def __repr__(self) -> str:
         return f"Assets({len(self.labels)} assets, {len(self.dates)} periods, {self.periods_per_year:g} a year)"

@@ -1,7 +1,7 @@
-//! Reports on backtests: the optimisation report, which compares several methods tested the
-//! same way, and the backtest report, on one allocation against its benchmark.
+//! Reports on backtests: the comparison report, which compares several methods tested the same
+//! way, and the backtest report, on one allocation against its benchmark.
 //!
-//! Both are computed from a [`Backtest`] and the returns of the assets it held. Every strategy
+//! Both are computed from a [`BacktestResults`] and the returns of the assets it held. Every strategy
 //! is scored on the periods it was tested on: out of sample when it was validated on a holdout
 //! or walk-forward, and in sample otherwise. Ratios are taken against the risk-free return over
 //! the same periods.
@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use finalytics_backtest::{Backtest, Failure, Run, Settings, StrategyResult, Validation};
+use finalytics_backtest::{BacktestResults, Failure, Run, Settings, StrategyResult, Validation};
 use finalytics_core::{Date, Error, Result, ValidationReport};
 use finalytics_risk::{
     CovarianceMethod, RelativeStatistics, ReturnsTable, Statistics, StatisticsOptions, TailMethod,
@@ -29,7 +29,7 @@ const ROLLING_YEARS: f64 = 3.0;
 /// The most assets the weights held are shown for; the rest are shown together.
 const HELD: usize = 7;
 
-/// How a backtest was set up, beside what [`Backtest`] records: what the reports need to
+/// How a backtest was set up, beside what [`BacktestResults`] records: what the reports need to
 /// describe it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -195,20 +195,17 @@ impl StrategyReport {
     }
 }
 
-/// Methods tested the same way, side by side: the optimisation report.
+/// Methods tested the same way, side by side: the comparison report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
-pub struct OptimisationReport {
+pub struct ComparisonReport {
     /// What was tested and how.
     pub context: BacktestContext,
     /// Each method, in the order given.
     pub strategies: Vec<StrategyReport>,
     /// The benchmark, if one was given, tested alike.
     pub benchmark: Option<StrategyReport>,
-    /// The backtest behind the report: every return and trade of each method, in and out of
-    /// sample.
-    pub results: Backtest,
     /// The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a
     /// page.
     #[serde(default)]
@@ -226,8 +223,6 @@ pub struct BacktestReport {
     pub strategy: StrategyReport,
     /// The benchmark, if one was given, held alike.
     pub benchmark: Option<StrategyReport>,
-    /// The backtest behind the report: every return and trade, in and out of sample.
-    pub results: Backtest,
     /// For a holdout, both periods together, in sample then out of sample.
     pub history: Option<History>,
     /// The weights held in each period of the test, by asset: the largest few, then the rest
@@ -252,13 +247,13 @@ pub struct History {
     pub benchmark: Option<RunReport>,
 }
 
-/// The optimisation report on `backtest`, whose strategies held the assets of `returns` (the
+/// The comparison report on `backtest`, whose strategies held the assets of `returns` (the
 /// risky assets, on the backtest's dates).
-pub fn optimisation_report(
-    backtest: &Backtest,
+pub fn comparison_report(
+    backtest: &BacktestResults,
     returns: &ReturnsTable,
     setup: &BacktestSetup,
-) -> Result<OptimisationReport> {
+) -> Result<ComparisonReport> {
     let inputs = Inputs::new(backtest, returns, setup)?;
     let benchmark = backtest
         .benchmark
@@ -270,11 +265,10 @@ pub fn optimisation_report(
         .iter()
         .map(|s| inputs.strategy(s, backtest.benchmark.as_ref()))
         .collect::<Result<_>>()?;
-    Ok(OptimisationReport {
+    Ok(ComparisonReport {
         context: inputs.context,
         strategies,
         benchmark,
-        results: backtest.clone(),
         name: None,
     })
 }
@@ -282,7 +276,7 @@ pub fn optimisation_report(
 /// The backtest report on the first strategy of `backtest`, whose strategies held the assets of
 /// `returns` (the risky assets, on the backtest's dates).
 pub fn backtest_report(
-    backtest: &Backtest,
+    backtest: &BacktestResults,
     returns: &ReturnsTable,
     setup: &BacktestSetup,
 ) -> Result<BacktestReport> {
@@ -317,7 +311,6 @@ pub fn backtest_report(
         context: inputs.context,
         strategy,
         benchmark,
-        results: backtest.clone(),
         history,
         held,
         name: None,
@@ -341,14 +334,14 @@ fn chain(first: &Run, second: &Run) -> Run {
 
 /// The backtest and the assets' returns, checked against each other, with the context.
 struct Inputs<'a> {
-    backtest: &'a Backtest,
+    backtest: &'a BacktestResults,
     returns: &'a ReturnsTable,
     context: BacktestContext,
 }
 
 impl<'a> Inputs<'a> {
     fn new(
-        backtest: &'a Backtest,
+        backtest: &'a BacktestResults,
         returns: &'a ReturnsTable,
         setup: &BacktestSetup,
     ) -> Result<Inputs<'a>> {
@@ -722,7 +715,7 @@ fn months(dates: &[Date], returns: &[f64]) -> Grid {
 }
 
 /// A SHA-256 digest of the assets' returns, the cash returns, the dates and the settings.
-fn digest(backtest: &Backtest, returns: &ReturnsTable) -> String {
+fn digest(backtest: &BacktestResults, returns: &ReturnsTable) -> String {
     let mut hash = Sha256::new();
     for date in &backtest.dates {
         hash.update(date.to_string().as_bytes());

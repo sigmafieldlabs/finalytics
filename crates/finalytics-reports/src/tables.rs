@@ -9,8 +9,8 @@ use crate::backtests::{RunReport, StrategyReport};
 use crate::context::{ReportKind, invalid, label, to_f64};
 use crate::shapes::{Grid, Unit};
 use crate::{
-    AttributionReport, BacktestReport, HoldingsReport, OptimisationReport, OverviewReport,
-    PerformanceReport, RiskReport, ScenariosReport,
+    AttributionReport, BacktestReport, ComparisonReport, HoldingsReport, OptimisationReport,
+    OverviewReport, PerformanceReport, RiskReport, ScenariosReport,
 };
 
 /// What a column holds, so that an export can format it.
@@ -90,10 +90,11 @@ pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
     let value: serde_json::Value =
         serde_json::from_str(report).map_err(|e| invalid("report", format!("is not JSON: {e}")))?;
     match backtest_kind(&value) {
-        Some(Backtests::Optimisation) => {
+        Some(Assets::Comparison) => return Ok(read_report::<ComparisonReport>(value)?.tables()),
+        Some(Assets::Backtest) => return Ok(read_report::<BacktestReport>(value)?.tables()),
+        Some(Assets::Optimisation) => {
             return Ok(read_report::<OptimisationReport>(value)?.tables());
         }
-        Some(Backtests::Backtest) => return Ok(read_report::<BacktestReport>(value)?.tables()),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -124,10 +125,11 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
         return Ok(read::<crate::PortfolioReport>(value)?.to_text(name));
     }
     match backtest_kind(&value) {
-        Some(Backtests::Optimisation) => {
+        Some(Assets::Comparison) => return Ok(read::<ComparisonReport>(value)?.to_text(name)),
+        Some(Assets::Backtest) => return Ok(read::<BacktestReport>(value)?.to_text(name)),
+        Some(Assets::Optimisation) => {
             return Ok(read::<OptimisationReport>(value)?.to_text(name));
         }
-        Some(Backtests::Backtest) => return Ok(read::<BacktestReport>(value)?.to_text(name)),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -146,7 +148,7 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
     Ok(page.finish())
 }
 
-/// The six reports, the optimisation report or the backtest report, given as JSON, as one HTML
+/// The six reports, or the optimisation, comparison or backtest report, given as JSON, as one HTML
 /// page titled with `name` if given. The Python and JavaScript packages use it; from Rust, call
 /// the report's `to_html`.
 #[doc(hidden)]
@@ -154,10 +156,13 @@ pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
     let value: serde_json::Value =
         serde_json::from_str(report).map_err(|e| invalid("report", format!("is not JSON: {e}")))?;
     match backtest_kind(&value) {
-        Some(Backtests::Optimisation) => {
+        Some(Assets::Comparison) => {
+            return Ok(read_report::<ComparisonReport>(value)?.to_html(name));
+        }
+        Some(Assets::Backtest) => return Ok(read_report::<BacktestReport>(value)?.to_html(name)),
+        Some(Assets::Optimisation) => {
             return Ok(read_report::<OptimisationReport>(value)?.to_html(name));
         }
-        Some(Backtests::Backtest) => return Ok(read_report::<BacktestReport>(value)?.to_html(name)),
         None => {}
     }
     let report: crate::PortfolioReport = serde_json::from_value(value)
@@ -165,18 +170,21 @@ pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
     Ok(report.to_html(name))
 }
 
-/// The reports on backtests, told apart by their fields.
-enum Backtests {
+/// The reports on assets, told apart by their fields.
+enum Assets {
     Optimisation,
+    Comparison,
     Backtest,
 }
 
-fn backtest_kind(value: &serde_json::Value) -> Option<Backtests> {
+fn backtest_kind(value: &serde_json::Value) -> Option<Assets> {
     value.get("context")?;
-    if value.get("strategies").is_some() {
-        Some(Backtests::Optimisation)
+    if value.get("allocation").is_some() {
+        Some(Assets::Optimisation)
+    } else if value.get("strategies").is_some() {
+        Some(Assets::Comparison)
     } else if value.get("strategy").is_some() {
-        Some(Backtests::Backtest)
+        Some(Assets::Backtest)
     } else {
         None
     }
@@ -314,6 +322,40 @@ fn years_table(strategies: &[&StrategyReport]) -> ReportTable {
 }
 
 impl OptimisationReport {
+    /// The report's tables: the weights, with each asset's expected return, volatility and
+    /// share of risk, and the correlation.
+    pub fn tables(&self) -> Vec<ReportTable> {
+        let weights = table(
+            "weights",
+            "Weights",
+            vec![
+                col("asset", "Asset", ColumnKind::Text),
+                col("weight", "Weight", ColumnKind::Fraction),
+                col("expected_return", "Expected return", ColumnKind::Fraction),
+                col("volatility", "Volatility", ColumnKind::Fraction),
+                col("risk_share", "Share of risk", ColumnKind::Fraction),
+            ],
+            self.allocation
+                .iter()
+                .map(|a| {
+                    vec![
+                        t(a.asset.as_str()),
+                        n(a.weight),
+                        n(a.expected_return),
+                        n(a.volatility),
+                        n(a.risk_share),
+                    ]
+                })
+                .collect(),
+        );
+        vec![
+            weights,
+            grid_table("correlation", "Asset", &self.correlation),
+        ]
+    }
+}
+
+impl ComparisonReport {
     /// The report's tables: statistics of every run, calendar-year returns and the weights at
     /// each refit.
     pub fn tables(&self) -> Vec<ReportTable> {

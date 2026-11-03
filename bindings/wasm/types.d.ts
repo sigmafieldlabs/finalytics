@@ -145,6 +145,23 @@ export type Allocation =
     quantity: Decimal;
   };
 
+/** One asset in the weights. */
+export interface AllocationRow {
+  /** The asset. */
+  asset: string;
+  /** Its weight. */
+  weight: number;
+  /** Its annual expected return. */
+  expected_return: number;
+  /** Its annual volatility. */
+  volatility: number;
+  /**
+   * Its share of the portfolio's variance: its weight times its covariance with the
+   * portfolio, over the portfolio's variance.
+   */
+  risk_share: number;
+}
+
 /** A figure as a fraction and as an amount of money, such as a value at risk. */
 export interface Amount {
   /** As a fraction of the portfolio's value. */
@@ -275,24 +292,14 @@ export interface AttributionReport {
 }
 
 /**
- * The result of a backtest: every strategy, and the benchmark if one was given, on the same
- * assets and dates.
+ * A backtest: the backtest report on one allocation against its benchmark, and the raw
+ * results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
  */
 export interface Backtest {
-  /** The assets the strategies hold. */
-  assets: string[];
-  /** The date each period of the data ends on. */
-  dates: Date[];
-  /** The return of cash in each period: the risk-free return. */
-  cash: number[];
-  /** The number of periods in a year. */
-  periods_per_year: number;
-  /** How the backtest was run. */
-  settings: Settings;
-  /** Each strategy, in the order given. */
-  strategies: StrategyResult[];
-  /** The benchmark, if one was given. */
-  benchmark?: StrategyResult | null;
+  /** The backtest report. */
+  report: BacktestReport;
+  /** The raw results: every return and trade, in and out of sample. */
+  results: BacktestResults;
 }
 
 /**
@@ -357,8 +364,6 @@ export interface BacktestReport {
   strategy: StrategyReport;
   /** The benchmark, if one was given, held alike. */
   benchmark?: StrategyReport | null;
-  /** The backtest behind the report: every return and trade, in and out of sample. */
-  results: Backtest;
   /** For a holdout, both periods together, in sample then out of sample. */
   history?: History | null;
   /**
@@ -371,6 +376,27 @@ export interface BacktestReport {
    * or laid out as a page.
    */
   name?: string | null;
+}
+
+/**
+ * The result of a backtest: every strategy, and the benchmark if one was given, on the same
+ * assets and dates.
+ */
+export interface BacktestResults {
+  /** The assets the strategies hold. */
+  assets: string[];
+  /** The date each period of the data ends on. */
+  dates: Date[];
+  /** The return of cash in each period: the risk-free return. */
+  cash: number[];
+  /** The number of periods in a year. */
+  periods_per_year: number;
+  /** How the backtest was run. */
+  settings: Settings;
+  /** Each strategy, in the order given. */
+  strategies: StrategyResult[];
+  /** The benchmark, if one was given. */
+  benchmark?: StrategyResult | null;
 }
 
 /** What the strategies are compared with. */
@@ -588,6 +614,33 @@ export interface Company {
   sector: string;
   /** The GICS sub-industry, such as `"Technology Hardware, Storage & Peripherals"`. */
   industry: string;
+}
+
+/**
+ * A comparison: the comparison report on several methods backtested side by side, and the
+ * raw results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a
+ * page.
+ */
+export interface Comparison {
+  /** The comparison report: each method scored on the periods it was tested on. */
+  report: ComparisonReport;
+  /** The raw results: every return and trade of each method, in and out of sample. */
+  results: BacktestResults;
+}
+
+/** Methods tested the same way, side by side: the comparison report. */
+export interface ComparisonReport {
+  /** What was tested and how. */
+  context: BacktestContext;
+  /** Each method, in the order given. */
+  strategies: StrategyReport[];
+  /** The benchmark, if one was given, tested alike. */
+  benchmark?: StrategyReport | null;
+  /**
+   * The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a
+   * page.
+   */
+  name?: string | null;
 }
 
 /** How concentrated the portfolio's instruments are. */
@@ -1713,22 +1766,105 @@ export type Objective =
     linkage?: Linkage;
   };
 
-/** Methods tested the same way, side by side: the optimisation report. */
-export interface OptimisationReport {
-  /** What was tested and how. */
-  context: BacktestContext;
-  /** Each method, in the order given. */
-  strategies: StrategyReport[];
-  /** The benchmark, if one was given, tested alike. */
-  benchmark?: StrategyReport | null;
+/**
+ * An optimisation: the optimisation report on the weights chosen, and the raw results.
+ * Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+ */
+export interface Optimisation {
   /**
-   * The backtest behind the report: every return and trade of each method, in and out of
-   * sample.
+   * The optimisation report: the weights, what they are expected to deliver, where their
+   * risk comes from, the efficient frontier and the history they were fitted to.
    */
-  results: Backtest;
+  report: OptimisationReport;
   /**
-   * The report's title, such as "S&P 500 stocks": shown when it is printed or laid out as a
-   * page.
+   * The raw results: the weights by asset, their expected return, volatility and Sharpe
+   * ratio, and the solver's solution.
+   */
+  results: OptimisationResult;
+}
+
+/**
+ * What an optimisation report describes: the method, the data and estimates, the limits and
+ * how the solver ended.
+ */
+export interface OptimisationContext {
+  /** The engine's version. */
+  version: string;
+  /**
+   * A SHA-256 digest of the estimates and limits, in hexadecimal: the same inputs give the
+   * same report.
+   */
+  digest: string;
+  /** The method's name, such as "Maximum Sharpe". */
+  method: string;
+  /** What the method does, in a sentence. */
+  description: string;
+  /** How the optimisation ended, such as `optimal`. */
+  status: string;
+  /** How it was solved, such as `interior_point`. */
+  solver: string;
+  /** The solver's iterations. */
+  iterations: number;
+  /** The assets optimised over, other than the risk-free asset. */
+  assets: string[];
+  /** The risk-free asset, if one of the assets is. */
+  risk_free_asset?: string | null;
+  /** The annual risk-free rate of the Sharpe ratio. */
+  risk_free_rate: number;
+  /** The number of return periods in a year. */
+  periods_per_year: number;
+  /** The covariance estimator. */
+  covariance: CovarianceMethod;
+  /** Whether the expected returns are the historical means (`false` when some were given). */
+  historical_means: boolean;
+  /** The limits on the weights, in words. */
+  limits: string[];
+  /** The date the first return period ends on. */
+  start: Date;
+  /** The date the last return period ends on. */
+  end: Date;
+}
+
+/** How the weights, and equal weight, would have done on the history they were fitted to. */
+export interface OptimisationHistory {
+  /** The weights, held from the start and rebalanced quarterly. */
+  weights: RunReport;
+  /** Equal weight, held the same way. */
+  equal_weight: RunReport;
+}
+
+/**
+ * The weights an optimisation chose, with what they are expected to deliver, where their risk
+ * comes from, where they sit on the efficient frontier, and how they would have done on the
+ * history they were fitted to.
+ */
+export interface OptimisationReport {
+  /** What was optimised and how. */
+  context: OptimisationContext;
+  /** What the weights are expected to deliver; absent when the optimisation found no weights. */
+  summary?: OptimisationSummary | null;
+  /**
+   * Each asset's weight, expected return, volatility and share of the risk, the largest
+   * weight first.
+   */
+  allocation: AllocationRow[];
+  /** The correlation of the assets' returns, from the covariance the optimisation used. */
+  correlation: Grid;
+  /**
+   * The efficient frontier under the same limits, from the least volatile portfolio to the
+   * one with the largest expected return.
+   */
+  frontier: RiskReturn[];
+  /** The equal-weight portfolio of the same assets, for comparison. */
+  equal_weight?: RiskReturn | null;
+  /**
+   * How the weights, and equal weight, would have done on the history they were fitted to:
+   * held from the start and rebalanced quarterly, without trading costs.
+   */
+  history?: OptimisationHistory | null;
+  /**
+   * The report's title, such as "Six asset classes": shown when it is printed or laid out as
+   * a page.
    */
   name?: string | null;
 }
@@ -1752,6 +1888,30 @@ export interface OptimisationResult {
   risk_free_rate: number;
   /** The solver's solution, with the objective, its value and the work done. */
   solution: Solution;
+}
+
+/** What the weights are expected to deliver. */
+export interface OptimisationSummary {
+  /** The annual expected return. */
+  expected_return: number;
+  /** The annual volatility. */
+  volatility: number;
+  /** The Sharpe ratio, against the risk-free rate. */
+  sharpe_ratio?: number | null;
+  /**
+   * The weighted average of the assets' volatilities over the portfolio's: how much
+   * diversification reduces the risk. One for a single asset.
+   */
+  diversification_ratio?: number | null;
+  /**
+   * The number of equal weights with the same concentration: one over the sum of the squared
+   * weights.
+   */
+  effective_assets: number;
+  /** The asset with the largest weight. */
+  largest_asset: string;
+  /** Its weight. */
+  largest_weight: number;
 }
 
 /**
@@ -2526,6 +2686,14 @@ export interface RiskReport {
    * error.
    */
   rolling: Series[];
+}
+
+/** A portfolio's volatility and expected return, a year. */
+export interface RiskReturn {
+  /** The annual volatility. */
+  volatility: number;
+  /** The annual expected return. */
+  expected_return: number;
 }
 
 /** A strategy held over a run of periods, rebalanced on the schedule, net of trading costs. */

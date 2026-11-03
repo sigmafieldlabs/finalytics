@@ -2,12 +2,12 @@
 //! rebalanced on a schedule, net of trading costs, and validated in sample, on a holdout or
 //! walk-forward.
 //!
-//! [`Assets::compare`] backtests several methods side by side and builds an
-//! [`OptimisationReport`]; [`Assets::backtest`] backtests one method or one set of weights and
-//! builds a [`BacktestReport`]. Both are builders. Each report carries the backtest behind it,
-//! every return and trade, as `results`. [`Assets::optimisation_report`] and
-//! [`Assets::backtest_report`] run the same backtests from [`BacktestOptions`], as JSON gives
-//! them.
+//! [`Assets::compare`] backtests several methods side by side and gives a [`Comparison`];
+//! [`Assets::backtest`] backtests one method or one set of weights and gives a [`Backtest`].
+//! Both are builders, and both results have the same shape: the report in `report`, every
+//! return and trade in `results`; printing one prints its report, and `show()` shows it as a
+//! page. [`Assets::compare_with`] and [`Assets::backtest_with`] run the same backtests from
+//! [`BacktestOptions`], as JSON gives them.
 //!
 //! ```
 //! use finalytics::backtest::{Rebalance, Years};
@@ -17,18 +17,18 @@
 //!     .prices(datasets::asset_class_prices())
 //!     .risk_free_asset("T-Bills")
 //!     .build()?;
-//! let report = assets
+//! let result = assets
 //!     .compare([Method::EqualWeight, Method::MinimumVariance])
 //!     .max_weight(0.4)
 //!     .rebalance(Rebalance::Quarterly)
 //!     .walk_forward(Years(5))
 //!     .trading_cost_bps(10.0)
 //!     .build()?;
-//! let minimum_variance = &report.strategies[1];
+//! let minimum_variance = &result.report.strategies[1];
 //! assert_eq!(minimum_variance.name, "Minimum variance");
 //! assert_eq!(minimum_variance.tested.start, assets.dates()[60]);
 //! assert!(minimum_variance.tested.statistics.volatility < 0.1);
-//! let returns = &report.results.strategies[1].out_of_sample.as_ref().unwrap().returns;
+//! let returns = &result.results.strategies[1].out_of_sample.as_ref().unwrap().returns;
 //! assert_eq!(returns.len(), assets.dates().len() - 60);
 //! # Ok::<(), finalytics::Error>(())
 //! ```
@@ -43,14 +43,51 @@ use finalytics_reports::BacktestSetup;
 use finalytics_risk::PriceTable;
 
 pub use finalytics_backtest::{
-    Backtest, Failure, Rebalance, Run, Settings, StrategyResult, Trade, Validation,
+    BacktestResults, Failure, Rebalance, Run, Settings, StrategyResult, Trade, Validation,
 };
 pub use finalytics_reports::{
-    BacktestContext, BacktestReport, CalendarReturn, History as RunHistory, OptimisationReport,
+    BacktestContext, BacktestReport, CalendarReturn, ComparisonReport, History as RunHistory,
     RunReport, StrategyReport, WeightsAt,
 };
 
 use crate::assets::{AssetGroup, Assets, Method, OptimiseOptions};
+
+/// A comparison: the comparison report on several methods backtested side by side, and the
+/// raw results. Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a
+/// page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct Comparison {
+    /// The comparison report: each method scored on the periods it was tested on.
+    pub report: ComparisonReport,
+    /// The raw results: every return and trade of each method, in and out of sample.
+    pub results: BacktestResults,
+}
+
+/// A backtest: the backtest report on one allocation against its benchmark, and the raw
+/// results. Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct Backtest {
+    /// The backtest report.
+    pub report: BacktestReport,
+    /// The raw results: every return and trade, in and out of sample.
+    pub results: BacktestResults,
+}
+
+impl std::fmt::Display for Comparison {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.report.fmt(f)
+    }
+}
+
+impl std::fmt::Display for Backtest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.report.fmt(f)
+    }
+}
 use finalytics_opt::Bound;
 
 /// A strategy to backtest.
@@ -166,7 +203,7 @@ impl Assets {
     /// Optimisations use the assets' settings on each window of history: the periods per year,
     /// the covariance estimator, and the risk-free asset's mean return over the window (or the
     /// risk-free rate). Cash, held before a first fit succeeds, earns the risk-free return.
-    fn simulate(&self, options: &BacktestOptions) -> Result<Backtest> {
+    fn simulate(&self, options: &BacktestOptions) -> Result<BacktestResults> {
         let returns = self.risky_returns()?;
         let labels = returns.labels().to_vec();
         let cash = self.cash_returns();
@@ -183,7 +220,7 @@ impl Assets {
                     strategies.push(engine::Strategy {
                         name,
                         plan: Plan::Fit(Box::new(move |rows| {
-                            let result = self.window(rows)?.optimise_with(&method)?;
+                            let result = self.window(rows)?.solve(&method)?;
                             Ok(match result.weights {
                                 Some(weights) => Fit::Weights(
                                     self.risky_assets()
@@ -231,25 +268,35 @@ impl Assets {
         Ok(backtest)
     }
 
-    /// The optimisation report on the backtest of `options`: every strategy, scored on the
-    /// periods it was tested on, side by side. Each strategy is held from its start, rebalanced
-    /// on the schedule, refitted as the validation says, and net of trading costs.
-    /// Optimisations use the assets' settings on each window of history: the periods per year,
-    /// the covariance estimator, and the risk-free asset's mean return over the window (or the
-    /// risk-free rate). Cash, held before a first fit succeeds, earns the risk-free return.
-    pub fn optimisation_report(&self, options: &BacktestOptions) -> Result<OptimisationReport> {
-        let backtest = self.simulate(options)?;
-        finalytics_reports::optimisation_report(
-            &backtest,
+    /// The comparison of the strategies of `options`: each backtested, scored on the periods it
+    /// was tested on and set side by side in the report, with every return and trade in the
+    /// results. Each strategy is held from its start, rebalanced on the schedule, refitted as
+    /// the validation says, and net of trading costs. Optimisations use the assets' settings on
+    /// each window of history: the periods per year, the covariance estimator, and the
+    /// risk-free asset's mean return over the window (or the risk-free rate). Cash, held before
+    /// a first fit succeeds, earns the risk-free return. [`Assets::compare`] builds the same
+    /// options step by step.
+    pub fn compare_with(&self, options: &BacktestOptions) -> Result<Comparison> {
+        let results = self.simulate(options)?;
+        let report = finalytics_reports::comparison_report(
+            &results,
             &self.risky_returns()?,
             &self.setup(options),
-        )
+        )?;
+        Ok(Comparison { report, results })
     }
 
-    /// The backtest report on the first strategy of `options`, against the benchmark.
-    pub fn backtest_report(&self, options: &BacktestOptions) -> Result<BacktestReport> {
-        let backtest = self.simulate(options)?;
-        finalytics_reports::backtest_report(&backtest, &self.risky_returns()?, &self.setup(options))
+    /// The backtest of the first strategy of `options`, against the benchmark: the backtest
+    /// report, with every return and trade in the results. [`Assets::backtest`] builds the same
+    /// options step by step.
+    pub fn backtest_with(&self, options: &BacktestOptions) -> Result<Backtest> {
+        let results = self.simulate(options)?;
+        let report = finalytics_reports::backtest_report(
+            &results,
+            &self.risky_returns()?,
+            &self.setup(options),
+        )?;
+        Ok(Backtest { report, results })
     }
 
     /// What the reports on the backtest of `options` say about how it was set up.
@@ -342,7 +389,7 @@ impl Assets {
 }
 
 /// The limits of `options` in words.
-fn limits(options: &OptimiseOptions) -> Vec<String> {
+pub(crate) fn limits(options: &OptimiseOptions) -> Vec<String> {
     let pct = |x: f64| {
         let text = format!("{:.2}", x * 100.0);
         let text = text.trim_end_matches('0').trim_end_matches('.');
@@ -651,7 +698,7 @@ macro_rules! common_setters {
 }
 
 /// Several methods backtested side by side on the same assets; [`Compare::build`] runs them
-/// and builds the optimisation report.
+/// and builds the comparison report.
 #[derive(Debug, Clone)]
 #[must_use = "a comparison does nothing until `build` runs it"]
 pub struct Compare<'a> {
@@ -681,18 +728,18 @@ impl Compare<'_> {
         self
     }
 
-    /// The options of the comparison, as [`Assets::optimisation_report`] takes them.
+    /// The options of the comparison, as [`Assets::compare_with`] takes them.
     pub fn options(&self) -> Result<BacktestOptions> {
         let strategies = self.methods.iter().map(|m| Strategy::from(*m)).collect();
         self.common.options(strategies)
     }
 
-    /// Runs the comparison and builds the optimisation report, with every return and trade
-    /// behind it in `results`.
-    pub fn build(&self) -> Result<OptimisationReport> {
-        let mut report = self.assets.optimisation_report(&self.options()?)?;
-        report.name.clone_from(&self.title);
-        Ok(report)
+    /// Runs the comparison: the comparison report in `report`, and every return and trade in
+    /// `results`.
+    pub fn build(&self) -> Result<Comparison> {
+        let mut comparison = self.assets.compare_with(&self.options()?)?;
+        comparison.report.name.clone_from(&self.title);
+        Ok(comparison)
     }
 }
 
@@ -707,15 +754,15 @@ impl BacktestBuilder<'_> {
         self
     }
 
-    /// The options of the backtest, as [`Assets::backtest_report`] takes them.
+    /// The options of the backtest, as [`Assets::backtest_with`] takes them.
     pub fn options(&self) -> Result<BacktestOptions> {
         self.common.options(vec![self.strategy.clone()])
     }
 
-    /// Runs the backtest and builds the backtest report, titled with the strategy's name, with
-    /// every return and trade behind it in `results`.
-    pub fn build(&self) -> Result<BacktestReport> {
-        self.assets.backtest_report(&self.options()?)
+    /// Runs the backtest: the backtest report in `report`, titled with the strategy's name, and
+    /// every return and trade in `results`.
+    pub fn build(&self) -> Result<Backtest> {
+        self.assets.backtest_with(&self.options()?)
     }
 }
 

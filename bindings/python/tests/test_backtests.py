@@ -1,4 +1,4 @@
-"""Comparing methods and backtesting one allocation, and showing a report."""
+"""Optimising, comparing methods and backtesting one allocation: each result has a report and\nthe raw results, prints as text and shows as a page."""
 
 import dataclasses
 import datetime
@@ -16,8 +16,43 @@ def assets() -> fl.Assets:
     return fl.Assets(prices=fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
 
 
+def test_every_result_has_a_report_and_raw_results(assets):
+    results = [
+        (assets.optimise(method="maximum_sharpe", max_weight=0.40), fl.types.Optimisation,
+         fl.reports.OptimisationReport, fl.types.OptimisationResult, "OPTIMISATION"),
+        (assets.compare(methods=["equal_weight", "minimum_variance"]), fl.types.Comparison,
+         fl.reports.ComparisonReport, fl.types.BacktestResults, "COMPARISON"),
+        (assets.backtest(method="minimum_variance"), fl.types.Backtest,
+         fl.reports.BacktestReport, fl.types.BacktestResults, "BACKTEST"),
+    ]
+    for result, kind, report, raw, title in results:
+        assert isinstance(result, kind)
+        assert isinstance(result.report, report) and isinstance(result.results, raw)
+        text = str(result)
+        assert text == result.to_text() == str(result.report) and title in text
+        assert all(len(line) <= 80 for line in text.splitlines())
+        assert result.to_html() == result.report.to_html()
+        printed = str(result.results)
+        assert printed.startswith(type(result.results).__name__)
+        assert all(len(line) <= 80 for line in printed.splitlines())
+
+
+def test_the_optimisation_report_explains_the_weights(assets):
+    result = assets.optimise(method="maximum_sharpe", max_weight=0.40, name="Six asset classes")
+    report, raw = result.report, result.results
+    assert report.name == "Six asset classes" and "<title>Six asset classes</title>" in result.to_html()
+    assert report.summary.volatility == pytest.approx(raw.volatility)
+    assert [a.asset for a in report.allocation][0] == report.summary.largest_asset
+    assert sum(a.weight for a in report.allocation) == pytest.approx(1.0)
+    assert sum(a.risk_share for a in report.allocation) == pytest.approx(1.0)
+    assert report.context.method == "Maximum Sharpe" and report.context.limits == ["At most 40% in any asset"]
+    assert report.history.weights.statistics.observations == len(assets.dates)
+    assert [t.name for t in fl.reports.tables(report)] == ["weights", "correlation"]
+    assert "Maximum Sharpe" in str(raw) and "US Equity" in str(raw)
+
+
 def test_methods_compared_walk_forward(assets):
-    report = assets.compare(
+    result = assets.compare(
         methods=["equal_weight", "minimum_variance", "risk_parity"],
         max_weight=0.40,
         rebalance="quarterly",
@@ -25,7 +60,9 @@ def test_methods_compared_walk_forward(assets):
         trading_cost_bps=10,
         name="Six asset classes",
     )
-    assert isinstance(report, fl.reports.OptimisationReport) and report.name == "Six asset classes"
+    assert isinstance(result, fl.types.Comparison)
+    report = result.report
+    assert isinstance(report, fl.reports.ComparisonReport) and report.name == "Six asset classes"
     assert [s.name for s in report.strategies] == ["Equal weight", "Minimum variance", "Risk parity"]
     assert report.context.settings.validation == fl.WalkForward(years=5)
     assert report.context.window == 60 and report.context.test_start == assets.dates[60]
@@ -34,9 +71,10 @@ def test_methods_compared_walk_forward(assets):
     assert minimum.in_sample.start == minimum.tested.start
     assert all(w <= 0.4 + 1e-6 for w in minimum.weights[-1].weights.values())
     assert report.strategies[2].notes == ["Fully invested and long only; the limits on weights do not apply."]
-    assert str(report).startswith("━") and "OPTIMISATION" in str(report)
+    assert str(result).startswith("━") and "COMPARISON" in str(result)
     assert [t.name for t in fl.reports.tables(report)] == ["statistics", "calendar_years", "weights"]
-    assert len(report.results.strategies[1].out_of_sample.returns) == len(assets.dates) - 60
+    assert len(result.results.strategies[1].out_of_sample.returns) == len(assets.dates) - 60
+    assert "Out of sample" in str(result.results)
     # The same as the engine reads from JSON.
     same = assets.compare(
         methods=["equal_weight", "minimum_variance", "risk_parity"],
@@ -45,16 +83,18 @@ def test_methods_compared_walk_forward(assets):
         validation=fl.WalkForward(years=5),
         trading_cost_bps=10,
     )
-    assert dataclasses.replace(same, name="Six asset classes") == report
+    assert dataclasses.replace(same.report, name="Six asset classes") == report
+    assert same.results == result.results
 
 
 def test_one_method_or_fixed_weights(assets):
-    report = assets.backtest(
+    result = assets.backtest(
         method="maximum_sharpe",
         max_weight=0.40,
         benchmark={"US Equity": 0.60, "Bonds": 0.40},
         validation=fl.Holdout(start="2016-11-01"),
     )
+    report = result.report
     assert isinstance(report, fl.reports.BacktestReport)
     assert report.strategy.name == "Maximum Sharpe" and report.benchmark.name == "Benchmark"
     assert report.strategy.tested.start == datetime.date(2016, 11, 30)
@@ -66,18 +106,21 @@ def test_one_method_or_fixed_weights(assets):
         name="60/40",
         rebalance=fl.Drift(band=0.05),
     )
-    assert fixed.strategy.name == "60/40" and fixed.context.settings.rebalance == fl.Drift(band=0.05)
-    assert fixed.context.settings.validation == fl.InSample()
+    assert fixed.report.strategy.name == "60/40"
+    assert fixed.report.context.settings.rebalance == fl.Drift(band=0.05)
+    assert fixed.report.context.settings.validation == fl.InSample()
     assert "<title>60/40</title>" in fixed.to_html()
     # Every return and trade behind the report.
     raw = fixed.results
-    assert isinstance(raw, fl.types.Backtest) and len(raw.strategies[0].in_sample.returns) == len(assets.dates)
-    assert len(report.results.strategies[0].out_of_sample.returns) == len(report.strategy.tested.growth.dates)
+    assert isinstance(raw, fl.types.BacktestResults)
+    assert len(raw.strategies[0].in_sample.returns) == len(assets.dates)
+    tested = report.strategy.tested.growth.dates
+    assert len(result.results.strategies[0].out_of_sample.returns) == len(tested)
 
 
 def test_an_index_as_the_benchmark():
     sp500 = fl.Assets(prices=fl.datasets.sp500(), risk_free_asset="T-Bills")
-    backtest = sp500.backtest(method="equal_weight", rebalance="yearly", benchmark=fl.datasets.sp500_index())
+    backtest = sp500.backtest(method="equal_weight", rebalance="yearly", benchmark=fl.datasets.sp500_index()).report
     assert backtest.benchmark.name == "S&P 500"
     assert backtest.benchmark.tested.statistics.observations == len(sp500.dates)
     assert len(backtest.strategy.tested.growth.dates) < 300, "daily returns are charted by month"
@@ -134,4 +177,6 @@ def test_a_report_shows_inline_in_a_notebook(monkeypatch):
     assert len(shown) == 1 and shown[0].startswith("<iframe srcdoc=")
     assets = fl.Assets(prices=fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
     assets.compare(methods=["equal_weight", "minimum_variance"]).show()
-    assert len(shown) == 2 and "Optimisation report" in shown[1]
+    assert len(shown) == 2 and "Comparison report" in shown[1]
+    assets.optimise(method="minimum_variance").show()
+    assert len(shown) == 3 and "Optimisation report" in shown[2]

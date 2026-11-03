@@ -138,6 +138,31 @@ export interface ReportMethods {
   show(element?: Element): string | undefined;
 }
 
+/** Raw results that print as text: `${results}` or `results.toText()`. */
+export interface ResultsMethods {
+  /** The results as text: the weights, or each strategy's periods, growth, trades and refits. */
+  toText(): string;
+  toString(): string;
+}
+
+/**
+ * What `Assets.optimise`, `Assets.compare` and `Assets.backtest` return: the report and the raw
+ * results. `${result}` is the report as text, and `result.show()` shows it as a page.
+ */
+export interface Result<R, D> {
+  /** The report. */
+  report: R & ReportMethods;
+  /** The raw results. */
+  results: D & ResultsMethods;
+  /** The report as text for printing, 80 columns wide. */
+  toText(): string;
+  /** The report as one self-contained HTML page. */
+  toHtml(): string;
+  /** Shows the report, as `report.show` does. */
+  show(element?: Element): string | undefined;
+  toString(): string;
+}
+
 /** The limits on the weights and the methods' parameters, as for `Assets.optimise`. */
 export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method">;
 
@@ -256,6 +281,25 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
         .map_err(|_| invalid(name, "cannot be written as JSON"))?
         .into();
     finalytics::formats::from_json(&text, name).map_err(error)
+}
+
+/// The weights of `targets`: weights by holding as given, or those of an optimisation, whole
+/// or its raw results.
+fn target_weights(mut targets: serde_json::Value) -> serde_json::Value {
+    if let Some(results) = targets.get_mut("results").filter(|v| v.is_object()) {
+        targets = results.take();
+    }
+    if targets
+        .get("solution")
+        .is_some_and(serde_json::Value::is_object)
+    {
+        match targets.get_mut("weights").map(serde_json::Value::take) {
+            Some(weights) if weights.is_object() => weights,
+            _ => serde_json::Value::Object(serde_json::Map::new()),
+        }
+    } else {
+        targets
+    }
 }
 
 fn optional<T: DeserializeOwned + Default>(value: JsValue, name: &str) -> Result<T, JsValue> {
@@ -990,15 +1034,21 @@ impl Portfolio {
     }
 
     /// The trades that move the accounts (by default every account; `choices.accounts` names
-    /// others) together to `targets`, weights by holding, as shares of their combined value:
-    /// one proposal per account. `withRebalance` makes its trades.
+    /// others) together to `targets`, as shares of their combined value: weights by holding, or
+    /// an optimisation of the portfolio's assets, whose weights are its targets. One proposal
+    /// per account; `withRebalance` makes its trades.
     #[wasm_bindgen(unchecked_return_type = "CombinedRebalance")]
     pub fn rebalance(
         &self,
-        #[wasm_bindgen(unchecked_param_type = "Record<HoldingKey, number>")] targets: JsValue,
+        #[wasm_bindgen(
+            unchecked_param_type = "Record<HoldingKey, number> | Result<OptimisationReport, OptimisationResult> | OptimisationResult"
+        )]
+        targets: JsValue,
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let targets: BTreeMap<HoldingKey, f64> = from_js(targets, "targets")?;
+        let targets = target_weights(from_js(targets, "targets")?);
+        let targets: BTreeMap<HoldingKey, f64> =
+            finalytics::formats::from_json(&targets.to_string(), "targets").map_err(error)?;
         let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
         let accounts = match choices.remove("accounts") {
@@ -1277,10 +1327,11 @@ impl Assets {
         to_js(&means)
     }
 
-    /// The weights of the risky assets that best meet the method of `options` (the largest
-    /// Sharpe ratio by default), fully invested, within its limits. The weights are in the
-    /// order of the assets.
-    #[wasm_bindgen(unchecked_return_type = "OptimisationResult")]
+    /// The optimisation of the risky assets by the method of `options` (the largest Sharpe
+    /// ratio by default), fully invested, within its limits: the optimisation report in
+    /// `report`, and the weights, in the order of the assets, with the solver's solution in
+    /// `results`.
+    #[wasm_bindgen(unchecked_return_type = "Result<OptimisationReport, OptimisationResult>")]
     pub fn optimise(
         &self,
         #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
@@ -1294,7 +1345,7 @@ impl Assets {
         .map_err(error)?;
         let result = self.inner.optimise_with(&options).map_err(error)?;
         let value = to_js(&result)?;
-        if let Some(weights) = &result.weights {
+        if let Some(weights) = &result.results.weights {
             // In the order of the assets, rather than of their names.
             let ordered = js_sys::Object::new();
             for asset in self.inner.risky_assets() {
@@ -1302,15 +1353,16 @@ impl Assets {
                     js_sys::Reflect::set(&ordered, &asset.into(), &(*weight).into())?;
                 }
             }
-            js_sys::Reflect::set(&value, &"weights".into(), &ordered)?;
+            let results = js_sys::Reflect::get(&value, &"results".into())?;
+            js_sys::Reflect::set(&results, &"weights".into(), &ordered)?;
         }
         Ok(value)
     }
 
-    /// The optimisation report: each of `options.methods` backtested on these assets with the
-    /// same limits, rebalancing, validation and trading costs, side by side. Its `results` hold
-    /// every return and trade behind it.
-    #[wasm_bindgen(unchecked_return_type = "OptimisationReport & ReportMethods")]
+    /// The comparison of `options.methods`, each backtested on these assets with the same
+    /// limits, rebalancing, validation and trading costs: the comparison report in `report`,
+    /// and every return and trade in `results`.
+    #[wasm_bindgen(unchecked_return_type = "Result<ComparisonReport, BacktestResults>")]
     pub fn compare(
         &self,
         #[wasm_bindgen(unchecked_param_type = "CompareChoices")] options: JsValue,
@@ -1344,19 +1396,19 @@ impl Assets {
             "strategies".to_owned(),
             serde_json::Value::Array(strategies),
         );
-        let mut report = self
+        let mut comparison = self
             .inner
-            .optimisation_report(&backtest_options(settings)?)
+            .compare_with(&backtest_options(settings)?)
             .map_err(error)?;
-        report.name = name;
-        to_js(&report)
+        comparison.report.name = name;
+        to_js(&comparison)
     }
 
-    /// The backtest report on one strategy: `options.method`, fitted as the validation says,
-    /// or fixed `options.weights` by asset (a weight on the risk-free asset is held as cash),
-    /// against the benchmark if one is given. Its `results` hold every return and trade behind
-    /// it.
-    #[wasm_bindgen(unchecked_return_type = "BacktestReport & ReportMethods")]
+    /// The backtest of one strategy: `options.method`, fitted as the validation says, or fixed
+    /// `options.weights` by asset (a weight on the risk-free asset is held as cash), against the
+    /// benchmark if one is given: the backtest report in `report`, and every return and trade
+    /// in `results`.
+    #[wasm_bindgen(unchecked_return_type = "Result<BacktestReport, BacktestResults>")]
     pub fn backtest(
         &self,
         #[wasm_bindgen(unchecked_param_type = "BacktestChoices")] options: JsValue,
@@ -1399,7 +1451,7 @@ impl Assets {
         to_js(
             &self
                 .inner
-                .backtest_report(&backtest_options(settings)?)
+                .backtest_with(&backtest_options(settings)?)
                 .map_err(error)?,
         )
     }
@@ -2083,7 +2135,9 @@ pub fn report_text(
 /// inline styles and SVG charts, no scripts, in light and dark themes, ready to print.
 #[wasm_bindgen(js_name = reportHtml)]
 pub fn report_html(
-    #[wasm_bindgen(unchecked_param_type = "PortfolioReport | OptimisationReport | BacktestReport")]
+    #[wasm_bindgen(
+        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport"
+    )]
     report: JsValue,
     name: Option<String>,
 ) -> Result<String, JsValue> {
@@ -2092,6 +2146,19 @@ pub fn report_html(
         .as_string()
         .unwrap_or_default();
     finalytics::reports::report_html(&text, name.as_deref()).map_err(error)
+}
+
+/// The raw results of `Assets.optimise`, `Assets.compare` or `Assets.backtest` as text: the
+/// weights, or each strategy's periods, growth, trades and refits.
+#[wasm_bindgen(js_name = resultsText)]
+pub fn results_text(
+    #[wasm_bindgen(unchecked_param_type = "OptimisationResult | BacktestResults")] results: JsValue,
+) -> Result<String, JsValue> {
+    let text = js_sys::JSON::stringify(&results)
+        .map_err(|_| invalid("results", "could not be written as JSON"))?
+        .as_string()
+        .unwrap_or_default();
+    finalytics::results_text(&text).map_err(error)
 }
 
 /// `covariance` with every volatility scaled and every correlation moved toward one by

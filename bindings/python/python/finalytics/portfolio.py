@@ -509,7 +509,7 @@ class Portfolio:
 
     def rebalance(
         self,
-        targets: Mapping[_types.HoldingKey, float],
+        targets: Mapping[_types.HoldingKey, float] | _types.Optimisation | _types.OptimisationResult,
         *,
         accounts: Sequence[str] | None = None,
         date: DateLike | None = None,
@@ -521,7 +521,8 @@ class Portfolio:
     ) -> _types.CombinedRebalance:
         """The trades that move `accounts` (by default every account) together to `targets`:
         weights by holding (an instrument's identifier, or ``"USD cash"`` and the like), as
-        shares of their combined value on `date` (by default the last price date). The proposal
+        shares of their combined value on `date` (by default the last price date), or an
+        optimisation of the portfolio's assets, whose weights are its targets. The proposal
         has one rebalance per account; :meth:`with_rebalance` makes its trades.
 
         Instruments held but not listed are sold; base-currency cash takes the weight the
@@ -532,6 +533,10 @@ class Portfolio:
         with `tax` rates, sales take the lots that cost the least tax, and the tax is estimated.
         """
         options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
+        if isinstance(targets, _types.Optimisation):
+            targets = targets.results
+        if isinstance(targets, _types.OptimisationResult):
+            targets = targets.weights or {}
         weights = {k: float(w) for k, w in targets.items()}
         chosen = [a.id for a in self.data.accounts] if accounts is None else list(accounts)
         text = call(

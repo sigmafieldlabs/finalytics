@@ -57,14 +57,15 @@ def test_optimising_with_named_limits(prices):
         asset_bounds={"Gold": (0.0, 0.1)},
         groups={"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)},
     )
-    weights = result.weights
+    raw = result.results
+    weights = raw.weights
     assert list(weights) == ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]
     assert sum(weights.values()) == pytest.approx(1.0)
     assert weights["Gold"] <= 0.1 + 1e-6
     assert 0.3 - 1e-6 <= weights["US Equity"] + weights["Intl Equity"] <= 0.6 + 1e-6
-    assert result.sharpe_ratio == pytest.approx((result.expected_return - result.risk_free_rate) / result.volatility)
+    assert raw.sharpe_ratio == pytest.approx((raw.expected_return - raw.risk_free_rate) / raw.volatility)
     target = assets.optimise(method="target_volatility", target=0.08)
-    assert target.volatility <= 0.08 + 1e-6
+    assert target.results.volatility <= 0.08 + 1e-6
     frontier = assets.frontier(points=5, bounds=(0.0, 0.5))
     assert len(frontier) == 5
     assert all(b.volatility >= a.volatility - 1e-9 for a, b in zip(frontier, frontier[1:]))
@@ -95,11 +96,12 @@ def test_from_holdings_to_trades():
     portfolio = fl.datasets.portfolio()
     assets = portfolio.assets()
     assert assets.labels == ["BND", "EXSA", "GLD", "VNQ", "VTI"] and assets.periods_per_year == 252
-    targets = assets.optimise(method="minimum_variance", bounds=(0.05, 0.5)).weights
-    proposal = portfolio.rebalance(targets)
+    result = assets.optimise(method="minimum_variance", bounds=(0.05, 0.5))
+    proposal = portfolio.rebalance(result)
+    assert proposal == portfolio.rebalance(result.results) == portfolio.rebalance(result.results.weights)
     assert len(proposal.accounts) == 2
     after = portfolio.with_rebalance(proposal).weights()
-    for holding, target in targets.items():
+    for holding, target in result.results.weights.items():
         assert after[holding] == pytest.approx(target, abs=0.01)
 
 

@@ -45,8 +45,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
     let now = report.overview.current.as_ref().ok_or("no estimate")?;
     let after = (
-        target.volatility.unwrap_or_default(),
-        target.expected_return.unwrap_or_default(),
+        target.results.volatility.unwrap_or_default(),
+        target.results.expected_return.unwrap_or_default(),
     );
     for (name, (volatility, expected)) in [
         ("Now", (now.volatility, now.expected_return)),

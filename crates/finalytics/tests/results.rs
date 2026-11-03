@@ -1,5 +1,6 @@
-//! The optimisation and backtest reports: their figures agree with the backtest they describe,
-//! and they print and lay out as pages.
+//! The results of optimise, compare and backtest: each has the same shape, a report and the raw
+//! results; the reports' figures agree with the results they describe; and every result prints
+//! and lays out as a page.
 
 #![allow(clippy::unwrap_used)]
 
@@ -23,7 +24,125 @@ fn close(a: f64, b: f64, what: &str) {
 }
 
 #[test]
-fn the_optimisation_report_scores_each_method_on_its_test() {
+fn every_result_has_a_report_and_raw_results() {
+    let assets = assets();
+    let optimisation = assets
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
+        .build()
+        .unwrap();
+    let comparison = assets
+        .compare([Method::EqualWeight, Method::MinimumVariance])
+        .walk_forward(Years(5))
+        .build()
+        .unwrap();
+    let backtest = assets.backtest(Method::MinimumVariance).build().unwrap();
+    for (text, page, report_text) in [
+        (
+            optimisation.to_string(),
+            optimisation.report.to_html(None),
+            optimisation.report.to_string(),
+        ),
+        (
+            comparison.to_string(),
+            comparison.report.to_html(None),
+            comparison.report.to_string(),
+        ),
+        (
+            backtest.to_string(),
+            backtest.report.to_html(None),
+            backtest.report.to_string(),
+        ),
+    ] {
+        assert_eq!(text, report_text, "printing a result prints its report");
+        assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
+        assert!(page.starts_with("<!doctype html>") && !page.contains("<script"));
+    }
+    // The raw results print readably too.
+    let weights = optimisation.results.to_string();
+    assert!(
+        weights.starts_with("OptimisationResult · Maximum Sharpe · optimal"),
+        "{weights}"
+    );
+    let runs = comparison.results.to_string();
+    assert!(
+        runs.starts_with("BacktestResults · walk-forward on 5 years · 2 strategies"),
+        "{runs}"
+    );
+    assert!(runs.lines().all(|l| l.chars().count() <= 80), "{runs}");
+    assert!(backtest.results.to_string().contains("Minimum variance"));
+}
+
+#[test]
+fn the_optimisation_report_explains_the_weights() {
+    let assets = assets();
+    let result = assets
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
+        .build()
+        .unwrap();
+    let r = &result.report;
+    let weights = result.results.weights.as_ref().unwrap();
+    let s = r.summary.as_ref().unwrap();
+    // The summary matches the solver's figures.
+    close(
+        s.expected_return,
+        result.results.expected_return.unwrap(),
+        "expected return",
+    );
+    assert!((s.volatility - result.results.volatility.unwrap()).abs() < 1e-9);
+    assert!((s.sharpe_ratio.unwrap() - result.results.sharpe_ratio.unwrap()).abs() < 1e-9);
+    // Every asset, largest weight first; the shares of risk add up to one.
+    assert_eq!(r.allocation.len(), 5);
+    assert!(r.allocation.windows(2).all(|p| p[0].weight >= p[1].weight));
+    for a in &r.allocation {
+        close(a.weight, weights[&a.asset], &a.asset);
+    }
+    let shares: f64 = r.allocation.iter().map(|a| a.risk_share).sum();
+    close(shares, 1.0, "risk shares");
+    assert_eq!(s.largest_asset, r.allocation[0].asset);
+    // The frontier, equal weight and the history are there.
+    assert!(r.frontier.len() > 10);
+    assert!(
+        r.frontier
+            .iter()
+            .all(|p| p.volatility >= s.volatility - 1e-3
+                || p.expected_return <= s.expected_return + 1e-9)
+    );
+    assert!(r.equal_weight.is_some());
+    let h = r.history.as_ref().unwrap();
+    assert_eq!(h.weights.statistics.observations, assets.dates().len());
+    assert_eq!(r.context.method, "Maximum Sharpe");
+    assert_eq!(r.context.limits, ["At most 40% in any asset"]);
+    assert_eq!(r.correlation.rows.len(), 5);
+    let page = r.to_html(Some("Six asset classes"));
+    for anchor in ["p-summary", "p-risk", "p-frontier", "p-history", "p-method"] {
+        assert!(page.contains(&format!(r#"id="{anchor}""#)), "{anchor}");
+    }
+    assert!(page.contains("Optimisation report"));
+    // Through JSON, as the other languages call it.
+    let json = serde_json::to_string(r).unwrap();
+    assert_eq!(
+        finalytics::reports::report_html(&json, None).unwrap(),
+        r.to_html(None)
+    );
+    assert_eq!(
+        finalytics::reports::report_text(&json, None).unwrap(),
+        r.to_string()
+    );
+    assert_eq!(
+        finalytics::reports::report_tables(&json).unwrap(),
+        r.tables()
+    );
+    // Rebalancing takes the whole result.
+    let portfolio = datasets::portfolio();
+    let holdings = portfolio.assets().unwrap();
+    let target = holdings.optimise(Method::MinimumVariance).build().unwrap();
+    assert!(portfolio.rebalance(&target).build().is_ok());
+}
+
+#[test]
+fn the_comparison_report_scores_each_method_on_its_test() {
     let assets = assets();
     let compare = assets
         .compare([
@@ -37,8 +156,8 @@ fn the_optimisation_report_scores_each_method_on_its_test() {
         .trading_cost_bps(10.0)
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
         .name("Six asset classes");
-    let report = compare.build().unwrap();
-    let backtest = &report.results;
+    let result = compare.build().unwrap();
+    let (report, backtest) = (&result.report, &result.results);
     assert_eq!(report.name.as_deref(), Some("Six asset classes"));
     let c = &report.context;
     assert_eq!(c.window, Some(60));
@@ -121,8 +240,8 @@ fn the_backtest_report_shows_the_whole_history_of_a_holdout() {
         .max_weight(0.4)
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
         .holdout_from("2016-11-01");
-    let report = builder.build().unwrap();
-    let backtest = &report.results;
+    let result = builder.build().unwrap();
+    let (report, backtest) = (&result.report, &result.results);
     let raw = &backtest.strategies[0];
     let (ins, out) = (&raw.in_sample, raw.out_of_sample.as_ref().unwrap());
     let history = report.history.as_ref().unwrap();
@@ -169,21 +288,22 @@ fn reports_print_and_lay_out_as_pages() {
         .bounds(0.0, 0.5)
         .walk_forward(Years(5))
         .build()
-        .unwrap();
+        .unwrap()
+        .report;
     let text = report.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
-    assert!(text.contains("FINALYTICS  ·  OPTIMISATION"));
+    assert!(text.contains("FINALYTICS  ·  COMPARISON"));
     assert!(text.contains("Maximum Sharpe found no weights"));
     let html = report.to_html(Some("Asset classes"));
     assert!(html.starts_with("<!doctype html>"));
     assert!(html.contains("<title>Asset classes</title>"));
     for anchor in [
-        "o-summary",
-        "o-performance",
-        "o-risk",
-        "o-robustness",
-        "o-weights",
-        "o-method",
+        "c-summary",
+        "c-performance",
+        "c-risk",
+        "c-robustness",
+        "c-weights",
+        "c-method",
     ] {
         assert!(html.contains(&format!(r#"id="{anchor}""#)), "{anchor}");
     }
@@ -200,7 +320,8 @@ fn reports_print_and_lay_out_as_pages() {
         .name("60/40")
         .rebalance(Rebalance::drift(0.05))
         .build()
-        .unwrap();
+        .unwrap()
+        .report;
     assert!(fixed.history.is_none() && fixed.strategy.in_sample.is_none());
     let text = fixed.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
@@ -237,7 +358,8 @@ fn daily_returns_are_charted_by_month() {
         .rebalance(Rebalance::Yearly)
         .benchmark(datasets::sp500_index())
         .build()
-        .unwrap();
+        .unwrap()
+        .report;
     let s = &report.strategy.tested;
     assert_eq!(s.statistics.observations, assets.dates().len());
     // One point a month: about 262 from January 2005 to October 2026.

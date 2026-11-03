@@ -57,12 +57,12 @@ target = portfolio.assets().optimise(
     method="minimum_variance",
     bounds=(0.05, 0.40),
 )
-for name, mix in [("Now", report.overview.current), ("After", target)]:
+for name, mix in [("Now", report.overview.current), ("After", target.results)]:
     print(f"{name}: volatility {mix.volatility:.1%}, "
           f"expected return {mix.expected_return:.1%}")
 
 # 4. Trade: what each account buys and sells, in whole units.
-proposal = portfolio.rebalance(target.weights, whole_units=True)
+proposal = portfolio.rebalance(target, whole_units=True)
 for account in proposal.accounts:
     for trade in account.trades:
         print(account.account, trade.side, trade.quantity, trade.instrument)
@@ -142,9 +142,9 @@ result = assets.optimise(
     bounds=(0.0, 0.4),
     groups={"Real assets": (["Gold", "Real Estate"], 0.0, 0.15)},
 )
-for asset, weight in result.weights.items():
+for asset, weight in result.results.weights.items():
     print(f"{asset:12} {weight:4.0%}")
-print(f"Sharpe ratio {result.sharpe_ratio:.2f}")
+print(f"Sharpe ratio {result.results.sharpe_ratio:.2f}")
 ```
 
 ```text

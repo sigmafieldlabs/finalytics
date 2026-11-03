@@ -1,11 +1,11 @@
-// Comparing methods and backtesting one allocation, as the package's entry for Node.js gives them:
-// the optimisation and backtest reports, and the reports' own methods for laying out and showing
-// a report.
+// Optimising, comparing methods and backtesting one allocation, as the package's entry for Node.js
+// gives them: each result has a report and the raw results, prints as text and shows as a page.
 import assert from "node:assert/strict";
 import { readFile, rm } from "node:fs/promises";
 import { test } from "node:test";
 
 import { Assets, datasets } from "../pkg/node.js";
+import { close } from "./setup.mjs";
 
 const assets = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
 
@@ -19,8 +19,40 @@ function paths(run) {
   assert.fail("no error");
 }
 
+test("every result has a report and the raw results", () => {
+  const results = [
+    [assets.optimise({ method: "maximum_sharpe", max_weight: 0.4 }), "OPTIMISATION", "OptimisationResult"],
+    [assets.compare({ methods: ["equal_weight", "minimum_variance"] }), "COMPARISON", "BacktestResults"],
+    [assets.backtest({ method: "minimum_variance" }), "BACKTEST", "BacktestResults"],
+  ];
+  for (const [result, title, raw] of results) {
+    assert.deepEqual(Object.keys(result), ["report", "results"]);
+    const text = `${result}`;
+    assert.equal(text, result.toText());
+    assert.equal(text, result.report.toText());
+    assert.ok(text.includes(title));
+    assert.ok(text.split("\n").every((line) => [...line].length <= 80));
+    assert.equal(result.toHtml(), result.report.toHtml());
+    const printed = `${result.results}`;
+    assert.ok(printed.startsWith(raw), printed);
+    assert.ok(printed.split("\n").every((line) => [...line].length <= 80));
+  }
+});
+
+test("the optimisation report explains the weights", () => {
+  const result = assets.optimise({ method: "maximum_sharpe", max_weight: 0.4 });
+  const { report, results } = result;
+  close(report.summary.volatility, results.volatility, 1e-12, "volatility");
+  assert.equal(report.allocation[0].asset, report.summary.largest_asset);
+  close(report.allocation.reduce((sum, a) => sum + a.risk_share, 0), 1, 1e-9, "risk shares");
+  assert.deepEqual(report.context.limits, ["At most 40% in any asset"]);
+  assert.equal(report.history.weights.statistics.observations, assets.dates.length);
+  assert.deepEqual(Object.keys(results.weights), ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]);
+  assert.ok(result.toHtml("Six asset classes").includes("<title>Six asset classes</title>"));
+});
+
 test("methods compared walk-forward with the same limits and costs", () => {
-  const report = assets.compare({
+  const result = assets.compare({
     methods: ["equal_weight", "minimum_variance", "risk_parity"],
     max_weight: 0.4,
     rebalance: "quarterly",
@@ -28,6 +60,7 @@ test("methods compared walk-forward with the same limits and costs", () => {
     trading_cost_bps: 10,
     name: "Six asset classes",
   });
+  const { report } = result;
   assert.equal(report.name, "Six asset classes");
   assert.deepEqual(
     report.strategies.map((s) => s.name),
@@ -40,8 +73,9 @@ test("methods compared walk-forward with the same limits and costs", () => {
   assert.equal(minimum.tested.growth.dates.length, assets.dates.length - 60);
   assert.ok(Object.values(minimum.weights.at(-1).weights).every((w) => w <= 0.4 + 1e-6));
   assert.equal(report.strategies[2].notes.length, 1, "risk parity takes no limits");
-  assert.ok(report.toText().includes("FINALYTICS  ·  OPTIMISATION"));
-  assert.ok(report.toHtml().includes("<title>Six asset classes</title>"));
+  assert.ok(result.toText().includes("FINALYTICS  ·  COMPARISON"));
+  assert.ok(result.toHtml().includes("<title>Six asset classes</title>"));
+  assert.equal(result.results.strategies[1].out_of_sample.returns.length, assets.dates.length - 60);
   // Tagged data gives the same result as the shortcuts.
   const tagged = assets.compare({
     methods: ["equal_weight", "minimum_variance", "risk_parity"],
@@ -51,39 +85,40 @@ test("methods compared walk-forward with the same limits and costs", () => {
     trading_cost_bps: 10,
     name: "Six asset classes",
   });
-  assert.deepEqual(tagged, report);
+  assert.deepEqual(tagged, result);
 });
 
 test("one method, or fixed weights, against a benchmark", () => {
-  const report = assets.backtest({
+  const result = assets.backtest({
     method: "maximum_sharpe",
     max_weight: 0.4,
     benchmark: { "US Equity": 0.6, Bonds: 0.4 },
     validation: { holdout: { start: "2016-11-01" } },
   });
+  const { report } = result;
   assert.equal(report.strategy.name, "Maximum Sharpe");
   assert.equal(report.strategy.tested.start, "2016-11-30");
   assert.equal(report.history.split, "2016-11-30");
   assert.equal(report.benchmark.name, "Benchmark");
-  assert.ok(report.toHtml().includes("Backtest report"));
+  assert.ok(result.toHtml().includes("Backtest report"));
   const fixed = assets.backtest({
     weights: { "US Equity": 0.6, Bonds: 0.4 },
     name: "60/40",
     rebalance: { drift: { band: 0.05 } },
   });
-  assert.equal(fixed.strategy.name, "60/40");
-  assert.deepEqual(fixed.context.settings.rebalance, { type: "drift", band: 0.05 });
+  assert.equal(fixed.report.strategy.name, "60/40");
+  assert.deepEqual(fixed.report.context.settings.rebalance, { type: "drift", band: 0.05 });
   // Every return and trade behind the report.
   assert.equal(fixed.results.strategies[0].in_sample.returns.length, assets.dates.length);
   assert.equal(
-    report.results.strategies[0].out_of_sample.returns.length,
+    result.results.strategies[0].out_of_sample.returns.length,
     report.strategy.tested.growth.dates.length,
   );
 });
 
 test("an index as the benchmark", async () => {
   const sp500 = new Assets(await datasets.sp500(), { risk_free_asset: "T-Bills" });
-  const report = sp500.backtest({
+  const { report } = sp500.backtest({
     method: "equal_weight",
     rebalance: "yearly",
     benchmark: await datasets.sp500Index(),
@@ -130,8 +165,11 @@ test("a report lays itself out as text and HTML, and shows", async () => {
     assert.ok((await readFile(path, "utf8")).startsWith("<!doctype html>"));
     await rm(path);
     const compared = assets.compare({ methods: ["equal_weight", "minimum_variance"] }).show();
-    assert.ok((await readFile(compared, "utf8")).includes("Optimisation report"));
+    assert.ok((await readFile(compared, "utf8")).includes("Comparison report"));
     await rm(compared);
+    const optimised = assets.optimise({ method: "minimum_variance" }).show();
+    assert.ok((await readFile(optimised, "utf8")).includes("Optimisation report"));
+    await rm(optimised);
   } finally {
     if (before === undefined) delete process.env.BROWSER;
     else process.env.BROWSER = before;

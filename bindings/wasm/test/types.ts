@@ -18,8 +18,9 @@ import init, {
   statistics,
   tailRisk,
   type Attribution,
-  type Backtest,
   type BacktestReport,
+  type BacktestResults,
+  type ComparisonReport,
   type OptimisationReport,
   type BlackLittermanEstimate,
   type Household,
@@ -63,12 +64,16 @@ export async function example(worker: Worker): Promise<void> {
   const traded: Portfolio = books.withRebalance(plan);
   const report: PortfolioReport = traded.report({ benchmark: "SPY", group_by: ["asset_class"] });
   const assets = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
-  const result: OptimisationResult = assets.optimise({
+  const result = assets.optimise({
     method: "maximum_sharpe",
     bounds: { min: 0, max: 0.4 },
     groups: { Equity: { assets: ["US Equity", "Intl Equity"], min: 0.3, max: 0.6 } },
   });
-  const weights: Record<string, number> | null | undefined = result.weights;
+  const optimisation: OptimisationReport = result.report;
+  const solved: OptimisationResult = result.results;
+  const weights: Record<string, number> | null | undefined = result.results.weights;
+  const optimisationText: string = `${result}` + result.results.toText();
+  const rebalanced = books.rebalance(result);
   // @ts-expect-error: an unknown method is rejected.
   assets.optimise({ method: "maximum_profit" });
   const compared = assets.compare({
@@ -82,11 +87,12 @@ export async function example(worker: Worker): Promise<void> {
     method: "maximum_sharpe",
     benchmark: { "US Equity": 0.6, Bonds: 0.4 },
     validation: { holdout: { start: "2016-11-01" } },
-  });
-  const fixed: BacktestReport = assets.backtest({ weights: { Bonds: 1 }, rebalance: { drift: { band: 0.05 } } });
-  const comparedData: OptimisationReport = compared;
+  }).report;
+  const fixed = assets.backtest({ weights: { Bonds: 1 }, rebalance: { drift: { band: 0.05 } } });
+  const fixedRuns: BacktestResults = fixed.results;
+  const comparedData: ComparisonReport = compared.report;
   const comparedPage: string = compared.toHtml();
-  const raw: Backtest = compared.results;
+  const raw: BacktestResults = compared.results;
   // @ts-expect-error: an unknown schedule is rejected.
   assets.compare({ methods: ["equal_weight"], rebalance: "weekly" });
   const named = traded.report({ benchmark: "SPY", name: "Main account" });
@@ -103,6 +109,7 @@ export async function example(worker: Worker): Promise<void> {
   const unknown: Objective = { type: "maximum_profit" };
 
   console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown, report, weights);
+  console.log(optimisation, solved, optimisationText, rebalanced, single, fixedRuns, comparedData, comparedPage, raw);
 }
 
 // Factor models: estimation, risk and a problem with exposure limits.

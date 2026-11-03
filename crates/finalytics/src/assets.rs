@@ -11,6 +11,7 @@ use finalytics_opt::{
     AssetBound, Bound, Constraints, FrontierPoint, GroupLimit, Linkage, Objective, Problem,
     ReturnUncertainty, Solution, SolveStatus,
 };
+use finalytics_reports::OptimisationReport;
 use finalytics_risk::{
     CovarianceEstimate, CovarianceMethod, Matrix, PriceTable, ReturnsTable, Statistics,
     StatisticsOptions, TailMethod, TailRisk, covariance, periods_per_year, statistics, tail_risk,
@@ -33,7 +34,7 @@ use finalytics_risk::{
 ///     .max_weight(0.4)
 ///     .group("Equity", &["US Equity", "Intl Equity"], 0.3, 0.6)
 ///     .build()?;
-/// let weights = result.weights.unwrap_or_default();
+/// let weights = result.results.weights.unwrap_or_default();
 /// assert!(weights.values().all(|w| *w <= 0.4 + 1e-6));
 /// # Ok::<(), finalytics::Error>(())
 /// ```
@@ -98,7 +99,71 @@ pub enum Method {
     HierarchicalRiskParity,
 }
 
+/// An optimisation: the optimisation report on the weights chosen, and the raw results.
+/// Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct Optimisation {
+    /// The optimisation report: the weights, what they are expected to deliver, where their
+    /// risk comes from, the efficient frontier and the history they were fitted to.
+    pub report: OptimisationReport,
+    /// The raw results: the weights by asset, their expected return, volatility and Sharpe
+    /// ratio, and the solver's solution.
+    pub results: OptimisationResult,
+}
+
+impl std::fmt::Display for Optimisation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.report.fmt(f)
+    }
+}
+
 impl Method {
+    /// What the method does, in a sentence, for reports.
+    pub fn description(self) -> &'static str {
+        match self {
+            Method::MinimumVariance => "the weights with the smallest variance.",
+            Method::MeanVariance => {
+                "the largest expected return less half the risk aversion times the variance."
+            }
+            Method::RobustMeanVariance => {
+                "mean–variance against the worst expected returns within the uncertainty given."
+            }
+            Method::TargetReturn => {
+                "the smallest variance with at least the target expected return."
+            }
+            Method::TargetVolatility => {
+                "the largest expected return with at most the target volatility."
+            }
+            Method::MaximumSharpe => {
+                "the largest expected return in excess of the risk-free rate per unit of \
+                 volatility, solved as a quadratic programme after the Charnes–Cooper \
+                 transformation."
+            }
+            Method::MaximumDiversification => {
+                "the largest ratio of the weighted average of the assets' volatilities to the \
+                 portfolio's."
+            }
+            Method::MinimumCvar => {
+                "the smallest average loss in the worst periods, at the confidence given, \
+                 from the historical returns as scenarios."
+            }
+            Method::EqualWeight => "every asset with the same weight.",
+            Method::InverseVolatility => {
+                "weights in proportion to the inverse of each asset's volatility."
+            }
+            Method::RiskParity => "every asset with the same share of the portfolio's risk.",
+            Method::RiskBudgeting => {
+                "each asset's share of the portfolio's risk equal to its budget."
+            }
+            Method::HierarchicalRiskParity => {
+                "clusters of assets by correlation, with weights split between clusters by \
+                 their risk."
+            }
+        }
+    }
+
     /// The method's name in words, such as `"Maximum Sharpe"`, for reports.
     pub fn label(self) -> &'static str {
         match self {
@@ -202,6 +267,40 @@ pub struct OptimisationResult {
     pub risk_free_rate: f64,
     /// The solver's solution, with the objective, its value and the work done.
     pub solution: Solution,
+}
+
+/// The weights as text: each asset's weight, the largest first, with the expected return,
+/// volatility and Sharpe ratio.
+impl std::fmt::Display for OptimisationResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let pct = |v: Option<f64>| {
+            v.filter(|v| v.is_finite()).map_or_else(
+                || "–".to_owned(),
+                |v| format!("{:.1}%", v * 100.0).replace('-', "−"),
+            )
+        };
+        let method = serde_json::to_value(&self.solution.objective)
+            .ok()
+            .and_then(|v| serde_json::from_value::<Method>(v["type"].clone()).ok())
+            .map_or("Optimisation", Method::label);
+        let title = format!("OptimisationResult · {method} · {}", self.status);
+        let mut figures = vec![
+            ("Expected return".to_owned(), pct(self.expected_return)),
+            ("volatility".to_owned(), pct(self.volatility)),
+            (
+                "Sharpe ratio".to_owned(),
+                self.sharpe_ratio
+                    .map_or_else(|| "–".to_owned(), |v| format!("{v:.2}").replace('-', "−")),
+            ),
+        ];
+        figures.push(("risk-free".to_owned(), pct(Some(self.risk_free_rate))));
+        let empty = BTreeMap::new();
+        f.write_str(&finalytics_reports::weights_text(
+            &title,
+            self.weights.as_ref().unwrap_or(&empty),
+            &figures,
+        ))
+    }
 }
 
 impl OptimisationResult {
@@ -488,7 +587,7 @@ impl Assets {
     ///     .risk_free_asset("T-Bills")
     ///     .build()?;
     /// let result = assets.optimise(Method::MaximumSharpe).max_weight(0.4).build()?;
-    /// assert!(result.weights.unwrap().values().all(|w| *w <= 0.4 + 1e-6));
+    /// assert!(result.results.weights.unwrap().values().all(|w| *w <= 0.4 + 1e-6));
     /// # Ok::<(), finalytics::Error>(())
     /// ```
     pub fn optimise(&self, method: Method) -> Optimise<'_> {
@@ -503,9 +602,96 @@ impl Assets {
 
     /// Optimises a portfolio of the risky assets as `options` describe: annualised Ledoit–Wolf
     /// covariance (or the assets' estimator), historical mean returns unless others are given,
-    /// and the method and limits of `options`. [`Assets::optimise`] builds the same options
-    /// step by step.
-    pub fn optimise_with(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
+    /// and the method and limits of `options`. The result holds the optimisation report and
+    /// the raw results. [`Assets::optimise`] builds the same options step by step.
+    pub fn optimise_with(&self, options: &OptimiseOptions) -> Result<Optimisation> {
+        let results = self.solve(options)?;
+        let report = self.optimisation_report(options, &results)?;
+        Ok(Optimisation { report, results })
+    }
+
+    /// The optimisation report on `results`, the solution of `options`.
+    fn optimisation_report(
+        &self,
+        options: &OptimiseOptions,
+        results: &OptimisationResult,
+    ) -> Result<OptimisationReport> {
+        let (problem, labels) = self.problem(options)?;
+        let n = labels.len();
+        let covariance = match problem.covariance.clone() {
+            Some(c) => c,
+            None => Matrix::new(labels.clone(), vec![0.0; n * n])?,
+        };
+        let (Some(&start), Some(&end)) = (self.dates.first(), self.dates.last()) else {
+            let mut report = ValidationReport::new();
+            report.error("dates", "there are none");
+            return Err(Error::Validation(report));
+        };
+        let expected = problem
+            .expected_returns
+            .clone()
+            .unwrap_or_else(|| vec![0.0; n]);
+        let frontier = problem
+            .frontier(30)
+            .map(|points| {
+                points
+                    .iter()
+                    .map(|p| (p.volatility, p.expected_return))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let history = results.weights.as_ref().and_then(|weights| {
+            let equal: BTreeMap<String, f64> =
+                labels.iter().map(|l| (l.clone(), 1.0 / n as f64)).collect();
+            let mut held = weights.clone();
+            let total: f64 = held.values().sum();
+            if let Some(cash) = self.risk_free_asset().filter(|_| total < 1.0 - 1e-9) {
+                held.insert(cash.to_owned(), 1.0 - total);
+            }
+            let history = crate::backtest::BacktestOptions {
+                strategies: vec![crate::backtest::Strategy::Weights {
+                    name: Some("The weights".to_owned()),
+                    weights: held,
+                }],
+                benchmark: Some(crate::backtest::Benchmark::Weights {
+                    name: Some("Equal weight".to_owned()),
+                    weights: equal,
+                }),
+                ..crate::backtest::BacktestOptions::default()
+            };
+            let report = self.backtest_with(&history).ok()?.report;
+            Some((report.strategy.tested, report.benchmark?.tested))
+        });
+        let solver = serde_json::to_value(results.solution.method)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .unwrap_or_default();
+        finalytics_reports::optimisation_report(finalytics_reports::OptimisationInputs {
+            method: options.method.label().to_owned(),
+            description: options.method.description().to_owned(),
+            status: results.status.to_string(),
+            solver,
+            iterations: results.solution.iterations,
+            labels: &labels,
+            weights: results.weights.as_ref(),
+            expected_returns: &expected,
+            historical_means: options.expected_returns.is_empty(),
+            covariance: &covariance,
+            risk_free_asset: self.risk_free_asset().map(str::to_owned),
+            risk_free_rate: results.risk_free_rate,
+            periods_per_year: self.periods_per_year,
+            covariance_method: self.covariance_method,
+            limits: crate::backtest::limits(options),
+            start,
+            end,
+            frontier,
+            history,
+        })
+    }
+
+    /// Solves the optimisation `options` describe, without a report: the weights a backtest
+    /// refits.
+    pub(crate) fn solve(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
         let rf = options.risk_free_rate.unwrap_or(self.risk_free_rate);
         let (problem, labels) = self.problem(options)?;
         let objective = objective(options, rf, &labels)?;
@@ -793,8 +979,9 @@ impl Optimise<'_> {
         &self.options
     }
 
-    /// Runs the optimisation.
-    pub fn build(&self) -> Result<OptimisationResult> {
+    /// Runs the optimisation: the weights in `results`, with the optimisation report in
+    /// `report`.
+    pub fn build(&self) -> Result<Optimisation> {
         self.assets.optimise_with(&self.options)
     }
 

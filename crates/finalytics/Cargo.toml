@@ -47,10 +47,8 @@ finalytics-reports = { workspace = true }
 finalytics-backtest = { workspace = true }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true }
-csv = { workspace = true }
-
-[dev-dependencies]
 serde_json = { workspace = true }
+csv = { workspace = true }
 
 [lints]
 workspace = true

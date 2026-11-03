@@ -110,11 +110,11 @@ month-end closes, and the defensive assets must make up 60% to 90% of the portfo
 ...     bounds=(0.1, 0.6),
 ...     groups={"Defensive": (["AGG", "GLD"], 0.6, 0.9)},
 ... )
->>> result.status
+>>> result.results.status
 'optimal'
->>> {asset: round(w, 3) for asset, w in result.weights.items()}
+>>> {asset: round(w, 3) for asset, w in result.results.weights.items()}
 {'SPY': 0.4, 'AGG': 0.207, 'GLD': 0.393}
->>> round(result.expected_return, 4), round(result.volatility, 4)
+>>> round(result.results.expected_return, 4), round(result.results.volatility, 4)
 (0.0693, 0.0651)
 
 ```
@@ -125,7 +125,7 @@ it, more goes to SPY:
 
 ```python
 >>> without = assets.optimise(method="maximum_sharpe", bounds=(0.1, 0.6))
->>> round(without.weights["SPY"], 3)
+>>> round(without.results.weights["SPY"], 3)
 0.445
 
 ```

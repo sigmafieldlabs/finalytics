@@ -10,7 +10,7 @@ use crate::backtest_html::{
     shown_assets, span, tested_label, validation,
 };
 use crate::backtests::{
-    BacktestContext, BacktestReport, OptimisationReport, RunReport, StrategyReport,
+    BacktestContext, BacktestReport, ComparisonReport, RunReport, StrategyReport,
 };
 use crate::text::{
     L, Page, R, WIDTH, bar, fit, num, pad_left, pad_right, pct, period_word, plural, spark, width,
@@ -217,7 +217,7 @@ fn statistics_row(
         .collect()
 }
 
-impl OptimisationReport {
+impl ComparisonReport {
     /// The report as text for printing, 80 columns wide, titled with `name` (or the report's
     /// own) if given.
     pub fn to_text(&self, name: Option<&str>) -> String {
@@ -228,7 +228,7 @@ impl OptimisationReport {
         let n = self.strategies.len();
         header(
             &mut page,
-            "OPTIMISATION",
+            "COMPARISON",
             name,
             &[
                 format!(
@@ -386,7 +386,7 @@ impl OptimisationReport {
     }
 }
 
-impl fmt::Display for OptimisationReport {
+impl fmt::Display for ComparisonReport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_text(None))
     }

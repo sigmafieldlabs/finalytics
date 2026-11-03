@@ -11,11 +11,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Backtests: `assets.compare(methods)` tests several optimisation methods side by side under the
   same limits and settings, and `assets.backtest(method)` or `assets.backtest(weights)` tests one
-  allocation, optionally against a benchmark (`finalytics::backtest`). Each builds its report,
-  which carries every return and trade behind it as `results`; `Assets::optimisation_report`
-  and `Assets::backtest_report` run the same backtests from `BacktestOptions`, as JSON gives
-  them. Optimisation methods are refitted through
-  time, or fixed weights held, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
+  allocation, optionally against a benchmark (`finalytics::backtest`). Each returns its report
+  and every return and trade behind it (`BacktestResults`); `Assets::compare_with` and
+  `Assets::backtest_with` run the same backtests from `BacktestOptions`, as JSON gives them.
+  Optimisation methods are refitted through time, or fixed weights held, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
   band, or never, net of trading costs in basis points of the value traded. Strategies are
   validated in sample, on a holdout from a date, or walk-forward, refitting at each calendar
   rebalance on a rolling or expanding window of years or periods; for walk-forward validation
@@ -26,18 +25,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   not. Every return, trade, turnover and cost is checked against an independent simulation
   (`scripts/reference/backtest.py`). A walk-forward comparison of seven methods on the S&P 500
   dataset is a new performance budget: under 5 seconds natively.
-- The optimisation report and the backtest report, built by `compare` and `backtest`. The
-  optimisation report scores each method on the periods it was tested on: return, volatility,
+- Three reports on assets: the optimisation report of `optimise`, the comparison report of
+  `compare` and the backtest report of `backtest`. The optimisation report explains the weights:
+  what they are expected to deliver, each asset's weight against its share of the risk, the
+  diversification ratio and the number of assets in effect, the correlations, where the weights
+  sit on the efficient frontier under the same limits, how they and equal weight would have done
+  on the returns they were fitted to, and how they were found. The comparison report scores each
+  method on the periods it was tested on: return, volatility,
   Sharpe and Sortino ratios, drawdown, CVaR and turnover side by side; growth, calendar-year
   returns, drawdowns and the Sharpe ratio over three years; in sample against out of sample; the
   weights at the last refit and at each refit; and how the methods were tested, including
   refits that found no weights. The backtest report shows the allocation, its statistics in and
   out of sample against the benchmark (with tracking error, information ratio and beta), growth
   and drawdown over the whole history with a holdout shaded apart, the weights held as they
-  drift between rebalances, turnover and trading costs, and returns by year and month. Both are
-  data (`OptimisationReport`, `BacktestReport`), print as text 80 columns wide, lay out as one
-  HTML page with `show()`, and export as tables. Daily returns are charted month by month, and
+  drift between rebalances, turnover and trading costs, and returns by year and month. All three
+  are data (`OptimisationReport`, `ComparisonReport`, `BacktestReport`), print as text 80 columns
+  wide, lay out as one HTML page with `show()`, and export as tables. Daily returns are charted month by month, and
   the S&P 500's 55 stocks are summarised as the largest holdings and the rest.
+- One shape for every result on assets: `optimise`, `compare` and `backtest` each return the
+  report and the raw results (`Optimisation`, `Comparison` and `Backtest`), as `result.report`
+  and `result.results`. Printing a result prints its report as text, and `result.show()` shows
+  it as a page; the raw results print as a table too (`OptimisationResult`, `BacktestResults`).
+  An optimisation's weights are `result.results.weights`, and `portfolio.rebalance` takes the
+  whole result in Rust, Python and JavaScript. `Assets::optimise_with` runs an optimisation from
+  `OptimiseOptions`, as JSON gives them.
 - Baseline methods: equal weight and inverse volatility (`Objective::EqualWeight`,
   `Objective::InverseVolatility`, `method="equal_weight"` and `"inverse_volatility"`), solved
   by formula, and risk parity by name (`Method::RiskParity`, `method="risk_parity"`), risk
@@ -61,7 +72,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   browser, or with the command in the `BROWSER` environment variable; in Python it shows inline
   in a Jupyter notebook, and in JavaScript in a frame inside a page's element
   (`report.show(element)`), with `report.toHtml()` and `report.toText()`. This holds for the
-  portfolio report and for the optimisation and backtest reports. A report carries a name
+  portfolio report and for the results of `optimise`, `compare` and `backtest`. A report carries a name
   (`.name(...)` in Rust, `name=` in Python, `name` in JavaScript), shown as or under its title. In Rust, `show`, `save_html` and reading files by path (`Portfolio::builder()`,
   `AssetsBuilder::prices_file`) are behind the default `io` feature, which the WebAssembly
   build leaves out, and report `Error::Io` when they fail.

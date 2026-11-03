@@ -1,38 +1,71 @@
-// The reports of `Portfolio.report`, `Assets.compare` and `Assets.backtest` are plain data, as
-// the engine returns them, with three methods added: `toText`, `toHtml` and `show`. The methods
-// are not enumerable, so a report still writes to JSON and passes to a worker as data alone.
-import { Assets, Portfolio, reportHtml, reportText } from "./finalytics.js";
+// The reports and results the engine returns are plain data, with methods added: a report has
+// `toText`, `toHtml`, `show` and `toString`; the results of `Assets.optimise`, `Assets.compare`
+// and `Assets.backtest` have the same methods, for their report, with the report in `report`
+// and the raw results, which print as text too, in `results`. The methods are not enumerable,
+// so the data still writes to JSON and passes to a worker as data alone.
+import { Assets, Portfolio, reportHtml, reportText, resultsText } from "./finalytics.js";
 
-/** Adds the methods to the reports; `show` lays out an HTML page. */
+/** Adds the methods to the reports and results; `show` lays out an HTML page. */
 export function install(show) {
-  for (const [type, name] of [
-    [Portfolio, "report"],
-    [Assets, "compare"],
-    [Assets, "backtest"],
-  ]) {
-    const original = type.prototype[name];
-    type.prototype[name] = function (options) {
-      return withMethods(original.call(this, options), show);
-    };
+  wrap(Portfolio, "report", (report) => withReportMethods(report, show));
+  for (const name of ["optimise", "compare", "backtest"]) {
+    wrap(Assets, name, (result) => withResultMethods(result, show));
   }
 }
 
-function withMethods(report, show) {
-  return Object.defineProperties(report, {
-    toText: {
-      value(name) {
-        return reportText(this, name);
-      },
+function wrap(type, name, add) {
+  const original = type.prototype[name];
+  type.prototype[name] = function (options) {
+    return add(original.call(this, options));
+  };
+}
+
+function methods(target, entries) {
+  return Object.defineProperties(
+    target,
+    Object.fromEntries(Object.entries(entries).map(([name, value]) => [name, { value }])),
+  );
+}
+
+function withReportMethods(report, show) {
+  return methods(report, {
+    toText(name) {
+      return reportText(this, name);
     },
-    toHtml: {
-      value(name) {
-        return reportHtml(this, name);
-      },
+    toHtml(name) {
+      return reportHtml(this, name);
     },
-    show: {
-      value(element) {
-        return show(reportHtml(this), element);
-      },
+    show(element) {
+      return show(reportHtml(this), element);
+    },
+    toString() {
+      return reportText(this);
+    },
+  });
+}
+
+function withResultMethods(result, show) {
+  withReportMethods(result.report, show);
+  methods(result.results, {
+    toText() {
+      return resultsText(this);
+    },
+    toString() {
+      return resultsText(this);
+    },
+  });
+  return methods(result, {
+    toText(name) {
+      return this.report.toText(name);
+    },
+    toHtml(name) {
+      return this.report.toHtml(name);
+    },
+    show(element) {
+      return this.report.show(element);
+    },
+    toString() {
+      return this.report.toText();
     },
   });
 }

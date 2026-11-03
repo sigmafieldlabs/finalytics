@@ -1,7 +1,8 @@
 //! Report data: one report per workstation screen (holdings, overview, performance, risk,
 //! attribution and scenarios), each computed in one call from a portfolio's books and market
-//! data, and two reports on backtests: the optimisation report, comparing methods, and the
-//! backtest report, on one allocation.
+//! data, and three reports on assets: the optimisation report, on the weights an optimisation
+//! chose; the comparison report, on several methods backtested side by side; and the backtest
+//! report, on one allocation.
 //!
 //! A report carries everything its screen draws and exports, not only summary figures: series
 //! over time, breakdowns, grids, distributions and tables, each labelled with its units, so a
@@ -22,6 +23,7 @@ mod backtests;
 mod context;
 mod holdings;
 mod html;
+mod optimisation;
 mod overview;
 mod performance;
 mod report;
@@ -35,14 +37,20 @@ pub use attribution::{
     AttributionInputs, AttributionReport, BenchmarkPeriod, BenchmarkSegment, attribution_report,
 };
 pub use backtests::{
-    BacktestContext, BacktestReport, BacktestSetup, CalendarReturn, History, OptimisationReport,
-    RunReport, StrategyReport, WeightsAt, backtest_report, optimisation_report,
+    BacktestContext, BacktestReport, BacktestSetup, CalendarReturn, ComparisonReport, History,
+    RunReport, StrategyReport, WeightsAt, backtest_report, comparison_report,
 };
 pub use context::{Provenance, ReportKind, ReportOptions, Source};
 pub use holdings::{
     AccountHoldings, Concentration, HoldingRow, HoldingsReport, IncomeSummary, LotRow,
     RealisedSummary, holdings_report,
 };
+pub use optimisation::{
+    AllocationRow, OptimisationContext, OptimisationHistory, OptimisationReport,
+    OptimisationSummary, RiskReturn,
+};
+#[doc(hidden)]
+pub use optimisation::{OptimisationInputs, optimisation_report, weights_text};
 pub use overview::{Headline, HoldingRiskReturn, OverviewReport, PortfolioPoint, overview_report};
 pub use performance::{
     MonthFlows, PerformanceReport, PeriodRow, SchemeContributions, YearReturn, performance_report,

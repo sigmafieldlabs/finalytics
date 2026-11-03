@@ -111,9 +111,13 @@ fn api() -> Value {
     add::<finalytics::datasets::Company>(&mut g);
     // Backtests.
     add::<finalytics::backtest::BacktestOptions>(&mut g);
+    add::<finalytics::Optimisation>(&mut g);
+    add::<finalytics::Comparison>(&mut g);
+    add::<finalytics::Backtest>(&mut g);
     add::<finalytics::OptimisationReport>(&mut g);
+    add::<finalytics::ComparisonReport>(&mut g);
     add::<finalytics::BacktestReport>(&mut g);
-    add::<finalytics::backtest::Backtest>(&mut g);
+    add::<finalytics::backtest::BacktestResults>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

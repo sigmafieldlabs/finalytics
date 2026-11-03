@@ -753,14 +753,14 @@ impl NativeAssets {
         to_json(&self.inner.frontier(points, &options).map_err(engine)?)
     }
 
-    fn optimisation_report(&self, options: &str) -> PyResult<String> {
+    fn compare(&self, options: &str) -> PyResult<String> {
         let options: BacktestOptions = from_json(options, "options")?;
-        to_json(&self.inner.optimisation_report(&options).map_err(engine)?)
+        to_json(&self.inner.compare_with(&options).map_err(engine)?)
     }
 
-    fn backtest_report(&self, options: &str) -> PyResult<String> {
+    fn backtest(&self, options: &str) -> PyResult<String> {
         let options: BacktestOptions = from_json(options, "options")?;
-        to_json(&self.inner.backtest_report(&options).map_err(engine)?)
+        to_json(&self.inner.backtest_with(&options).map_err(engine)?)
     }
 }
 
@@ -1162,6 +1162,11 @@ fn report_html(report: &str, name: Option<&str>) -> PyResult<String> {
 }
 
 #[pyfunction]
+fn results_text(results: &str) -> PyResult<String> {
+    finalytics::results_text(results).map_err(engine)
+}
+
+#[pyfunction]
 fn stressed_covariance(covariance: &str, stress: &str) -> PyResult<String> {
     let covariance: Matrix = from_json(covariance, "covariance")?;
     let stress: risk::CorrelationStress = from_json(stress, "stress")?;
@@ -1346,6 +1351,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_period, m)?)?;
     m.add_function(wrap_pyfunction!(report_tables, m)?)?;
     m.add_function(wrap_pyfunction!(report_text, m)?)?;
+    m.add_function(wrap_pyfunction!(results_text, m)?)?;
     m.add_function(wrap_pyfunction!(report_html, m)?)?;
     m.add_function(wrap_pyfunction!(brinson_fachler, m)?)?;
     m.add_function(wrap_pyfunction!(karnosky_singer, m)?)?;

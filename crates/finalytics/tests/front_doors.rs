@@ -61,16 +61,19 @@ fn the_optimiser_keeps_to_its_limits() {
         .group("Equity", &["US Equity", "Intl Equity"], 0.3, 0.6)
         .build()
         .unwrap();
-    assert!(result.status.has_solution());
-    let weights = result.weights.unwrap();
+    assert!(result.results.status.has_solution());
+    let weights = result.results.weights.unwrap();
     assert!((weights.values().sum::<f64>() - 1.0).abs() < 1e-6);
     assert!(weights.values().all(|w| *w >= -1e-6 && *w <= 0.4 + 1e-6));
     assert!(weights["Gold"] <= 0.1 + 1e-6);
     let equity = weights["US Equity"] + weights["Intl Equity"];
     assert!((0.3 - 1e-6..=0.6 + 1e-6).contains(&equity));
-    let (r, v) = (result.expected_return.unwrap(), result.volatility.unwrap());
-    assert!((result.sharpe_ratio.unwrap() - (r - 0.02) / v).abs() < 1e-12);
-    assert_eq!(result.risk_free_rate, 0.02);
+    let (r, v) = (
+        result.results.expected_return.unwrap(),
+        result.results.volatility.unwrap(),
+    );
+    assert!((result.results.sharpe_ratio.unwrap() - (r - 0.02) / v).abs() < 1e-12);
+    assert_eq!(result.results.risk_free_rate, 0.02);
 }
 
 #[test]
@@ -96,8 +99,8 @@ fn every_method_can_be_named() {
     for run in runs {
         let name = run.options().method;
         let result = run.build().unwrap();
-        assert!(result.status.has_solution(), "{name:?}");
-        let total: f64 = result.weights.unwrap().values().sum();
+        assert!(result.results.status.has_solution(), "{name:?}");
+        let total: f64 = result.results.weights.unwrap().values().sum();
         assert!((total - 1.0).abs() < 1e-5, "{name:?}: {total}");
     }
     // Limits do not apply to the methods that take none.
@@ -130,7 +133,7 @@ fn options_read_from_json() {
     .unwrap();
     assert_eq!(options.method, Method::TargetVolatility);
     let result = asset_classes().optimise_with(&options).unwrap();
-    assert!(result.volatility.unwrap() <= 0.08 + 1e-6);
+    assert!(result.results.volatility.unwrap() <= 0.08 + 1e-6);
     let defaults: OptimiseOptions = serde_json::from_str("{}").unwrap();
     assert_eq!(defaults, OptimiseOptions::default());
     assert_eq!(defaults.method, Method::MaximumSharpe);
@@ -167,9 +170,9 @@ fn a_risk_free_asset_is_left_out_of_optimisation() {
     let bills = assets.mean_returns()[3];
     assert_eq!(assets.risk_free_rate(), bills);
     let result = assets.optimise(Method::MaximumSharpe).build().unwrap();
-    let weights = result.weights.unwrap();
+    let weights = result.results.weights.unwrap();
     assert!(!weights.contains_key("T-Bills"));
-    assert_eq!(result.risk_free_rate, bills);
+    assert_eq!(result.results.risk_free_rate, bills);
     assert_eq!(
         paths(
             assets
@@ -238,7 +241,7 @@ fn a_portfolio_hands_its_holdings_to_the_optimiser() {
         .bounds(0.05, 0.5)
         .build()
         .unwrap();
-    let targets: BTreeMap<HoldingKey, f64> = result.holdings();
+    let targets: BTreeMap<HoldingKey, f64> = result.results.holdings();
     let proposal = portfolio.rebalance(&result).build().unwrap();
     assert_eq!(proposal.accounts.len(), 2);
     let same = portfolio

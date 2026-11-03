@@ -451,6 +451,12 @@ impl From<&OptimisationResult> for Targets {
     }
 }
 
+impl From<&crate::Optimisation> for Targets {
+    fn from(optimisation: &crate::Optimisation) -> Targets {
+        Targets::from(&optimisation.results)
+    }
+}
+
 impl From<&BTreeMap<HoldingKey, f64>> for Targets {
     fn from(weights: &BTreeMap<HoldingKey, f64>) -> Targets {
         Targets(weights.iter().map(|(k, w)| (k.to_string(), *w)).collect())

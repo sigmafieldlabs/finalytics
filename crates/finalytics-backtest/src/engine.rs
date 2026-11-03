@@ -6,7 +6,7 @@ use std::ops::Range;
 use finalytics_core::{Date, Error, Result, ValidationReport};
 use finalytics_risk::ReturnsTable;
 
-use crate::results::{Backtest, Failure, Run, StrategyResult, Trade};
+use crate::results::{BacktestResults, Failure, Run, StrategyResult, Trade};
 use crate::settings::{Rebalance, Settings, Validation};
 
 /// The data a backtest runs on: the returns of the assets the strategies hold, and of cash.
@@ -109,7 +109,7 @@ pub fn backtest(
     strategies: Vec<Strategy<'_>>,
     benchmark: Option<(String, Benchmark)>,
     settings: &Settings,
-) -> Result<Backtest> {
+) -> Result<BacktestResults> {
     let split = check(market, &strategies, benchmark.as_ref(), settings)?;
     let simulation = Simulation {
         market,
@@ -123,7 +123,7 @@ pub fn backtest(
     let benchmark = benchmark
         .map(|(name, b)| simulation.benchmark(name, &b, split))
         .transpose()?;
-    Ok(Backtest {
+    Ok(BacktestResults {
         assets: market.returns.labels().to_vec(),
         dates: market.dates.to_vec(),
         cash: market.cash.to_vec(),

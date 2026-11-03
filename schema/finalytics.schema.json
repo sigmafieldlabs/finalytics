@@ -340,6 +340,43 @@
       ],
       "description": "How a transaction moved value between holdings, used to measure each holding's\ncontribution. Value moved between holdings nets to zero; only external flows and expenses\nchange the portfolio's total."
     },
+    "AllocationRow": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "The asset."
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "Its weight."
+        },
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "Its annual expected return."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "Its annual volatility."
+        },
+        "risk_share": {
+          "type": "number",
+          "format": "double",
+          "description": "Its share of the portfolio's variance: its weight times its covariance with the\nportfolio, over the portfolio's variance."
+        }
+      },
+      "required": [
+        "asset",
+        "weight",
+        "expected_return",
+        "volatility",
+        "risk_share"
+      ],
+      "description": "One asset in the weights."
+    },
     "Amount": {
       "type": "object",
       "properties": {
@@ -624,65 +661,20 @@
     "Backtest": {
       "type": "object",
       "properties": {
-        "assets": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The assets the strategies hold."
+        "report": {
+          "$ref": "#/$defs/BacktestReport",
+          "description": "The backtest report."
         },
-        "dates": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Date"
-          },
-          "description": "The date each period of the data ends on."
-        },
-        "cash": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "description": "The return of cash in each period: the risk-free return."
-        },
-        "periods_per_year": {
-          "type": "number",
-          "format": "double",
-          "description": "The number of periods in a year."
-        },
-        "settings": {
-          "$ref": "#/$defs/Settings",
-          "description": "How the backtest was run."
-        },
-        "strategies": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/StrategyResult"
-          },
-          "description": "Each strategy, in the order given."
-        },
-        "benchmark": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/StrategyResult"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "The benchmark, if one was given."
+        "results": {
+          "$ref": "#/$defs/BacktestResults",
+          "description": "The raw results: every return and trade, in and out of sample."
         }
       },
       "required": [
-        "assets",
-        "dates",
-        "cash",
-        "periods_per_year",
-        "settings",
-        "strategies"
+        "report",
+        "results"
       ],
-      "description": "The result of a backtest: every strategy, and the benchmark if one was given, on the same\nassets and dates."
+      "description": "A backtest: the backtest report on one allocation against its benchmark, and the raw\nresults. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page."
     },
     "BacktestContext": {
       "type": "object",
@@ -855,10 +847,6 @@
           ],
           "description": "The benchmark, if one was given, held alike."
         },
-        "results": {
-          "$ref": "#/$defs/Backtest",
-          "description": "The backtest behind the report: every return and trade, in and out of sample."
-        },
         "history": {
           "anyOf": [
             {
@@ -889,10 +877,72 @@
       "required": [
         "context",
         "strategy",
-        "results",
         "held"
       ],
       "description": "One allocation, tested against its benchmark: the backtest report."
+    },
+    "BacktestResults": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets the strategies hold."
+        },
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The date each period of the data ends on."
+        },
+        "cash": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The return of cash in each period: the risk-free return."
+        },
+        "periods_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "The number of periods in a year."
+        },
+        "settings": {
+          "$ref": "#/$defs/Settings",
+          "description": "How the backtest was run."
+        },
+        "strategies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StrategyResult"
+          },
+          "description": "Each strategy, in the order given."
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrategyResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark, if one was given."
+        }
+      },
+      "required": [
+        "assets",
+        "dates",
+        "cash",
+        "periods_per_year",
+        "settings",
+        "strategies"
+      ],
+      "description": "The result of a backtest: every strategy, and the benchmark if one was given, on the same\nassets and dates."
     },
     "Benchmark": {
       "oneOf": [
@@ -1496,6 +1546,64 @@
         "industry"
       ],
       "description": "A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry."
+    },
+    "Comparison": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/ComparisonReport",
+          "description": "The comparison report: each method scored on the periods it was tested on."
+        },
+        "results": {
+          "$ref": "#/$defs/BacktestResults",
+          "description": "The raw results: every return and trade of each method, in and out of sample."
+        }
+      },
+      "required": [
+        "report",
+        "results"
+      ],
+      "description": "A comparison: the comparison report on several methods backtested side by side, and the\nraw results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a\npage."
+    },
+    "ComparisonReport": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/BacktestContext",
+          "description": "What was tested and how."
+        },
+        "strategies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StrategyReport"
+          },
+          "description": "Each method, in the order given."
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrategyReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark, if one was given, tested alike."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The report's title, such as \"S&P 500 stocks\": shown when it is printed or laid out as a\npage.",
+          "default": null
+        }
+      },
+      "required": [
+        "context",
+        "strategies"
+      ],
+      "description": "Methods tested the same way, side by side: the comparison report."
     },
     "Concentration": {
       "type": "object",
@@ -4574,50 +4682,216 @@
       ],
       "description": "What an optimisation seeks."
     },
+    "Optimisation": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/OptimisationReport",
+          "description": "The optimisation report: the weights, what they are expected to deliver, where their\nrisk comes from, the efficient frontier and the history they were fitted to."
+        },
+        "results": {
+          "$ref": "#/$defs/OptimisationResult",
+          "description": "The raw results: the weights by asset, their expected return, volatility and Sharpe\nratio, and the solver's solution."
+        }
+      },
+      "required": [
+        "report",
+        "results"
+      ],
+      "description": "An optimisation: the optimisation report on the weights chosen, and the raw results.\nPrinting it prints the report; `Show::show`(crate::Show::show) shows it as a page."
+    },
+    "OptimisationContext": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "The engine's version."
+        },
+        "digest": {
+          "type": "string",
+          "description": "A SHA-256 digest of the estimates and limits, in hexadecimal: the same inputs give the\nsame report."
+        },
+        "method": {
+          "type": "string",
+          "description": "The method's name, such as \"Maximum Sharpe\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "What the method does, in a sentence."
+        },
+        "status": {
+          "type": "string",
+          "description": "How the optimisation ended, such as `optimal`."
+        },
+        "solver": {
+          "type": "string",
+          "description": "How it was solved, such as `interior_point`."
+        },
+        "iterations": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0,
+          "description": "The solver's iterations."
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets optimised over, other than the risk-free asset."
+        },
+        "risk_free_asset": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The risk-free asset, if one of the assets is."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free rate of the Sharpe ratio."
+        },
+        "periods_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "The number of return periods in a year."
+        },
+        "covariance": {
+          "$ref": "#/$defs/CovarianceMethod",
+          "description": "The covariance estimator."
+        },
+        "historical_means": {
+          "type": "boolean",
+          "description": "Whether the expected returns are the historical means (`false` when some were given)."
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The limits on the weights, in words."
+        },
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the first return period ends on."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The date the last return period ends on."
+        }
+      },
+      "required": [
+        "version",
+        "digest",
+        "method",
+        "description",
+        "status",
+        "solver",
+        "iterations",
+        "assets",
+        "risk_free_rate",
+        "periods_per_year",
+        "covariance",
+        "historical_means",
+        "limits",
+        "start",
+        "end"
+      ],
+      "description": "What an optimisation report describes: the method, the data and estimates, the limits and\nhow the solver ended."
+    },
+    "OptimisationHistory": {
+      "type": "object",
+      "properties": {
+        "weights": {
+          "$ref": "#/$defs/RunReport",
+          "description": "The weights, held from the start and rebalanced quarterly."
+        },
+        "equal_weight": {
+          "$ref": "#/$defs/RunReport",
+          "description": "Equal weight, held the same way."
+        }
+      },
+      "required": [
+        "weights",
+        "equal_weight"
+      ],
+      "description": "How the weights, and equal weight, would have done on the history they were fitted to."
+    },
     "OptimisationReport": {
       "type": "object",
       "properties": {
         "context": {
-          "$ref": "#/$defs/BacktestContext",
-          "description": "What was tested and how."
+          "$ref": "#/$defs/OptimisationContext",
+          "description": "What was optimised and how."
         },
-        "strategies": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/StrategyReport"
-          },
-          "description": "Each method, in the order given."
-        },
-        "benchmark": {
+        "summary": {
           "anyOf": [
             {
-              "$ref": "#/$defs/StrategyReport"
+              "$ref": "#/$defs/OptimisationSummary"
             },
             {
               "type": "null"
             }
           ],
-          "description": "The benchmark, if one was given, tested alike."
+          "description": "What the weights are expected to deliver; absent when the optimisation found no weights."
         },
-        "results": {
-          "$ref": "#/$defs/Backtest",
-          "description": "The backtest behind the report: every return and trade of each method, in and out of\nsample."
+        "allocation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AllocationRow"
+          },
+          "description": "Each asset's weight, expected return, volatility and share of the risk, the largest\nweight first."
+        },
+        "correlation": {
+          "$ref": "#/$defs/Grid",
+          "description": "The correlation of the assets' returns, from the covariance the optimisation used."
+        },
+        "frontier": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RiskReturn"
+          },
+          "description": "The efficient frontier under the same limits, from the least volatile portfolio to the\none with the largest expected return."
+        },
+        "equal_weight": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiskReturn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The equal-weight portfolio of the same assets, for comparison."
+        },
+        "history": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OptimisationHistory"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the weights, and equal weight, would have done on the history they were fitted to:\nheld from the start and rebalanced quarterly, without trading costs."
         },
         "name": {
           "type": [
             "string",
             "null"
           ],
-          "description": "The report's title, such as \"S&P 500 stocks\": shown when it is printed or laid out as a\npage.",
+          "description": "The report's title, such as \"Six asset classes\": shown when it is printed or laid out as\na page.",
           "default": null
         }
       },
       "required": [
         "context",
-        "strategies",
-        "results"
+        "allocation",
+        "correlation",
+        "frontier"
       ],
-      "description": "Methods tested the same way, side by side: the optimisation report."
+      "description": "The weights an optimisation chose, with what they are expected to deliver, where their risk\ncomes from, where they sit on the efficient frontier, and how they would have done on the\nhistory they were fitted to."
     },
     "OptimisationResult": {
       "type": "object",
@@ -4677,6 +4951,59 @@
         "solution"
       ],
       "description": "The result of an optimisation over assets: the weights by asset, with their expected return,\nvolatility and Sharpe ratio, and the solver's full solution."
+    },
+    "OptimisationSummary": {
+      "type": "object",
+      "properties": {
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual expected return."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual volatility."
+        },
+        "sharpe_ratio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The Sharpe ratio, against the risk-free rate."
+        },
+        "diversification_ratio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The weighted average of the assets' volatilities over the portfolio's: how much\ndiversification reduces the risk. One for a single asset."
+        },
+        "effective_assets": {
+          "type": "number",
+          "format": "double",
+          "description": "The number of equal weights with the same concentration: one over the sum of the squared\nweights."
+        },
+        "largest_asset": {
+          "type": "string",
+          "description": "The asset with the largest weight."
+        },
+        "largest_weight": {
+          "type": "number",
+          "format": "double",
+          "description": "Its weight."
+        }
+      },
+      "required": [
+        "expected_return",
+        "volatility",
+        "effective_assets",
+        "largest_asset",
+        "largest_weight"
+      ],
+      "description": "What the weights are expected to deliver."
     },
     "OptimiseOptions": {
       "type": "object",
@@ -6839,6 +7166,26 @@
         "rolling"
       ],
       "description": "The risk report."
+    },
+    "RiskReturn": {
+      "type": "object",
+      "properties": {
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual volatility."
+        },
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual expected return."
+        }
+      },
+      "required": [
+        "volatility",
+        "expected_return"
+      ],
+      "description": "A portfolio's volatility and expected return, a year."
     },
     "Run": {
       "type": "object",

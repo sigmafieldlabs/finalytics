@@ -2,19 +2,20 @@
 //! sample.
 
 use std::collections::BTreeMap;
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
 use finalytics_core::Date;
 
-use crate::settings::Settings;
+use crate::settings::{Settings, Validation};
 
 /// The result of a backtest: every strategy, and the benchmark if one was given, on the same
 /// assets and dates.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
-pub struct Backtest {
+pub struct BacktestResults {
     /// The assets the strategies hold.
     pub assets: Vec<String>,
     /// The date each period of the data ends on.
@@ -132,4 +133,155 @@ fn per_year(total: f64, periods: usize, periods_per_year: f64) -> f64 {
         return 0.0;
     }
     total / (periods as f64 / periods_per_year)
+}
+
+const MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+fn month(d: Date) -> String {
+    format!(
+        "{} {}",
+        MONTHS[(d.month().clamp(1, 12) - 1) as usize],
+        d.year()
+    )
+}
+
+/// `text` cut to `max` characters, ending in "…" when cut, and padded to `max`.
+fn cell(text: &str, max: usize) -> String {
+    let count = text.chars().count();
+    if count > max {
+        let mut out: String = text.chars().take(max.saturating_sub(1)).collect();
+        out.push('…');
+        out
+    } else {
+        format!("{text}{}", " ".repeat(max - count))
+    }
+}
+
+impl BacktestResults {
+    /// The validation and data in a few words, such as "walk-forward on 5 years".
+    fn describe(&self) -> String {
+        let frequency = match self.periods_per_year.round() as i64 {
+            250..=260 | 365 => "daily",
+            52 => "weekly",
+            12 => "monthly",
+            4 => "quarterly",
+            1 => "yearly",
+            _ => "periodic",
+        };
+        let validation = match &self.settings.validation {
+            Validation::InSample => "in sample".to_owned(),
+            Validation::Holdout { start } => format!("holdout from {}", month(*start)),
+            Validation::WalkForward { years, periods, .. } => match (years, periods) {
+                (Some(y), _) if y.fract() == 0.0 => format!("walk-forward on {y} years"),
+                (Some(y), _) => format!("walk-forward on {} months", (y * 12.0).round()),
+                (None, Some(p)) => format!("walk-forward on {p} periods"),
+                (None, None) => "walk-forward".to_owned(),
+            },
+        };
+        let strategies = self.strategies.len();
+        format!(
+            "{validation} · {strategies} {} · {} assets · {frequency}",
+            if strategies == 1 {
+                "strategy"
+            } else {
+                "strategies"
+            },
+            self.assets.len()
+        )
+    }
+}
+
+/// The backtest in brief: each strategy's periods and growth in and out of sample, its trades,
+/// refits and failed refits. Every return and trade is in the fields.
+impl fmt::Display for BacktestResults {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "BacktestResults · {}", self.describe())?;
+        writeln!(f)?;
+        let out_of_sample = self.strategies.iter().any(|s| s.out_of_sample.is_some());
+        let rows = self.strategies.iter().chain(self.benchmark.iter());
+        let tested = |s: &StrategyResult| s.out_of_sample.clone().unwrap_or(s.in_sample.clone());
+        if out_of_sample {
+            writeln!(
+                f,
+                "  {}{:>15}  {:>35}",
+                cell("", 24),
+                "In sample",
+                "Out of sample"
+            )?;
+            writeln!(
+                f,
+                "  {}{:>8}{:>7}  {:>8}{:>7}{:>7}{:>7}{:>7}",
+                cell("Strategy", 24),
+                "Periods",
+                "Growth",
+                "Periods",
+                "Growth",
+                "Trades",
+                "Refits",
+                "Failed"
+            )?;
+        } else {
+            writeln!(
+                f,
+                "  {}{:>8}{:>7}{:>7}{:>7}",
+                cell("Strategy", 24),
+                "Periods",
+                "Growth",
+                "Trades",
+                "Failed"
+            )?;
+        }
+        for s in rows {
+            let t = tested(s);
+            let refits = t.trades.iter().filter(|x| x.refit).count();
+            if out_of_sample {
+                writeln!(
+                    f,
+                    "  {}{:>8}{:>7}  {:>8}{:>7}{:>7}{:>7}{:>7}",
+                    cell(&s.name, 24),
+                    s.in_sample.returns.len(),
+                    format!("{:.2}x", s.in_sample.growth()),
+                    t.returns.len(),
+                    format!("{:.2}x", t.growth()),
+                    t.trades.len(),
+                    refits,
+                    s.failures.len()
+                )?;
+            } else {
+                writeln!(
+                    f,
+                    "  {}{:>8}{:>7}{:>7}{:>7}",
+                    cell(&s.name, 24),
+                    t.returns.len(),
+                    format!("{:.2}x", t.growth()),
+                    t.trades.len(),
+                    s.failures.len()
+                )?;
+            }
+        }
+        writeln!(f)?;
+        let first = self
+            .strategies
+            .first()
+            .map(|s| s.out_of_sample.clone().unwrap_or(s.in_sample.clone()));
+        if let Some(run) = first
+            && let (Some(a), Some(b)) = (run.dates.first(), run.dates.last())
+        {
+            writeln!(
+                f,
+                "  {} {} to {}. Each strategy's returns and trades are in",
+                if out_of_sample {
+                    "Out of sample"
+                } else {
+                    "In sample"
+                },
+                month(*a),
+                month(*b)
+            )?;
+            writeln!(f, "  results.strategies[k].out_of_sample and .in_sample.")?;
+        }
+        Ok(())
+    }
 }

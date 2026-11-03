@@ -12,10 +12,10 @@
 //! Every front door is a builder that ends in `build()`, and [`prelude`] imports them:
 //!
 //! - [`Assets`], the prices or returns of things one might hold: their statistics and
-//!   covariance; [`Assets::optimise`] for weights by a [`Method`]; [`Assets::compare`] to
-//!   backtest several methods side by side, for an [`OptimisationReport`]; and
-//!   [`Assets::backtest`] for a [`BacktestReport`] on one method or one set of weights, in
-//!   sample, on a holdout or walk-forward.
+//!   covariance; [`Assets::optimise`] for weights by a [`Method`] ([`Optimisation`]);
+//!   [`Assets::compare`] to backtest several methods side by side ([`Comparison`]); and
+//!   [`Assets::backtest`] for one method or one set of weights, in sample, on a holdout or
+//!   walk-forward ([`Backtest`]).
 //! - [`Portfolio`], a portfolio's transactions with the market data that values them: its
 //!   valuation, performance and risk; [`Portfolio::report`] for every report; and
 //!   [`Portfolio::rebalance`] for the trades that reach target weights.
@@ -28,7 +28,7 @@
 //!     .risk_free_asset("T-Bills")
 //!     .build()?;
 //! let result = assets.optimise(Method::MaximumSharpe).max_weight(0.4).build()?;
-//! assert!(result.sharpe_ratio.is_some());
+//! assert!(result.results.sharpe_ratio.is_some());
 //!
 //! let report = datasets::portfolio()
 //!     .report()
@@ -42,6 +42,30 @@
 //! The modules beneath them, such as [`risk`], [`opt`], [`performance`] and [`backtest`], give
 //! each method on its own, for analysis the front doors do not cover. [`datasets`] has data to
 //! practise on: S&P 500 stocks, a household portfolio and asset-class indices.
+//!
+//! Every result of [`Assets`] has the same shape: the report in `report`, the raw results in
+//! `results`, the report as text when printed, and the report as a page with
+//! [`Show::show`]:
+//!
+//! ```no_run
+//! use finalytics::prelude::*;
+//!
+//! let assets = Assets::builder()
+//!     .prices(datasets::asset_class_prices())
+//!     .risk_free_asset("T-Bills")
+//!     .build()?;
+//! let result = assets
+//!     .compare([Method::EqualWeight, Method::MinimumVariance])
+//!     .max_weight(0.40)
+//!     .walk_forward(Years(5))
+//!     .build()?; // likewise optimise(...) and backtest(...)
+//!
+//! let report = &result.report; // the report
+//! let results = &result.results; // the raw results
+//! println!("{result}"); // the report as text
+//! result.show()?; // the report as a page
+//! # Ok::<(), finalytics::Error>(())
+//! ```
 //!
 //! # Options and results
 //!
@@ -60,6 +84,32 @@
 //! Records that are complete as they stand, such as an [`opt::Bound`] or an [`opt::GroupLimit`],
 //! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
 //! non-exhaustive too, so a `match` on one needs a wildcard arm.
+
+/// The raw results of an optimisation, a comparison or a backtest, given as JSON, as text. The
+/// Python and JavaScript packages use it; from Rust, display the results.
+#[doc(hidden)]
+pub fn results_text(results: &str) -> Result<String> {
+    let invalid = |message: String| {
+        let mut report = ValidationReport::new();
+        report.error("results", message);
+        Error::Validation(report)
+    };
+    let value: serde_json::Value =
+        serde_json::from_str(results).map_err(|e| invalid(format!("is not JSON: {e}")))?;
+    if value.get("solution").is_some() {
+        let result: OptimisationResult =
+            serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
+        Ok(result.to_string())
+    } else if value.get("cash").is_some() {
+        let result: BacktestResults =
+            serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
+        Ok(result.to_string())
+    } else {
+        Err(invalid(
+            "are not the results of an optimisation or a backtest".to_owned(),
+        ))
+    }
+}
 
 // The README's examples run as documentation tests.
 #[cfg(doctest)]
@@ -97,10 +147,13 @@ pub mod prelude {
 }
 
 pub use assets::{
-    AssetGroup, AssetStatistics, Assets, AssetsBuilder, Method, OptimisationResult, Optimise,
-    OptimiseOptions,
+    AssetGroup, AssetStatistics, Assets, AssetsBuilder, Method, Optimisation, OptimisationResult,
+    Optimise, OptimiseOptions,
 };
-pub use finalytics_reports::{BacktestReport, OptimisationReport, PortfolioReport};
+pub use backtest::{Backtest, BacktestResults, Comparison};
+pub use finalytics_reports::{
+    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport,
+};
 pub use finalytics_risk::PriceTable;
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;

@@ -2,7 +2,9 @@
 
 #![allow(clippy::unwrap_used)]
 
-use finalytics::backtest::{Backtest, BacktestOptions, Benchmark, Rebalance, Strategy, Validation};
+use finalytics::backtest::{
+    BacktestOptions, BacktestResults, Benchmark, Rebalance, Strategy, Validation,
+};
 use finalytics::opt::Bound;
 use finalytics::{Assets, Error, Method, OptimiseOptions, datasets};
 
@@ -17,10 +19,10 @@ fn method(method: Method, max_weight: f64) -> Strategy {
 }
 
 /// The backtest of `options`, as the reports carry it.
-fn simulate(assets: &Assets, options: &BacktestOptions) -> Result<Backtest, Error> {
+fn simulate(assets: &Assets, options: &BacktestOptions) -> Result<BacktestResults, Error> {
     assets
-        .optimisation_report(options)
-        .map(|report| report.results)
+        .compare_with(options)
+        .map(|comparison| comparison.results)
 }
 
 fn paths(error: Error) -> Vec<String> {

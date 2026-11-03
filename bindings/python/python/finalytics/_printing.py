@@ -1,8 +1,10 @@
-"""The reports as text and as an HTML page.
+"""The reports and results as text and as an HTML page.
 
-The report classes in :mod:`finalytics.types` derive from these, so that ``print(report)`` shows
-a report as text, 80 columns wide, and the full report can be saved as one HTML page or shown,
-inline in a notebook or in a browser.
+The report and result classes in :mod:`finalytics.types` derive from these, so that
+``print(report)`` shows a report as text, 80 columns wide, and a report can be saved as one HTML
+page or shown, inline in a notebook or in a browser. The results of :meth:`Assets.optimise`,
+:meth:`Assets.compare` and :meth:`Assets.backtest` print and show their report, and their raw
+results print as text too.
 """
 
 from __future__ import annotations
@@ -91,3 +93,52 @@ def _notebook() -> bool:
         return False
     shell = ipython.get_ipython()
     return shell is not None and type(shell).__name__ != "TerminalInteractiveShell"
+
+
+class PrintedResults:
+    """Raw results that print as text: the weights, or each strategy's periods, growth, trades
+    and refits."""
+
+    __slots__ = ()
+
+    def to_text(self) -> str:
+        """The results as text, as ``print(results)`` shows them."""
+        from finalytics import _finalytics
+        from finalytics._convert import dumps
+        from finalytics._errors import call
+
+        return call(_finalytics.results_text, dumps(self))
+
+    def __str__(self) -> str:
+        return self.to_text()
+
+
+class Result:
+    """What :meth:`Assets.optimise`, :meth:`Assets.compare` and :meth:`Assets.backtest` return:
+    the report in ``report`` and the raw results in ``results``. ``print(result)`` prints the
+    report and ``result.show()`` shows it."""
+
+    __slots__ = ()
+
+    def to_text(self, name: str | None = None) -> str:
+        """The report as text for printing, 80 columns wide."""
+        return self.report.to_text(name)  # type: ignore[attr-defined]
+
+    def to_html(self, name: str | None = None) -> str:
+        """The report as one self-contained HTML page."""
+        return self.report.to_html(name)  # type: ignore[attr-defined]
+
+    def save_html(self, path: str | os.PathLike[str], name: str | None = None) -> pathlib.Path:
+        """Writes the report's page to `path`, and returns the path."""
+        return self.report.save_html(path, name)  # type: ignore[attr-defined]
+
+    def show(self) -> None:
+        """Shows the report: inline in a Jupyter notebook, and otherwise in the default
+        browser, or with the command in the ``BROWSER`` environment variable if it is set."""
+        self.report.show()  # type: ignore[attr-defined]
+
+    def _repr_html_(self) -> str:
+        return self.report._repr_html_()  # type: ignore[attr-defined]
+
+    def __str__(self) -> str:
+        return self.to_text()
