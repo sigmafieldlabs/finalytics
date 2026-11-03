@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Write the illustrative datasets in crates/finalytics/data.
+"""Write the datasets in crates/finalytics/data that are built rather than downloaded.
 
-The data is synthetic: it is drawn from fixed distributions with a fixed seed, so that the
-examples and tests that use it give the same figures everywhere, and it redistributes no
-index provider's or exchange's data. It is not the history of any market or fund.
+- asset-classes.csv: 30 years of month-end levels of six asset-class indices, synthetic: drawn
+  from fixed distributions with a fixed seed, with episodes modelled loosely on the bear markets
+  of 2000-02, 2007-09, 2020 and 2022. It is not the history of any market or fund;
+- portfolio/: three years of a two-account household in US dollars and euros. Its prices,
+  distributions and EUR/USD rate are real (scripts/portfolio-market.json, downloaded by
+  scripts/fetch-market-data.py); its transactions are illustrative.
 
-- asset-classes.csv: 30 years of month-end levels of six asset-class indices, with episodes
-  modelled loosely on the bear markets of 2000-02, 2007-09, 2020 and 2022;
-- portfolio/: three years of a two-account portfolio in US dollars and euros, with daily
-  prices, a EUR/USD rate, its transactions, and the options of its full report.
-
-Run it from the repository root with NumPy installed:
+Run it from the repository root with NumPy installed, after scripts/fetch-market-data.py:
 
     python3 scripts/datasets.py
 """
@@ -106,64 +104,48 @@ def asset_classes() -> None:
 
 
 def portfolio() -> None:
-    """A two-account portfolio over three years: prices, a EUR/USD rate and transactions."""
-    rng = np.random.default_rng(8)
-    days = business_days(dt.date(2023, 11, 1), dt.date(2026, 10, 30))
+    """A two-account household over three years, on the real prices, distributions and EUR/USD
+    rate in scripts/portfolio-market.json (written by scripts/fetch-market-data.py). The
+    transactions are illustrative."""
+    market = json.loads((ROOT / "scripts/portfolio-market.json").read_text())
+    days = [dt.date.fromisoformat(d) for d in market["dates"]]
     n = len(days)
-    names = ["USEQ", "INTL", "BOND", "GOLD", "REIT", "EURUSD"]
-    mu = np.array([0.095, 0.07, 0.035, 0.06, 0.065, 0.0])
-    vol = np.array([0.16, 0.17, 0.06, 0.15, 0.20, 0.07])
-    corr = np.array([
-        [1.00, 0.78, -0.10, 0.10, 0.70, 0.05],
-        [0.78, 1.00, -0.05, 0.15, 0.60, 0.20],
-        [-0.10, -0.05, 1.00, 0.30, 0.20, 0.10],
-        [0.10, 0.15, 0.30, 1.00, 0.15, 0.25],
-        [0.70, 0.60, 0.20, 0.15, 1.00, 0.05],
-        [0.05, 0.20, 0.10, 0.25, 0.05, 1.00],
-    ])
-    chol = np.linalg.cholesky(np.outer(vol, vol) * corr / 252)
-    z = (mu - vol**2 / 2) / 252 + rng.standard_normal((n - 1, len(names))) @ chol.T
-    # A spring sell-off in 2025: equities and real estate fall, bonds and gold hold up.
-    for i, day in enumerate(days[1:]):
-        if dt.date(2025, 3, 3) <= day <= dt.date(2025, 4, 8):
-            z[i] += np.array([-0.0065, -0.0055, 0.0004, 0.0012, -0.0060, 0.0])
-        if dt.date(2025, 4, 9) <= day <= dt.date(2025, 5, 30):
-            z[i] += np.array([0.0035, 0.0028, 0.0, 0.0, 0.0030, 0.0])
-    start = np.array([420.0, 85.0, 98.0, 182.0, 88.0, 1.0575])
-    px = start * np.exp(np.vstack([np.zeros(len(names)), np.cumsum(z, axis=0)]))
-    prices = {name: px[:, j] for j, name in enumerate(names)}
-    prices = {k: np.round(v, 5 if k == "EURUSD" else 2) for k, v in prices.items()}
+    held = ["VTI", "EXSA", "BND", "GLD", "VNQ"]
 
-    def last_business(y: int, m: int) -> int:
-        return max(i for i, d in enumerate(days) if (d.year, d.month) == (y, m))
+    def aligned(series: dict[str, float]) -> np.ndarray:
+        """The last value on or before each US trading day."""
+        known = sorted((dt.date.fromisoformat(d), v) for d, v in series.items())
+        out, k, last = np.empty(n), 0, None
+        for i, day in enumerate(days):
+            while k < len(known) and known[k][0] <= day:
+                last = known[k][1]
+                k += 1
+            out[i] = last
+        return out
 
-    def mid_may(y: int) -> int:
-        return [i for i, d in enumerate(days) if (d.year, d.month) == (y, 5)][14]
+    funds = market["funds"]
+    prices = {k: np.round(aligned(funds[k]["close"]), 2) for k in held}
+    prices["EURUSD"] = np.round(aligned(market["eur_usd"]), 5)
+    total = {k: aligned(funds[k]["adjusted"]) for k in held}
+    index = {d: i for i, d in enumerate(days)}
+    us_day = {d: next(day for day in days if day >= d) for d in map(dt.date.fromisoformat, (
+        x for k in held for x in funds[k]["dividends"]))}
+    distributions = sorted((us_day[dt.date.fromisoformat(d)], k, a)
+                           for k in held for d, a in funds[k]["dividends"].items())
 
-    yields = {"USEQ": 0.0035, "BOND": 0.009, "REIT": 0.0095}
-    quarter_ends = [last_business(y, m) for y in range(2023, 2027) for m in (3, 6, 9, 12)
-                    if (2023, 11) < (y, m) <= (2026, 10)]
-    intl_dates = [mid_may(y) for y in (2024, 2025, 2026)]
-
-    # Total-return indices, with the income the funds pay reinvested, for the benchmark.
-    total = {k: prices[k].astype(float).copy() for k in ["USEQ", "INTL", "BOND", "GOLD", "REIT"]}
-    for i in quarter_ends:
-        for k, y in yields.items():
-            total[k][i:] *= 1 + y
-    for i in intl_dates:
-        total["INTL"][i:] *= 1 + 0.028 * 0.85
-    # A balanced benchmark: 55% equity (70% US, 30% European in dollars), 35% bonds and 10%
-    # real assets (half gold, half real estate), rebalanced at each month end.
-    intl_usd = total["INTL"] * prices["EURUSD"]
+    # A balanced benchmark from the funds' total returns: 55% equity (70% US, 30% European in
+    # dollars), 35% bonds and 10% real assets (half gold, half real estate), rebalanced at each
+    # month end.
+    exsa_usd = total["EXSA"] * prices["EURUSD"]
 
     def chained(parts: list[tuple[float, np.ndarray]]) -> np.ndarray:
         daily = sum(w * np.diff(s) / s[:-1] for w, s in parts)
         return np.cumprod(np.r_[1.0, 1.0 + daily])
 
     segments = {
-        "Equity": chained([(0.7, total["USEQ"]), (0.3, intl_usd)]),
-        "Fixed income": total["BOND"] / total["BOND"][0],
-        "Real assets": chained([(0.5, total["GOLD"]), (0.5, total["REIT"])]),
+        "Equity": chained([(0.7, total["VTI"]), (0.3, exsa_usd)]),
+        "Fixed income": total["BND"] / total["BND"][0],
+        "Real assets": chained([(0.5, total["GLD"]), (0.5, total["VNQ"])]),
     }
     weights = {"Equity": 0.55, "Fixed income": 0.35, "Real assets": 0.10}
     ends = month_ends(days)
@@ -175,25 +157,23 @@ def portfolio() -> None:
             anchor = i
 
     out = OUT / "portfolio"
-    held = ["USEQ", "INTL", "BOND", "GOLD", "REIT"]
     write_csv(out / "prices.csv", ["date", *held, "BENCH"],
               [[d.isoformat()] + [f"{prices[k][i]:.2f}" for k in held] + [f"{bench[i]:.4f}"]
                for i, d in enumerate(days)])
     write_csv(out / "fx.csv", ["date", "EUR/USD"],
               [[d.isoformat(), f"{prices['EURUSD'][i]:.5f}"] for i, d in enumerate(days)])
     write_csv(out / "instruments.csv", ["id", "kind", "currency", "name", "class.asset_class", "class.region"], [
-        ["USEQ", "fund", "USD", "US Equity Index Fund", "Equity", "North America"],
-        ["INTL", "fund", "EUR", "European Equity Fund", "Equity", "Europe"],
-        ["BOND", "fund", "USD", "US Aggregate Bond Fund", "Fixed income", "North America"],
-        ["GOLD", "fund", "USD", "Gold Trust", "Real assets", "Global"],
-        ["REIT", "fund", "USD", "Real Estate Fund", "Real assets", "North America"],
+        ["VTI", "fund", "USD", "Vanguard Total Stock Market ETF", "Equity", "North America"],
+        ["EXSA", "fund", "EUR", "iShares STOXX Europe 600 UCITS ETF (DE)", "Equity", "Europe"],
+        ["BND", "fund", "USD", "Vanguard Total Bond Market ETF", "Fixed income", "North America"],
+        ["GLD", "fund", "USD", "SPDR Gold Shares", "Real assets", "Global"],
+        ["VNQ", "fund", "USD", "Vanguard Real Estate ETF", "Real assets", "North America"],
     ])
     write_csv(out / "accounts.csv", ["id", "name", "lot_method", "class.owner", "class.wrapper"], [
         ["brokerage", "Brokerage account", "fifo", "Alex", "Taxable"],
         ["ira", "Retirement account", "fifo", "Alex", "Tax-deferred"],
     ])
 
-    index = {d: i for i, d in enumerate(days)}
     rows: list[dict[str, str]] = []
     held_units = {(a, k): 0 for a in ("brokerage", "ira") for k in held}
 
@@ -211,56 +191,55 @@ def portfolio() -> None:
         tx(day, account, "buy", instrument=k, quantity=str(q), price=f"{p:.2f}", fees="1")
 
     def buy_european(day: dt.date, account: str, dollars: float) -> None:
-        rate, p = price("EURUSD", day), price("INTL", day)
+        rate, p = price("EURUSD", day), price("EXSA", day)
         q = int(dollars / rate // p)
         euros = round(q * p + 1, 2)
         tx(day, account, "fx_conversion", sell_amount=f"{euros * rate:.2f}", sell_currency="USD",
            buy_amount=f"{euros:.2f}", buy_currency="EUR")
-        held_units[(account, "INTL")] += q
-        tx(day, account, "buy", instrument="INTL", quantity=str(q), price=f"{p:.2f}", fees="1")
+        held_units[(account, "EXSA")] += q
+        tx(day, account, "buy", instrument="EXSA", quantity=str(q), price=f"{p:.2f}", fees="1")
 
     first = days[0]
     tx(first, "brokerage", "deposit", amount="250000", currency="USD")
     tx(first, "ira", "deposit", amount="150000", currency="USD")
-    buy(first, "brokerage", "USEQ", 100000)
+    buy(first, "brokerage", "VTI", 100000)
     buy_european(first, "brokerage", 37500)
-    buy(first, "brokerage", "BOND", 62500)
-    buy(first, "brokerage", "GOLD", 25000)
-    buy(first, "brokerage", "REIT", 22500)
-    buy(first, "ira", "USEQ", 75000)
-    buy(first, "ira", "BOND", 72000)
+    buy(first, "brokerage", "BND", 62500)
+    buy(first, "brokerage", "GLD", 25000)
+    buy(first, "brokerage", "VNQ", 22500)
+    buy(first, "ira", "VTI", 75000)
+    buy(first, "ira", "BND", 72000)
 
-    events: list[tuple[dt.date, str]] = []
+    events: list[tuple[dt.date, int, str, object]] = []
     for y in range(2023, 2027):
         for m in range(1, 13):
             if (2023, 11) < (y, m) <= (2026, 10):
-                events.append((next(d for d in days if (d.year, d.month) == (y, m)), "contribution"))
-    events += [(days[i], "dividends") for i in quarter_ends]
-    events += [(days[i], "european_dividend") for i in intl_dates]
-    events += [(dt.date(2025, 2, 3), "rebalance"), (dt.date(2025, 4, 9), "buy_the_dip"),
-               (dt.date(2025, 6, 2), "fee"), (dt.date(2026, 1, 15), "withdrawal")]
-    for day, kind in sorted(events):
+                events.append((next(d for d in days if (d.year, d.month) == (y, m)), 0, "contribution", None))
+    events += [(day, 1, "distribution", (k, a)) for day, k, a in distributions if day > first]
+    events += [(dt.date(2025, 2, 3), 2, "rebalance", None), (dt.date(2025, 4, 9), 2, "buy_the_dip", None),
+               (dt.date(2025, 6, 2), 2, "fee", None), (dt.date(2026, 1, 15), 2, "withdrawal", None)]
+    for day, _, kind, detail in sorted(events, key=lambda e: e[:2]):
         if kind == "contribution":
             tx(day, "brokerage", "deposit", amount="2000", currency="USD")
-            buy(day, "brokerage", "USEQ", 1990)
-        elif kind == "dividends":
+            buy(day, "brokerage", "VTI", 1990)
+        elif kind == "distribution":
+            k, per_unit = detail
             for account in ("brokerage", "ira"):
-                for k, y in yields.items():
-                    if q := held_units[(account, k)]:
-                        tx(day, account, "dividend", instrument=k, amount=f"{q * price(k, day) * y:.2f}",
-                           currency="USD")
-        elif kind == "european_dividend":
-            gross = held_units[("brokerage", "INTL")] * price("INTL", day) * 0.028
-            tx(day, "brokerage", "dividend", instrument="INTL", amount=f"{gross:.2f}", currency="EUR",
-               withholding_tax=f"{gross * 0.15:.2f}")
+                if q := held_units[(account, k)]:
+                    gross = q * per_unit
+                    if k == "EXSA":
+                        tx(day, account, "dividend", instrument=k, amount=f"{gross:.2f}", currency="EUR",
+                           withholding_tax=f"{gross * 0.15:.2f}")
+                    else:
+                        tx(day, account, "dividend", instrument=k, amount=f"{gross:.2f}", currency="USD")
         elif kind == "rebalance":
-            q = int(held_units[("brokerage", "USEQ")] * 0.2)
-            held_units[("brokerage", "USEQ")] -= q
-            p = price("USEQ", day)
-            tx(day, "brokerage", "sell", instrument="USEQ", quantity=str(q), price=f"{p:.2f}", fees="1")
-            buy(day, "brokerage", "BOND", q * p - 10)
+            q = int(held_units[("brokerage", "VTI")] * 0.2)
+            held_units[("brokerage", "VTI")] -= q
+            p = price("VTI", day)
+            tx(day, "brokerage", "sell", instrument="VTI", quantity=str(q), price=f"{p:.2f}", fees="1")
+            buy(day, "brokerage", "BND", q * p - 10)
         elif kind == "buy_the_dip":
-            buy(day, "ira", "USEQ", 6000)
+            buy(day, "ira", "VTI", 6000)
         elif kind == "fee":
             tx(day, "brokerage", "fee", amount="250", currency="USD", note="Advisory fee")
         elif kind == "withdrawal":
@@ -280,13 +259,20 @@ def portfolio() -> None:
                          for s, w in weights.items()],
         })
         previous = i
+
+    # The risk-free rate: the T-bills' annual return over the same three years.
+    with open(OUT / "sp500/prices.csv") as f:
+        bills = {r["date"]: float(r["T-Bills"]) for r in csv.DictReader(f)}
+    years = (days[-1] - days[0]).days / 365.25
+    risk_free = round((bills[days[-1].isoformat()] / bills[days[0].isoformat()]) ** (1 / years) - 1, 3)
+
     def groups(*shocks: tuple[str, float]) -> list[dict[str, object]]:
         return [{"scheme": "asset_class", "value": v, "shock": s} for v, s in shocks]
 
     options = {
         "group_by": ["asset_class", "region"],
         "benchmark": "BENCH",
-        "risk_free_rate": 0.03,
+        "risk_free_rate": risk_free,
         "attribution": {"scheme": "asset_class", "periods": periods},
         "scenarios": [
             {"name": "Equity sell-off",
@@ -299,7 +285,7 @@ def portfolio() -> None:
             {"name": "Dollar up 10%",
              "scenario": {"type": "shocks", "shocks": {"currencies": {"EUR": -0.10}}}},
             {"name": "Spring 2025 replay",
-             "scenario": {"type": "historical", "window": {"start": "2025-02-28", "end": "2025-04-08"}}},
+             "scenario": {"type": "historical", "window": {"start": "2025-02-19", "end": "2025-04-08"}}},
         ],
     }
     (out / "report-options.json").write_text(json.dumps(options, indent=2) + "\n")

@@ -39,11 +39,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   instruments it holds as `Assets`. Rust has builders (`assets.optimiser().maximum_sharpe()`,
   `PortfolioCsv::new(transactions).prices(prices)`), Python keyword arguments, and JavaScript
   options objects.
-- Illustrative datasets (`finalytics::datasets`, `fl.datasets`, `datasets` in JavaScript):
-  30 years of month-end levels of six asset-class indices, and a three-year, two-account
-  portfolio in US dollars and euros with the options of its full report. The data is synthetic,
-  drawn with a fixed seed by `scripts/datasets.py`; each file is also available as text, as an
-  example of the layout Finalytics reads.
+- Datasets (`finalytics::datasets`, `fl.datasets`, `datasets` in JavaScript): daily prices
+  from 2005 to October 2026 of 55 S&P 500 companies (the five largest in each sector), with
+  3-month T-bills, the S&P 500 total return index and each company's sector (`sp500`,
+  `sp500_index`, `sp500_companies`); a three-year, two-account household holding five real funds
+  at their real prices, in US dollars and euros, with illustrative transactions and the options
+  of its full report; and 30 years of synthetic month-end levels of six asset-class indices.
+  The market data comes from Yahoo Finance (`scripts/fetch-market-data.py`). Each file is also
+  available as text, as an example of the layout Finalytics reads. The S&P 500 prices are behind
+  the default `sp500` feature in Rust and are read on first use in JavaScript, outside the
+  WebAssembly module.
 - A portfolio can be read from its transactions alone: `date` may stand for `trade_date`, `id`
   and `account` may be left out (`t1`, `t2` and so on, and `main`), the instruments file may be
   left out (each instrument takes the currency given with it in the transactions, or the base

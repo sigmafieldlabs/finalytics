@@ -1,0 +1,56 @@
+ticker,name,sector,industry
+GOOGL,Alphabet Inc.,Communication Services,Interactive Media & Services
+NFLX,Netflix,Communication Services,Movies & Entertainment
+DIS,The Walt Disney Company,Communication Services,Movies & Entertainment
+VZ,Verizon,Communication Services,Integrated Telecommunication Services
+T,AT&T,Communication Services,Integrated Telecommunication Services
+AMZN,Amazon,Consumer Discretionary,Broadline Retail
+HD,The Home Depot,Consumer Discretionary,Home Improvement Retail
+MCD,McDonald's,Consumer Discretionary,Restaurants
+TJX,TJX Companies,Consumer Discretionary,Apparel Retail
+LOW,Lowe's,Consumer Discretionary,Home Improvement Retail
+WMT,Walmart,Consumer Staples,Consumer Staples Merchandise Retail
+COST,Costco,Consumer Staples,Consumer Staples Merchandise Retail
+KO,The Coca-Cola Company,Consumer Staples,Soft Drinks & Non-alcoholic Beverages
+PG,Procter & Gamble,Consumer Staples,Personal Care Products
+PEP,PepsiCo,Consumer Staples,Soft Drinks & Non-alcoholic Beverages
+XOM,ExxonMobil,Energy,Integrated Oil & Gas
+CVX,Chevron Corporation,Energy,Integrated Oil & Gas
+COP,ConocoPhillips,Energy,Oil & Gas Exploration & Production
+VLO,Valero Energy,Energy,Oil & Gas Refining & Marketing
+WMB,Williams Companies,Energy,Oil & Gas Storage & Transportation
+BRK-B,Berkshire Hathaway,Financials,Multi-Sector Holdings
+JPM,JPMorgan Chase,Financials,Diversified Banks
+BAC,Bank of America,Financials,Diversified Banks
+MS,Morgan Stanley,Financials,Investment Banking & Brokerage
+GS,Goldman Sachs,Financials,Investment Banking & Brokerage
+LLY,Eli Lilly,Health Care,Pharmaceuticals
+JNJ,Johnson & Johnson,Health Care,Pharmaceuticals
+MRK,Merck & Co.,Health Care,Pharmaceuticals
+UNH,UnitedHealth Group,Health Care,Managed Health Care
+TMO,Thermo Fisher Scientific,Health Care,Life Sciences Tools & Services
+GE,GE Aerospace,Industrials,Aerospace & Defense
+CAT,Caterpillar Inc.,Industrials,Construction Machinery & Heavy Transportation Equipment
+RTX,RTX Corporation,Industrials,Aerospace & Defense
+UNP,Union Pacific Corporation,Industrials,Rail Transportation
+DE,Deere & Company,Industrials,Agricultural & Farm Machinery
+AAPL,Apple Inc.,Information Technology,"Technology Hardware, Storage & Peripherals"
+NVDA,Nvidia,Information Technology,Semiconductors
+MSFT,Microsoft,Information Technology,Systems Software
+MU,Micron Technology,Information Technology,Semiconductors
+AMD,Advanced Micro Devices,Information Technology,Semiconductors
+LIN,Linde plc,Materials,Industrial Gases
+NEM,Newmont,Materials,Gold
+FCX,Freeport-McMoRan,Materials,Copper
+ECL,Ecolab,Materials,Specialty Chemicals
+SHW,Sherwin-Williams,Materials,Specialty Chemicals
+WELL,Welltower,Real Estate,Health Care REITs
+PLD,Prologis,Real Estate,Industrial REITs
+EQIX,Equinix,Real Estate,Data Center REITs
+AMT,American Tower,Real Estate,Telecom Tower REITs
+SPG,Simon Property Group,Real Estate,Retail REITs
+NEE,NextEra Energy,Utilities,Multi-Utilities
+SO,Southern Company,Utilities,Electric Utilities
+DUK,Duke Energy,Utilities,Electric Utilities
+AEP,American Electric Power,Utilities,Electric Utilities
+D,Dominion Energy,Utilities,Multi-Utilities

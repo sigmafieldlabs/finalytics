@@ -71,20 +71,20 @@ for account in proposal.accounts:
 It prints:
 
 ```text
-Return +21.7%, benchmark +24.3%
-INTL: 8% of value, 13% of risk
-USEQ: 44% of value, 74% of risk
-Now: volatility 9.0%, expected return 5.0%
-After: volatility 7.7%, expected return 5.9%
-brokerage sell 152 INTL
-brokerage sell 156 USEQ
-brokerage buy 214 BOND
-brokerage buy 343 GOLD
-brokerage buy 86 REIT
-ira sell 95 USEQ
-ira buy 105 BOND
-ira buy 168 GOLD
-ira buy 42 REIT
+Return +56.1%, benchmark +55.2%
+VTI: 51% of value, 79% of risk
+Now: volatility 9.5%, expected return 14.3%
+After: volatility 7.5%, expected return 11.2%
+brokerage sell 394 VTI
+brokerage buy 898 BND
+brokerage buy 1024 EXSA
+brokerage buy 30 GLD
+brokerage buy 200 VNQ
+ira sell 259 VTI
+ira buy 571 BND
+ira buy 651 EXSA
+ira buy 19 GLD
+ira buy 127 VNQ
 ```
 
 `report.html` is one self-contained page: every report, with charts, in light and dark, ready to

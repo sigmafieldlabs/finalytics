@@ -448,6 +448,18 @@ export interface CombinedRebalance {
   tax_base?: Decimal | null;
 }
 
+/** A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry. */
+export interface Company {
+  /** The ticker, the company's column in `sp500`, such as `"AAPL"`. */
+  ticker: string;
+  /** The company's name, such as `"Apple Inc."`. */
+  name: string;
+  /** The GICS sector, such as `"Information Technology"`. */
+  sector: string;
+  /** The GICS sub-industry, such as `"Technology Hardware, Storage & Peripherals"`. */
+  industry: string;
+}
+
 /** How concentrated the portfolio's instruments are. */
 export interface Concentration {
   /** The largest instrument holdings, largest first, with their share of the portfolio. */

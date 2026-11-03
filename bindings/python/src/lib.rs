@@ -781,6 +781,21 @@ fn dataset_report_options() -> PyResult<String> {
     to_json(&datasets::report_options())
 }
 
+#[pyfunction]
+fn dataset_sp500_prices() -> PyResult<String> {
+    to_json(&datasets::sp500())
+}
+
+#[pyfunction]
+fn dataset_sp500_index() -> PyResult<String> {
+    to_json(&datasets::sp500_index())
+}
+
+#[pyfunction]
+fn dataset_sp500_companies() -> PyResult<String> {
+    to_json(&datasets::sp500_companies())
+}
+
 /// Time-weighted performance, and the holding series for contribution when built from books.
 #[pyclass(module = "finalytics._finalytics", frozen)]
 struct NativePerformance {
@@ -1282,6 +1297,9 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dataset_files, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_asset_class_prices, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_report_options, m)?)?;
+    m.add_function(wrap_pyfunction!(dataset_sp500_prices, m)?)?;
+    m.add_function(wrap_pyfunction!(dataset_sp500_index, m)?)?;
+    m.add_function(wrap_pyfunction!(dataset_sp500_companies, m)?)?;
     m.add_class::<NativePerformance>()?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(read_document, m)?)?;

@@ -31,7 +31,13 @@ date,US Equity,Intl Equity,Bonds,T-Bills,Gold,Real Estate
 
 The same prices may come as a pandas DataFrame indexed by date, with one column per asset, or in
 the long layout of `date`, `instrument` and `price` columns. The assets keep the order of the
-columns.
+columns. The S&P 500 dataset has the same layout, with daily prices:
+
+```python
+>>> print(fl.datasets.file("sp500/prices.csv").splitlines()[0][:56])
+date,GOOGL,NFLX,DIS,VZ,T,AMZN,HD,MCD,TJX,LOW,WMT,COST,KO
+
+```
 
 - **Prices should include income.** Use total-return prices, such as adjusted closes, so that
   dividends and interest count in each asset's return.
@@ -103,8 +109,8 @@ the transaction that opened it.
 id,account,trade_date,type,instrument,quantity,price,fees,amount,currency,sell_amount,sell_currency,buy_amount,buy_currency,withholding_tax,note
 t1,brokerage,2023-11-01,deposit,,,,,250000,USD,,,,,,
 t2,ira,2023-11-01,deposit,,,,,150000,USD,,,,,,
-t3,brokerage,2023-11-01,buy,USEQ,238,420.00,1,,,,,,,,
-t4,brokerage,2023-11-01,fx_conversion,,,,,,,37484.15,USD,35446.00,EUR,,
+t3,brokerage,2023-11-01,buy,VTI,478,208.86,1,,,,,,,,
+t4,brokerage,2023-11-01,fx_conversion,,,,,,,37485.14,USD,35433.20,EUR,,
 
 ```
 
@@ -162,7 +168,7 @@ currency given with it in the transactions (by a dividend, say), or else the bas
 
 ```python
 >>> print(fl.datasets.file("portfolio/instruments.csv").splitlines()[1])
-USEQ,fund,USD,US Equity Index Fund,Equity,North America
+VTI,fund,USD,Vanguard Total Stock Market ETF,Equity,North America
 
 ```
 

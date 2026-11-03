@@ -1213,8 +1213,10 @@ impl Assets {
     }
 }
 
-/// Illustrative datasets, for examples, tests and practice. The data is synthetic, drawn with a
-/// fixed seed: it is not the history of any market, index or fund.
+/// Datasets for examples, tests and practice: daily prices of 55 S&P 500 companies and T-bills
+/// with the S&P 500 index (`await datasets.sp500()`, `await datasets.sp500Index()`), a
+/// two-account household holding five real funds, and synthetic asset-class indices. The market
+/// data is real, from Yahoo Finance; the household's transactions are illustrative.
 #[wasm_bindgen(js_name = datasets)]
 pub struct Datasets;
 
@@ -1231,9 +1233,30 @@ impl Datasets {
     /// The text of a dataset file, such as `"portfolio/transactions.csv"`: an example of the
     /// layout each file takes.
     pub fn file(name: &str) -> Result<String, JsValue> {
+        if matches!(name, "sp500/prices.csv" | "sp500/index.csv") {
+            return Err(invalid(
+                "name",
+                format!(
+                    "{name:?} is loaded on demand: use await datasets.sp500() or await datasets.sp500Index()"
+                ),
+            ));
+        }
         finalytics::datasets::file(name)
             .map(str::to_owned)
             .ok_or_else(|| invalid("name", format!("{name:?} is not a dataset file")))
+    }
+
+    /// The companies of `datasets.sp500()`, in the order of its columns, with their names, GICS
+    /// sectors and sub-industries.
+    #[wasm_bindgen(js_name = sp500Companies, unchecked_return_type = "Company[]")]
+    pub fn sp500_companies() -> Result<JsValue, JsValue> {
+        to_js(&finalytics::datasets::sp500_companies())
+    }
+
+    /// Prices in CSV text as a `PriceTable`: how `datasets.sp500()` reads the package's file.
+    #[wasm_bindgen(js_name = __priceTable, skip_typescript)]
+    pub fn price_table(text: &str) -> Result<JsValue, JsValue> {
+        to_js(&finalytics::datasets::price_table(text).map_err(error)?)
     }
 
     /// Month-end levels, from October 1996 to October 2026, of six asset-class indices that
@@ -1243,8 +1266,9 @@ impl Datasets {
         to_js(&finalytics::datasets::asset_class_prices())
     }
 
-    /// A portfolio of two accounts in US dollars and euros, from November 2023 to October 2026,
-    /// with daily prices and a balanced benchmark, `BENCH`.
+    /// A portfolio of two accounts in US dollars and euros, from November 2023 to October 2026:
+    /// five real funds at their real prices, with illustrative transactions and a balanced
+    /// benchmark, `BENCH`.
     pub fn portfolio() -> Portfolio {
         finalytics::datasets::portfolio().into()
     }

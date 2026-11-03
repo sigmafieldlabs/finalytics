@@ -16,6 +16,10 @@ readme = "../../README.md"
 include = ["/src", "/data", "/examples", "/LICENSE-*"]
 
 [features]
+default = ["sp500"]
+# The daily S&P 500 prices and index of `datasets::sp500` (2.5 MB). The WebAssembly package
+# leaves them out and loads them on demand.
+sp500 = []
 # JSON Schema descriptions of the public types, for the bindings and documentation.
 schema = [
     "dep:schemars",
@@ -38,6 +42,7 @@ finalytics-opt = { workspace = true }
 finalytics-reports = { workspace = true }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true }
+csv = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

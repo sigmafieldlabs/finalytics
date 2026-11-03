@@ -123,20 +123,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 It prints:
 
 ```text
-Return +21.7%, benchmark +24.3%
-INTL: 8% of value, 13% of risk
-USEQ: 44% of value, 74% of risk
-Now: volatility 9.0%, expected return 5.0%
-After: volatility 7.7%, expected return 5.9%
-brokerage sell 152 INTL
-brokerage sell 156 USEQ
-brokerage buy 214 BOND
-brokerage buy 343 GOLD
-brokerage buy 86 REIT
-ira sell 95 USEQ
-ira buy 105 BOND
-ira buy 168 GOLD
-ira buy 42 REIT
+Return +56.1%, benchmark +55.2%
+VTI: 51% of value, 79% of risk
+Now: volatility 9.5%, expected return 14.3%
+After: volatility 7.5%, expected return 11.2%
+brokerage sell 394 VTI
+brokerage buy 898 BND
+brokerage buy 1024 EXSA
+brokerage buy 30 GLD
+brokerage buy 200 VNQ
+ira sell 259 VTI
+ira buy 571 BND
+ira buy 651 EXSA
+ira buy 19 GLD
+ira buy 127 VNQ
 ```
 
 `report.html` is one self-contained page: every report, with charts, in light
@@ -265,7 +265,7 @@ efficient frontier.
 
 | Area | Includes |
 | --- | --- |
-| Data | Import and validation of accounts, instruments, transactions, prices, FX rates and benchmarks (CSV and JSON); a versioned portfolio document; illustrative datasets |
+| Data | Import and validation of accounts, instruments, transactions, prices, FX rates and benchmarks (CSV and JSON); a versioned portfolio document; datasets of S&P 500 stocks and a household portfolio |
 | Holdings | Positions and tax lots on any date; cost basis; realised and unrealised gains in local and base currency; weights by any classification |
 | Performance | Time-weighted and money-weighted returns, standard periods, contribution with fees and taxes on their own line, benchmark-relative returns, Brinson–Fachler and currency attribution; households: performance and contribution by account and by group of accounts |
 | Risk | Return statistics, drawdowns, covariance estimators, factor models (regression, statistical and fundamental), value at risk and expected shortfall, risk decomposition by holding, group and factor, ex-ante tracking error; scenarios (shocks to instruments, groups, currencies and factors, historical replay) with their effect on value and risk, including stressed correlations |
@@ -281,7 +281,7 @@ efficient frontier.
 | `bindings/python` | The Python package |
 | `bindings/wasm` | The WebAssembly module and npm package |
 | `schema` | JSON Schema of the data types, including the portfolio document |
-| `crates/finalytics/data` | The illustrative datasets |
+| `crates/finalytics/data` | The datasets |
 | `crates/finalytics/examples` | The programs in this README |
 | `docs/data.md` | The data guide: every input, column by column |
 | `docs/methods` | How each model is defined and validated |

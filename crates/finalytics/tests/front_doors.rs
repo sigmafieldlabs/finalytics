@@ -193,7 +193,7 @@ fn assets_read_from_csv_in_the_order_of_the_file() {
 #[test]
 fn the_portfolio_dataset_reports_in_full() {
     let portfolio = datasets::portfolio();
-    assert_eq!(portfolio.data().transactions.len(), 148);
+    assert_eq!(portfolio.data().transactions.len(), 203);
     assert_eq!(portfolio.data().accounts.len(), 2);
     assert_eq!(portfolio.as_of().unwrap().to_string(), "2026-10-30");
     let report = portfolio.report(&datasets::report_options()).unwrap();
@@ -209,7 +209,7 @@ fn the_portfolio_dataset_reports_in_full() {
 fn a_portfolio_hands_its_holdings_to_the_optimiser() {
     let portfolio = datasets::portfolio();
     let assets = portfolio.assets().unwrap();
-    assert_eq!(assets.labels(), ["BOND", "GOLD", "INTL", "REIT", "USEQ"]);
+    assert_eq!(assets.labels(), ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
     assert_eq!(assets.periods_per_year(), 252.0);
     let result = assets
         .optimiser()
@@ -306,4 +306,30 @@ fn fees_are_their_own_line_in_contribution() {
         last[0],
         finalytics::reports::Cell::Text("Fees and taxes".into())
     );
+}
+
+#[test]
+fn the_sp500_dataset_is_daily_with_t_bills_and_sectors() {
+    let prices = datasets::sp500();
+    assert_eq!(prices.labels().len(), 56);
+    assert_eq!(prices.labels().last().unwrap(), "T-Bills");
+    assert_eq!(prices.dates().first().unwrap().to_string(), "2005-01-03");
+    assert_eq!(prices.dates().last().unwrap().to_string(), "2026-10-30");
+    assert!(prices.columns().iter().flatten().all(Option::is_some));
+    let index = datasets::sp500_index();
+    assert_eq!(index.labels(), ["S&P 500"]);
+    assert_eq!(index.dates(), prices.dates());
+    let companies = datasets::sp500_companies();
+    let tickers: Vec<&str> = companies.iter().map(|c| c.ticker.as_str()).collect();
+    assert_eq!(tickers, prices.labels()[..55]);
+    let sectors: std::collections::BTreeSet<&str> =
+        companies.iter().map(|c| c.sector.as_str()).collect();
+    assert_eq!(sectors.len(), 11);
+    let assets = Assets::from_prices(&prices)
+        .unwrap()
+        .with_risk_free_asset("T-Bills")
+        .unwrap();
+    assert_eq!(assets.periods_per_year(), 252.0);
+    assert_eq!(assets.risky_assets().len(), 55);
+    assert!(datasets::FILES.iter().all(|f| datasets::file(f).is_some()));
 }

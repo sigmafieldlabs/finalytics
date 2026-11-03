@@ -35,12 +35,12 @@ test("assets from the asset-class dataset", () => {
 test("the portfolio dataset, from report to trades", () => {
   const portfolio = fl.datasets.portfolio();
   assert.equal(portfolio.asOf, "2026-10-30");
-  assert.equal(portfolio.data.transactions.length, 148);
+  assert.equal(portfolio.data.transactions.length, 203);
   const report = portfolio.report(fl.datasets.reportOptions());
   assert.equal(report.scenarios.scenarios.length, 4);
   assert.ok(report.attribution);
   const assets = portfolio.assets();
-  assert.deepEqual(assets.labels, ["BOND", "GOLD", "INTL", "REIT", "USEQ"]);
+  assert.deepEqual(assets.labels, ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
   const targets = assets.optimise({ objective: "minimum_variance", bounds: { min: 0.05, max: 0.5 } }).weights;
   const proposal = portfolio.rebalance(targets);
   assert.equal(proposal.accounts.length, 2);

@@ -85,7 +85,7 @@ def test_mistakes_name_the_option(prices):
 def test_the_portfolio_dataset():
     portfolio = fl.datasets.portfolio()
     assert portfolio.as_of == datetime.date(2026, 10, 30)
-    assert len(portfolio.data.transactions) == 148
+    assert len(portfolio.data.transactions) == 203
     report = portfolio.report(fl.datasets.report_options())
     assert report.attribution is not None and len(report.scenarios.scenarios) == 4
     assert portfolio.weights() == portfolio.weights(portfolio.as_of)
@@ -94,7 +94,7 @@ def test_the_portfolio_dataset():
 def test_from_holdings_to_trades():
     portfolio = fl.datasets.portfolio()
     assets = portfolio.assets()
-    assert assets.labels == ["BOND", "GOLD", "INTL", "REIT", "USEQ"] and assets.periods_per_year == 252
+    assert assets.labels == ["BND", "EXSA", "GLD", "VNQ", "VTI"] and assets.periods_per_year == 252
     targets = assets.optimise(objective="minimum_variance", bounds=(0.05, 0.5)).weights
     proposal = portfolio.rebalance(targets)
     assert len(proposal.accounts) == 2
@@ -154,3 +154,18 @@ def test_reports_print_and_save_as_html(tmp_path):
     html = path.read_text(encoding="utf-8")
     assert html.startswith("<!doctype html>") and "<title>Morgan family portfolio</title>" in html
     assert "<script" not in html
+
+
+def test_the_sp500_dataset():
+    prices = fl.datasets.sp500()
+    assert prices.shape == (5492, 56) and prices.columns[-1] == "T-Bills"
+    assert prices.index[0] == pd.Timestamp("2005-01-03") and prices.index[-1] == pd.Timestamp("2026-10-30")
+    assert not prices.isna().any().any()
+    index = fl.datasets.sp500_index()
+    assert list(index.columns) == ["S&P 500"] and index.index.equals(prices.index)
+    companies = fl.datasets.sp500_companies()
+    assert [c.ticker for c in companies] == list(prices.columns[:-1])
+    assert len({c.sector for c in companies}) == 11
+    assets = fl.Assets(prices, risk_free_asset="T-Bills")
+    assert assets.periods_per_year == 252 and len(assets.labels) == 56
+    assert fl.datasets.sp500_table().labels == list(prices.columns)

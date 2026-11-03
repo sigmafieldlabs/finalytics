@@ -20,14 +20,18 @@
     "webassembly"
   ],
   "type": "module",
-  "main": "finalytics.js",
-  "module": "finalytics.js",
+  "main": "index.js",
+  "module": "index.js",
   "types": "finalytics.d.ts",
   "files": [
     "finalytics_bg.wasm",
     "finalytics_bg.wasm.d.ts",
     "finalytics.js",
     "finalytics.d.ts",
+    "index.js",
+    "datasets.js",
+    "data/sp500/prices.csv",
+    "data/sp500/index.csv",
     "node.js",
     "worker.js",
     "client.js",
@@ -36,12 +40,16 @@
     "LICENSE-MIT",
     "LICENSE-APACHE"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "./index.js",
+    "./node.js",
+    "./datasets.js"
+  ],
   "exports": {
     ".": {
       "types": "./finalytics.d.ts",
       "node": "./node.js",
-      "default": "./finalytics.js"
+      "default": "./index.js"
     },
     "./worker.js": "./worker.js",
     "./client.js": {

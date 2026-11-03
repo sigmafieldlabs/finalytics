@@ -108,6 +108,7 @@ fn api() -> Value {
     add::<finalytics::OptimiseOptions>(&mut g);
     add::<finalytics::OptimisationResult>(&mut g);
     add::<finalytics::PortfolioReport>(&mut g);
+    add::<finalytics::datasets::Company>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

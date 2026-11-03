@@ -1100,6 +1100,34 @@
       ],
       "description": "The trades that move several accounts together to target weights of their combined value,\none proposal per account."
     },
+    "Company": {
+      "type": "object",
+      "properties": {
+        "ticker": {
+          "type": "string",
+          "description": "The ticker, the company's column in `sp500`, such as `\"AAPL\"`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The company's name, such as `\"Apple Inc.\"`."
+        },
+        "sector": {
+          "type": "string",
+          "description": "The GICS sector, such as `\"Information Technology\"`."
+        },
+        "industry": {
+          "type": "string",
+          "description": "The GICS sub-industry, such as `\"Technology Hardware, Storage & Peripherals\"`."
+        }
+      },
+      "required": [
+        "ticker",
+        "name",
+        "sector",
+        "industry"
+      ],
+      "description": "A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry."
+    },
     "Concentration": {
       "type": "object",
       "properties": {

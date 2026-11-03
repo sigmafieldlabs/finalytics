@@ -4,7 +4,7 @@
     "region"
   ],
   "benchmark": "BENCH",
-  "risk_free_rate": 0.03,
+  "risk_free_rate": 0.045,
   "attribution": {
     "scheme": "asset_class",
     "periods": [
@@ -15,17 +15,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0150292413
+            "benchmark_return": 0.0878715942
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.012244898
+            "benchmark_return": 0.0353676474
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0204575214
+            "benchmark_return": 0.0711238207
           }
         ]
       },
@@ -36,17 +36,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0216132897
+            "benchmark_return": 0.0515116056
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0254692149
+            "benchmark_return": 0.0355527997
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0314900467
+            "benchmark_return": 0.0531650347
           }
         ]
       },
@@ -57,17 +57,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.023757208
+            "benchmark_return": 0.0062032613
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0159585282
+            "benchmark_return": -0.001631886
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0600411292
+            "benchmark_return": -0.0323463229
           }
         ]
       },
@@ -78,59 +78,59 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0047149118
+            "benchmark_return": 0.042438525
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0222111056
+            "benchmark_return": -0.0136300144
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0458576574
+            "benchmark_return": 0.0123209736
           }
         ]
       },
       {
         "start": "2024-02-29",
-        "end": "2024-03-29",
+        "end": "2024-03-28",
         "segments": [
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0033409537
+            "benchmark_return": 0.034817983
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0072949007
+            "benchmark_return": 0.008497555
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0292797073
+            "benchmark_return": 0.0527572392
           }
         ]
       },
       {
-        "start": "2024-03-29",
+        "start": "2024-03-28",
         "end": "2024-04-30",
         "segments": [
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0635206697
+            "benchmark_return": -0.0356464813
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0145244727
+            "benchmark_return": -0.0240834917
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0390583802
+            "benchmark_return": -0.0255502811
           }
         ]
       },
@@ -141,17 +141,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.005849868
+            "benchmark_return": 0.0470920426
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.023924894
+            "benchmark_return": 0.0168045691
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0462836447
+            "benchmark_return": 0.0311253227
           }
         ]
       },
@@ -162,17 +162,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0209587174
+            "benchmark_return": 0.014381915
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0033137863
+            "benchmark_return": 0.0088071036
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0154176061
+            "benchmark_return": 0.0089686686
           }
         ]
       },
@@ -183,17 +183,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0255421017
+            "benchmark_return": 0.0204270643
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0119359229
+            "benchmark_return": 0.023542169
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0023728042
+            "benchmark_return": 0.0667626574
           }
         ]
       },
@@ -204,17 +204,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0260126064
+            "benchmark_return": 0.0274590704
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0016554578
+            "benchmark_return": 0.0145163501
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0353453918
+            "benchmark_return": 0.0368999736
           }
         ]
       },
@@ -225,17 +225,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0154629873
+            "benchmark_return": 0.0155789486
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0108683801
+            "benchmark_return": 0.013165343
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0120860394
+            "benchmark_return": 0.0419958179
           }
         ]
       },
@@ -246,17 +246,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0432929421
+            "benchmark_return": -0.0232224435
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0015857913
+            "benchmark_return": -0.0245561665
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0401106423
+            "benchmark_return": 0.004300721
           }
         ]
       },
@@ -267,17 +267,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.1057981929
+            "benchmark_return": 0.041285381
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.002744353
+            "benchmark_return": 0.0106835714
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0722093804
+            "benchmark_return": 0.0054786945
           }
         ]
       },
@@ -288,17 +288,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0392747786
+            "benchmark_return": -0.0278413061
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0053105419
+            "benchmark_return": -0.016810387
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0097042532
+            "benchmark_return": -0.0492601332
           }
         ]
       },
@@ -309,17 +309,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0409822342
+            "benchmark_return": 0.0417507256
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0065492807
+            "benchmark_return": 0.0059797817
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0268026698
+            "benchmark_return": 0.0425034627
           }
         ]
       },
@@ -330,17 +330,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0405063681
+            "benchmark_return": -0.0028448148
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0222933333
+            "benchmark_return": 0.0215659255
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0331959146
+            "benchmark_return": 0.0278641941
           }
         ]
       },
@@ -351,17 +351,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.1758152631
+            "benchmark_return": -0.0408325752
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0252919485
+            "benchmark_return": 0.0001224662
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0792371434
+            "benchmark_return": 0.0331705779
           }
         ]
       },
@@ -372,17 +372,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0275239196
+            "benchmark_return": 0.011877337
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0240498175
+            "benchmark_return": 0.0039611368
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0465364718
+            "benchmark_return": 0.0157171574
           }
         ]
       },
@@ -393,17 +393,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.06251327
+            "benchmark_return": 0.0588034161
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0140814081
+            "benchmark_return": -0.0067425109
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0392707309
+            "benchmark_return": 0.0064678685
           }
         ]
       },
@@ -414,17 +414,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0027183171
+            "benchmark_return": 0.0409163141
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.023728466
+            "benchmark_return": 0.0151659222
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0037870234
+            "benchmark_return": 0.0059475319
           }
         ]
       },
@@ -435,17 +435,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0190800513
+            "benchmark_return": 0.0116041051
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.025563404
+            "benchmark_return": -0.0026567834
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0427973578
+            "benchmark_return": -0.0024005511
           }
         ]
       },
@@ -456,17 +456,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0164804312
+            "benchmark_return": 0.0260801167
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0239422762
+            "benchmark_return": 0.0115410227
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0298961802
+            "benchmark_return": 0.0425283149
           }
         ]
       },
@@ -477,17 +477,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0511468725
+            "benchmark_return": 0.0295743666
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.017618407
+            "benchmark_return": 0.0110527882
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0755466016
+            "benchmark_return": 0.0579597784
           }
         ]
       },
@@ -498,17 +498,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0666963375
+            "benchmark_return": 0.019485788
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0370527207
+            "benchmark_return": 0.0060294127
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0191035563
+            "benchmark_return": 0.0064041345
           }
         ]
       },
@@ -519,17 +519,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0464574192
+            "benchmark_return": 0.0052156886
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0143936301
+            "benchmark_return": 0.0059730447
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0075820689
+            "benchmark_return": 0.039258276
           }
         ]
       },
@@ -540,17 +540,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0761454751
+            "benchmark_return": 0.0118086897
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0327602898
+            "benchmark_return": -0.0030017627
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0945734313
+            "benchmark_return": -0.0001187687
           }
         ]
       },
@@ -561,17 +561,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0116930948
+            "benchmark_return": 0.0266668235
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.001179825
+            "benchmark_return": 0.0021602636
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0228206076
+            "benchmark_return": 0.0761379173
           }
         ]
       },
@@ -582,17 +582,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0146204055
+            "benchmark_return": 0.0036174083
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0324835122
+            "benchmark_return": 0.0160166668
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0098678142
+            "benchmark_return": 0.0721062392
           }
         ]
       },
@@ -603,17 +603,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0416621017
+            "benchmark_return": -0.0658635175
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": -0.0218789208
+            "benchmark_return": -0.0173735137
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0004211519
+            "benchmark_return": -0.0859265154
           }
         ]
       },
@@ -624,17 +624,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0369679761
+            "benchmark_return": 0.0954486235
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0403225806
+            "benchmark_return": 0.0014989912
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0685766431
+            "benchmark_return": 0.0345728459
           }
         ]
       },
@@ -645,17 +645,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.000906507
+            "benchmark_return": 0.044613258
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0184344867
+            "benchmark_return": 0.0027573172
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0089024074
+            "benchmark_return": -0.0107611792
           }
         ]
       },
@@ -666,17 +666,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0048214851
+            "benchmark_return": -0.0002065694
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0249222129
+            "benchmark_return": 0.0026907739
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0406682235
+            "benchmark_return": -0.0512538533
           }
         ]
       },
@@ -687,17 +687,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0002288022
+            "benchmark_return": 0.0029629049
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0043863657
+            "benchmark_return": -0.0127927447
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0045444607
+            "benchmark_return": 0.0182090046
           }
         ]
       },
@@ -708,17 +708,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0337016164
+            "benchmark_return": 0.0218116335
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0
+            "benchmark_return": 0.0036398801
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.0394989653
+            "benchmark_return": 0.0358946542
           }
         ]
       },
@@ -729,17 +729,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": -0.0476997539
+            "benchmark_return": -0.0187715521
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0194654717
+            "benchmark_return": -0.0255185366
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": -0.066321225
+            "benchmark_return": -0.0645251347
           }
         ]
       },
@@ -750,17 +750,17 @@
           {
             "name": "Equity",
             "benchmark_weight": 0.55,
-            "benchmark_return": 0.0179952932
+            "benchmark_return": -0.0032912977
           },
           {
             "name": "Fixed income",
             "benchmark_weight": 0.35,
-            "benchmark_return": 0.0078343089
+            "benchmark_return": 0.0237335168
           },
           {
             "name": "Real assets",
             "benchmark_weight": 0.1,
-            "benchmark_return": 0.0126026699
+            "benchmark_return": -0.0097650423
           }
         ]
       }
@@ -832,7 +832,7 @@
       "scenario": {
         "type": "historical",
         "window": {
-          "start": "2025-02-28",
+          "start": "2025-02-19",
           "end": "2025-04-08"
         }
       }

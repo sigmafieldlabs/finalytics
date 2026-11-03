@@ -1,6 +1,6 @@
 id,kind,currency,name,class.asset_class,class.region
-USEQ,fund,USD,US Equity Index Fund,Equity,North America
-INTL,fund,EUR,European Equity Fund,Equity,Europe
-BOND,fund,USD,US Aggregate Bond Fund,Fixed income,North America
-GOLD,fund,USD,Gold Trust,Real assets,Global
-REIT,fund,USD,Real Estate Fund,Real assets,North America
+VTI,fund,USD,Vanguard Total Stock Market ETF,Equity,North America
+EXSA,fund,EUR,iShares STOXX Europe 600 UCITS ETF (DE),Equity,Europe
+BND,fund,USD,Vanguard Total Bond Market ETF,Fixed income,North America
+GLD,fund,USD,SPDR Gold Shares,Real assets,Global
+VNQ,fund,USD,Vanguard Real Estate ETF,Real assets,North America
