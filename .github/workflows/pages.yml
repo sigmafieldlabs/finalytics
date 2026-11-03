@@ -30,7 +30,7 @@ jobs:
           python-version: "3.13"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: pip install maturin playwright
+      - run: pip install maturin playwright pandas
       - name: Build and install the wheel
         working-directory: bindings/python
         run: |
