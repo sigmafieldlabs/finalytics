@@ -4,19 +4,21 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use finalytics_core::{Currency, Date, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, PortfolioDocument, market_from_csv, portfolio_from_csv};
+use finalytics_ledger::LotMethod;
 use finalytics_ledger::{
     AccountId, Books, HoldingKey, MarketData, PortfolioData, Transaction, Valuation, ValueSeries,
 };
-use finalytics_opt::{CombinedRebalance, RebalanceOptions, rebalance_accounts};
+use finalytics_opt::{CombinedRebalance, Fees, RebalanceOptions, TaxRates, rebalance_accounts};
 use finalytics_perf::{FlowTiming, Performance};
 use finalytics_reports::{
-    AttributionReport, HoldingsReport, OverviewReport, PerformanceReport, PortfolioReport,
-    ReportOptions, RiskReport, ScenariosReport, Source, attribution_report, holdings_report,
-    overview_report, performance_report, portfolio_report, risk_report, scenarios_report,
+    AttributionInputs, AttributionReport, HoldingsReport, NamedScenario, OverviewReport,
+    PerformanceReport, PortfolioReport, ReportOptions, RiskReport, ScenariosReport, Source,
+    attribution_report, holdings_report, overview_report, performance_report, portfolio_report,
+    risk_report, scenarios_report,
 };
 use finalytics_risk::{holding_returns, holding_weights};
 
-use crate::Assets;
+use crate::{Assets, OptimisationResult};
 
 /// A portfolio: its records (base currency, accounts, instruments and transactions), the market
 /// data that values it, and the books kept from them. Everything Finalytics measures about a
@@ -311,20 +313,42 @@ impl Portfolio {
         Assets::from_returns(found.dates, found.table)
     }
 
-    /// The trades that move every account together to `targets`, weights by holding as shares
-    /// of their combined value at the last price date: one proposal per account.
-    pub fn rebalance(
+    /// The trades that move the accounts to `targets`, weights by holding such as an
+    /// optimisation's, as shares of their combined value at the last price date: one proposal
+    /// per account. [`Rebalancing::build`] finds them.
+    ///
+    /// ```
+    /// use finalytics::{Method, datasets};
+    ///
+    /// let portfolio = datasets::portfolio();
+    /// let target = portfolio.assets()?.optimise(Method::MinimumVariance).build()?;
+    /// let proposal = portfolio.rebalance(&target).whole_units().build()?;
+    /// assert_eq!(proposal.accounts.len(), 2);
+    /// # Ok::<(), finalytics::Error>(())
+    /// ```
+    pub fn rebalance(&self, targets: impl Into<Targets>) -> Rebalancing<'_> {
+        Rebalancing {
+            portfolio: self,
+            targets: targets.into(),
+            accounts: None,
+            options: RebalanceOptions::default(),
+        }
+    }
+
+    /// The trades that move every account together to `targets`, as `options` say.
+    /// [`Portfolio::rebalance`] builds the same options step by step.
+    pub fn rebalance_with(
         &self,
         targets: &BTreeMap<HoldingKey, f64>,
         options: &RebalanceOptions,
     ) -> Result<CombinedRebalance> {
         let accounts: Vec<AccountId> = self.data.accounts.iter().map(|a| a.id.clone()).collect();
-        self.rebalance_accounts(&accounts, targets, options)
+        self.rebalance_accounts_with(&accounts, targets, options)
     }
 
     /// The trades that move `accounts` together to `targets`, as shares of their combined value
     /// at the last price date.
-    pub fn rebalance_accounts(
+    pub fn rebalance_accounts_with(
         &self,
         accounts: &[AccountId],
         targets: &BTreeMap<HoldingKey, f64>,
@@ -346,9 +370,35 @@ impl Portfolio {
         Source::of(&self.data, &self.market)
     }
 
-    /// Every report on the portfolio, from one set of options. The report prints as text
-    /// (`to_string()` or `to_text(name)`).
-    pub fn report(&self, options: &ReportOptions) -> Result<PortfolioReport> {
+    /// Every report on the portfolio, built step by step: [`ReportBuilder::build`] makes them.
+    /// The report prints as text, and lays out as one HTML page.
+    ///
+    /// ```
+    /// use finalytics::datasets;
+    ///
+    /// let portfolio = datasets::portfolio();
+    /// let report = portfolio
+    ///     .report()
+    ///     .benchmark("BENCH")
+    ///     .group_by(["asset_class", "region"])
+    ///     .build()?;
+    /// assert!(report.to_html(None).starts_with("<!doctype html>"));
+    /// # Ok::<(), finalytics::Error>(())
+    /// ```
+    pub fn report(&self) -> ReportBuilder<'_> {
+        ReportBuilder {
+            portfolio: self,
+            options: ReportOptions::default(),
+            benchmark: None,
+            as_of: None,
+            start: None,
+            name: None,
+        }
+    }
+
+    /// Every report on the portfolio, from one set of options. [`Portfolio::report`] builds
+    /// the same options step by step.
+    pub fn report_with(&self, options: &ReportOptions) -> Result<PortfolioReport> {
         portfolio_report(&self.books, &self.market, &self.source(), options)
     }
 
@@ -380,5 +430,346 @@ impl Portfolio {
     /// The scenarios report.
     pub fn scenarios_report(&self, options: &ReportOptions) -> Result<ScenariosReport> {
         scenarios_report(&self.books, &self.market, &self.source(), options)
+    }
+}
+
+/// Target weights by holding, for [`Portfolio::rebalance`]: an optimisation's weights by asset,
+/// or weights by instrument identifier (`"USD cash"` for cash).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Targets(Vec<(String, f64)>);
+
+impl From<&OptimisationResult> for Targets {
+    fn from(result: &OptimisationResult) -> Targets {
+        Targets(
+            result
+                .weights
+                .iter()
+                .flatten()
+                .map(|(a, w)| (a.clone(), *w))
+                .collect(),
+        )
+    }
+}
+
+impl From<&BTreeMap<HoldingKey, f64>> for Targets {
+    fn from(weights: &BTreeMap<HoldingKey, f64>) -> Targets {
+        Targets(weights.iter().map(|(k, w)| (k.to_string(), *w)).collect())
+    }
+}
+
+impl From<BTreeMap<String, f64>> for Targets {
+    fn from(weights: BTreeMap<String, f64>) -> Targets {
+        Targets(weights.into_iter().collect())
+    }
+}
+
+impl<S: Into<String>, const N: usize> From<[(S, f64); N]> for Targets {
+    fn from(weights: [(S, f64); N]) -> Targets {
+        Targets(weights.into_iter().map(|(k, w)| (k.into(), w)).collect())
+    }
+}
+
+/// A rebalancing of a portfolio's accounts to target weights, built step by step;
+/// [`Rebalancing::build`] finds the trades.
+#[derive(Debug, Clone)]
+#[must_use = "a rebalancing does nothing until `build` runs it"]
+pub struct Rebalancing<'a> {
+    portfolio: &'a Portfolio,
+    targets: Targets,
+    accounts: Option<Vec<String>>,
+    options: RebalanceOptions,
+}
+
+impl Rebalancing<'_> {
+    /// The accounts to rebalance together, by identifier; every account by default.
+    pub fn accounts<S: AsRef<str>>(mut self, accounts: impl IntoIterator<Item = S>) -> Self {
+        self.accounts = Some(
+            accounts
+                .into_iter()
+                .map(|a| a.as_ref().to_owned())
+                .collect(),
+        );
+        self
+    }
+
+    /// Trades in whole units of each instrument.
+    pub fn whole_units(mut self) -> Self {
+        self.options.whole_units = true;
+        self
+    }
+
+    /// How sales choose the lots they close: each account's own method by default.
+    pub fn lot_method(mut self, method: LotMethod) -> Self {
+        self.options.lot_method = method;
+        self
+    }
+
+    /// The fees each trade pays.
+    pub fn fees(mut self, fees: Fees) -> Self {
+        self.options.fees = fees;
+        self
+    }
+
+    /// Tax-aware rebalancing: sales prefer lots with less tax at these rates.
+    pub fn tax(mut self, tax: TaxRates) -> Self {
+        self.options.tax = Some(tax);
+        self
+    }
+
+    /// Every option at once, in place of those set so far.
+    pub fn options(mut self, options: RebalanceOptions) -> Self {
+        self.options = options;
+        self
+    }
+
+    /// Finds the trades: one proposal per account.
+    pub fn build(&self) -> Result<CombinedRebalance> {
+        let mut report = ValidationReport::new();
+        let mut targets = BTreeMap::new();
+        for (key, weight) in &self.targets.0 {
+            match key.parse::<HoldingKey>() {
+                Ok(holding) => {
+                    targets.insert(holding, *weight);
+                }
+                Err(_) => report.error(format!("targets.{key}"), "is not a holding"),
+            }
+        }
+        let accounts: Vec<AccountId> = match &self.accounts {
+            Some(ids) => ids
+                .iter()
+                .filter_map(|id| match id.parse::<AccountId>() {
+                    Ok(id) => Some(id),
+                    Err(_) => {
+                        report.error(format!("accounts.{id}"), "is not an account identifier");
+                        None
+                    }
+                })
+                .collect(),
+            None => self
+                .portfolio
+                .data
+                .accounts
+                .iter()
+                .map(|a| a.id.clone())
+                .collect(),
+        };
+        report.into_result(())?;
+        self.portfolio
+            .rebalance_accounts_with(&accounts, &targets, &self.options)
+    }
+}
+
+/// The reports on a portfolio, built step by step; [`ReportBuilder::build`] makes them.
+#[derive(Debug, Clone)]
+#[must_use = "the reports are made by `build`"]
+pub struct ReportBuilder<'a> {
+    portfolio: &'a Portfolio,
+    options: ReportOptions,
+    benchmark: Option<String>,
+    as_of: Option<String>,
+    start: Option<String>,
+    name: Option<String>,
+}
+
+impl ReportBuilder<'_> {
+    /// The benchmark: an instrument whose prices are given with the portfolio's, such as an
+    /// index, by its identifier.
+    pub fn benchmark(mut self, instrument: &str) -> Self {
+        self.benchmark = Some(instrument.to_owned());
+        self
+    }
+
+    /// The classification schemes to group holdings by, such as `asset_class` and `region`:
+    /// the `class.<scheme>` columns of the instruments.
+    pub fn group_by<S: Into<String>>(mut self, schemes: impl IntoIterator<Item = S>) -> Self {
+        self.options.group_by = schemes.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// The annual risk-free rate, for Sharpe ratios.
+    pub fn risk_free_rate(mut self, rate: f64) -> Self {
+        self.options.risk_free_rate = rate;
+        self
+    }
+
+    /// The date to report as of, such as `"2026-06-30"`: the last price date by default.
+    pub fn as_of(mut self, date: &str) -> Self {
+        self.as_of = Some(date.to_owned());
+        self
+    }
+
+    /// The first date of the history to report on: the first transaction by default.
+    pub fn start(mut self, date: &str) -> Self {
+        self.start = Some(date.to_owned());
+        self
+    }
+
+    /// The benchmark's segments, for attribution against it.
+    pub fn attribution(mut self, inputs: AttributionInputs) -> Self {
+        self.options.attribution = Some(inputs);
+        self
+    }
+
+    /// A scenario to run on the holdings.
+    pub fn scenario(mut self, scenario: NamedScenario) -> Self {
+        self.options.scenarios.push(scenario);
+        self
+    }
+
+    /// Every option at once, such as those of `datasets::report_options()`; the builder's other
+    /// methods change them.
+    pub fn options(mut self, options: ReportOptions) -> Self {
+        self.options = options;
+        self
+    }
+
+    /// The portfolio's name, shown under each report's title.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_owned());
+        self
+    }
+
+    /// Makes the reports.
+    pub fn build(&self) -> Result<PortfolioReport> {
+        let mut report = ValidationReport::new();
+        let mut options = self.options.clone();
+        if let Some(id) = &self.benchmark {
+            match id.parse() {
+                Ok(id) => options.benchmark = Some(id),
+                Err(_) => report.error(
+                    "benchmark",
+                    format!("{id:?} is not an instrument identifier"),
+                ),
+            }
+        }
+        for (field, text, slot) in [
+            ("as_of", &self.as_of, &mut options.as_of),
+            ("start", &self.start, &mut options.start),
+        ] {
+            if let Some(text) = text {
+                match text.parse::<Date>() {
+                    Ok(date) => *slot = Some(date),
+                    Err(_) => report.error(
+                        field,
+                        format!("{text:?} is not a date: write it as 2026-06-30"),
+                    ),
+                }
+            }
+        }
+        report.into_result(())?;
+        let mut built = self.portfolio.report_with(&options)?;
+        built.name.clone_from(&self.name);
+        Ok(built)
+    }
+}
+
+/// A portfolio built from its CSV files by path; [`PortfolioBuilder::build`] reads them. Only
+/// the transactions are required. The [data guide] describes every column.
+///
+/// [data guide]: https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md
+#[cfg(feature = "io")]
+#[derive(Debug, Clone, Default)]
+#[must_use = "the portfolio is made by `build`"]
+pub struct PortfolioBuilder {
+    files: [Option<std::path::PathBuf>; 5],
+    base_currency: Option<String>,
+}
+
+#[cfg(feature = "io")]
+const FILES: [&str; 5] = ["transactions", "instruments", "accounts", "prices", "fx"];
+
+#[cfg(feature = "io")]
+impl PortfolioBuilder {
+    fn file(mut self, k: usize, path: impl AsRef<std::path::Path>) -> Self {
+        self.files[k] = Some(path.as_ref().to_owned());
+        self
+    }
+
+    /// The transactions file: one row per deposit, purchase, sale, dividend and so on.
+    pub fn transactions(self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file(0, path)
+    }
+
+    /// The instruments file: each instrument's kind, currency and classifications.
+    pub fn instruments(self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file(1, path)
+    }
+
+    /// The accounts file: each account's name, lot method and classifications.
+    pub fn accounts(self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file(2, path)
+    }
+
+    /// The prices file: a `date` column and one column per instrument, such as a benchmark.
+    pub fn prices(self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file(3, path)
+    }
+
+    /// The exchange rates file, such as a `date` column and a `EUR/USD` column.
+    pub fn fx(self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file(4, path)
+    }
+
+    /// The currency results are reported in, such as `"USD"`: that of the first deposit by
+    /// default.
+    pub fn base_currency(mut self, currency: &str) -> Self {
+        self.base_currency = Some(currency.to_owned());
+        self
+    }
+
+    /// Reads the files and keeps the books, reporting every problem in every file together.
+    pub fn build(&self) -> Result<Portfolio> {
+        let mut report = ValidationReport::new();
+        let texts: Vec<Option<String>> = FILES
+            .iter()
+            .zip(&self.files)
+            .map(|(name, path)| {
+                path.as_ref()
+                    .and_then(|path| match std::fs::read_to_string(path) {
+                        Ok(text) => Some(text),
+                        Err(e) => {
+                            report.error(*name, format!("cannot read {}: {e}", path.display()));
+                            None
+                        }
+                    })
+            })
+            .collect();
+        if self.files[0].is_none() {
+            report.error("transactions", "give the transactions file");
+        }
+        let currency = self.base_currency.as_ref().and_then(|c| match c.parse() {
+            Ok(c) => Some(c),
+            Err(_) => {
+                report.error("base_currency", format!("{c:?} is not a currency code"));
+                None
+            }
+        });
+        report.into_result(())?;
+        let mut csv = PortfolioCsv::new(texts[0].as_deref().unwrap_or_default());
+        if let Some(t) = &texts[1] {
+            csv = csv.instruments(t);
+        }
+        if let Some(t) = &texts[2] {
+            csv = csv.accounts(t);
+        }
+        if let Some(t) = &texts[3] {
+            csv = csv.prices(t);
+        }
+        if let Some(t) = &texts[4] {
+            csv = csv.fx(t);
+        }
+        if let Some(c) = currency {
+            csv = csv.base_currency(c);
+        }
+        Portfolio::from_csv(&csv)
+    }
+}
+
+#[cfg(feature = "io")]
+impl Portfolio {
+    /// A portfolio from its CSV files by path: the transactions, and the instruments, accounts,
+    /// prices and exchange rates as needed.
+    pub fn builder() -> PortfolioBuilder {
+        PortfolioBuilder::default()
     }
 }

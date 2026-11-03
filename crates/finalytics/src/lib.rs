@@ -1,37 +1,46 @@
-//! Finalytics is a portfolio analytics engine. It keeps the books of a multi-currency portfolio
-//! from its transactions, measures performance and risk, and optimises portfolios under real-world
-//! constraints.
+//! Finalytics is a portfolio analytics engine. It compares portfolio optimisation methods on
+//! returns they have not seen, and keeps the books of a real portfolio from its transactions to
+//! report its performance, risk and attribution.
 //!
-//! The engine performs no input or output: callers supply instruments, transactions, prices and FX
-//! rates, and receive typed results. The same API is available from Python and, through
-//! WebAssembly, from JavaScript and TypeScript.
+//! The engine itself performs no input or output: callers supply prices and transactions, and
+//! receive typed results. The default `io` feature adds reading files by path and showing
+//! reports in a browser. The same API is available from Python and, through WebAssembly, from
+//! JavaScript and TypeScript.
 //!
 //! # Where to start
 //!
-//! There are two front doors:
+//! Every front door is a builder that ends in `build()`, and [`prelude`] imports them:
 //!
-//! - [`Assets`]: the prices or returns of things one might hold, for their statistics, covariance
-//!   and correlation, and for optimisation by objective with bounds and group limits;
-//! - [`Portfolio`]: a portfolio's transactions with the market data that values them, for its
-//!   valuation, performance, risk, rebalancing and reports.
+//! - [`Assets`], the prices or returns of things one might hold: their statistics and
+//!   covariance; [`Assets::optimise`] for weights by a [`Method`]; [`Assets::compare`] to
+//!   backtest several methods side by side; [`Assets::backtest`] for one method or one set of
+//!   weights, in sample, on a holdout or walk-forward.
+//! - [`Portfolio`], a portfolio's transactions with the market data that values them: its
+//!   valuation, performance and risk; [`Portfolio::report`] for every report; and
+//!   [`Portfolio::rebalance`] for the trades that reach target weights.
 //!
 //! ```
-//! use finalytics::{Assets, datasets};
+//! use finalytics::prelude::*;
 //!
-//! let assets = Assets::from_prices(&datasets::asset_class_prices())?
-//!     .with_risk_free_asset("T-Bills")?;
-//! let result = assets.optimiser().maximum_sharpe().bounds(0.0, 0.4).solve()?;
+//! let assets = Assets::builder()
+//!     .prices(datasets::asset_class_prices())
+//!     .risk_free_asset("T-Bills")
+//!     .build()?;
+//! let result = assets.optimise(Method::MaximumSharpe).max_weight(0.4).build()?;
 //! assert!(result.sharpe_ratio.is_some());
 //!
-//! let portfolio = datasets::portfolio();
-//! let report = portfolio.report(&datasets::report_options())?;
+//! let report = datasets::portfolio()
+//!     .report()
+//!     .benchmark("BENCH")
+//!     .group_by(["asset_class", "region"])
+//!     .build()?;
 //! assert!(report.risk.provenance.source.transactions > 0);
 //! # Ok::<(), finalytics::Error>(())
 //! ```
 //!
-//! The modules beneath them, such as [`risk`], [`opt`] and [`performance`], give each method on
-//! its own, for analysis the front doors do not cover. [`datasets`] has illustrative data to
-//! practise on.
+//! The modules beneath them, such as [`risk`], [`opt`], [`performance`] and [`backtest`], give
+//! each method on its own, for analysis the front doors do not cover. [`datasets`] has data to
+//! practise on: S&P 500 stocks, a household portfolio and asset-class indices.
 //!
 //! # Options and results
 //!
@@ -75,14 +84,28 @@ mod assets;
 pub mod backtest;
 pub mod datasets;
 mod portfolio;
+#[cfg(feature = "io")]
+mod show;
+
+/// What most programs need, in one import: `use finalytics::prelude::*;`.
+pub mod prelude {
+    pub use crate::backtest::{Months, Periods, Rebalance, Years};
+    #[cfg(feature = "io")]
+    pub use crate::show::Show;
+    pub use crate::{Assets, Error, Method, Portfolio, PortfolioCsv, Result, datasets};
+}
 
 pub use assets::{
-    AssetGroup, AssetStatistics, Assets, ObjectiveName, OptimisationResult, OptimiseOptions,
-    Optimiser,
+    AssetGroup, AssetStatistics, Assets, AssetsBuilder, Method, OptimisationResult, Optimise,
+    OptimiseOptions,
 };
 pub use finalytics_reports::PortfolioReport;
 pub use finalytics_risk::PriceTable;
-pub use portfolio::{Portfolio, PortfolioCsv};
+#[cfg(feature = "io")]
+pub use portfolio::PortfolioBuilder;
+pub use portfolio::{Portfolio, PortfolioCsv, Rebalancing, ReportBuilder, Targets};
+#[cfg(feature = "io")]
+pub use show::Show;
 
 /// Performance measurement: time- and money-weighted returns over reporting periods,
 /// contribution by holding and by group, households of accounts, and attribution against a

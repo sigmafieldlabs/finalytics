@@ -16,7 +16,10 @@ readme = "../../README.md"
 include = ["/src", "/data", "/examples", "/LICENSE-*"]
 
 [features]
-default = ["sp500"]
+default = ["sp500", "io"]
+# Reading portfolios and prices from files by path, and showing reports in a browser. The
+# engine itself performs no input or output; the WebAssembly package leaves this out.
+io = []
 # The daily S&P 500 prices and index of `datasets::sp500` (2.5 MB). The WebAssembly package
 # leaves them out and loads them on demand.
 sp500 = []

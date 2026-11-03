@@ -15,8 +15,13 @@ There are two front doors: :class:`Portfolio`, for a portfolio's transactions, a
     )
     report = portfolio.report(benchmark="SPY")
 
-    assets = fl.Assets(prices, risk_free_rate=0.03)
-    result = assets.optimise(objective="maximum_sharpe", bounds=(0.0, 0.4))
+    assets = fl.Assets(prices, risk_free_asset="T-Bills")
+    result = assets.optimise(method="maximum_sharpe", max_weight=0.4)
+    backtest = assets.compare(
+        methods=["equal_weight", "minimum_variance", "maximum_sharpe"],
+        max_weight=0.4,
+        validation=fl.WalkForward(years=5),
+    )
 """
 
 from importlib.metadata import version as _distribution_version
@@ -24,6 +29,7 @@ from importlib.metadata import version as _distribution_version
 from finalytics import datasets, opt, performance, reports, risk, types
 from finalytics._errors import FinalyticsError, ValidationError
 from finalytics._finalytics import version
+from finalytics._types import Drift, Holdout, InSample, WalkForward
 from finalytics.assets import Assets
 from finalytics.performance import Performance, group_contributions, period
 from finalytics.portfolio import (
@@ -44,14 +50,18 @@ __version__: str = _distribution_version("finalytics")
 __all__ = [
     "Assets",
     "Document",
+    "Drift",
     "FinalyticsError",
     "Holdings",
+    "Holdout",
+    "InSample",
     "MarketData",
     "Observed",
     "Performance",
     "Portfolio",
     "PortfolioData",
     "ValidationError",
+    "WalkForward",
     "__version__",
     "cash",
     "datasets",

@@ -9,8 +9,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Backtests (`finalytics::backtest`, `Assets::simulate`): optimisation methods refitted through
-  time, or fixed weights, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
+- Backtests: `assets.compare(methods)` tests several optimisation methods side by side under the
+  same limits and settings, and `assets.backtest(method)` or `assets.backtest(weights)` tests one
+  allocation, optionally against a benchmark (`finalytics::backtest`; `Assets::simulate` runs
+  them from `BacktestOptions`, as JSON gives them). Optimisation methods are refitted through
+  time, or fixed weights held, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
   band, or never, net of trading costs in basis points of the value traded. Strategies are
   validated in sample, on a holdout from a date, or walk-forward, refitting at each calendar
   rebalance on a rolling or expanding window of years or periods; for walk-forward validation
@@ -21,21 +24,33 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   not. Every return, trade, turnover and cost is checked against an independent simulation
   (`scripts/reference/backtest.py`). A walk-forward comparison of seven methods on the S&P 500
   dataset is a new performance budget: under 5 seconds natively.
-- Two baseline methods: equal weight and inverse volatility (`Objective::EqualWeight`,
-  `Objective::InverseVolatility`, `objective="equal_weight"` and `"inverse_volatility"`), solved
-  by formula. `ObjectiveName::label` names each method in words, and `SolveStatus` displays as
-  it is written in JSON.
+- Baseline methods: equal weight and inverse volatility (`Objective::EqualWeight`,
+  `Objective::InverseVolatility`, `method="equal_weight"` and `"inverse_volatility"`), solved
+  by formula, and risk parity by name (`Method::RiskParity`, `method="risk_parity"`), risk
+  budgeting with equal budgets. `Method::label` names each method in words, and `SolveStatus`
+  displays as it is written in JSON.
 - The READMEs open with one workflow in each language: review the portfolio dataset with every
   report, find the holdings that carry its risk, choose the least risky mix of the same funds,
   and get each account's trades. The Rust programs in the README are the crate's examples
   (`cargo run --example workflow`), and the tests run every README program in each language and
   check that it prints the output shown.
-- Builders for options in Rust: `ReportOptions::default().with_benchmark(...)`,
-  `.with_group_by(...)`, `.with_risk_free_rate(...)` and the rest, and
-  `RebalanceOptions::default().with_whole_units(true)`, `.with_fees(...)`, `.with_tax(...)` and
-  `.with_lot_method(...)`. Identifiers implement `FromStr` (`"BENCH".parse::<InstrumentId>()`),
-  `OptimisationResult::holdings` gives an optimisation's weights by holding, ready for
-  `Portfolio::rebalance`, and a trade's `Side` displays as `buy` or `sell`.
+- Builders for every front door in Rust, each ending in `build()`: `Assets::builder()`,
+  `assets.optimise(Method::MaximumSharpe).max_weight(0.4)`, `assets.compare([...])`,
+  `assets.backtest(...)`, `Portfolio::builder()`, `portfolio.report().benchmark("BENCH")` and
+  `portfolio.rebalance(&result).whole_units()`. They take plain text and numbers, with units in
+  their names (`max_weight`, `trading_cost_bps`, `Years(5)`), and check everything once, at
+  `build()`, reporting every problem together. The option types stay for JSON and for
+  `optimise_with`, `report_with` and `rebalance_with`, and `finalytics::prelude` imports what
+  the builders need. Identifiers implement `FromStr`, `OptimisationResult::holdings` gives an
+  optimisation's weights by holding, and a trade's `Side` displays as `buy` or `sell`.
+- Reports show themselves: `report.show()` opens the report's HTML page in the default
+  browser, or with the command in the `BROWSER` environment variable; in Python it shows inline
+  in a Jupyter notebook, and in JavaScript in a frame inside a page's element
+  (`report.show(element)`), with `report.toHtml()` and `report.toText()`. A report carries the
+  portfolio's name (`.name(...)` in Rust, `name=` in Python, `name` in JavaScript), shown under
+  its title. In Rust, `show`, `save_html` and reading files by path (`Portfolio::builder()`,
+  `AssetsBuilder::prices_file`) are behind the default `io` feature, which the WebAssembly
+  build leaves out, and report `Error::Io` when they fail.
 - A data guide (`docs/data.md`): every input, column by column, with the dataset files as
   examples and advice on bringing data from brokers and data providers; its examples run as
   tests.
@@ -46,15 +61,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `since 2026-01-31`.
 - Two front doors to the library. `Assets` takes the prices or returns of things one might hold
   (a pandas DataFrame, CSV or a `PriceTable`), detects their frequency, annualises them, and
-  gives each asset's statistics, the covariance and correlation, and optimisation by objective
-  name with bounds, per-asset bounds and group limits given by name, such as
-  `assets.optimise(objective="maximum_sharpe", bounds=(0.0, 0.4))`; one asset, such as T-bills,
+  gives each asset's statistics, the covariance and correlation, and optimisation by method
+  name with a largest weight, bounds, per-asset bounds and group limits given by name, such as
+  `assets.optimise(method="maximum_sharpe", max_weight=0.4)`; one asset, such as T-bills,
   may serve as the risk-free asset. `Portfolio` holds a portfolio's records, its market data and
   the books kept from them, and gives its valuation, weights, performance, rebalancing (with
   `with_rebalance` to make the trades), all six reports in one call (`report`) and the
-  instruments it holds as `Assets`. Rust has builders (`assets.optimiser().maximum_sharpe()`,
-  `PortfolioCsv::new(transactions).prices(prices)`), Python keyword arguments, and JavaScript
-  options objects.
+  instruments it holds as `Assets`. Rust has builders, Python keyword arguments, and JavaScript
+  options objects, in which an unknown option is an error.
 - Datasets (`finalytics::datasets`, `fl.datasets`, `datasets` in JavaScript): daily prices
   from 2005 to October 2026 of 55 S&P 500 companies (the five largest in each sector), with
   3-month T-bills, the S&P 500 total return index and each company's sector (`sp500`,

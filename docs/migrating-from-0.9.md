@@ -41,13 +41,13 @@ what replaces each part of 0.9, and works one 0.9 example through in 1.0.
 | Downloading prices (`Ticker`, `Tickers` or `Portfolio` with dates and an interval) | Load prices yourself and pass them in: `Assets(prices)` from a pandas DataFrame or CSV, `Portfolio.from_csv(transactions=..., prices=...)` |
 | `KLINE` (open, high, low, close, volume) | One price series per instrument: a column per instrument in a CSV file, or a pandas Series |
 | `performance_stats()`; the performance report of `Ticker` | `Assets(prices).statistics()`; `risk.statistics` and `risk.relative_statistics` on returns; `portfolio.performance()` for a portfolio kept from transactions |
-| `objective_function="max_sharpe"` | `assets.optimise(objective="maximum_sharpe")`, with `risk_free_rate` given to `Assets` |
-| `"min_vol"`, `"min_var"` | `objective="minimum_variance"`; both have the same optimum |
-| `"min_cvar"` | `objective="minimum_cvar"`, with the historical returns as scenarios |
-| `"risk_parity"` | `objective="risk_budgeting"`; equal budgets unless you give others |
-| `"max_diversification"` | `objective="maximum_diversification"` |
-| `"hierarchical_risk_parity"` | `objective="hierarchical_risk_parity"` |
-| `"max_return"`, `"max_sortino"`, `"min_drawdown"` | No direct equivalent. `objective="target_volatility"` gives the largest expected return within a volatility limit, and `"mean_variance"` trades return against variance |
+| `objective_function="max_sharpe"` | `assets.optimise(method="maximum_sharpe")`, with `risk_free_rate` given to `Assets` |
+| `"min_vol"`, `"min_var"` | `method="minimum_variance"`; both have the same optimum |
+| `"min_cvar"` | `method="minimum_cvar"`, with the historical returns as scenarios |
+| `"risk_parity"` | `method="risk_parity"`; `"risk_budgeting"` with `budgets` for unequal shares |
+| `"max_diversification"` | `method="maximum_diversification"` |
+| `"hierarchical_risk_parity"` | `method="hierarchical_risk_parity"` |
+| `"max_return"`, `"max_sortino"`, `"min_drawdown"` | No direct equivalent. `method="target_volatility"` gives the largest expected return within a volatility limit, and `"mean_variance"` trades return against variance |
 | `asset_constraints`: (lower, upper) per symbol, in order | `bounds=(min, max)` for every asset, `asset_bounds={"SPY": (min, max)}` for particular ones |
 | `categorical_constraints`: a category per symbol and limits per category | `groups={"Defensive": (["AGG", "GLD"], min, max)}`: one entry per category |
 | `weights`, `rebalance_strategy`, `scheduled_cash_flows` (a simulated allocation with rebalancing and regular contributions) | Transactions (deposits, purchases, sales) in a `Portfolio`. `portfolio.rebalance(...)` proposes the trades back to target weights, with fees and tax-aware lot selection. 1.0 does not simulate a schedule: generate the transactions for the schedule you want |
@@ -106,7 +106,7 @@ month-end closes, and the defensive assets must make up 60% to 90% of the portfo
 ... """), index_col="date", parse_dates=True)
 >>> assets = fl.Assets(prices, risk_free_rate=0.02)
 >>> result = assets.optimise(
-...     objective="maximum_sharpe",
+...     method="maximum_sharpe",
 ...     bounds=(0.1, 0.6),
 ...     groups={"Defensive": (["AGG", "GLD"], 0.6, 0.9)},
 ... )
@@ -124,7 +124,7 @@ Ledoit–Wolf covariance by 12, and optimises over them. The defensive group's l
 it, more goes to SPY:
 
 ```python
->>> without = assets.optimise(objective="maximum_sharpe", bounds=(0.1, 0.6))
+>>> without = assets.optimise(method="maximum_sharpe", bounds=(0.1, 0.6))
 >>> round(without.weights["SPY"], 3)
 0.445
 

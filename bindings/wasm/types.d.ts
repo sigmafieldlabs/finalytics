@@ -1530,6 +1530,12 @@ export interface Matrix {
 }
 
 /**
+ * An optimisation method, by name. The parameters some methods need are given beside it, in
+ * `OptimiseOptions` or with the builder's methods.
+ */
+export type Method = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "equal_weight" | "inverse_volatility" | "risk_parity" | "risk_budgeting" | "hierarchical_risk_parity";
+
+/**
  * An exact decimal amount in one currency.
  *
  * Arithmetic between amounts checks that the currencies match and that no overflow occurs.
@@ -1620,12 +1626,6 @@ export type Objective =
   };
 
 /**
- * What an optimisation seeks, by name. The parameters some objectives need are given beside
- * it, in `OptimiseOptions`.
- */
-export type ObjectiveName = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "equal_weight" | "inverse_volatility" | "risk_budgeting" | "hierarchical_risk_parity";
-
-/**
  * The result of an optimisation over assets: the weights by asset, with their expected return,
  * volatility and Sharpe ratio, and the solver's full solution.
  */
@@ -1647,12 +1647,12 @@ export interface OptimisationResult {
 }
 
 /**
- * What to optimise, and the limits on the weights. Everything is optional: by default the
- * portfolio with the largest Sharpe ratio, fully invested and long only.
+ * The method, its parameters and the limits on the weights. Everything is optional: by default
+ * the portfolio with the largest Sharpe ratio, fully invested and long only.
  */
 export interface OptimiseOptions {
-  /** What to optimise: the largest Sharpe ratio by default. */
-  objective?: ObjectiveName;
+  /** The method: the largest Sharpe ratio by default. */
+  method?: Method;
   /** The annual risk-free rate for the Sharpe ratio; by default the assets' own. */
   risk_free_rate?: number | null;
   /**
@@ -1672,6 +1672,11 @@ export interface OptimiseOptions {
   linkage?: Linkage | null;
   /** The smallest and largest weight of every asset: 0 and 1 by default. */
   bounds?: Bound | null;
+  /**
+   * The largest weight of any asset, as `bounds` of 0 and `max_weight`; give one or the
+   * other.
+   */
+  max_weight?: number | null;
   /** Bounds for particular assets, which take the place of `bounds` for them. */
   asset_bounds?: Record<string, Bound>;
   /** Limits on the total weight of groups of assets, by group name. */
@@ -1893,6 +1898,11 @@ export interface PortfolioReport {
   attribution?: AttributionReport | null;
   /** The effect of scenarios on value and risk. */
   scenarios?: ScenariosReport | null;
+  /**
+   * The portfolio's name, shown under each report's title when it is printed or laid out as
+   * a page.
+   */
+  name?: string | null;
 }
 
 /** A position: the open lots of one instrument in one account, added up. */

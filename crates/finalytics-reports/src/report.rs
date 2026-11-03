@@ -30,6 +30,10 @@ pub struct PortfolioReport {
     pub attribution: Option<AttributionReport>,
     /// The effect of scenarios on value and risk.
     pub scenarios: Option<ScenariosReport>,
+    /// The portfolio's name, shown under each report's title when it is printed or laid out as
+    /// a page.
+    #[serde(default)]
+    pub name: Option<String>,
 }
 
 /// Every report on the books, from one set of options.
@@ -52,5 +56,6 @@ pub fn portfolio_report(
             false => Some(scenarios_report(books, market, source, options)?),
             true => None,
         },
+        name: None,
     })
 }

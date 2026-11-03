@@ -163,7 +163,7 @@ fn check(
     }
     if !(settings.trading_cost_bps >= 0.0 && settings.trading_cost_bps.is_finite()) {
         report.error(
-            "settings.trading_cost_bps",
+            "trading_cost_bps",
             "must be zero or more, in basis points of the value traded",
         );
     }
@@ -171,7 +171,7 @@ fn check(
         && !(band > 0.0 && band <= 1.0)
     {
         report.error(
-            "settings.rebalance.band",
+            "rebalance.band",
             "must be between 0 and 1, such as 0.05 for five percentage points",
         );
     }
@@ -181,12 +181,12 @@ fn check(
             let h = market.dates.partition_point(|d| d < start);
             if h < 2 {
                 report.error(
-                    "settings.validation.start",
+                    "validation.start",
                     format!("leaves fewer than two periods before {start} to fit to"),
                 );
             } else if h >= n {
                 report.error(
-                    "settings.validation.start",
+                    "validation.start",
                     format!("leaves no periods from {start} on to test"),
                 );
             }
@@ -204,7 +204,7 @@ fn check(
                 (None, Some(periods)) => (*periods, "periods"),
                 _ => {
                     report.error(
-                        "settings.validation",
+                        "validation",
                         "give the walk-forward window as a number of years or of periods",
                     );
                     (0, "")
@@ -212,7 +212,7 @@ fn check(
             };
             if !field.is_empty() && (w < 2 || w >= n) {
                 report.error(
-                    format!("settings.validation.{field}"),
+                    format!("validation.{field}"),
                     format!(
                         "a window of {w} periods must be at least 2 and leave periods to test: \
                          the data has {n}"
@@ -221,7 +221,7 @@ fn check(
             }
             if !settings.rebalance.is_calendar() {
                 report.error(
-                    "settings.rebalance",
+                    "rebalance",
                     "walk-forward validation refits at each calendar rebalance: choose monthly, \
                      quarterly or yearly",
                 );

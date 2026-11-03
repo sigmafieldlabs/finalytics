@@ -43,6 +43,11 @@ bindings/wasm        wasm-bindgen module and the npm package
 Each arrow points from a crate to a crate it depends on. A crate depends only on crates above
 it in this list.
 
+The engine crates read and write no files. Input and output live in the `finalytics` facade,
+behind its default `io` feature: reading portfolios and prices by path, saving reports and
+showing them in a browser. The WebAssembly module leaves the feature out, and the npm package
+shows reports in the page instead.
+
 ## Data types across languages
 
 The Rust types are the single description of the data the engine reads and returns. With the

@@ -660,16 +660,27 @@ class Portfolio:
             tax=tax,
         )
 
-    def report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.PortfolioReport:
+    def report(
+        self,
+        options: _types.ReportOptions | None = None,
+        *,
+        name: str | None = None,
+        **keywords: Any,
+    ) -> _types.PortfolioReport:
         """Every report on the portfolio, from one set of options: the fields of
         :class:`~finalytics.reports.ReportOptions`, given as keywords or as a ``ReportOptions``,
         such as ``benchmark="SPX"``, ``group_by=["asset_class"]`` and ``risk_free_rate=0.03``.
         The attribution report needs ``attribution`` (the benchmark's segments) and the
-        scenarios report needs ``scenarios``; without them, they are ``None``."""
+        scenarios report needs ``scenarios``; without them, they are ``None``. `name`, such as
+        ``"Morgan family portfolio"``, is shown under the report's title.
+
+        ``report.show()`` shows the report inline in a notebook or in a browser, and
+        ``report.save_html(path)`` saves it as one page."""
         from finalytics.reports import _options
 
         text = call(self._native.report_all, dumps(_options(options, keywords)))
-        return loads(_types.PortfolioReport, text)
+        report = loads(_types.PortfolioReport, text)
+        return report if name is None else dataclasses.replace(report, name=name)
 
     def overview_report(self, options: _types.ReportOptions | None = None, **keywords: Any) -> _types.OverviewReport:
         """Headline figures, value and growth against the benchmark, allocation, risk by

@@ -1792,11 +1792,12 @@ fn scenarios(s: &ScenariosReport) -> String {
 const CSS: &str = include_str!("../assets/report.css");
 
 impl PortfolioReport {
-    /// The six reports as one self-contained HTML page, with the portfolio's `name` as its
-    /// title, if given: inline styles and SVG charts with hover details, no scripts or external
-    /// resources, in the reader's light or dark theme, and laid out for printing, one report to a
-    /// page.
+    /// The six reports as one self-contained HTML page, with the portfolio's `name` (or the
+    /// report's own) as its title, if given: inline styles and SVG charts with hover details, no
+    /// scripts or external resources, in the reader's light or dark theme, and laid out for
+    /// printing, one report to a page.
     pub fn to_html(&self, name: Option<&str>) -> String {
+        let name = name.or(self.name.as_deref());
         let p = &self.overview.provenance;
         let ccy = p.base_currency.to_string();
         let title = name.unwrap_or("Portfolio report");

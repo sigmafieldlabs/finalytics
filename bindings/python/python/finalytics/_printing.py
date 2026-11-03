@@ -1,13 +1,18 @@
 """The reports as text and as an HTML page.
 
 The report classes in :mod:`finalytics.types` derive from these, so that ``print(report)`` shows
-a report as text, 80 columns wide, and the full report can be saved as one HTML page.
+a report as text, 80 columns wide, and the full report can be saved as one HTML page or shown,
+inline in a notebook or in a browser.
 """
 
 from __future__ import annotations
 
+import html
 import os
 import pathlib
+import sys
+import tempfile
+import webbrowser
 
 
 class PrintedReport:
@@ -48,3 +53,40 @@ class PrintedPortfolioReport(PrintedReport):
         target = pathlib.Path(path)
         target.write_text(self.to_html(name), encoding="utf-8")
         return target
+
+    def show(self) -> None:
+        """Shows the report: inline in a Jupyter notebook, and otherwise in the default
+        browser, or with the command in the ``BROWSER`` environment variable if it is set."""
+        if _notebook():
+            from IPython.display import HTML, display
+
+            display(HTML(self._repr_html_()))
+            return
+        if sys.platform == "emscripten":
+            raise RuntimeError("cannot open a browser here; use to_html() for the page")
+        with tempfile.NamedTemporaryFile(
+            "w", prefix="finalytics-report-", suffix=".html", delete=False, encoding="utf-8"
+        ) as file:
+            file.write(self.to_html())
+        path = pathlib.Path(file.name)
+        if not webbrowser.open(path.as_uri()):
+            raise RuntimeError(f"cannot open a browser; the report is at {path}")
+
+    def _repr_html_(self) -> str:
+        # The page keeps its own styles inside a frame, apart from the notebook's, and the frame
+        # grows to the report's height where the notebook allows it.
+        page = html.escape(self.to_html(), quote=True)
+        grow = "this.style.height = this.contentDocument.documentElement.scrollHeight + 'px'"
+        return (
+            f'<iframe srcdoc="{page}" title="Report" onload="{grow}" '
+            'style="width: 100%; height: 900px; border: 0"></iframe>'
+        )
+
+
+def _notebook() -> bool:
+    """Whether the code runs in a notebook, rather than a terminal or a script."""
+    ipython = sys.modules.get("IPython")
+    if ipython is None:
+        return False
+    shell = ipython.get_ipython()
+    return shell is not None and type(shell).__name__ != "TerminalInteractiveShell"

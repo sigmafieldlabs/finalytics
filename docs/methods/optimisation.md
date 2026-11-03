@@ -40,7 +40,9 @@ $y = B^\top w$, and the cone is built from a factor of $F$ and the specific vola
 | `maximum_sharpe` | $\max (\mu^\top w - r_f) / \sqrt{w^\top \Sigma w}$ | Quadratic programme after the Charnes–Cooper transformation |
 | `maximum_diversification` | $\max \sigma^\top w / \sqrt{w^\top \Sigma w}$, with $\sigma_i = \sqrt{\Sigma_{ii}}$ | As maximum Sharpe |
 | `minimum_cvar` | $\min$ CVaR of the scenario returns | Linear programme |
-| `risk_budgeting` | Each asset's share of risk equals its budget | Newton's method |
+| `equal_weight` | $w_i = 1/n$ | Closed form |
+| `inverse_volatility` | $w_i \propto 1/\sigma_i$ | Closed form |
+| `risk_budgeting` | Each asset's share of risk, $w_i (\Sigma w)_i / w^\top \Sigma w$, equals its budget; equal shares by default, as the method `risk_parity` gives | Newton's method |
 | `hierarchical_risk_parity` | Clustering and recursive bisection | No optimisation |
 
 ### Maximum Sharpe ratio and diversification

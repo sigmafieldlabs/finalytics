@@ -146,7 +146,7 @@ def case(name, strategies, validation, schedule, bps, band=None, benchmark=None)
             ins = run(parts["in"], start, schedule, bps, band)
             out = run(parts["out"], start, schedule, bps, band) if parts["out"] else None
         else:
-            fit = FITS[strategy["options"]["objective"]]
+            fit = FITS[strategy["options"]["method"]]
             if validation["type"] == "walk_forward":
                 w, expanding = parts["window"], parts["expanding"]
                 first = fit(range(0, w))
@@ -172,8 +172,8 @@ def case(name, strategies, validation, schedule, bps, band=None, benchmark=None)
     return {"name": name, "options": options, "expected": expected}
 
 
-def optimise(objective, **extra):
-    return {"type": "optimise", "options": {"objective": objective, **extra}}
+def optimise(method, **extra):
+    return {"type": "optimise", "options": {"method": method, **extra}}
 
 
 LIMITED = {"bounds": {"min": 0.0, "max": 0.4}}

@@ -4,11 +4,11 @@
 
 use finalytics::backtest::{BacktestOptions, Benchmark, Rebalance, Strategy, Validation};
 use finalytics::opt::Bound;
-use finalytics::{Assets, Error, ObjectiveName, OptimiseOptions, datasets};
+use finalytics::{Assets, Error, Method, OptimiseOptions, datasets};
 
-fn method(objective: ObjectiveName, max_weight: f64) -> Strategy {
+fn method(method: Method, max_weight: f64) -> Strategy {
     let mut options = OptimiseOptions::default();
-    options.objective = objective;
+    options.method = method;
     options.bounds = Some(Bound {
         min: 0.0,
         max: max_weight,
@@ -30,13 +30,13 @@ fn methods_walk_forward_on_the_sp500() {
         .with_risk_free_asset("T-Bills")
         .unwrap();
     let mut options = BacktestOptions::default();
-    for objective in [
-        ObjectiveName::EqualWeight,
-        ObjectiveName::InverseVolatility,
-        ObjectiveName::MaximumSharpe,
-        ObjectiveName::HierarchicalRiskParity,
+    for m in [
+        Method::EqualWeight,
+        Method::InverseVolatility,
+        Method::MaximumSharpe,
+        Method::HierarchicalRiskParity,
     ] {
-        options.strategies.push(method(objective, 0.10));
+        options.strategies.push(method(m, 0.10));
     }
     // Yearly refits keep the test quick; the performance budget times quarterly ones.
     options.rebalance = Rebalance::Yearly;
@@ -106,7 +106,7 @@ fn a_holdout_tests_fixed_weights_and_a_fitted_method_against_a_benchmark() {
         .unwrap();
     let mut options = BacktestOptions::default();
     options.strategies = vec![
-        method(ObjectiveName::MaximumSharpe, 0.4),
+        method(Method::MaximumSharpe, 0.4),
         Strategy::weights(
             "Cautious",
             [("US Equity", 0.3), ("Bonds", 0.5), ("T-Bills", 0.2)],
@@ -147,7 +147,7 @@ fn mistakes_in_the_options_are_reported_together() {
     let mut options = BacktestOptions::default();
     options.strategies = vec![
         Strategy::weights("Mine", [("US Equity", 0.5), ("Crypto", 0.4)]),
-        method(ObjectiveName::MinimumVariance, 0.4),
+        method(Method::MinimumVariance, 0.4),
     ];
     options.rebalance = Rebalance::Never;
     options.validation = Validation::walk_forward(5.0);
@@ -165,10 +165,7 @@ fn mistakes_in_the_options_are_reported_together() {
     );
     options.strategies.remove(0);
     options.benchmark = None;
-    assert_eq!(
-        paths(assets.simulate(&options).unwrap_err()),
-        ["settings.rebalance"]
-    );
+    assert_eq!(paths(assets.simulate(&options).unwrap_err()), ["rebalance"]);
 }
 
 /// The backtests of `scripts/reference/backtest.py`, simulated independently with NumPy and

@@ -3980,6 +3980,76 @@
       ],
       "description": "A square matrix with labelled rows and columns, stored row by row; a covariance or\ncorrelation matrix."
     },
+    "Method": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "minimum_variance",
+          "description": "The smallest variance."
+        },
+        {
+          "type": "string",
+          "const": "mean_variance",
+          "description": "The largest expected return less `risk_aversion / 2` times the variance."
+        },
+        {
+          "type": "string",
+          "const": "robust_mean_variance",
+          "description": "Mean–variance against the worst expected returns within `uncertainty`."
+        },
+        {
+          "type": "string",
+          "const": "target_return",
+          "description": "The smallest variance with an expected return of at least `target`."
+        },
+        {
+          "type": "string",
+          "const": "target_volatility",
+          "description": "The largest expected return with a volatility of at most `target`."
+        },
+        {
+          "type": "string",
+          "const": "maximum_sharpe",
+          "description": "The largest Sharpe ratio."
+        },
+        {
+          "type": "string",
+          "const": "maximum_diversification",
+          "description": "The largest diversification ratio."
+        },
+        {
+          "type": "string",
+          "const": "minimum_cvar",
+          "description": "The smallest conditional value at risk of the periods' returns, at `confidence`."
+        },
+        {
+          "type": "string",
+          "const": "equal_weight",
+          "description": "Every asset with the same weight: the naive portfolio that estimated ones must beat."
+        },
+        {
+          "type": "string",
+          "const": "inverse_volatility",
+          "description": "Weights in proportion to the inverse of each asset's volatility."
+        },
+        {
+          "type": "string",
+          "const": "risk_parity",
+          "description": "Every asset with the same share of the portfolio's risk."
+        },
+        {
+          "type": "string",
+          "const": "risk_budgeting",
+          "description": "Each asset's share of the portfolio's risk equal to its budget, given with `budgets`\n(equal shares without them, as risk parity)."
+        },
+        {
+          "type": "string",
+          "const": "hierarchical_risk_parity",
+          "description": "Hierarchical risk parity."
+        }
+      ],
+      "description": "An optimisation method, by name. The parameters some methods need are given beside it, in\n`OptimiseOptions` or with the builder's methods."
+    },
     "Money": {
       "type": "object",
       "properties": {
@@ -4276,71 +4346,6 @@
       ],
       "description": "What an optimisation seeks."
     },
-    "ObjectiveName": {
-      "oneOf": [
-        {
-          "type": "string",
-          "const": "minimum_variance",
-          "description": "The smallest variance."
-        },
-        {
-          "type": "string",
-          "const": "mean_variance",
-          "description": "The largest expected return less `risk_aversion / 2` times the variance."
-        },
-        {
-          "type": "string",
-          "const": "robust_mean_variance",
-          "description": "Mean–variance against the worst expected returns within `uncertainty`."
-        },
-        {
-          "type": "string",
-          "const": "target_return",
-          "description": "The smallest variance with an expected return of at least `target`."
-        },
-        {
-          "type": "string",
-          "const": "target_volatility",
-          "description": "The largest expected return with a volatility of at most `target`."
-        },
-        {
-          "type": "string",
-          "const": "maximum_sharpe",
-          "description": "The largest Sharpe ratio."
-        },
-        {
-          "type": "string",
-          "const": "maximum_diversification",
-          "description": "The largest diversification ratio."
-        },
-        {
-          "type": "string",
-          "const": "minimum_cvar",
-          "description": "The smallest conditional value at risk of the periods' returns, at `confidence`."
-        },
-        {
-          "type": "string",
-          "const": "equal_weight",
-          "description": "Every asset with the same weight: the naive portfolio that estimated ones must beat."
-        },
-        {
-          "type": "string",
-          "const": "inverse_volatility",
-          "description": "Weights in proportion to the inverse of each asset's volatility."
-        },
-        {
-          "type": "string",
-          "const": "risk_budgeting",
-          "description": "Each asset's share of the risk equal to its budget (equal shares without `budgets`)."
-        },
-        {
-          "type": "string",
-          "const": "hierarchical_risk_parity",
-          "description": "Hierarchical risk parity."
-        }
-      ],
-      "description": "What an optimisation seeks, by name. The parameters some objectives need are given beside\nit, in `OptimiseOptions`."
-    },
     "OptimisationResult": {
       "type": "object",
       "properties": {
@@ -4403,9 +4408,9 @@
     "OptimiseOptions": {
       "type": "object",
       "properties": {
-        "objective": {
-          "$ref": "#/$defs/ObjectiveName",
-          "description": "What to optimise: the largest Sharpe ratio by default.",
+        "method": {
+          "$ref": "#/$defs/Method",
+          "description": "The method: the largest Sharpe ratio by default.",
           "default": "maximum_sharpe"
         },
         "risk_free_rate": {
@@ -4492,6 +4497,15 @@
           "description": "The smallest and largest weight of every asset: 0 and 1 by default.",
           "default": null
         },
+        "max_weight": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The largest weight of any asset, as `bounds` of 0 and `max_weight`; give one or the\nother.",
+          "default": null
+        },
         "asset_bounds": {
           "type": "object",
           "additionalProperties": {
@@ -4518,7 +4532,7 @@
           "default": {}
         }
       },
-      "description": "What to optimise, and the limits on the weights. Everything is optional: by default the\nportfolio with the largest Sharpe ratio, fully invested and long only."
+      "description": "The method, its parameters and the limits on the weights. Everything is optional: by default\nthe portfolio with the largest Sharpe ratio, fully invested and long only."
     },
     "OverviewReport": {
       "type": "object",
@@ -5137,6 +5151,14 @@
             }
           ],
           "description": "The effect of scenarios on value and risk."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The portfolio's name, shown under each report's title when it is printed or laid out as\na page.",
+          "default": null
         }
       },
       "required": [
@@ -7795,7 +7817,7 @@
               "$ref": "#/$defs/OptimiseOptions",
               "description": "The method, its parameters and the limits on the weights.",
               "default": {
-                "objective": "maximum_sharpe",
+                "method": "maximum_sharpe",
                 "risk_free_rate": null,
                 "target": null,
                 "risk_aversion": null,
@@ -7804,6 +7826,7 @@
                 "budgets": null,
                 "linkage": null,
                 "bounds": null,
+                "max_weight": null,
                 "asset_bounds": {},
                 "groups": {},
                 "expected_returns": {}
@@ -7813,7 +7836,7 @@
           "required": [
             "type"
           ],
-          "description": "An optimisation, refitted as the validation says. The limits of `options` apply to the\nmethods that take them; equal weight, inverse volatility, risk parity and hierarchical\nrisk parity are fully invested and long only."
+          "description": "An optimisation, refitted as the validation says. The limits of `options` apply to the\nmethods that take them; equal weight, inverse volatility, risk parity, risk budgeting\nand hierarchical risk parity are fully invested and long only."
         },
         {
           "type": "object",

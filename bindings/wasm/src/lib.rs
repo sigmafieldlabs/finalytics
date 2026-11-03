@@ -115,6 +115,96 @@ export interface AssetsOptions {
   covariance?: CovarianceMethod["type"] | CovarianceMethod;
 }
 
+/** Choices for `Portfolio.report`, all optional. */
+export interface ReportChoices extends Partial<ReportOptions> {
+  /** The portfolio's name, such as `"Morgan family portfolio"`, shown under the title. */
+  name?: string;
+}
+
+/** The ways to lay out a report: as text, as an HTML page, or shown. */
+export interface ReportMethods {
+  /** The report as text for printing, 80 columns wide, with `name`, if given, under the title. */
+  toText(name?: string): string;
+  /**
+   * The report as one self-contained HTML page, with `name`, if given, as its title: inline
+   * styles and SVG charts, no scripts, in light and dark themes, ready to print.
+   */
+  toHtml(name?: string): string;
+  /**
+   * Shows the report. In a browser, in a frame inside `element`, or else in a new window. In
+   * Node.js, in the default browser, or with the command in the `BROWSER` environment variable if
+   * it is set; the page is saved to a temporary file, whose path is returned.
+   */
+  show(element?: Element): string | undefined;
+}
+
+/** The limits on the weights and the methods' parameters, as for `Assets.optimise`. */
+export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method">;
+
+/**
+ * How strategies are validated: `"in_sample"` (the default); `{ holdout: { start: "2016-11-01" } }`,
+ * fitted on the history before the date and tested on the rest; or
+ * `{ walk_forward: { years: 5 } }`, refitted at each calendar rebalance on the last five years
+ * (or on all the history so far, with `expanding: true`).
+ */
+export type ValidationChoice =
+  | "in_sample"
+  | { holdout: { start: Date } }
+  | { walk_forward: { years?: number; periods?: number; expanding?: boolean } }
+  | Validation;
+
+/**
+ * When the portfolio trades back to its targets: `"monthly"`, `"quarterly"` (the default),
+ * `"yearly"`, `"never"`, or `{ drift: { band: 0.05 } }` when a weight drifts five points away.
+ */
+export type RebalanceChoice =
+  | "monthly"
+  | "quarterly"
+  | "yearly"
+  | "never"
+  | { drift: { band: number } }
+  | RebalanceSchedule;
+
+/** How `Assets.compare` and `Assets.backtest` run, all optional. */
+export interface BacktestSettings {
+  /** How the strategies are validated: in sample by default. */
+  validation?: ValidationChoice;
+  /** When the portfolio trades back to its targets: quarterly by default. */
+  rebalance?: RebalanceChoice;
+  /** The cost of trading, in basis points of the value traded: 10 is 0.1%. */
+  trading_cost_bps?: number;
+  /**
+   * What the strategies are compared with: weights by asset, such as
+   * `{ "US Equity": 0.6, Bonds: 0.4 }`, or an index's prices, such as
+   * `await datasets.sp500Index()`.
+   */
+  benchmark?: Record<string, number> | PriceTable | Benchmark;
+}
+
+/** Choices for `Assets.compare`: the methods, with limits and settings applied to each. */
+export interface CompareChoices extends OptimiseLimits, BacktestSettings {
+  /** The methods to compare, such as `["equal_weight", "minimum_variance"]`. */
+  methods: Method[];
+}
+
+/** Choices for `Assets.backtest`: a method, with its limits, or fixed weights. */
+export type BacktestChoices =
+  | (OptimiseLimits &
+      BacktestSettings & {
+        /** The method, refitted as the validation says. */
+        method: Method;
+        weights?: undefined;
+        /** The name in the results; the method's own by default. */
+        name?: string;
+      })
+  | (BacktestSettings & {
+      /** Fixed weights by asset, adding up to one; a weight on the risk-free asset is cash. */
+      weights: Record<string, number>;
+      method?: undefined;
+      /** The name in the results: `Weights` by default. */
+      name?: string;
+    });
+
 /** Choices for `Portfolio.shockScenario` and `Portfolio.historicalScenario`, all optional. */
 export interface ScenarioChoices extends Partial<ScenarioOptions> {
   /** The date of the holdings; the last price date by default. */
@@ -562,13 +652,29 @@ impl Portfolio {
 
     /// Every report on the portfolio, from one set of options. The attribution report needs
     /// `attribution` and the scenarios report `scenarios`; without them, they are absent.
-    #[wasm_bindgen(unchecked_return_type = "PortfolioReport")]
+    /// `name`, such as `"Morgan family portfolio"`, is shown under the report's title.
+    #[wasm_bindgen(unchecked_return_type = "PortfolioReport & ReportMethods")]
     pub fn report(
         &self,
-        #[wasm_bindgen(unchecked_optional_param_type = "Partial<ReportOptions>")] options: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "ReportChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let options = report_options(options)?;
-        to_js(&self.inner.report(&options).map_err(error)?)
+        let mut choices = object(
+            options,
+            &fields::<finalytics::reports::ReportOptions>(&["name"]),
+        )?;
+        let name = match choices.remove("name") {
+            Some(serde_json::Value::String(name)) => Some(name),
+            Some(serde_json::Value::Null) | None => None,
+            Some(_) => return Err(invalid("options.name", "must be a string")),
+        };
+        let options: finalytics::reports::ReportOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(choices).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        let mut report = self.inner.report_with(&options).map_err(error)?;
+        report.name = name;
+        to_js(&report)
     }
 
     /// The digest and size of the inputs the reports are computed from.
@@ -1169,17 +1275,22 @@ impl Assets {
         to_js(&means)
     }
 
-    /// The weights of the risky assets that best meet the objective of `options` (the largest
-    /// Sharpe ratio by default), fully invested, within its bounds and group limits. The
-    /// weights are in the order of the assets.
+    /// The weights of the risky assets that best meet the method of `options` (the largest
+    /// Sharpe ratio by default), fully invested, within its limits. The weights are in the
+    /// order of the assets.
     #[wasm_bindgen(unchecked_return_type = "OptimisationResult")]
     pub fn optimise(
         &self,
         #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
         options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let options: finalytics::OptimiseOptions = optional(options, "options")?;
-        let result = self.inner.optimise(&options).map_err(error)?;
+        let options = object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
+        let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(options).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        let result = self.inner.optimise_with(&options).map_err(error)?;
         let value = to_js(&result)?;
         if let Some(weights) = &result.weights {
             // In the order of the assets, rather than of their names.
@@ -1192,6 +1303,85 @@ impl Assets {
             js_sys::Reflect::set(&value, &"weights".into(), &ordered)?;
         }
         Ok(value)
+    }
+
+    /// Each of `options.methods` backtested on these assets with the same limits, rebalancing,
+    /// validation and trading costs, side by side.
+    #[wasm_bindgen(unchecked_return_type = "Backtest")]
+    pub fn compare(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "CompareChoices")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut allowed = fields::<finalytics::OptimiseOptions>(&["methods"]);
+        allowed.retain(|name| name != "method");
+        allowed.extend(SETTINGS.map(str::to_owned));
+        let mut choices = object(options, &allowed)?;
+        let Some(methods) = choices.remove("methods") else {
+            return Err(invalid("options.methods", "is missing"));
+        };
+        let methods: Vec<finalytics::Method> =
+            finalytics::formats::from_json(&methods.to_string(), "options.methods")
+                .map_err(error)?;
+        let mut settings = settings(&mut choices);
+        let limits = limits(choices)?;
+        let strategies = methods
+            .into_iter()
+            .map(|method| {
+                let mut options = limits.clone();
+                options.insert("method".to_owned(), serde_json::json!(method));
+                serde_json::json!({ "type": "optimise", "options": options })
+            })
+            .collect();
+        settings.insert(
+            "strategies".to_owned(),
+            serde_json::Value::Array(strategies),
+        );
+        self.simulate(settings)
+    }
+
+    /// One strategy backtested: `options.method`, fitted as the validation says, or fixed
+    /// `options.weights` by asset (a weight on the risk-free asset is held as cash).
+    #[wasm_bindgen(unchecked_return_type = "Backtest")]
+    pub fn backtest(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "BacktestChoices")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut allowed = fields::<finalytics::OptimiseOptions>(&["weights", "name"]);
+        allowed.extend(SETTINGS.map(str::to_owned));
+        let mut choices = object(options, &allowed)?;
+        let method = choices.remove("method");
+        let weights = choices.remove("weights");
+        let name = choices.remove("name").unwrap_or(serde_json::Value::Null);
+        let mut settings = settings(&mut choices);
+        let strategy = match (method, weights) {
+            (Some(method), None) => {
+                let mut options = limits(choices)?;
+                options.insert("method".to_owned(), method);
+                serde_json::json!({ "type": "optimise", "name": name, "options": options })
+            }
+            (None, Some(weights)) => {
+                let mut report = ValidationReport::new();
+                for key in choices.keys() {
+                    report.error(
+                        format!("options.{key}"),
+                        "fixed weights take no limits or parameters",
+                    );
+                }
+                report.into_result(()).map_err(error)?;
+                serde_json::json!({ "type": "weights", "name": name, "weights": weights })
+            }
+            _ => {
+                return Err(invalid(
+                    "options.method",
+                    "give a method or weights, not both",
+                ));
+            }
+        };
+        settings.insert(
+            "strategies".to_owned(),
+            serde_json::Value::Array(vec![strategy]),
+        );
+        self.simulate(settings)
     }
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
@@ -1211,6 +1401,116 @@ impl Assets {
                 .map_err(error)?,
         )
     }
+}
+
+impl Assets {
+    /// Runs the backtest of `options`, the JSON of `BacktestOptions`.
+    fn simulate(
+        &self,
+        options: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<JsValue, JsValue> {
+        let options: finalytics::backtest::BacktestOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(options).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        to_js(&self.inner.simulate(&options).map_err(error)?)
+    }
+}
+
+/// How `Assets.compare` and `Assets.backtest` run.
+const SETTINGS: [&str; 4] = ["validation", "rebalance", "trading_cost_bps", "benchmark"];
+
+/// The names of the fields of `T`, as JSON writes them, with `extra`.
+fn fields<T: Serialize + Default>(extra: &[&str]) -> Vec<String> {
+    let mut names: Vec<String> = match serde_json::to_value(T::default()) {
+        Ok(serde_json::Value::Object(map)) => map.into_iter().map(|(name, _)| name).collect(),
+        _ => Vec::new(),
+    };
+    names.extend(extra.iter().map(|name| (*name).to_owned()));
+    names
+}
+
+/// The options object `value` (empty if absent), with an error for each key not in `allowed`.
+fn object(
+    value: JsValue,
+    allowed: &[String],
+) -> Result<serde_json::Map<String, serde_json::Value>, JsValue> {
+    if value.is_undefined() || value.is_null() {
+        return Ok(serde_json::Map::new());
+    }
+    let serde_json::Value::Object(map) = from_js(value, "options")? else {
+        return Err(invalid("options", "must be an object"));
+    };
+    let mut report = ValidationReport::new();
+    for key in map.keys() {
+        if !allowed.contains(key) {
+            report.error(format!("options.{key}"), "is not an option");
+        }
+    }
+    report.into_result(map).map_err(error)
+}
+
+/// The settings of a backtest, taken out of `choices`, in the form of `BacktestOptions`. A
+/// choice may be given by name (`"quarterly"`), by name with its fields
+/// (`{ walk_forward: { years: 5 } }`) or as tagged data (`{ type: "walk_forward", years: 5 }`);
+/// a benchmark may be weights by asset or a price table.
+fn settings(
+    choices: &mut serde_json::Map<String, serde_json::Value>,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut settings = serde_json::Map::new();
+    for key in ["validation", "rebalance"] {
+        if let Some(value) = choices.remove(key) {
+            settings.insert(key.to_owned(), tagged(value));
+        }
+    }
+    if let Some(cost) = choices.remove("trading_cost_bps") {
+        settings.insert("trading_cost_bps".to_owned(), cost);
+    }
+    if let Some(benchmark) = choices.remove("benchmark") {
+        let tagged = match &benchmark {
+            serde_json::Value::Object(map) if map.contains_key("type") => benchmark,
+            serde_json::Value::Object(map) if map.contains_key("dates") => {
+                serde_json::json!({ "type": "prices", "prices": benchmark })
+            }
+            serde_json::Value::Null => serde_json::Value::Null,
+            _ => serde_json::json!({ "type": "weights", "weights": benchmark }),
+        };
+        settings.insert("benchmark".to_owned(), tagged);
+    }
+    settings
+}
+
+/// `"name"` or `{ name: { fields } }` as `{ type: "name", fields }`; anything else as it is.
+fn tagged(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::String(name) => serde_json::json!({ "type": name }),
+        serde_json::Value::Object(map) if map.len() == 1 && !map.contains_key("type") => {
+            let mut out = serde_json::Map::new();
+            for (name, fields) in map {
+                match fields {
+                    serde_json::Value::Object(fields) => out.extend(fields),
+                    other => {
+                        out.insert(name.clone(), other);
+                    }
+                }
+                out.insert("type".to_owned(), serde_json::Value::String(name));
+            }
+            serde_json::Value::Object(out)
+        }
+        other => other,
+    }
+}
+
+/// The limits and parameters left in `choices`, checked as `OptimiseOptions` so that a problem
+/// is reported where it was given.
+fn limits(
+    choices: serde_json::Map<String, serde_json::Value>,
+) -> Result<serde_json::Map<String, serde_json::Value>, JsValue> {
+    let text = serde_json::Value::Object(choices.clone()).to_string();
+    finalytics::formats::from_json::<finalytics::OptimiseOptions>(&text, "options")
+        .map_err(error)?;
+    Ok(choices)
 }
 
 /// Datasets for examples, tests and practice: daily prices of 55 S&P 500 companies and T-bills
@@ -1733,7 +2033,9 @@ pub fn factor_model(
 }
 
 fn report_options(value: JsValue) -> Result<finalytics::reports::ReportOptions, JsValue> {
-    optional(value, "options")
+    let options = object(value, &fields::<finalytics::reports::ReportOptions>(&[]))?;
+    finalytics::formats::from_json(&serde_json::Value::Object(options).to_string(), "options")
+        .map_err(error)
 }
 
 /// Any report, as returned by the engine, as labelled tables for export.

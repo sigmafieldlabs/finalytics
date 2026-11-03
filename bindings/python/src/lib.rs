@@ -15,6 +15,7 @@ use pyo3::types::PyBytes;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+use finalytics::backtest::BacktestOptions;
 use finalytics::formats::{
     CsvOptions, PortfolioDocument, fx_from_csv, portfolio_from_csv, prices_from_csv,
 };
@@ -373,7 +374,7 @@ impl NativePortfolio {
 
     fn report_all(&self, options: &str) -> PyResult<String> {
         let options: finalytics::reports::ReportOptions = from_json(options, "options")?;
-        to_json(&self.portfolio.report(&options).map_err(engine)?)
+        to_json(&self.portfolio.report_with(&options).map_err(engine)?)
     }
 
     fn source(&self) -> PyResult<String> {
@@ -744,12 +745,17 @@ impl NativeAssets {
 
     fn optimise(&self, options: &str) -> PyResult<String> {
         let options: OptimiseOptions = from_json(options, "options")?;
-        to_json(&self.inner.optimise(&options).map_err(engine)?)
+        to_json(&self.inner.optimise_with(&options).map_err(engine)?)
     }
 
     fn frontier(&self, points: usize, options: &str) -> PyResult<String> {
         let options: OptimiseOptions = from_json(options, "options")?;
         to_json(&self.inner.frontier(points, &options).map_err(engine)?)
+    }
+
+    fn simulate(&self, options: &str) -> PyResult<String> {
+        let options: BacktestOptions = from_json(options, "options")?;
+        to_json(&self.inner.simulate(&options).map_err(engine)?)
     }
 }
 

@@ -327,10 +327,10 @@ fn every_problem_with_the_inputs_is_reported_together() {
     assert_eq!(
         paths(error),
         [
-            "settings.trading_cost_bps",
-            "settings.rebalance.band",
-            "settings.validation.years",
-            "settings.rebalance",
+            "trading_cost_bps",
+            "rebalance.band",
+            "validation.years",
+            "rebalance",
             "strategies[1].name",
             "strategies[1].weights",
             "strategies[2].weights",
@@ -343,7 +343,7 @@ fn every_problem_with_the_inputs_is_reported_together() {
     settings.rebalance = Rebalance::Quarterly;
     settings.trading_cost_bps = 0.0;
     let error = backtest(&market, vec![], None, &settings).unwrap_err();
-    assert_eq!(paths(error), ["settings.validation.start", "strategies"]);
+    assert_eq!(paths(error), ["validation.start", "strategies"]);
 }
 
 #[test]
@@ -371,5 +371,5 @@ fn settings_read_and_write_as_json() {
     let (dates, returns, cash) = market_data();
     let market = Market::new(&dates, &returns, &cash, 12.0);
     let error = backtest(&market, vec![fixed("70/30", &[0.7, 0.3])], None, &both).unwrap_err();
-    assert_eq!(paths(error), ["settings.validation"]);
+    assert_eq!(paths(error), ["validation"]);
 }

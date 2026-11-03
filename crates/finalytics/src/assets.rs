@@ -22,16 +22,17 @@ use finalytics_risk::{
 /// default).
 ///
 /// ```
-/// use finalytics::{Assets, datasets};
+/// use finalytics::{Assets, Method, datasets};
 ///
-/// let assets = Assets::from_prices(&datasets::asset_class_prices())?
-///     .with_risk_free_rate(0.02);
+/// let assets = Assets::builder()
+///     .prices(datasets::asset_class_prices())
+///     .risk_free_rate(0.02)
+///     .build()?;
 /// let result = assets
-///     .optimiser()
-///     .maximum_sharpe()
-///     .bounds(0.0, 0.4)
+///     .optimise(Method::MaximumSharpe)
+///     .max_weight(0.4)
 ///     .group("Equity", &["US Equity", "Intl Equity"], 0.3, 0.6)
-///     .solve()?;
+///     .build()?;
 /// let weights = result.weights.unwrap_or_default();
 /// assert!(weights.values().all(|w| *w <= 0.4 + 1e-6));
 /// # Ok::<(), finalytics::Error>(())
@@ -60,13 +61,13 @@ pub struct AssetStatistics {
     pub tail_risk: TailRisk,
 }
 
-/// What an optimisation seeks, by name. The parameters some objectives need are given beside
-/// it, in [`OptimiseOptions`].
+/// An optimisation method, by name. The parameters some methods need are given beside it, in
+/// [`OptimiseOptions`] or with the builder's methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
-pub enum ObjectiveName {
+pub enum Method {
     /// The smallest variance.
     MinimumVariance,
     /// The largest expected return less `risk_aversion / 2` times the variance.
@@ -88,41 +89,46 @@ pub enum ObjectiveName {
     EqualWeight,
     /// Weights in proportion to the inverse of each asset's volatility.
     InverseVolatility,
-    /// Each asset's share of the risk equal to its budget (equal shares without `budgets`).
+    /// Every asset with the same share of the portfolio's risk.
+    RiskParity,
+    /// Each asset's share of the portfolio's risk equal to its budget, given with `budgets`
+    /// (equal shares without them, as risk parity).
     RiskBudgeting,
     /// Hierarchical risk parity.
     HierarchicalRiskParity,
 }
 
-impl ObjectiveName {
+impl Method {
     /// The method's name in words, such as `"Maximum Sharpe"`, for reports.
     pub fn label(self) -> &'static str {
         match self {
-            ObjectiveName::MinimumVariance => "Minimum variance",
-            ObjectiveName::MeanVariance => "Mean–variance",
-            ObjectiveName::RobustMeanVariance => "Robust mean–variance",
-            ObjectiveName::TargetReturn => "Target return",
-            ObjectiveName::TargetVolatility => "Target volatility",
-            ObjectiveName::MaximumSharpe => "Maximum Sharpe",
-            ObjectiveName::MaximumDiversification => "Maximum diversification",
-            ObjectiveName::MinimumCvar => "Minimum CVaR",
-            ObjectiveName::EqualWeight => "Equal weight",
-            ObjectiveName::InverseVolatility => "Inverse volatility",
-            ObjectiveName::RiskBudgeting => "Risk parity",
-            ObjectiveName::HierarchicalRiskParity => "Hierarchical risk parity",
+            Method::MinimumVariance => "Minimum variance",
+            Method::MeanVariance => "Mean–variance",
+            Method::RobustMeanVariance => "Robust mean–variance",
+            Method::TargetReturn => "Target return",
+            Method::TargetVolatility => "Target volatility",
+            Method::MaximumSharpe => "Maximum Sharpe",
+            Method::MaximumDiversification => "Maximum diversification",
+            Method::MinimumCvar => "Minimum CVaR",
+            Method::EqualWeight => "Equal weight",
+            Method::InverseVolatility => "Inverse volatility",
+            Method::RiskParity => "Risk parity",
+            Method::RiskBudgeting => "Risk budgeting",
+            Method::HierarchicalRiskParity => "Hierarchical risk parity",
         }
     }
 
     /// Whether the method takes limits on the weights. Equal weight, inverse volatility, risk
-    /// budgeting and hierarchical risk parity give a fully invested, long-only portfolio and take
-    /// none.
+    /// parity, risk budgeting and hierarchical risk parity give a fully invested, long-only
+    /// portfolio and take none.
     pub fn takes_limits(self) -> bool {
         !matches!(
             self,
-            ObjectiveName::EqualWeight
-                | ObjectiveName::InverseVolatility
-                | ObjectiveName::RiskBudgeting
-                | ObjectiveName::HierarchicalRiskParity
+            Method::EqualWeight
+                | Method::InverseVolatility
+                | Method::RiskParity
+                | Method::RiskBudgeting
+                | Method::HierarchicalRiskParity
         )
     }
 }
@@ -139,15 +145,15 @@ pub struct AssetGroup {
     pub max: f64,
 }
 
-/// What to optimise, and the limits on the weights. Everything is optional: by default the
-/// portfolio with the largest Sharpe ratio, fully invested and long only.
+/// The method, its parameters and the limits on the weights. Everything is optional: by default
+/// the portfolio with the largest Sharpe ratio, fully invested and long only.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(default)]
 #[non_exhaustive]
 pub struct OptimiseOptions {
-    /// What to optimise: the largest Sharpe ratio by default.
-    pub objective: ObjectiveName,
+    /// The method: the largest Sharpe ratio by default.
+    pub method: Method,
     /// The annual risk-free rate for the Sharpe ratio; by default the assets' own.
     pub risk_free_rate: Option<f64>,
     /// The annual expected return (`target_return`) or volatility (`target_volatility`) to aim
@@ -165,6 +171,9 @@ pub struct OptimiseOptions {
     pub linkage: Option<Linkage>,
     /// The smallest and largest weight of every asset: 0 and 1 by default.
     pub bounds: Option<Bound>,
+    /// The largest weight of any asset, as `bounds` of 0 and `max_weight`; give one or the
+    /// other.
+    pub max_weight: Option<f64>,
     /// Bounds for particular assets, which take the place of `bounds` for them.
     pub asset_bounds: BTreeMap<String, Bound>,
     /// Limits on the total weight of groups of assets, by group name.
@@ -208,6 +217,11 @@ impl OptimisationResult {
 }
 
 impl Assets {
+    /// A builder for assets from their prices or returns, with a risk-free asset or rate.
+    pub fn builder() -> AssetsBuilder {
+        AssetsBuilder::default()
+    }
+
     /// Assets from their prices: the returns between consecutive dates on which every asset has
     /// a price. Prices should include income, as adjusted closes do. The number of periods in a
     /// year is detected from the dates.
@@ -458,18 +472,35 @@ impl Assets {
             .collect()
     }
 
-    /// A builder for an optimisation over the risky assets.
-    pub fn optimiser(&self) -> Optimiser<'_> {
-        Optimiser {
+    /// An optimisation of the risky assets by `method`, with the limits and parameters the
+    /// builder adds; [`Optimise::build`] runs it.
+    ///
+    /// ```
+    /// use finalytics::{Assets, Method, datasets};
+    ///
+    /// let assets = Assets::builder()
+    ///     .prices(datasets::asset_class_prices())
+    ///     .risk_free_asset("T-Bills")
+    ///     .build()?;
+    /// let result = assets.optimise(Method::MaximumSharpe).max_weight(0.4).build()?;
+    /// assert!(result.weights.unwrap().values().all(|w| *w <= 0.4 + 1e-6));
+    /// # Ok::<(), finalytics::Error>(())
+    /// ```
+    pub fn optimise(&self, method: Method) -> Optimise<'_> {
+        Optimise {
             assets: self,
-            options: OptimiseOptions::default(),
+            options: OptimiseOptions {
+                method,
+                ..OptimiseOptions::default()
+            },
         }
     }
 
-    /// Optimises a portfolio of the risky assets: annualised Ledoit–Wolf covariance (or the
-    /// assets' estimator), historical mean returns unless others are given, and the objective
-    /// and limits of `options`.
-    pub fn optimise(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
+    /// Optimises a portfolio of the risky assets as `options` describe: annualised Ledoit–Wolf
+    /// covariance (or the assets' estimator), historical mean returns unless others are given,
+    /// and the method and limits of `options`. [`Assets::optimise`] builds the same options
+    /// step by step.
+    pub fn optimise_with(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
         let rf = options.risk_free_rate.unwrap_or(self.risk_free_rate);
         let (problem, labels) = self.problem(options)?;
         let objective = objective(options, rf, &labels)?;
@@ -497,7 +528,7 @@ impl Assets {
     }
 
     /// The efficient frontier: `points` portfolios from the one with the least variance to the
-    /// one with the largest expected return, under the limits of `options` (its objective is not
+    /// one with the largest expected return, under the limits of `options` (its method is not
     /// used). Each point's weights are in the order of the risky assets.
     pub fn frontier(&self, points: usize, options: &OptimiseOptions) -> Result<Vec<FrontierPoint>> {
         self.problem(options)?.0.frontier(points)
@@ -529,6 +560,12 @@ impl Assets {
         if let Some(bounds) = options.bounds {
             constraints.bounds = bounds;
         }
+        if let Some(max) = options.max_weight {
+            if options.bounds.is_some() {
+                report.error("options.max_weight", "give bounds or max_weight, not both");
+            }
+            constraints.bounds = Bound { min: 0.0, max };
+        }
         for (asset, bound) in &options.asset_bounds {
             if !labels.contains(asset) {
                 report.error(format!("options.asset_bounds.{asset}"), unknown(asset));
@@ -552,7 +589,12 @@ impl Assets {
                 max: group.max,
             });
         }
-        if let Some(budgets) = &options.budgets {
+        if options.method == Method::RiskParity && options.budgets.is_some() {
+            report.error(
+                "options.budgets",
+                "risk parity gives every asset the same budget; use risk budgeting for others",
+            );
+        } else if let Some(budgets) = &options.budgets {
             for asset in budgets.keys() {
                 if !labels.contains(asset) {
                     report.error(format!("options.budgets.{asset}"), unknown(asset));
@@ -569,7 +611,7 @@ impl Assets {
         let mut problem = Problem::from_covariance(matrix)
             .with_expected_returns(expected)
             .with_constraints(constraints);
-        if options.objective == ObjectiveName::MinimumCvar {
+        if options.method == Method::MinimumCvar {
             problem = problem.with_scenarios(returns);
         }
         Ok((problem, labels))
@@ -587,17 +629,17 @@ fn objective(
         value.unwrap_or_else(|| {
             report.error(
                 format!("options.{name}"),
-                format!("{:?} needs {name}", options.objective),
+                format!("{} needs {name}", options.method.label().to_lowercase()),
             );
             0.0
         })
     };
-    let objective = match options.objective {
-        ObjectiveName::MinimumVariance => Objective::MinimumVariance,
-        ObjectiveName::MeanVariance => Objective::MeanVariance {
+    let objective = match options.method {
+        Method::MinimumVariance => Objective::MinimumVariance,
+        Method::MeanVariance => Objective::MeanVariance {
             risk_aversion: need(options.risk_aversion, "risk_aversion"),
         },
-        ObjectiveName::RobustMeanVariance => {
+        Method::RobustMeanVariance => {
             let risk_aversion = need(options.risk_aversion, "risk_aversion");
             match options.uncertainty.clone() {
                 Some(uncertainty) => Objective::RobustMeanVariance {
@@ -613,20 +655,21 @@ fn objective(
                 }
             }
         }
-        ObjectiveName::TargetReturn => Objective::TargetReturn {
+        Method::TargetReturn => Objective::TargetReturn {
             target: need(options.target, "target"),
         },
-        ObjectiveName::TargetVolatility => Objective::TargetVolatility {
+        Method::TargetVolatility => Objective::TargetVolatility {
             target: need(options.target, "target"),
         },
-        ObjectiveName::MaximumSharpe => Objective::MaximumSharpe { risk_free_rate },
-        ObjectiveName::MaximumDiversification => Objective::MaximumDiversification,
-        ObjectiveName::MinimumCvar => Objective::MinimumCvar {
+        Method::MaximumSharpe => Objective::MaximumSharpe { risk_free_rate },
+        Method::MaximumDiversification => Objective::MaximumDiversification,
+        Method::MinimumCvar => Objective::MinimumCvar {
             confidence: options.confidence.unwrap_or(0.95),
         },
-        ObjectiveName::EqualWeight => Objective::EqualWeight,
-        ObjectiveName::InverseVolatility => Objective::InverseVolatility,
-        ObjectiveName::RiskBudgeting => Objective::RiskBudgeting {
+        Method::EqualWeight => Objective::EqualWeight,
+        Method::InverseVolatility => Objective::InverseVolatility,
+        Method::RiskParity => Objective::RiskBudgeting { budgets: None },
+        Method::RiskBudgeting => Objective::RiskBudgeting {
             budgets: options.budgets.as_ref().map(|by_asset| {
                 labels
                     .iter()
@@ -634,101 +677,27 @@ fn objective(
                     .collect()
             }),
         },
-        ObjectiveName::HierarchicalRiskParity => Objective::HierarchicalRiskParity {
+        Method::HierarchicalRiskParity => Objective::HierarchicalRiskParity {
             linkage: options.linkage.unwrap_or_default(),
         },
     };
     report.into_result(objective)
 }
 
-/// Builds an optimisation over [`Assets`] step by step; [`Optimiser::solve`] runs it.
+/// An optimisation over [`Assets`], built step by step; [`Optimise::build`] runs it. The
+/// limits apply to the methods that take them: equal weight, inverse volatility, risk parity,
+/// risk budgeting and hierarchical risk parity are fully invested and long only, and take none.
 #[derive(Debug, Clone)]
-pub struct Optimiser<'a> {
+#[must_use = "an optimisation does nothing until `build` runs it"]
+pub struct Optimise<'a> {
     assets: &'a Assets,
     options: OptimiseOptions,
 }
 
-impl Optimiser<'_> {
-    fn objective(mut self, name: ObjectiveName) -> Self {
-        self.options.objective = name;
-        self
-    }
-
-    /// The portfolio with the smallest variance.
-    pub fn minimum_variance(self) -> Self {
-        self.objective(ObjectiveName::MinimumVariance)
-    }
-
-    /// The largest expected return less `risk_aversion / 2` times the variance.
-    pub fn mean_variance(mut self, risk_aversion: f64) -> Self {
-        self.options.risk_aversion = Some(risk_aversion);
-        self.objective(ObjectiveName::MeanVariance)
-    }
-
-    /// Mean–variance against the worst expected returns within `uncertainty`.
-    pub fn robust_mean_variance(
-        mut self,
-        risk_aversion: f64,
-        uncertainty: ReturnUncertainty,
-    ) -> Self {
-        self.options.risk_aversion = Some(risk_aversion);
-        self.options.uncertainty = Some(uncertainty);
-        self.objective(ObjectiveName::RobustMeanVariance)
-    }
-
-    /// The smallest variance with an annual expected return of at least `target`.
-    pub fn target_return(mut self, target: f64) -> Self {
-        self.options.target = Some(target);
-        self.objective(ObjectiveName::TargetReturn)
-    }
-
-    /// The largest expected return with an annual volatility of at most `target`.
-    pub fn target_volatility(mut self, target: f64) -> Self {
-        self.options.target = Some(target);
-        self.objective(ObjectiveName::TargetVolatility)
-    }
-
-    /// The largest Sharpe ratio (the default objective).
-    pub fn maximum_sharpe(self) -> Self {
-        self.objective(ObjectiveName::MaximumSharpe)
-    }
-
-    /// The largest diversification ratio.
-    pub fn maximum_diversification(self) -> Self {
-        self.objective(ObjectiveName::MaximumDiversification)
-    }
-
-    /// The smallest conditional value at risk of the periods' returns at `confidence`.
-    pub fn minimum_cvar(mut self, confidence: f64) -> Self {
-        self.options.confidence = Some(confidence);
-        self.objective(ObjectiveName::MinimumCvar)
-    }
-
-    /// Every asset with the same weight.
-    pub fn equal_weight(self) -> Self {
-        self.objective(ObjectiveName::EqualWeight)
-    }
-
-    /// Weights in proportion to the inverse of each asset's volatility.
-    pub fn inverse_volatility(self) -> Self {
-        self.objective(ObjectiveName::InverseVolatility)
-    }
-
-    /// Each asset's share of the risk equal to its budget; equal shares with no budgets.
-    pub fn risk_budgeting(mut self, budgets: BTreeMap<String, f64>) -> Self {
-        self.options.budgets = (!budgets.is_empty()).then_some(budgets);
-        self.objective(ObjectiveName::RiskBudgeting)
-    }
-
-    /// Hierarchical risk parity, joining clusters by `linkage`.
-    pub fn hierarchical_risk_parity(mut self, linkage: Linkage) -> Self {
-        self.options.linkage = Some(linkage);
-        self.objective(ObjectiveName::HierarchicalRiskParity)
-    }
-
-    /// An annual risk-free rate for the Sharpe ratio, in place of the assets' own.
-    pub fn risk_free_rate(mut self, rate: f64) -> Self {
-        self.options.risk_free_rate = Some(rate);
+impl Optimise<'_> {
+    /// The largest weight of any asset, such as 0.4 for 40%.
+    pub fn max_weight(mut self, max: f64) -> Self {
+        self.options.max_weight = Some(max);
         self
     }
 
@@ -746,7 +715,8 @@ impl Optimiser<'_> {
         self
     }
 
-    /// The total weight of the `assets` of group `name` between `min` and `max`.
+    /// The total weight of the `assets` of group `name` between `min` and `max`, such as a
+    /// sector's.
     pub fn group<S: AsRef<str>>(mut self, name: &str, assets: &[S], min: f64, max: f64) -> Self {
         self.options.groups.insert(
             name.to_owned(),
@@ -756,6 +726,52 @@ impl Optimiser<'_> {
                 max,
             },
         );
+        self
+    }
+
+    /// The annual expected return (target return) or volatility (target volatility) to aim
+    /// for.
+    pub fn target(mut self, target: f64) -> Self {
+        self.options.target = Some(target);
+        self
+    }
+
+    /// The weight on variance, for mean–variance methods.
+    pub fn risk_aversion(mut self, risk_aversion: f64) -> Self {
+        self.options.risk_aversion = Some(risk_aversion);
+        self
+    }
+
+    /// The uncertainty of the expected returns, for robust mean–variance.
+    pub fn uncertainty(mut self, uncertainty: ReturnUncertainty) -> Self {
+        self.options.uncertainty = Some(uncertainty);
+        self
+    }
+
+    /// The confidence of the conditional value at risk, for minimum CVaR: 0.95 by default.
+    pub fn confidence(mut self, confidence: f64) -> Self {
+        self.options.confidence = Some(confidence);
+        self
+    }
+
+    /// Each asset's risk budget, for risk budgeting; equal shares without them.
+    pub fn budget(mut self, asset: &str, budget: f64) -> Self {
+        self.options
+            .budgets
+            .get_or_insert_with(BTreeMap::new)
+            .insert(asset.to_owned(), budget);
+        self
+    }
+
+    /// How hierarchical risk parity joins clusters: single linkage by default.
+    pub fn linkage(mut self, linkage: Linkage) -> Self {
+        self.options.linkage = Some(linkage);
+        self
+    }
+
+    /// An annual risk-free rate for the Sharpe ratio, in place of the assets' own.
+    pub fn risk_free_rate(mut self, rate: f64) -> Self {
+        self.options.risk_free_rate = Some(rate);
         self
     }
 
@@ -773,13 +789,148 @@ impl Optimiser<'_> {
     }
 
     /// Runs the optimisation.
-    pub fn solve(&self) -> Result<OptimisationResult> {
-        self.assets.optimise(&self.options)
+    pub fn build(&self) -> Result<OptimisationResult> {
+        self.assets.optimise_with(&self.options)
     }
 
     /// The efficient frontier under the limits built so far.
     pub fn frontier(&self, points: usize) -> Result<Vec<FrontierPoint>> {
         self.assets.frontier(points, &self.options)
+    }
+}
+
+/// [`Assets`] built step by step from prices or returns; [`AssetsBuilder::build`] makes them.
+///
+/// ```
+/// use finalytics::{Assets, datasets};
+///
+/// let assets = Assets::builder()
+///     .prices(datasets::sp500())
+///     .risk_free_asset("T-Bills")
+///     .build()?;
+/// assert_eq!(assets.periods_per_year(), 252.0);
+/// # Ok::<(), finalytics::Error>(())
+/// ```
+#[derive(Debug, Clone, Default)]
+#[must_use = "the assets are made by `build`"]
+pub struct AssetsBuilder {
+    prices: Option<PriceTable>,
+    csv: Option<String>,
+    #[cfg(feature = "io")]
+    file: Option<std::path::PathBuf>,
+    returns: Option<(Vec<Date>, ReturnsTable)>,
+    risk_free_asset: Option<String>,
+    risk_free_rate: Option<f64>,
+    periods_per_year: Option<f64>,
+    covariance: Option<CovarianceMethod>,
+}
+
+impl AssetsBuilder {
+    /// The assets' prices: a date column and one column per asset. Prices should include
+    /// income, as adjusted closes do.
+    pub fn prices(mut self, prices: PriceTable) -> Self {
+        self.prices = Some(prices);
+        self
+    }
+
+    /// The assets' prices as CSV text: a `date` column and one column per asset, or the long
+    /// layout of `date`, `instrument` and `price` columns.
+    pub fn prices_csv(mut self, text: &str) -> Self {
+        self.csv = Some(text.to_owned());
+        self
+    }
+
+    /// The assets' prices from a CSV file, as [`AssetsBuilder::prices_csv`] reads them.
+    #[cfg(feature = "io")]
+    pub fn prices_file(mut self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file = Some(path.as_ref().to_owned());
+        self
+    }
+
+    /// The assets' returns, in place of prices: `dates` are the dates each return ends on.
+    pub fn returns(mut self, dates: Vec<Date>, returns: ReturnsTable) -> Self {
+        self.returns = Some((dates, returns));
+        self
+    }
+
+    /// One of the assets, such as T-bills, as the risk-free asset: its mean return is the
+    /// risk-free rate, and optimisation leaves it out.
+    pub fn risk_free_asset(mut self, asset: &str) -> Self {
+        self.risk_free_asset = Some(asset.to_owned());
+        self
+    }
+
+    /// An annual risk-free rate, for Sharpe ratios; zero by default.
+    pub fn risk_free_rate(mut self, rate: f64) -> Self {
+        self.risk_free_rate = Some(rate);
+        self
+    }
+
+    /// The number of periods in a year, in place of the one detected from the dates: 252 for
+    /// daily returns, 52 for weekly, 12 for monthly.
+    pub fn periods_per_year(mut self, periods: f64) -> Self {
+        self.periods_per_year = Some(periods);
+        self
+    }
+
+    /// The covariance estimator: Ledoit–Wolf by default.
+    pub fn covariance(mut self, method: CovarianceMethod) -> Self {
+        self.covariance = Some(method);
+        self
+    }
+
+    /// Makes the assets, reporting every problem with what was given.
+    pub fn build(self) -> Result<Assets> {
+        let mut report = ValidationReport::new();
+        #[cfg(feature = "io")]
+        let file = match &self.file {
+            Some(path) => match std::fs::read_to_string(path) {
+                Ok(text) => Some(text),
+                Err(e) => {
+                    report.error("prices", format!("cannot read {}: {e}", path.display()));
+                    None
+                }
+            },
+            None => None,
+        };
+        #[cfg(not(feature = "io"))]
+        let file: Option<String> = None;
+        let given = usize::from(self.prices.is_some())
+            + usize::from(self.csv.is_some())
+            + usize::from(file.is_some())
+            + usize::from(self.returns.is_some());
+        if given != 1 && report.is_empty() {
+            report.error("prices", "give the assets' prices, or their returns, once");
+        }
+        if self.risk_free_asset.is_some() && self.risk_free_rate.is_some() {
+            report.error(
+                "risk_free_rate",
+                "give a risk-free asset or a risk-free rate, not both",
+            );
+        }
+        report.into_result(())?;
+        let mut assets = if let Some(prices) = &self.prices {
+            Assets::from_prices(prices)?
+        } else if let Some(text) = self.csv.as_deref().or(file.as_deref()) {
+            Assets::from_csv(text)?
+        } else if let Some((dates, returns)) = self.returns {
+            Assets::from_returns(dates, returns)?
+        } else {
+            unreachable!("one source of prices or returns was checked above")
+        };
+        if let Some(periods) = self.periods_per_year {
+            assets = assets.with_periods_per_year(periods);
+        }
+        if let Some(method) = self.covariance {
+            assets = assets.with_covariance(method);
+        }
+        if let Some(rate) = self.risk_free_rate {
+            assets = assets.with_risk_free_rate(rate);
+        }
+        if let Some(asset) = &self.risk_free_asset {
+            assets = assets.with_risk_free_asset(asset)?;
+        }
+        Ok(assets)
     }
 }
 

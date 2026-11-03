@@ -22,10 +22,10 @@ use std::process::ExitCode;
 
 use web_time::Instant;
 
-use finalytics::backtest::{BacktestOptions, Strategy, Validation};
+use finalytics::backtest::Years;
 use finalytics::formats::PortfolioDocument;
-use finalytics::opt::{Bound, Objective};
-use finalytics::{Assets, Books, ObjectiveName, OptimiseOptions, datasets};
+use finalytics::opt::Objective;
+use finalytics::{Assets, Books, Method, datasets};
 use finalytics_bench::{large_portfolio, large_problem};
 
 fn median(mut seconds: Vec<f64>) -> f64 {
@@ -75,28 +75,26 @@ fn main() -> ExitCode {
         status = Some(solution.status);
     });
 
-    let assets = Assets::from_prices(&datasets::sp500())
-        .and_then(|a| a.with_risk_free_asset("T-Bills"))
+    let assets = Assets::builder()
+        .prices(datasets::sp500())
+        .risk_free_asset("T-Bills")
+        .build()
         .unwrap_or_else(|e| panic!("{e}"));
-    let mut options = BacktestOptions::default();
-    for objective in [
-        ObjectiveName::EqualWeight,
-        ObjectiveName::InverseVolatility,
-        ObjectiveName::MinimumVariance,
-        ObjectiveName::MaximumSharpe,
-        ObjectiveName::MaximumDiversification,
-        ObjectiveName::RiskBudgeting,
-        ObjectiveName::HierarchicalRiskParity,
-    ] {
-        let mut method = OptimiseOptions::default();
-        method.objective = objective;
-        method.bounds = Some(Bound { min: 0.0, max: 0.1 });
-        options.strategies.push(Strategy::optimise(method));
-    }
-    options.validation = Validation::walk_forward(5.0);
-    options.trading_cost_bps = 10.0;
+    let comparison = assets
+        .compare([
+            Method::EqualWeight,
+            Method::InverseVolatility,
+            Method::MinimumVariance,
+            Method::MaximumSharpe,
+            Method::MaximumDiversification,
+            Method::RiskParity,
+            Method::HierarchicalRiskParity,
+        ])
+        .max_weight(0.1)
+        .walk_forward(Years(5))
+        .trading_cost_bps(10.0);
     let comparison = time(3, || {
-        assets.simulate(&options).unwrap_or_else(|e| panic!("{e}"));
+        comparison.build().unwrap_or_else(|e| panic!("{e}"));
     });
 
     let checks = [

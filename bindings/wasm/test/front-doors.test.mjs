@@ -14,7 +14,7 @@ test("assets from the asset-class dataset", () => {
   assert.equal(assets.riskFreeAsset, "T-Bills");
   close(assets.riskFreeRate, assets.meanReturns()["T-Bills"], 1e-15, "risk-free rate");
   const result = assets.optimise({
-    objective: "maximum_sharpe",
+    method: "maximum_sharpe",
     bounds: { min: 0, max: 0.4 },
     groups: { Equity: { assets: ["US Equity", "Intl Equity"], min: 0.3, max: 0.6 } },
   });
@@ -22,7 +22,7 @@ test("assets from the asset-class dataset", () => {
   close(weights.reduce((a, b) => a + b, 0), 1, 1e-6, "weights");
   assert.deepEqual(Object.keys(result.weights), ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]);
   assert.equal(assets.frontier(5, { bounds: { min: 0, max: 0.5 } }).length, 5);
-  assert.throws(() => assets.optimise({ objective: "target_return" }), (e) => {
+  assert.throws(() => assets.optimise({ method: "target_return" }), (e) => {
     assert.equal(e.name, "ValidationError");
     assert.deepEqual(e.issues.map((i) => i.path), ["options.target"]);
     return true;
@@ -41,7 +41,7 @@ test("the portfolio dataset, from report to trades", () => {
   assert.ok(report.attribution);
   const assets = portfolio.assets();
   assert.deepEqual(assets.labels, ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
-  const targets = assets.optimise({ objective: "minimum_variance", bounds: { min: 0.05, max: 0.5 } }).weights;
+  const targets = assets.optimise({ method: "minimum_variance", bounds: { min: 0.05, max: 0.5 } }).weights;
   const proposal = portfolio.rebalance(targets);
   assert.equal(proposal.accounts.length, 2);
   const after = portfolio.withRebalance(proposal).weights();

@@ -2,24 +2,25 @@
 //! rebalanced on a schedule, net of trading costs, and validated in sample, on a holdout or
 //! walk-forward.
 //!
-//! [`Assets::simulate`] runs a backtest from [`BacktestOptions`] and returns every strategy's
-//! returns and trades, in and out of sample.
+//! [`Assets::compare`] backtests several methods side by side, and [`Assets::backtest`] one
+//! method or one set of weights; both are builders. [`Assets::simulate`] runs the same
+//! backtests from [`BacktestOptions`], as JSON gives them.
 //!
 //! ```
-//! use finalytics::backtest::{BacktestOptions, Strategy, Validation};
-//! use finalytics::{Assets, ObjectiveName, OptimiseOptions, datasets};
+//! use finalytics::backtest::{Rebalance, Years};
+//! use finalytics::{Assets, Method, datasets};
 //!
-//! let assets = Assets::from_prices(&datasets::asset_class_prices())?
-//!     .with_risk_free_asset("T-Bills")?;
-//! let mut options = BacktestOptions::default();
-//! for objective in [ObjectiveName::EqualWeight, ObjectiveName::MinimumVariance] {
-//!     let mut method = OptimiseOptions::default();
-//!     method.objective = objective;
-//!     options.strategies.push(Strategy::optimise(method));
-//! }
-//! options.validation = Validation::walk_forward(5.0);
-//! options.trading_cost_bps = 10.0;
-//! let backtest = assets.simulate(&options)?;
+//! let assets = Assets::builder()
+//!     .prices(datasets::asset_class_prices())
+//!     .risk_free_asset("T-Bills")
+//!     .build()?;
+//! let backtest = assets
+//!     .compare([Method::EqualWeight, Method::MinimumVariance])
+//!     .max_weight(0.4)
+//!     .rebalance(Rebalance::Quarterly)
+//!     .walk_forward(Years(5))
+//!     .trading_cost_bps(10.0)
+//!     .build()?;
 //! let minimum_variance = &backtest.strategies[1];
 //! assert_eq!(minimum_variance.name, "Minimum variance");
 //! let out = minimum_variance.out_of_sample.as_ref().unwrap();
@@ -32,14 +33,15 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use finalytics_backtest::{self as engine, Fit, Market, Plan};
-use finalytics_core::{Date, Result, ValidationReport};
+use finalytics_core::{Date, Error, Result, ValidationReport};
 use finalytics_risk::PriceTable;
 
 pub use finalytics_backtest::{
     Backtest, Failure, Rebalance, Run, Settings, StrategyResult, Trade, Validation,
 };
 
-use crate::assets::{Assets, ObjectiveName, OptimiseOptions};
+use crate::assets::{AssetGroup, Assets, Method, OptimiseOptions};
+use finalytics_opt::Bound;
 
 /// A strategy to backtest.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -48,8 +50,8 @@ use crate::assets::{Assets, ObjectiveName, OptimiseOptions};
 #[non_exhaustive]
 pub enum Strategy {
     /// An optimisation, refitted as the validation says. The limits of `options` apply to the
-    /// methods that take them; equal weight, inverse volatility, risk parity and hierarchical
-    /// risk parity are fully invested and long only.
+    /// methods that take them; equal weight, inverse volatility, risk parity, risk budgeting
+    /// and hierarchical risk parity are fully invested and long only.
     Optimise {
         /// The name in the results; the method's own by default, such as `Maximum Sharpe`.
         #[serde(default)]
@@ -99,13 +101,7 @@ impl Strategy {
             Strategy::Optimise {
                 name: None,
                 options,
-            } => {
-                if options.objective == ObjectiveName::RiskBudgeting && options.budgets.is_some() {
-                    "Risk budgeting".to_owned()
-                } else {
-                    options.objective.label().to_owned()
-                }
-            }
+            } => options.method.label().to_owned(),
             Strategy::Weights { name: None, .. } => "Weights".to_owned(),
         }
     }
@@ -177,7 +173,7 @@ impl Assets {
                     strategies.push(engine::Strategy {
                         name,
                         plan: Plan::Fit(Box::new(move |rows| {
-                            let result = self.window(rows)?.optimise(&method)?;
+                            let result = self.window(rows)?.optimise_with(&method)?;
                             Ok(match result.weights {
                                 Some(weights) => Fit::Weights(
                                     self.risky_assets()
@@ -301,11 +297,13 @@ impl Assets {
 fn applicable(options: &OptimiseOptions, name: &str) -> (OptimiseOptions, Vec<String>) {
     let mut method = options.clone();
     let mut notes = Vec::new();
-    if !options.objective.takes_limits() {
+    if !options.method.takes_limits() {
         let limited = options.bounds.is_some()
+            || options.max_weight.is_some()
             || !options.asset_bounds.is_empty()
             || !options.groups.is_empty();
         method.bounds = None;
+        method.max_weight = None;
         method.asset_bounds.clear();
         method.groups.clear();
         if limited {
@@ -316,4 +314,332 @@ fn applicable(options: &OptimiseOptions, name: &str) -> (OptimiseOptions, Vec<St
         }
     }
     (method, notes)
+}
+
+impl From<Method> for Strategy {
+    fn from(method: Method) -> Strategy {
+        Strategy::optimise(OptimiseOptions {
+            method,
+            ..OptimiseOptions::default()
+        })
+    }
+}
+
+impl<S: Into<String>, const N: usize> From<[(S, f64); N]> for Strategy {
+    fn from(weights: [(S, f64); N]) -> Strategy {
+        Strategy::Weights {
+            name: None,
+            weights: weights.into_iter().map(|(a, w)| (a.into(), w)).collect(),
+        }
+    }
+}
+
+impl From<BTreeMap<String, f64>> for Strategy {
+    fn from(weights: BTreeMap<String, f64>) -> Strategy {
+        Strategy::Weights {
+            name: None,
+            weights,
+        }
+    }
+}
+
+impl<S: Into<String>, const N: usize> From<[(S, f64); N]> for Benchmark {
+    fn from(weights: [(S, f64); N]) -> Benchmark {
+        Benchmark::Weights {
+            name: None,
+            weights: weights.into_iter().map(|(a, w)| (a.into(), w)).collect(),
+        }
+    }
+}
+
+impl From<PriceTable> for Benchmark {
+    fn from(prices: PriceTable) -> Benchmark {
+        Benchmark::Prices { name: None, prices }
+    }
+}
+
+/// A walk-forward window in years: `Years(5)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Years(pub u32);
+
+/// A walk-forward window in months: `Months(18)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Months(pub u32);
+
+/// A walk-forward window in periods of the data: `Periods(60)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Periods(pub usize);
+
+/// A length of history: [`Years`], [`Months`] or [`Periods`].
+pub trait History {
+    /// Walk-forward validation on a window of this length.
+    fn walk_forward(self, expanding: bool) -> Validation;
+}
+
+impl History for Years {
+    fn walk_forward(self, expanding: bool) -> Validation {
+        Validation::WalkForward {
+            years: Some(f64::from(self.0)),
+            periods: None,
+            expanding,
+        }
+    }
+}
+
+impl History for Months {
+    fn walk_forward(self, expanding: bool) -> Validation {
+        Validation::WalkForward {
+            years: Some(f64::from(self.0) / 12.0),
+            periods: None,
+            expanding,
+        }
+    }
+}
+
+impl History for Periods {
+    fn walk_forward(self, expanding: bool) -> Validation {
+        Validation::WalkForward {
+            years: None,
+            periods: Some(self.0),
+            expanding,
+        }
+    }
+}
+
+/// What [`Compare`] and [`BacktestBuilder`] share: the limits and parameters of the methods,
+/// and how the backtest runs.
+#[derive(Debug, Clone, Default)]
+struct Common {
+    options: OptimiseOptions,
+    validation: Validation,
+    holdout: Option<String>,
+    rebalance: Rebalance,
+    trading_cost_bps: f64,
+    benchmark: Option<Benchmark>,
+}
+
+impl Common {
+    /// The options for `strategies`, with the shared limits given to each optimisation.
+    fn options(&self, strategies: Vec<Strategy>) -> Result<BacktestOptions> {
+        let mut validation = self.validation.clone();
+        if let Some(text) = &self.holdout {
+            match text.parse::<Date>() {
+                Ok(start) => validation = Validation::Holdout { start },
+                Err(_) => {
+                    let mut report = ValidationReport::new();
+                    report.error(
+                        "validation.start",
+                        format!("{text:?} is not a date: write it as 2016-11-01"),
+                    );
+                    return Err(Error::Validation(report));
+                }
+            }
+        }
+        let strategies = strategies
+            .into_iter()
+            .map(|strategy| match strategy {
+                Strategy::Optimise { name, options } => {
+                    let mut shared = self.options.clone();
+                    shared.method = options.method;
+                    Strategy::Optimise {
+                        name,
+                        options: Box::new(shared),
+                    }
+                }
+                weights => weights,
+            })
+            .collect();
+        Ok(BacktestOptions {
+            strategies,
+            validation,
+            rebalance: self.rebalance,
+            trading_cost_bps: self.trading_cost_bps,
+            benchmark: self.benchmark.clone(),
+        })
+    }
+}
+
+/// Setters shared by the comparison and backtest builders.
+macro_rules! common_setters {
+    ($builder:ident) => {
+        impl $builder<'_> {
+            /// The largest weight of any asset, such as 0.4 for 40%.
+            pub fn max_weight(mut self, max: f64) -> Self {
+                self.common.options.max_weight = Some(max);
+                self
+            }
+
+            /// Every asset's weight between `min` and `max`.
+            pub fn bounds(mut self, min: f64, max: f64) -> Self {
+                self.common.options.bounds = Some(Bound { min, max });
+                self
+            }
+
+            /// One asset's weight between `min` and `max`.
+            pub fn asset_bounds(mut self, asset: &str, min: f64, max: f64) -> Self {
+                self.common
+                    .options
+                    .asset_bounds
+                    .insert(asset.to_owned(), Bound { min, max });
+                self
+            }
+
+            /// The total weight of the `assets` of group `name` between `min` and `max`, such
+            /// as a sector's.
+            pub fn group<S: AsRef<str>>(
+                mut self,
+                name: &str,
+                assets: &[S],
+                min: f64,
+                max: f64,
+            ) -> Self {
+                self.common.options.groups.insert(
+                    name.to_owned(),
+                    AssetGroup {
+                        assets: assets.iter().map(|a| a.as_ref().to_owned()).collect(),
+                        min,
+                        max,
+                    },
+                );
+                self
+            }
+
+            /// The annual expected return or volatility to aim for, for target return and
+            /// target volatility.
+            pub fn target(mut self, target: f64) -> Self {
+                self.common.options.target = Some(target);
+                self
+            }
+
+            /// The weight on variance, for mean–variance methods.
+            pub fn risk_aversion(mut self, risk_aversion: f64) -> Self {
+                self.common.options.risk_aversion = Some(risk_aversion);
+                self
+            }
+
+            /// The confidence of the conditional value at risk, for minimum CVaR.
+            pub fn confidence(mut self, confidence: f64) -> Self {
+                self.common.options.confidence = Some(confidence);
+                self
+            }
+
+            /// Weights fitted once to the whole history and tested on it (the default).
+            pub fn in_sample(mut self) -> Self {
+                self.common.validation = Validation::InSample;
+                self.common.holdout = None;
+                self
+            }
+
+            /// Weights fitted to the history before `start`, a date such as `"2016-11-01"`,
+            /// and tested on the history from it on.
+            pub fn holdout_from(mut self, start: &str) -> Self {
+                self.common.holdout = Some(start.to_owned());
+                self
+            }
+
+            /// Weights refitted at each calendar rebalance on the last `window` of history,
+            /// such as `Years(5)`, and tested on what follows.
+            pub fn walk_forward(mut self, window: impl History) -> Self {
+                self.common.validation = window.walk_forward(false);
+                self.common.holdout = None;
+                self
+            }
+
+            /// Weights refitted at each calendar rebalance on all the history so far, from a
+            /// first `window`.
+            pub fn walk_forward_expanding(mut self, window: impl History) -> Self {
+                self.common.validation = window.walk_forward(true);
+                self.common.holdout = None;
+                self
+            }
+
+            /// When the portfolio trades back to its targets: quarterly by default.
+            pub fn rebalance(mut self, rebalance: Rebalance) -> Self {
+                self.common.rebalance = rebalance;
+                self
+            }
+
+            /// The cost of trading, in basis points of the value traded: 10 is 0.1%.
+            pub fn trading_cost_bps(mut self, bps: f64) -> Self {
+                self.common.trading_cost_bps = bps;
+                self
+            }
+
+            /// What to compare with: weights by asset, such as
+            /// `[("US Equity", 0.6), ("Bonds", 0.4)]`, or an index's prices.
+            pub fn benchmark(mut self, benchmark: impl Into<Benchmark>) -> Self {
+                self.common.benchmark = Some(benchmark.into());
+                self
+            }
+        }
+    };
+}
+
+/// Several methods backtested side by side on the same assets; [`Compare::build`] runs them.
+#[derive(Debug, Clone)]
+#[must_use = "a comparison does nothing until `build` runs it"]
+pub struct Compare<'a> {
+    assets: &'a Assets,
+    methods: Vec<Method>,
+    common: Common,
+}
+
+/// One method or one set of weights backtested; [`BacktestBuilder::build`] runs it.
+#[derive(Debug, Clone)]
+#[must_use = "a backtest does nothing until `build` runs it"]
+pub struct BacktestBuilder<'a> {
+    assets: &'a Assets,
+    strategy: Strategy,
+    common: Common,
+}
+
+common_setters!(Compare);
+common_setters!(BacktestBuilder);
+
+impl Compare<'_> {
+    /// Runs the comparison.
+    pub fn build(&self) -> Result<Backtest> {
+        let strategies = self.methods.iter().map(|m| Strategy::from(*m)).collect();
+        self.assets.simulate(&self.common.options(strategies)?)
+    }
+}
+
+impl BacktestBuilder<'_> {
+    /// The name of the strategy in the results, in place of the method's or `Weights`.
+    pub fn name(mut self, name: &str) -> Self {
+        match &mut self.strategy {
+            Strategy::Optimise { name: n, .. } | Strategy::Weights { name: n, .. } => {
+                *n = Some(name.to_owned());
+            }
+        }
+        self
+    }
+
+    /// Runs the backtest.
+    pub fn build(&self) -> Result<Backtest> {
+        self.assets
+            .simulate(&self.common.options(vec![self.strategy.clone()])?)
+    }
+}
+
+impl Assets {
+    /// A comparison of `methods`, each backtested with the same limits, rebalancing,
+    /// validation and costs.
+    pub fn compare(&self, methods: impl IntoIterator<Item = Method>) -> Compare<'_> {
+        Compare {
+            assets: self,
+            methods: methods.into_iter().collect(),
+            common: Common::default(),
+        }
+    }
+
+    /// A backtest of one strategy: a method, such as `Method::MaximumSharpe`, or weights by
+    /// asset, such as `[("US Equity", 0.6), ("Bonds", 0.4)]`.
+    pub fn backtest(&self, strategy: impl Into<Strategy>) -> BacktestBuilder<'_> {
+        BacktestBuilder {
+            assets: self,
+            strategy: strategy.into(),
+            common: Common::default(),
+        }
+    }
 }

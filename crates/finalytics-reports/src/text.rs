@@ -1527,10 +1527,10 @@ impl fmt::Display for ScenariosReport {
 }
 
 impl PortfolioReport {
-    /// The six reports as text for printing, 80 columns wide, with the portfolio's `name`, if
-    /// given, under each report's title.
+    /// The six reports as text for printing, 80 columns wide, with the portfolio's `name` (or
+    /// the report's own), if given, under each report's title.
     pub fn to_text(&self, name: Option<&str>) -> String {
-        let mut page = Page::new(name);
+        let mut page = Page::new(name.or(self.name.as_deref()));
         overview(&mut page, &self.overview);
         holdings(&mut page, &self.holdings);
         performance(&mut page, &self.performance, &account_names(&self.holdings));

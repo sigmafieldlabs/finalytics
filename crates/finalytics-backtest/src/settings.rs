@@ -31,6 +31,12 @@ pub enum Rebalance {
 }
 
 impl Rebalance {
+    /// When a weight drifts more than `band` from its target, such as 0.05 for five
+    /// percentage points.
+    pub fn drift(band: f64) -> Rebalance {
+        Rebalance::Drift { band }
+    }
+
     /// Whether the schedule follows the calendar: monthly, quarterly or yearly.
     pub fn is_calendar(&self) -> bool {
         matches!(

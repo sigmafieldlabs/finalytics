@@ -6,7 +6,7 @@ use finalytics::datasets;
 
 fn report() -> finalytics::PortfolioReport {
     datasets::portfolio()
-        .report(&datasets::report_options())
+        .report_with(&datasets::report_options())
         .unwrap()
 }
 
@@ -107,7 +107,7 @@ fn small_portfolios_print_too() {
     for (transactions, prices) in cases {
         let portfolio =
             Portfolio::from_csv(&PortfolioCsv::new(transactions).prices(prices)).unwrap();
-        let report = portfolio.report(&ReportOptions::default()).unwrap();
+        let report = portfolio.report_with(&ReportOptions::default()).unwrap();
         let text = report.to_text(None);
         assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
         let html = report.to_html(None);

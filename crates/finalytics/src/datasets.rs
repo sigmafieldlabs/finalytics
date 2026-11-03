@@ -25,7 +25,7 @@
 //! assert_eq!(assets.periods_per_year(), 252.0);
 //!
 //! let portfolio = datasets::portfolio();
-//! let report = portfolio.report(&datasets::report_options())?;
+//! let report = portfolio.report_with(&datasets::report_options())?;
 //! assert!(report.attribution.is_some());
 //! # Ok::<(), finalytics::Error>(())
 //! ```

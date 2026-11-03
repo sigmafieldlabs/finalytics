@@ -88,7 +88,7 @@ class Assets:
         import finalytics as fl
 
         assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
-        result = assets.optimise(objective="maximum_sharpe", bounds=(0.0, 0.4))
+        result = assets.optimise(method="maximum_sharpe", max_weight=0.4)
         result.weights
     """
 
@@ -221,10 +221,10 @@ class Assets:
         uses unless others are given."""
         return dict(zip(self.labels, self._native.mean_returns(), strict=True))
 
-    def optimise(
+    def _options(
         self,
+        method: str,
         *,
-        objective: _types.ObjectiveName = "maximum_sharpe",
         risk_free_rate: float | None = None,
         target: float | None = None,
         risk_aversion: float | None = None,
@@ -233,32 +233,13 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         bounds: BoundLike | None = None,
+        max_weight: float | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> _types.OptimisationResult:
-        """The weights of the risky assets that best meet `objective`, fully invested:
-
-        - ``"maximum_sharpe"`` (the default), ``"minimum_variance"``,
-          ``"maximum_diversification"`` and ``"hierarchical_risk_parity"`` (with `linkage`);
-        - ``"mean_variance"`` and ``"robust_mean_variance"``, with `risk_aversion` (and
-          `uncertainty`, a :class:`~finalytics.types.ReturnUncertainty`);
-        - ``"target_return"`` and ``"target_volatility"``, with an annual `target`;
-        - ``"minimum_cvar"``, at `confidence` (0.95 by default);
-        - ``"risk_budgeting"``, with `budgets` by asset (equal shares by default);
-        - ``"equal_weight"`` and ``"inverse_volatility"``, the baselines estimated portfolios
-          must beat.
-
-        Equal weight, inverse volatility, risk budgeting and hierarchical risk parity are fully
-        invested and long only, and take no other limits.
-
-        `bounds` limits every weight, ``(0, 1)`` by default; `asset_bounds` limits particular
-        assets, such as ``{"Gold": (0, 0.1)}``; `groups` limits the total weight of groups of
-        assets, such as ``{"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)}``. Expected
-        returns are the annualised historical means unless `expected_returns` gives others.
-        """
-        options = _types.OptimiseOptions(
-            objective=objective,
+    ) -> _types.OptimiseOptions:
+        return _types.OptimiseOptions(
+            method=method,
             risk_free_rate=risk_free_rate,
             target=target,
             risk_aversion=risk_aversion,
@@ -267,9 +248,64 @@ class Assets:
             budgets=None if budgets is None else {k: float(v) for k, v in budgets.items()},
             linkage=linkage,
             bounds=None if bounds is None else _bound(bounds),
+            max_weight=None if max_weight is None else float(max_weight),
             asset_bounds={k: _bound(v) for k, v in (asset_bounds or {}).items()},
             groups={k: _group(v) for k, v in (groups or {}).items()},
             expected_returns={k: float(v) for k, v in (expected_returns or {}).items()},
+        )
+
+    def optimise(
+        self,
+        *,
+        method: _types.Method = "maximum_sharpe",
+        risk_free_rate: float | None = None,
+        target: float | None = None,
+        risk_aversion: float | None = None,
+        uncertainty: _types.ReturnUncertainty | None = None,
+        confidence: float | None = None,
+        budgets: Mapping[str, float] | None = None,
+        linkage: _types.Linkage | None = None,
+        bounds: BoundLike | None = None,
+        max_weight: float | None = None,
+        asset_bounds: Mapping[str, BoundLike] | None = None,
+        groups: Mapping[str, GroupLike] | None = None,
+        expected_returns: Mapping[str, float] | None = None,
+    ) -> _types.OptimisationResult:
+        """The weights of the risky assets that best meet `method`, fully invested:
+
+        - ``"maximum_sharpe"`` (the default), ``"minimum_variance"``,
+          ``"maximum_diversification"`` and ``"hierarchical_risk_parity"`` (with `linkage`);
+        - ``"mean_variance"`` and ``"robust_mean_variance"``, with `risk_aversion` (and
+          `uncertainty`, a :class:`~finalytics.types.ReturnUncertainty`);
+        - ``"target_return"`` and ``"target_volatility"``, with an annual `target`;
+        - ``"minimum_cvar"``, at `confidence` (0.95 by default);
+        - ``"risk_parity"``, every asset with the same share of the risk, and
+          ``"risk_budgeting"``, with shares given by `budgets` by asset;
+        - ``"equal_weight"`` and ``"inverse_volatility"``, the baselines estimated portfolios
+          must beat.
+
+        `max_weight` is the largest weight of any asset, such as 0.4; `bounds` limits every
+        weight, ``(0, 1)`` by default; `asset_bounds` limits particular assets, such as
+        ``{"Gold": (0, 0.1)}``; `groups` limits the total weight of groups of assets, such as
+        ``{"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)}``. Equal weight, inverse
+        volatility, risk parity, risk budgeting and hierarchical risk parity are fully invested
+        and long only, and take no limits. Expected returns are the annualised historical means
+        unless `expected_returns` gives others.
+        """
+        options = self._options(
+            method,
+            risk_free_rate=risk_free_rate,
+            target=target,
+            risk_aversion=risk_aversion,
+            uncertainty=uncertainty,
+            confidence=confidence,
+            budgets=budgets,
+            linkage=linkage,
+            bounds=bounds,
+            max_weight=max_weight,
+            asset_bounds=asset_bounds,
+            groups=groups,
+            expected_returns=expected_returns,
         )
         result = loads(_types.OptimisationResult, call(self._native.optimise, dumps(options)))
         if result.weights is not None:
@@ -284,6 +320,7 @@ class Assets:
         *,
         points: int = 20,
         bounds: BoundLike | None = None,
+        max_weight: float | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
         expected_returns: Mapping[str, float] | None = None,
@@ -291,13 +328,165 @@ class Assets:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
         the least variance to the one with the largest expected return, under the limits given
         as for :meth:`optimise`."""
-        options = _types.OptimiseOptions(
-            bounds=None if bounds is None else _bound(bounds),
-            asset_bounds={k: _bound(v) for k, v in (asset_bounds or {}).items()},
-            groups={k: _group(v) for k, v in (groups or {}).items()},
-            expected_returns={k: float(v) for k, v in (expected_returns or {}).items()},
+        options = self._options(
+            "maximum_sharpe",
+            bounds=bounds,
+            max_weight=max_weight,
+            asset_bounds=asset_bounds,
+            groups=groups,
+            expected_returns=expected_returns,
         )
         return loads(list[_types.FrontierPoint], call(self._native.frontier, int(points), dumps(options)))
 
+    def compare(
+        self,
+        *,
+        methods: Sequence[_types.Method],
+        validation: _types.Validation | str = "in_sample",
+        rebalance: _types.RebalanceSchedule | str = "quarterly",
+        trading_cost_bps: float = 0.0,
+        benchmark: Any = None,
+        max_weight: float | None = None,
+        bounds: BoundLike | None = None,
+        asset_bounds: Mapping[str, BoundLike] | None = None,
+        groups: Mapping[str, GroupLike] | None = None,
+        target: float | None = None,
+        risk_aversion: float | None = None,
+        uncertainty: _types.ReturnUncertainty | None = None,
+        confidence: float | None = None,
+        budgets: Mapping[str, float] | None = None,
+        linkage: _types.Linkage | None = None,
+        expected_returns: Mapping[str, float] | None = None,
+    ) -> _types.Backtest:
+        """Each of `methods` backtested on these assets with the same limits, rebalancing,
+        validation and trading costs, side by side.
+
+        - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
+          ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
+          tests on the rest; or :class:`~finalytics.WalkForward`, such as
+          ``fl.WalkForward(years=5)``, which refits at each calendar rebalance on the last
+          five years (or all the history so far, with ``expanding=True``).
+        - `rebalance`: ``"monthly"``, ``"quarterly"`` (the default), ``"yearly"``,
+          ``"never"`` or :class:`~finalytics.Drift`, such as ``fl.Drift(band=0.05)``.
+        - `trading_cost_bps`: the cost of trading in basis points of the value traded.
+        - `benchmark`: weights by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}``, or an
+          index's prices, such as ``fl.datasets.sp500_index()``.
+
+        The limits and parameters are those of :meth:`optimise`; they apply to every method
+        that takes them.
+        """
+        limits = dict(
+            max_weight=max_weight,
+            bounds=bounds,
+            asset_bounds=asset_bounds,
+            groups=groups,
+            target=target,
+            risk_aversion=risk_aversion,
+            uncertainty=uncertainty,
+            confidence=confidence,
+            budgets=budgets,
+            linkage=linkage,
+            expected_returns=expected_returns,
+        )
+        strategies: list[Any] = [
+            _types.OptimisedStrategy(options=self._options(method, **limits)) for method in methods
+        ]
+        return self._simulate(strategies, validation, rebalance, trading_cost_bps, benchmark)
+
+    def backtest(
+        self,
+        *,
+        method: _types.Method | None = None,
+        weights: Mapping[str, float] | None = None,
+        name: str | None = None,
+        validation: _types.Validation | str = "in_sample",
+        rebalance: _types.RebalanceSchedule | str = "quarterly",
+        trading_cost_bps: float = 0.0,
+        benchmark: Any = None,
+        max_weight: float | None = None,
+        bounds: BoundLike | None = None,
+        asset_bounds: Mapping[str, BoundLike] | None = None,
+        groups: Mapping[str, GroupLike] | None = None,
+        target: float | None = None,
+        risk_aversion: float | None = None,
+        uncertainty: _types.ReturnUncertainty | None = None,
+        confidence: float | None = None,
+        budgets: Mapping[str, float] | None = None,
+        linkage: _types.Linkage | None = None,
+        expected_returns: Mapping[str, float] | None = None,
+    ) -> _types.Backtest:
+        """One strategy backtested: a `method`, fitted as `validation` says, or fixed `weights`
+        by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the risk-free
+        asset is held as cash). `name` names the strategy in the results. The other keywords
+        are as for :meth:`compare`; fixed weights take no limits or parameters."""
+        if (method is None) == (weights is None):
+            raise ValueError("give a method or weights, not both")
+        limits = dict(
+            max_weight=max_weight,
+            bounds=bounds,
+            asset_bounds=asset_bounds,
+            groups=groups,
+            target=target,
+            risk_aversion=risk_aversion,
+            uncertainty=uncertainty,
+            confidence=confidence,
+            budgets=budgets,
+            linkage=linkage,
+            expected_returns=expected_returns,
+        )
+        strategy: Any
+        if weights is not None:
+            given = [key for key, value in limits.items() if value is not None]
+            if given:
+                raise ValueError(f"fixed weights take no limits or parameters: {', '.join(given)}")
+            strategy = _types.FixedWeights(name=name, weights={k: float(v) for k, v in weights.items()})
+        else:
+            assert method is not None
+            strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
+        return self._simulate([strategy], validation, rebalance, trading_cost_bps, benchmark)
+
+    def _simulate(
+        self,
+        strategies: list[Any],
+        validation: _types.Validation | str,
+        rebalance: _types.RebalanceSchedule | str,
+        trading_cost_bps: float,
+        benchmark: Any,
+    ) -> _types.Backtest:
+        if isinstance(validation, str):
+            validation = _named("validation", validation, {"in_sample": _types.InSample()})
+        if isinstance(rebalance, str):
+            rebalance = _named("rebalance", rebalance, _SCHEDULES)
+        if isinstance(benchmark, Mapping):
+            benchmark = _types.BenchmarkWeights(weights={k: float(v) for k, v in benchmark.items()})
+        elif benchmark is not None and not isinstance(
+            benchmark, (_types.BenchmarkWeights, _types.BenchmarkPrices)
+        ):
+            benchmark = _types.BenchmarkPrices(prices=_price_table(benchmark))
+        options = _types.BacktestOptions(
+            strategies=strategies,
+            validation=validation,
+            rebalance=rebalance,
+            trading_cost_bps=float(trading_cost_bps),
+            benchmark=benchmark,
+        )
+        return loads(_types.Backtest, call(self._native.simulate, dumps(options)))
+
     def __repr__(self) -> str:
         return f"Assets({len(self.labels)} assets, {len(self.dates)} periods, {self.periods_per_year:g} a year)"
+
+
+_SCHEDULES: dict[str, Any] = {
+    "monthly": _types.Monthly(),
+    "quarterly": _types.Quarterly(),
+    "yearly": _types.Yearly(),
+    "never": _types.Never(),
+}
+
+
+def _named(option: str, name: str, choices: Mapping[str, Any]) -> Any:
+    """The choice called `name` for `option`."""
+    if name not in choices:
+        known = ", ".join(repr(choice) for choice in choices)
+        raise ValueError(f"{option}: {name!r} is not one of {known}")
+    return choices[name]

@@ -54,7 +54,7 @@ for part in report.risk.holdings.decomposition.contributions:
 
 # 3. Decide: the least risky mix of the same funds, 5% to 40% each.
 target = portfolio.assets().optimise(
-    objective="minimum_variance",
+    method="minimum_variance",
     bounds=(0.05, 0.40),
 )
 for name, mix in [("Now", report.overview.current), ("After", target)]:
@@ -138,7 +138,7 @@ prices = fl.datasets.asset_class_prices()
 
 assets = fl.Assets(prices, risk_free_asset="T-Bills")
 result = assets.optimise(
-    objective="maximum_sharpe",
+    method="maximum_sharpe",
     bounds=(0.0, 0.4),
     groups={"Real assets": (["Gold", "Real Estate"], 0.0, 0.15)},
 )

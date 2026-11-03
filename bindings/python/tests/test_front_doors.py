@@ -52,7 +52,7 @@ def test_optimising_with_named_limits(prices):
     assert assets.risk_free_asset == "T-Bills"
     assert assets.risk_free_rate == pytest.approx(assets.mean_returns()["T-Bills"])
     result = assets.optimise(
-        objective="maximum_sharpe",
+        method="maximum_sharpe",
         bounds=(0.0, 0.4),
         asset_bounds={"Gold": (0.0, 0.1)},
         groups={"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)},
@@ -63,7 +63,7 @@ def test_optimising_with_named_limits(prices):
     assert weights["Gold"] <= 0.1 + 1e-6
     assert 0.3 - 1e-6 <= weights["US Equity"] + weights["Intl Equity"] <= 0.6 + 1e-6
     assert result.sharpe_ratio == pytest.approx((result.expected_return - result.risk_free_rate) / result.volatility)
-    target = assets.optimise(objective="target_volatility", target=0.08)
+    target = assets.optimise(method="target_volatility", target=0.08)
     assert target.volatility <= 0.08 + 1e-6
     frontier = assets.frontier(points=5, bounds=(0.0, 0.5))
     assert len(frontier) == 5
@@ -73,7 +73,7 @@ def test_optimising_with_named_limits(prices):
 def test_mistakes_name_the_option(prices):
     assets = fl.Assets(prices)
     with pytest.raises(fl.ValidationError) as caught:
-        assets.optimise(objective="target_return")
+        assets.optimise(method="target_return")
     assert [i.path for i in caught.value.issues] == ["options.target"]
     with pytest.raises(fl.ValidationError) as caught:
         assets.optimise(asset_bounds={"Crypto": (0, 0.1)})
@@ -95,7 +95,7 @@ def test_from_holdings_to_trades():
     portfolio = fl.datasets.portfolio()
     assets = portfolio.assets()
     assert assets.labels == ["BND", "EXSA", "GLD", "VNQ", "VTI"] and assets.periods_per_year == 252
-    targets = assets.optimise(objective="minimum_variance", bounds=(0.05, 0.5)).weights
+    targets = assets.optimise(method="minimum_variance", bounds=(0.05, 0.5)).weights
     proposal = portfolio.rebalance(targets)
     assert len(proposal.accounts) == 2
     after = portfolio.with_rebalance(proposal).weights()

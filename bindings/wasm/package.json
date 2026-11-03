@@ -30,6 +30,7 @@
     "finalytics.d.ts",
     "index.js",
     "datasets.js",
+    "reports.js",
     "data/sp500/prices.csv",
     "data/sp500/index.csv",
     "node.js",
@@ -43,7 +44,8 @@
   "sideEffects": [
     "./index.js",
     "./node.js",
-    "./datasets.js"
+    "./datasets.js",
+    "./reports.js"
   ],
   "exports": {
     ".": {

@@ -7,13 +7,13 @@
      {
       "type": "optimise",
       "options": {
-       "objective": "equal_weight"
+       "method": "equal_weight"
       }
      },
      {
       "type": "optimise",
       "options": {
-       "objective": "inverse_volatility"
+       "method": "inverse_volatility"
       }
      },
      {
@@ -6941,7 +6941,7 @@
      {
       "type": "optimise",
       "options": {
-       "objective": "minimum_variance",
+       "method": "minimum_variance",
        "bounds": {
         "min": 0.0,
         "max": 0.4
@@ -10103,19 +10103,19 @@
      {
       "type": "optimise",
       "options": {
-       "objective": "equal_weight"
+       "method": "equal_weight"
       }
      },
      {
       "type": "optimise",
       "options": {
-       "objective": "inverse_volatility"
+       "method": "inverse_volatility"
       }
      },
      {
       "type": "optimise",
       "options": {
-       "objective": "minimum_variance",
+       "method": "minimum_variance",
        "bounds": {
         "min": 0.0,
         "max": 0.4
@@ -21641,7 +21641,7 @@
      {
       "type": "optimise",
       "options": {
-       "objective": "minimum_variance",
+       "method": "minimum_variance",
        "bounds": {
         "min": 0.0,
         "max": 0.4

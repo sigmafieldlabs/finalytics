@@ -69,7 +69,7 @@ for (const part of report.risk.holdings.decomposition.contributions) {
 
 // 3. Decide: the least risky mix of the same funds, 5% to 40% each.
 const target = portfolio.assets().optimise({
-  objective: "minimum_variance",
+  method: "minimum_variance",
   bounds: { min: 0.05, max: 0.4 },
 });
 const mixes = [["Now", report.overview.current], ["After", target]];
@@ -165,7 +165,7 @@ const prices = datasets.assetClassPrices();
 
 const assets = new Assets(prices, { risk_free_asset: "T-Bills" });
 const result = assets.optimise({
-  objective: "maximum_sharpe",
+  method: "maximum_sharpe",
   bounds: { min: 0, max: 0.4 },
   groups: {
     "Real assets": { assets: ["Gold", "Real Estate"], min: 0, max: 0.15 },

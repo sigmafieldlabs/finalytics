@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use finalytics::opt::{Bound, RebalanceOptions};
 use finalytics::{
-    Assets, Error, HoldingKey, ObjectiveName, OptimiseOptions, Portfolio, PortfolioCsv, datasets,
+    Assets, Error, HoldingKey, Method, OptimiseOptions, Portfolio, PortfolioCsv, datasets,
 };
 
 fn asset_classes() -> Assets {
@@ -55,12 +55,11 @@ fn the_asset_class_dataset_is_thirty_years_of_months() {
 fn the_optimiser_keeps_to_its_limits() {
     let assets = asset_classes();
     let result = assets
-        .optimiser()
-        .maximum_sharpe()
-        .bounds(0.0, 0.4)
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
         .asset_bounds("Gold", 0.0, 0.1)
         .group("Equity", &["US Equity", "Intl Equity"], 0.3, 0.6)
-        .solve()
+        .build()
         .unwrap();
     assert!(result.status.has_solution());
     let weights = result.weights.unwrap();
@@ -75,67 +74,81 @@ fn the_optimiser_keeps_to_its_limits() {
 }
 
 #[test]
-fn every_objective_can_be_named() {
+fn every_method_can_be_named() {
     let assets = asset_classes();
-    let budgets: BTreeMap<String, f64> = assets
-        .labels()
-        .iter()
-        .map(|l| (l.clone(), 1.0 / 6.0))
-        .collect();
-    let runs = [
-        assets.optimiser().minimum_variance(),
-        assets.optimiser().mean_variance(4.0),
-        assets.optimiser().target_return(0.06),
-        assets.optimiser().target_volatility(0.08),
-        assets.optimiser().maximum_sharpe(),
-        assets.optimiser().maximum_diversification(),
-        assets.optimiser().minimum_cvar(0.95),
-        assets.optimiser().risk_budgeting(budgets),
-        assets
-            .optimiser()
-            .hierarchical_risk_parity(Default::default()),
+    let mut runs = vec![
+        assets.optimise(Method::MinimumVariance),
+        assets.optimise(Method::MeanVariance).risk_aversion(4.0),
+        assets.optimise(Method::TargetReturn).target(0.06),
+        assets.optimise(Method::TargetVolatility).target(0.08),
+        assets.optimise(Method::MaximumSharpe),
+        assets.optimise(Method::MaximumDiversification),
+        assets.optimise(Method::MinimumCvar).confidence(0.95),
+        assets.optimise(Method::EqualWeight),
+        assets.optimise(Method::InverseVolatility),
+        assets.optimise(Method::HierarchicalRiskParity),
     ];
+    let mut budgeted = assets.optimise(Method::RiskBudgeting);
+    for label in assets.labels() {
+        budgeted = budgeted.budget(label, 1.0 / 6.0);
+    }
+    runs.push(budgeted);
     for run in runs {
-        let name = run.options().objective;
-        let result = run.solve().unwrap();
+        let name = run.options().method;
+        let result = run.build().unwrap();
         assert!(result.status.has_solution(), "{name:?}");
         let total: f64 = result.weights.unwrap().values().sum();
         assert!((total - 1.0).abs() < 1e-5, "{name:?}: {total}");
     }
+    // Limits do not apply to the methods that take none.
+    assert_eq!(
+        paths(assets.optimise(Method::EqualWeight).max_weight(0.3).build()),
+        ["constraints"]
+    );
+    assert_eq!(
+        paths(
+            assets
+                .optimise(Method::MinimumVariance)
+                .max_weight(0.3)
+                .bounds(0.0, 0.5)
+                .build()
+        ),
+        ["options.max_weight"]
+    );
 }
 
 #[test]
 fn options_read_from_json() {
     let options: OptimiseOptions = serde_json::from_str(
         r#"{
-            "objective": "target_volatility",
+            "method": "target_volatility",
             "target": 0.08,
             "bounds": {"min": 0.0, "max": 0.5},
             "groups": {"Equity": {"assets": ["US Equity", "Intl Equity"], "min": 0.2, "max": 0.7}}
         }"#,
     )
     .unwrap();
-    assert_eq!(options.objective, ObjectiveName::TargetVolatility);
-    let result = asset_classes().optimise(&options).unwrap();
+    assert_eq!(options.method, Method::TargetVolatility);
+    let result = asset_classes().optimise_with(&options).unwrap();
     assert!(result.volatility.unwrap() <= 0.08 + 1e-6);
     let defaults: OptimiseOptions = serde_json::from_str("{}").unwrap();
     assert_eq!(defaults, OptimiseOptions::default());
-    assert_eq!(defaults.objective, ObjectiveName::MaximumSharpe);
+    assert_eq!(defaults.method, Method::MaximumSharpe);
 }
 
 #[test]
 fn mistakes_in_the_options_are_located() {
     let assets = asset_classes();
     let mut options = OptimiseOptions::default();
-    options.objective = ObjectiveName::TargetReturn;
-    assert_eq!(paths(assets.optimise(&options)), ["options.target"]);
+    options.method = Method::TargetReturn;
+    assert_eq!(paths(assets.optimise_with(&options)), ["options.target"]);
     let mut options = OptimiseOptions::default();
     options
         .asset_bounds
         .insert("Crypto".into(), Bound { min: 0.0, max: 0.1 });
     options.expected_returns.insert("Stocks".into(), 0.07);
     assert_eq!(
-        paths(assets.optimise(&options)),
+        paths(assets.optimise_with(&options)),
         [
             "options.expected_returns.Stocks",
             "options.asset_bounds.Crypto"
@@ -153,12 +166,17 @@ fn a_risk_free_asset_is_left_out_of_optimisation() {
     assert_eq!(assets.risky_assets().len(), 5);
     let bills = assets.mean_returns()[3];
     assert_eq!(assets.risk_free_rate(), bills);
-    let result = assets.optimiser().maximum_sharpe().solve().unwrap();
+    let result = assets.optimise(Method::MaximumSharpe).build().unwrap();
     let weights = result.weights.unwrap();
     assert!(!weights.contains_key("T-Bills"));
     assert_eq!(result.risk_free_rate, bills);
     assert_eq!(
-        paths(assets.optimiser().asset_bounds("T-Bills", 0.0, 0.2).solve()),
+        paths(
+            assets
+                .optimise(Method::MaximumSharpe)
+                .asset_bounds("T-Bills", 0.0, 0.2)
+                .build()
+        ),
         ["options.asset_bounds.T-Bills"]
     );
     assert_eq!(
@@ -170,7 +188,11 @@ fn a_risk_free_asset_is_left_out_of_optimisation() {
 #[test]
 fn the_frontier_rises_with_risk() {
     let assets = asset_classes();
-    let points = assets.optimiser().bounds(0.0, 0.5).frontier(8).unwrap();
+    let points = assets
+        .optimise(Method::MinimumVariance)
+        .max_weight(0.5)
+        .frontier(8)
+        .unwrap();
     assert_eq!(points.len(), 8);
     for pair in points.windows(2) {
         assert!(pair[1].expected_return >= pair[0].expected_return - 1e-9);
@@ -196,7 +218,7 @@ fn the_portfolio_dataset_reports_in_full() {
     assert_eq!(portfolio.data().transactions.len(), 203);
     assert_eq!(portfolio.data().accounts.len(), 2);
     assert_eq!(portfolio.as_of().unwrap().to_string(), "2026-10-30");
-    let report = portfolio.report(&datasets::report_options()).unwrap();
+    let report = portfolio.report_with(&datasets::report_options()).unwrap();
     assert!(report.attribution.is_some());
     assert_eq!(report.scenarios.unwrap().scenarios.len(), 4);
     let weights = portfolio.weights(None).unwrap();
@@ -212,21 +234,29 @@ fn a_portfolio_hands_its_holdings_to_the_optimiser() {
     assert_eq!(assets.labels(), ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
     assert_eq!(assets.periods_per_year(), 252.0);
     let result = assets
-        .optimiser()
-        .minimum_variance()
+        .optimise(Method::MinimumVariance)
         .bounds(0.05, 0.5)
-        .solve()
+        .build()
         .unwrap();
-    let targets: BTreeMap<HoldingKey, f64> = result
-        .weights
-        .unwrap()
-        .into_iter()
-        .map(|(id, w)| (id.parse().unwrap(), w))
-        .collect();
-    let proposal = portfolio
-        .rebalance(&targets, &RebalanceOptions::default())
-        .unwrap();
+    let targets: BTreeMap<HoldingKey, f64> = result.holdings();
+    let proposal = portfolio.rebalance(&result).build().unwrap();
     assert_eq!(proposal.accounts.len(), 2);
+    let same = portfolio
+        .rebalance_with(&targets, &RebalanceOptions::default())
+        .unwrap();
+    assert_eq!(same, proposal);
+    let ira = portfolio
+        .rebalance(&result)
+        .accounts(["ira"])
+        .whole_units()
+        .build()
+        .unwrap();
+    assert_eq!(ira.accounts.len(), 1);
+    let unknown = paths(portfolio.rebalance([("VTI", 0.5), ("XYZ", 0.5)]).build());
+    assert!(
+        unknown.iter().all(|p| p.starts_with("targets")),
+        "{unknown:?}"
+    );
     let traded = portfolio.with_rebalance(&proposal).unwrap();
     let after = traded.weights(None).unwrap();
     for (key, target) in &targets {
@@ -332,4 +362,85 @@ fn the_sp500_dataset_is_daily_with_t_bills_and_sectors() {
     assert_eq!(assets.periods_per_year(), 252.0);
     assert_eq!(assets.risky_assets().len(), 55);
     assert!(datasets::FILES.iter().all(|f| datasets::file(f).is_some()));
+}
+
+#[test]
+fn builders_read_files_and_build_reports() {
+    let dir = std::env::temp_dir().join(format!("finalytics-builders-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    for name in ["transactions", "instruments", "accounts", "prices", "fx"] {
+        let text = datasets::file(&format!("portfolio/{name}.csv")).unwrap();
+        std::fs::write(dir.join(format!("{name}.csv")), text).unwrap();
+    }
+    let portfolio = Portfolio::builder()
+        .transactions(dir.join("transactions.csv"))
+        .instruments(dir.join("instruments.csv"))
+        .accounts(dir.join("accounts.csv"))
+        .prices(dir.join("prices.csv"))
+        .fx(dir.join("fx.csv"))
+        .base_currency("USD")
+        .build()
+        .unwrap();
+    assert_eq!(
+        portfolio.valuation(None).unwrap(),
+        datasets::portfolio().valuation(None).unwrap()
+    );
+    let report = portfolio
+        .report()
+        .options(datasets::report_options())
+        .benchmark("BENCH")
+        .name("Morgan family portfolio")
+        .build()
+        .unwrap();
+    assert_eq!(report.name.as_deref(), Some("Morgan family portfolio"));
+    assert!(report.attribution.is_some());
+    let earlier = portfolio.report().as_of("2026-09-30").build().unwrap();
+    assert_eq!(earlier.overview.provenance.as_of.to_string(), "2026-09-30");
+    assert!(
+        report
+            .to_html(None)
+            .contains("<title>Morgan family portfolio</title>")
+    );
+    let page = dir.join("report.html");
+    finalytics::Show::save_html(&report, &page).unwrap();
+    assert!(
+        std::fs::read_to_string(&page)
+            .unwrap()
+            .starts_with("<!doctype html>")
+    );
+    assert_eq!(
+        paths(
+            portfolio
+                .report()
+                .benchmark("BENCH")
+                .as_of("30/09/2026")
+                .build()
+        ),
+        ["as_of"]
+    );
+    assert_eq!(
+        paths(
+            Portfolio::builder()
+                .prices(dir.join("missing.csv"))
+                .base_currency("dollars")
+                .build()
+        ),
+        ["prices", "transactions", "base_currency"]
+    );
+    let assets = Assets::builder()
+        .prices_file(dir.join("prices.csv"))
+        .periods_per_year(252.0)
+        .build()
+        .unwrap();
+    assert_eq!(assets.labels().len(), 6);
+    assert_eq!(
+        paths(
+            Assets::builder()
+                .risk_free_asset("T-Bills")
+                .risk_free_rate(0.02)
+                .build()
+        ),
+        ["prices", "risk_free_rate"]
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
 }

@@ -55,6 +55,9 @@ pub enum Error {
     /// Input failed validation; the report lists every problem found.
     #[error("{0}")]
     Validation(ValidationReport),
+    /// A file could not be written, or a report could not be opened.
+    #[error("{0}")]
+    Io(String),
 }
 
 /// The engine's result type.

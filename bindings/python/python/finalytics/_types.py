@@ -64,9 +64,9 @@ of them.
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
-ObjectiveName = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "equal_weight", "inverse_volatility", "risk_budgeting", "hierarchical_risk_parity"]
-"""What an optimisation seeks, by name. The parameters some objectives need are given beside it, in
-`OptimiseOptions`.
+Method = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "equal_weight", "inverse_volatility", "risk_parity", "risk_budgeting", "hierarchical_risk_parity"]
+"""An optimisation method, by name. The parameters some methods need are given beside it, in
+`OptimiseOptions` or with the builder's methods.
 """
 
 ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
@@ -2333,12 +2333,12 @@ class OptimisationResult:
 
 @dataclass(frozen=True, kw_only=True)
 class OptimiseOptions:
-    """What to optimise, and the limits on the weights. Everything is optional: by default the
-    portfolio with the largest Sharpe ratio, fully invested and long only.
+    """The method, its parameters and the limits on the weights. Everything is optional: by default
+    the portfolio with the largest Sharpe ratio, fully invested and long only.
     """
 
-    objective: ObjectiveName = "maximum_sharpe"
-    """What to optimise: the largest Sharpe ratio by default."""
+    method: Method = "maximum_sharpe"
+    """The method: the largest Sharpe ratio by default."""
 
     risk_free_rate: float | None = None
     """The annual risk-free rate for the Sharpe ratio; by default the assets' own."""
@@ -2364,6 +2364,9 @@ class OptimiseOptions:
 
     bounds: Bound | None = None
     """The smallest and largest weight of every asset: 0 and 1 by default."""
+
+    max_weight: float | None = None
+    """The largest weight of any asset, as `bounds` of 0 and `max_weight`; give one or the other."""
 
     asset_bounds: dict[str, Bound] = field(default_factory=dict)
     """Bounds for particular assets, which take the place of `bounds` for them."""
@@ -2685,6 +2688,11 @@ class PortfolioReport(PrintedPortfolioReport):
 
     scenarios: ScenariosReport | None = None
     """The effect of scenarios on value and risk."""
+
+    name: str | None = None
+    """The portfolio's name, shown under each report's title when it is printed or laid out as a
+    page.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4002,8 +4010,8 @@ class StatisticsOptions:
 @dataclass(frozen=True, kw_only=True)
 class OptimisedStrategy:
     """An optimisation, refitted as the validation says. The limits of `options` apply to the
-    methods that take them; equal weight, inverse volatility, risk parity and hierarchical risk
-    parity are fully invested and long only.
+    methods that take them; equal weight, inverse volatility, risk parity, risk budgeting and
+    hierarchical risk parity are fully invested and long only.
     """
 
     TYPE: ClassVar[str] = "optimise"
@@ -4012,7 +4020,7 @@ class OptimisedStrategy:
     name: str | None = None
     """The name in the results; the method's own by default, such as `Maximum Sharpe`."""
 
-    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(objective="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, asset_bounds={}, groups={}, expected_returns={}))
+    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, expected_returns={}))
     """The method, its parameters and the limits on the weights."""
 
 
@@ -4916,6 +4924,7 @@ __all__ = [
     "MaximumSharpe",
     "MeanVariance",
     "Merger",
+    "Method",
     "MinimumCvar",
     "MinimumVariance",
     "Money",
@@ -4930,7 +4939,6 @@ __all__ = [
     "NumberColumn",
     "Oas",
     "Objective",
-    "ObjectiveName",
     "OptimisationResult",
     "OptimiseOptions",
     "OptimisedStrategy",

@@ -45,22 +45,21 @@ retirement account, in dollars and euros.
 //! Review a portfolio, find where its risk comes from, choose a better mix of
 //! the same funds, and get the trades that reach it, in each account.
 
-use finalytics::datasets;
-use finalytics::opt::RebalanceOptions;
-use finalytics::reports::ReportOptions;
+use finalytics::{Method, Show, datasets};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Three years of a two-account portfolio, in dollars and euros.
     let portfolio = datasets::portfolio();
 
     // 1. Review: every report, from one set of options.
-    let options = ReportOptions::default()
-        .with_benchmark("BENCH".parse()?)
-        .with_group_by(["asset_class", "region"])
-        .with_risk_free_rate(0.03);
-    let report = portfolio.report(&options)?;
-    let html = report.to_html(Some("Morgan family portfolio"));
-    std::fs::write("report.html", html)?;
+    let report = portfolio
+        .report()
+        .benchmark("BENCH")
+        .group_by(["asset_class", "region"])
+        .risk_free_rate(0.03)
+        .name("Morgan family portfolio")
+        .build()?;
+    report.save_html("report.html")?;
     let since = report.performance.periods.last().ok_or("no history")?;
     println!(
         "Return {:+.1}%, benchmark {:+.1}%",
@@ -85,10 +84,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Decide: the least risky mix of the same funds, 5% to 40% each.
     let target = portfolio
         .assets()?
-        .optimiser()
-        .minimum_variance()
+        .optimise(Method::MinimumVariance)
         .bounds(0.05, 0.40)
-        .solve()?;
+        .build()?;
     let now = report.overview.current.as_ref().ok_or("no estimate")?;
     let after = (
         target.volatility.unwrap_or_default(),
@@ -106,8 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 4. Trade: what each account buys and sells, in whole units.
-    let whole = RebalanceOptions::default().with_whole_units(true);
-    let proposal = portfolio.rebalance(&target.holdings(), &whole)?;
+    let proposal = portfolio.rebalance(&target).whole_units().build()?;
     for account in &proposal.accounts {
         for trade in &account.trades {
             println!(
@@ -200,19 +197,21 @@ Here, the mix of six asset classes with the highest Sharpe ratio, with at most
 //! The mix of six asset classes with the highest Sharpe ratio, with at most
 //! 40% in any one and 15% in real assets, against the return on T-bills.
 
-use finalytics::{Assets, datasets};
+use finalytics::prelude::*;
 
-fn main() -> Result<(), finalytics::Error> {
+fn main() -> Result<()> {
     // Thirty years of month-end levels of six asset-class indices.
     let prices = datasets::asset_class_prices();
 
-    let assets = Assets::from_prices(&prices)?.with_risk_free_asset("T-Bills")?;
+    let assets = Assets::builder()
+        .prices(prices)
+        .risk_free_asset("T-Bills")
+        .build()?;
     let result = assets
-        .optimiser()
-        .maximum_sharpe()
-        .bounds(0.0, 0.4)
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
         .group("Real assets", &["Gold", "Real Estate"], 0.0, 0.15)
-        .solve()?;
+        .build()?;
     for asset in assets.risky_assets() {
         let weight = result.weights.as_ref().map_or(0.0, |w| w[asset]);
         println!("{asset:12} {:3.0}%", weight * 100.0);
