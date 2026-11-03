@@ -2492,7 +2492,8 @@ class Optimisation(Result):
 
     report: OptimisationReport
     """The optimisation report: the weights, what they are expected to deliver, where their risk
-    comes from, the efficient frontier and the history they were fitted to.
+    comes from, where they sit against each asset (and on the efficient frontier, if asked for)
+    and the history they were fitted to.
     """
 
     results: OptimisationResult
@@ -2572,8 +2573,8 @@ class OptimisationHistory:
 @dataclass(frozen=True, kw_only=True)
 class OptimisationReport(ReportPage):
     """The weights an optimisation chose, with what they are expected to deliver, where their risk
-    comes from, where they sit on the efficient frontier, and how they would have done on the
-    history they were fitted to.
+    comes from, where they sit against each asset and on the efficient frontier, and how they
+    would have done on the history they were fitted to.
     """
 
     context: OptimisationContext
@@ -2592,7 +2593,7 @@ class OptimisationReport(ReportPage):
 
     frontier: list[RiskReturn]
     """The efficient frontier under the same limits, from the least volatile portfolio to the one
-    with the largest expected return.
+    with the largest expected return; empty unless the optimisation asked for it.
     """
 
     equal_weight: RiskReturn | None = None
@@ -2712,6 +2713,13 @@ class OptimiseOptions:
 
     expected_returns: dict[str, float] = field(default_factory=dict)
     """Annual expected returns by asset, in place of the historical means."""
+
+    frontier: bool = False
+    """Whether the optimisation report draws the efficient frontier under the same limits. Off by
+    default: the frontier takes 30 more optimisations, so it adds time that grows with the number
+    of assets, to seconds for hundreds of assets. Only an optimisation reads it; backtests leave
+    it out.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)

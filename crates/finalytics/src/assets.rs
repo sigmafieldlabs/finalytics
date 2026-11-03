@@ -99,6 +99,9 @@ pub enum Method {
     HierarchicalRiskParity,
 }
 
+/// The points on the efficient frontier that an optimisation report draws.
+const FRONTIER_POINTS: usize = 30;
+
 /// An optimisation: the optimisation report on the weights chosen, and the raw results.
 /// Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a page.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -106,7 +109,8 @@ pub enum Method {
 #[non_exhaustive]
 pub struct Optimisation {
     /// The optimisation report: the weights, what they are expected to deliver, where their
-    /// risk comes from, the efficient frontier and the history they were fitted to.
+    /// risk comes from, where they sit against each asset (and on the efficient frontier, if
+    /// asked for) and the history they were fitted to.
     pub report: OptimisationReport,
     /// The raw results: the weights by asset, their expected return, volatility and Sharpe
     /// ratio, and the solver's solution.
@@ -245,6 +249,13 @@ pub struct OptimiseOptions {
     pub groups: BTreeMap<String, AssetGroup>,
     /// Annual expected returns by asset, in place of the historical means.
     pub expected_returns: BTreeMap<String, f64>,
+    /// Whether the optimisation report draws the efficient frontier under the same limits.
+    /// Off by default: the frontier takes 30 more optimisations, so it adds time that grows with
+    /// the number of assets, to seconds for hundreds of assets. Only an optimisation reads it;
+    /// backtests leave it out.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[cfg_attr(feature = "schema", schemars(extend("default" = false)))]
+    pub frontier: bool,
 }
 
 /// The result of an optimisation over assets: the weights by asset, with their expected return,
@@ -631,15 +642,19 @@ impl Assets {
             .expected_returns
             .clone()
             .unwrap_or_else(|| vec![0.0; n]);
-        let frontier = problem
-            .frontier(30)
-            .map(|points| {
-                points
-                    .iter()
-                    .map(|p| (p.volatility, p.expected_return))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let frontier = if options.frontier {
+            problem
+                .frontier(FRONTIER_POINTS)
+                .map(|points| {
+                    points
+                        .iter()
+                        .map(|p| (p.volatility, p.expected_return))
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
         let history = results.weights.as_ref().and_then(|weights| {
             let equal: BTreeMap<String, f64> =
                 labels.iter().map(|l| (l.clone(), 1.0 / n as f64)).collect();
@@ -971,6 +986,15 @@ impl Optimise<'_> {
         self.options
             .expected_returns
             .insert(asset.to_owned(), value);
+        self
+    }
+
+    /// Draws the efficient frontier under the same limits in the optimisation report. It takes
+    /// 30 more optimisations, so it adds time that grows with the number of assets, to seconds
+    /// for hundreds of assets; without it, the report shows the weights against each asset and
+    /// equal weight.
+    pub fn with_frontier(mut self) -> Self {
+        self.options.frontier = true;
         self
     }
 

@@ -164,7 +164,7 @@ export interface Result<R, D> {
 }
 
 /** The limits on the weights and the methods' parameters, as for `Assets.optimise`. */
-export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method">;
+export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method" | "frontier">;
 
 /**
  * How strategies are validated: `"in_sample"` (the default); `{ holdout: { start: "2016-11-01" } }`,
@@ -281,25 +281,6 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
         .map_err(|_| invalid(name, "cannot be written as JSON"))?
         .into();
     finalytics::formats::from_json(&text, name).map_err(error)
-}
-
-/// The weights of `targets`: weights by holding as given, or those of an optimisation, whole
-/// or its raw results.
-fn target_weights(mut targets: serde_json::Value) -> serde_json::Value {
-    if let Some(results) = targets.get_mut("results").filter(|v| v.is_object()) {
-        targets = results.take();
-    }
-    if targets
-        .get("solution")
-        .is_some_and(serde_json::Value::is_object)
-    {
-        match targets.get_mut("weights").map(serde_json::Value::take) {
-            Some(weights) if weights.is_object() => weights,
-            _ => serde_json::Value::Object(serde_json::Map::new()),
-        }
-    } else {
-        targets
-    }
 }
 
 fn optional<T: DeserializeOwned + Default>(value: JsValue, name: &str) -> Result<T, JsValue> {
@@ -1035,8 +1016,9 @@ impl Portfolio {
 
     /// The trades that move the accounts (by default every account; `choices.accounts` names
     /// others) together to `targets`, as shares of their combined value: weights by holding, or
-    /// an optimisation of the portfolio's assets, whose weights are its targets. One proposal
-    /// per account; `withRebalance` makes its trades.
+    /// an optimisation of the portfolio's assets, whose weights are its targets (one that found
+    /// no weights is a `ValidationError`). One proposal per account; `withRebalance` makes its
+    /// trades.
     #[wasm_bindgen(unchecked_return_type = "CombinedRebalance")]
     pub fn rebalance(
         &self,
@@ -1046,9 +1028,8 @@ impl Portfolio {
         targets: JsValue,
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let targets = target_weights(from_js(targets, "targets")?);
-        let targets: BTreeMap<HoldingKey, f64> =
-            finalytics::formats::from_json(&targets.to_string(), "targets").map_err(error)?;
+        let targets: serde_json::Value = from_js(targets, "targets")?;
+        let targets = finalytics::targets_from_json(&targets.to_string()).map_err(error)?;
         let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
         let accounts = match choices.remove("accounts") {
@@ -1337,7 +1318,10 @@ impl Assets {
         #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
         options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let options = object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
+        let options = object(
+            options,
+            &fields::<finalytics::OptimiseOptions>(&["frontier"]),
+        )?;
         let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
             &serde_json::Value::Object(options).to_string(),
             "options",

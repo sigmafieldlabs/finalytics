@@ -8,7 +8,9 @@ use finalytics_ledger::LotMethod;
 use finalytics_ledger::{
     AccountId, Books, HoldingKey, MarketData, PortfolioData, Transaction, Valuation, ValueSeries,
 };
-use finalytics_opt::{CombinedRebalance, Fees, RebalanceOptions, TaxRates, rebalance_accounts};
+use finalytics_opt::{
+    CombinedRebalance, Fees, RebalanceOptions, SolveStatus, TaxRates, rebalance_accounts,
+};
 use finalytics_perf::{FlowTiming, Performance};
 use finalytics_reports::{
     AttributionInputs, AttributionReport, HoldingsReport, NamedScenario, OverviewReport,
@@ -315,7 +317,8 @@ impl Portfolio {
 
     /// The trades that move the accounts to `targets`, weights by holding such as an
     /// optimisation's, as shares of their combined value at the last price date: one proposal
-    /// per account. [`Rebalancing::build`] finds them.
+    /// per account. [`Rebalancing::build`] finds them, and reports an optimisation that found no
+    /// weights as an error.
     ///
     /// ```
     /// use finalytics::{Method, datasets};
@@ -434,20 +437,54 @@ impl Portfolio {
 }
 
 /// Target weights by holding, for [`Portfolio::rebalance`]: an optimisation's weights by asset,
-/// or weights by instrument identifier (`"USD cash"` for cash).
+/// or weights by instrument identifier (`"USD cash"` for cash). An optimisation that found no
+/// weights is not a target: [`Rebalancing::build`] reports it.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Targets(Vec<(String, f64)>);
+pub struct Targets {
+    weights: Vec<(String, f64)>,
+    /// How an optimisation that found no weights ended.
+    unsolved: Option<SolveStatus>,
+}
+
+impl Targets {
+    fn new(weights: Vec<(String, f64)>) -> Targets {
+        Targets {
+            weights,
+            unsolved: None,
+        }
+    }
+
+    /// The weights by holding, with a problem in `report` for each name that is not a holding
+    /// and for an optimisation that found no weights.
+    fn holdings(&self, report: &mut ValidationReport) -> BTreeMap<HoldingKey, f64> {
+        if let Some(status) = self.unsolved {
+            report.error(
+                "targets",
+                format!("the optimisation ended {status} and found no weights"),
+            );
+        }
+        let mut targets = BTreeMap::new();
+        for (key, weight) in &self.weights {
+            match key.parse::<HoldingKey>() {
+                Ok(holding) => {
+                    targets.insert(holding, *weight);
+                }
+                Err(_) => report.error(format!("targets.{key}"), "is not a holding"),
+            }
+        }
+        targets
+    }
+}
 
 impl From<&OptimisationResult> for Targets {
     fn from(result: &OptimisationResult) -> Targets {
-        Targets(
-            result
-                .weights
-                .iter()
-                .flatten()
-                .map(|(a, w)| (a.clone(), *w))
-                .collect(),
-        )
+        match &result.weights {
+            Some(weights) => Targets::new(weights.iter().map(|(a, w)| (a.clone(), *w)).collect()),
+            None => Targets {
+                weights: Vec::new(),
+                unsolved: Some(result.status),
+            },
+        }
     }
 }
 
@@ -459,20 +496,47 @@ impl From<&crate::Optimisation> for Targets {
 
 impl From<&BTreeMap<HoldingKey, f64>> for Targets {
     fn from(weights: &BTreeMap<HoldingKey, f64>) -> Targets {
-        Targets(weights.iter().map(|(k, w)| (k.to_string(), *w)).collect())
+        Targets::new(weights.iter().map(|(k, w)| (k.to_string(), *w)).collect())
     }
 }
 
 impl From<BTreeMap<String, f64>> for Targets {
     fn from(weights: BTreeMap<String, f64>) -> Targets {
-        Targets(weights.into_iter().collect())
+        Targets::new(weights.into_iter().collect())
     }
 }
 
 impl<S: Into<String>, const N: usize> From<[(S, f64); N]> for Targets {
     fn from(weights: [(S, f64); N]) -> Targets {
-        Targets(weights.into_iter().map(|(k, w)| (k.into(), w)).collect())
+        Targets::new(weights.into_iter().map(|(k, w)| (k.into(), w)).collect())
     }
+}
+
+/// Rebalancing targets given as JSON: weights by holding, or an optimisation, whole or its raw
+/// results, whose weights are the targets. An optimisation that found no weights, and a name
+/// that is not a holding, are errors at `targets`. The Python and JavaScript packages use it;
+/// from Rust, pass the optimisation to [`Portfolio::rebalance`].
+#[doc(hidden)]
+pub fn targets_from_json(text: &str) -> Result<BTreeMap<HoldingKey, f64>> {
+    let mut value: serde_json::Value = finalytics_formats::from_json(text, "targets")?;
+    if let Some(results) = value.get_mut("results").filter(|v| v.is_object()) {
+        value = results.take();
+    }
+    let targets = if value
+        .get("solution")
+        .is_some_and(serde_json::Value::is_object)
+    {
+        let result: OptimisationResult =
+            finalytics_formats::from_json(&value.to_string(), "targets")?;
+        Targets::from(&result)
+    } else {
+        let weights: BTreeMap<String, f64> =
+            finalytics_formats::from_json(&value.to_string(), "targets")?;
+        Targets::from(weights)
+    };
+    let mut report = ValidationReport::new();
+    let holdings = targets.holdings(&mut report);
+    report.into_result(holdings)
 }
 
 /// A rebalancing of a portfolio's accounts to target weights, built step by step;
@@ -531,15 +595,7 @@ impl Rebalancing<'_> {
     /// Finds the trades: one proposal per account.
     pub fn build(&self) -> Result<CombinedRebalance> {
         let mut report = ValidationReport::new();
-        let mut targets = BTreeMap::new();
-        for (key, weight) in &self.targets.0 {
-            match key.parse::<HoldingKey>() {
-                Ok(holding) => {
-                    targets.insert(holding, *weight);
-                }
-                Err(_) => report.error(format!("targets.{key}"), "is not a holding"),
-            }
-        }
+        let targets = self.targets.holdings(&mut report);
         let accounts: Vec<AccountId> = match &self.accounts {
             Some(ids) => ids
                 .iter()

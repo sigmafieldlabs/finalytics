@@ -103,6 +103,14 @@ def test_from_holdings_to_trades():
     after = portfolio.with_rebalance(proposal).weights()
     for holding, target in result.results.weights.items():
         assert after[holding] == pytest.approx(target, abs=0.01)
+    failed = assets.optimise(method="minimum_variance", max_weight=0.1)
+    assert failed.results.weights is None
+    for targets in (failed, failed.results):
+        with pytest.raises(fl.ValidationError) as caught:
+            portfolio.rebalance(targets)
+        assert [(i.path, i.message) for i in caught.value.issues] == [
+            ("targets", "the optimisation ended infeasible and found no weights")
+        ]
 
 
 def test_a_portfolio_from_transactions_alone():

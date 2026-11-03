@@ -1773,7 +1773,8 @@ export type Objective =
 export interface Optimisation {
   /**
    * The optimisation report: the weights, what they are expected to deliver, where their
-   * risk comes from, the efficient frontier and the history they were fitted to.
+   * risk comes from, where they sit against each asset (and on the efficient frontier, if
+   * asked for) and the history they were fitted to.
    */
   report: OptimisationReport;
   /**
@@ -1835,8 +1836,8 @@ export interface OptimisationHistory {
 
 /**
  * The weights an optimisation chose, with what they are expected to deliver, where their risk
- * comes from, where they sit on the efficient frontier, and how they would have done on the
- * history they were fitted to.
+ * comes from, where they sit against each asset and on the efficient frontier, and how they
+ * would have done on the history they were fitted to.
  */
 export interface OptimisationReport {
   /** What was optimised and how. */
@@ -1852,7 +1853,7 @@ export interface OptimisationReport {
   correlation: Grid;
   /**
    * The efficient frontier under the same limits, from the least volatile portfolio to the
-   * one with the largest expected return.
+   * one with the largest expected return; empty unless the optimisation asked for it.
    */
   frontier: RiskReturn[];
   /** The equal-weight portfolio of the same assets, for comparison. */
@@ -1951,6 +1952,13 @@ export interface OptimiseOptions {
   groups?: Record<string, AssetGroup>;
   /** Annual expected returns by asset, in place of the historical means. */
   expected_returns?: Record<string, number>;
+  /**
+   * Whether the optimisation report draws the efficient frontier under the same limits.
+   * Off by default: the frontier takes 30 more optimisations, so it adds time that grows with
+   * the number of assets, to seconds for hundreds of assets. Only an optimisation reads it;
+   * backtests leave it out.
+   */
+  frontier?: boolean;
 }
 
 /** The overview report. */

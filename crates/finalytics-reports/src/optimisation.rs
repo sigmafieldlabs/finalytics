@@ -1,6 +1,6 @@
 //! The optimisation report: the weights an optimisation chose, what they are expected to
-//! deliver, where their risk comes from, where they sit on the efficient frontier, and how they
-//! would have done on the history they were fitted to.
+//! deliver, where their risk comes from, where they sit against each asset and on the efficient
+//! frontier, and how they would have done on the history they were fitted to.
 
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
@@ -23,8 +23,8 @@ use crate::text::{
 };
 
 /// The weights an optimisation chose, with what they are expected to deliver, where their risk
-/// comes from, where they sit on the efficient frontier, and how they would have done on the
-/// history they were fitted to.
+/// comes from, where they sit against each asset and on the efficient frontier, and how they
+/// would have done on the history they were fitted to.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
@@ -39,7 +39,7 @@ pub struct OptimisationReport {
     /// The correlation of the assets' returns, from the covariance the optimisation used.
     pub correlation: Grid,
     /// The efficient frontier under the same limits, from the least volatile portfolio to the
-    /// one with the largest expected return.
+    /// one with the largest expected return; empty unless the optimisation asked for it.
     pub frontier: Vec<RiskReturn>,
     /// The equal-weight portfolio of the same assets, for comparison.
     pub equal_weight: Option<RiskReturn>,
@@ -363,7 +363,7 @@ fn limits(c: &OptimisationContext) -> String {
         let limits: Vec<String> = c
             .limits
             .iter()
-            .map(|l| crate::backtest_html::lower_name(l))
+            .map(|l| crate::backtest_html::limit_in_sentence(l))
             .collect();
         limits.join("; ")
     }
@@ -387,7 +387,8 @@ fn estimates(c: &OptimisationContext) -> String {
 impl OptimisationReport {
     /// The report as one self-contained HTML page, titled with `name` (or the report's own, or
     /// the method's): the weights and what they are expected to deliver, where the risk comes
-    /// from, the efficient frontier, the history the weights were fitted to, and the method.
+    /// from, where the weights sit against each asset and on the efficient frontier (when the
+    /// report has it), the history the weights were fitted to, and the method.
     pub fn to_html(&self, name: Option<&str>) -> String {
         let c = &self.context;
         let title = name.or(self.name.as_deref()).unwrap_or(&c.method);
@@ -658,22 +659,39 @@ impl OptimisationReport {
             &risk,
         ));
 
-        // Frontier.
+        // Risk and return: the weights against each asset and equal weight, and the frontier
+        // when the optimisation asked for it.
         if let Some(s) = &self.summary {
-            body.push_str(&section(
-                "p-frontier",
-                "Frontier",
-                "Where the weights sit among the portfolios the limits allow",
-                &card(
+            let line = format!(
+                "The dashed line starts at {rf_name}, {}, and passes through the weights; its \
+                 slope is their Sharpe ratio.",
+                percent(c.risk_free_rate)
+            );
+            let (subtitle, title, note) = if self.frontier.len() > 1 {
+                (
+                    "Where the weights sit among the portfolios the limits allow",
                     "The efficient frontier",
-                    &self.frontier_chart(s, &colour),
-                    Some(&format!(
+                    format!(
                         "The frontier holds the portfolios with the largest expected return for \
-                         each volatility, under the same limits. The dashed line starts at {rf_name}, \
-                         {}, and passes through the weights; its slope is their Sharpe ratio.",
-                        percent(c.risk_free_rate)
-                    )),
-                ),
+                         each volatility, under the same limits. {line}"
+                    ),
+                )
+            } else {
+                (
+                    "Where the weights sit against each asset and equal weight",
+                    "Expected return and volatility",
+                    format!(
+                        "{line} To draw the efficient frontier, optimise with the frontier \
+                         turned on: frontier=True in Python, frontier: true in JavaScript or \
+                         .with_frontier() in Rust. It takes longer, more so with many assets."
+                    ),
+                )
+            };
+            body.push_str(&section(
+                "p-risk-return",
+                "Risk and return",
+                subtitle,
+                &card(title, &self.frontier_chart(s, &colour), Some(&note)),
             ));
         }
 
@@ -760,7 +778,7 @@ impl OptimisationReport {
         );
         let mut nav = vec![("p-summary", "Summary"), ("p-risk", "Risk")];
         if self.summary.is_some() {
-            nav.push(("p-frontier", "Frontier"));
+            nav.push(("p-risk-return", "Risk and return"));
         }
         if self.history.is_some() {
             nav.push(("p-history", "History"));

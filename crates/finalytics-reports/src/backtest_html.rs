@@ -180,8 +180,18 @@ pub(crate) fn lower_name(name: &str) -> String {
 
 /// The limits on the weights in a sentence.
 pub(crate) fn limits_sentence(c: &BacktestContext) -> String {
-    let limits: Vec<String> = c.limits.iter().map(|l| lower_name(l)).collect();
+    let limits: Vec<String> = c.limits.iter().map(|l| limit_in_sentence(l)).collect();
     limits.join("; ")
+}
+
+/// A limit inside a sentence: "At most 40% in any asset" as "at most 40% in any asset", but a
+/// limit that starts with an asset's or a group's name, such as "Intl Equity: 0% to 30%", as it
+/// is.
+pub(crate) fn limit_in_sentence(limit: &str) -> String {
+    match limit.strip_prefix("At most ") {
+        Some(rest) => format!("at most {rest}"),
+        None => limit.to_owned(),
+    }
 }
 
 /// Names joined as in a sentence: "a, b and c".

@@ -576,7 +576,7 @@ impl NativePortfolio {
         options: &str,
     ) -> PyResult<String> {
         let accounts: Vec<finalytics::AccountId> = from_json(accounts, "accounts")?;
-        let targets: BTreeMap<HoldingKey, f64> = from_json(targets, "targets")?;
+        let targets = finalytics::targets_from_json(targets).map_err(engine)?;
         let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let options: RebalanceOptions = from_json(options, "options")?;
         let plan = finalytics::opt::rebalance_accounts(

@@ -49,6 +49,11 @@ def test_the_optimisation_report_explains_the_weights(assets):
     assert report.history.weights.statistics.observations == len(assets.dates)
     assert [t.name for t in fl.reports.tables(report)] == ["weights", "correlation"]
     assert "Maximum Sharpe" in str(raw) and "US Equity" in str(raw)
+    # The frontier only when asked for: it changes the report, not the weights.
+    assert report.frontier == [] and "frontier=True in Python" in result.to_html()
+    drawn = assets.optimise(method="maximum_sharpe", max_weight=0.40, frontier=True)
+    assert len(drawn.report.frontier) > 10 and drawn.results.weights == raw.weights
+    assert "The efficient frontier" in drawn.to_html()
 
 
 def test_methods_compared_walk_forward(assets):

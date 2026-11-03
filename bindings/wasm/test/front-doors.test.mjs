@@ -50,6 +50,18 @@ test("the portfolio dataset, from report to trades", () => {
   for (const [holding, target] of Object.entries(result.results.weights)) {
     close(after[holding], target, 0.01, holding);
   }
+  const failed = assets.optimise({ method: "minimum_variance", max_weight: 0.1 });
+  assert.equal(failed.results.weights, null);
+  for (const targets of [failed, failed.results]) {
+    assert.throws(() => portfolio.rebalance(targets), (e) => {
+      assert.equal(e.name, "ValidationError");
+      assert.deepEqual(
+        e.issues.map((i) => [i.path, i.message]),
+        [["targets", "the optimisation ended infeasible and found no weights"]],
+      );
+      return true;
+    });
+  }
 });
 
 test("fees are an expense, not a loss on cash", () => {

@@ -6,7 +6,7 @@
 
 use finalytics::backtest::{Rebalance, Years};
 use finalytics::risk::{StatisticsOptions, statistics};
-use finalytics::{Assets, Method, datasets};
+use finalytics::{Assets, Error, Method, datasets};
 
 fn assets() -> Assets {
     Assets::builder()
@@ -101,14 +101,8 @@ fn the_optimisation_report_explains_the_weights() {
     let shares: f64 = r.allocation.iter().map(|a| a.risk_share).sum();
     close(shares, 1.0, "risk shares");
     assert_eq!(s.largest_asset, r.allocation[0].asset);
-    // The frontier, equal weight and the history are there.
-    assert!(r.frontier.len() > 10);
-    assert!(
-        r.frontier
-            .iter()
-            .all(|p| p.volatility >= s.volatility - 1e-3
-                || p.expected_return <= s.expected_return + 1e-9)
-    );
+    // Equal weight and the history are there; the frontier only when asked for.
+    assert!(r.frontier.is_empty());
     assert!(r.equal_weight.is_some());
     let h = r.history.as_ref().unwrap();
     assert_eq!(h.weights.statistics.observations, assets.dates().len());
@@ -116,10 +110,17 @@ fn the_optimisation_report_explains_the_weights() {
     assert_eq!(r.context.limits, ["At most 40% in any asset"]);
     assert_eq!(r.correlation.rows.len(), 5);
     let page = r.to_html(Some("Six asset classes"));
-    for anchor in ["p-summary", "p-risk", "p-frontier", "p-history", "p-method"] {
+    for anchor in [
+        "p-summary",
+        "p-risk",
+        "p-risk-return",
+        "p-history",
+        "p-method",
+    ] {
         assert!(page.contains(&format!(r#"id="{anchor}""#)), "{anchor}");
     }
     assert!(page.contains("Optimisation report"));
+    assert!(page.contains(".with_frontier() in Rust") && !page.contains("The efficient frontier"));
     // Through JSON, as the other languages call it.
     let json = serde_json::to_string(r).unwrap();
     assert_eq!(
@@ -139,6 +140,75 @@ fn the_optimisation_report_explains_the_weights() {
     let holdings = portfolio.assets().unwrap();
     let target = holdings.optimise(Method::MinimumVariance).build().unwrap();
     assert!(portfolio.rebalance(&target).build().is_ok());
+}
+
+#[test]
+fn the_frontier_is_drawn_when_asked_for() {
+    let assets = assets();
+    let without = assets
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
+        .build()
+        .unwrap();
+    let result = assets
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
+        .with_frontier()
+        .build()
+        .unwrap();
+    let r = &result.report;
+    let s = r.summary.as_ref().unwrap();
+    assert!(r.frontier.len() > 10);
+    // No point on the frontier does better than the weights at the same risk.
+    assert!(
+        r.frontier
+            .iter()
+            .all(|p| p.volatility >= s.volatility - 1e-3
+                || p.expected_return <= s.expected_return + 1e-9)
+    );
+    // The frontier changes the report, not the weights.
+    assert_eq!(result.results, without.results);
+    assert_eq!(r.context, without.report.context);
+    let page = r.to_html(None);
+    assert!(page.contains("The efficient frontier") && !page.contains(".with_frontier()"));
+    // The option is left out of JSON when it is off, so options read as before.
+    let options = serde_json::to_value(assets.optimise(Method::MaximumSharpe).options()).unwrap();
+    assert!(options.get("frontier").is_none());
+}
+
+#[test]
+fn an_optimisation_without_weights_is_not_a_target() {
+    let portfolio = datasets::portfolio();
+    let failed = portfolio
+        .assets()
+        .unwrap()
+        .optimise(Method::MinimumVariance)
+        .max_weight(0.1)
+        .build()
+        .unwrap();
+    assert!(failed.results.weights.is_none());
+    let Err(Error::Validation(report)) = portfolio.rebalance(&failed).build() else {
+        panic!("rebalanced to an optimisation without weights");
+    };
+    let issues: Vec<_> = report
+        .issues()
+        .iter()
+        .map(|i| (i.path.as_str(), i.message.as_str()))
+        .collect();
+    assert_eq!(
+        issues,
+        [(
+            "targets",
+            "the optimisation ended infeasible and found no weights"
+        )]
+    );
+    // The same through JSON, as the other languages give it.
+    let json = serde_json::to_string(&failed).unwrap();
+    assert!(finalytics::targets_from_json(&json).is_err());
+    let json = serde_json::to_string(&failed.results).unwrap();
+    assert!(finalytics::targets_from_json(&json).is_err());
+    let weights = r#"{"VTI": 0.6, "BND": 0.4}"#;
+    assert_eq!(finalytics::targets_from_json(weights).unwrap().len(), 2);
 }
 
 #[test]

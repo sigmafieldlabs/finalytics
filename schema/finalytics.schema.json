@@ -4687,7 +4687,7 @@
       "properties": {
         "report": {
           "$ref": "#/$defs/OptimisationReport",
-          "description": "The optimisation report: the weights, what they are expected to deliver, where their\nrisk comes from, the efficient frontier and the history they were fitted to."
+          "description": "The optimisation report: the weights, what they are expected to deliver, where their\nrisk comes from, where they sit against each asset (and on the efficient frontier, if\nasked for) and the history they were fitted to."
         },
         "results": {
           "$ref": "#/$defs/OptimisationResult",
@@ -4852,7 +4852,7 @@
           "items": {
             "$ref": "#/$defs/RiskReturn"
           },
-          "description": "The efficient frontier under the same limits, from the least volatile portfolio to the\none with the largest expected return."
+          "description": "The efficient frontier under the same limits, from the least volatile portfolio to the\none with the largest expected return; empty unless the optimisation asked for it."
         },
         "equal_weight": {
           "anyOf": [
@@ -4891,7 +4891,7 @@
         "correlation",
         "frontier"
       ],
-      "description": "The weights an optimisation chose, with what they are expected to deliver, where their risk\ncomes from, where they sit on the efficient frontier, and how they would have done on the\nhistory they were fitted to."
+      "description": "The weights an optimisation chose, with what they are expected to deliver, where their risk\ncomes from, where they sit against each asset and on the efficient frontier, and how they\nwould have done on the history they were fitted to."
     },
     "OptimisationResult": {
       "type": "object",
@@ -5130,6 +5130,11 @@
           },
           "description": "Annual expected returns by asset, in place of the historical means.",
           "default": {}
+        },
+        "frontier": {
+          "type": "boolean",
+          "description": "Whether the optimisation report draws the efficient frontier under the same limits.\nOff by default: the frontier takes 30 more optimisations, so it adds time that grows with\nthe number of assets, to seconds for hundreds of assets. Only an optimisation reads it;\nbacktests leave it out.",
+          "default": false
         }
       },
       "description": "The method, its parameters and the limits on the weights. Everything is optional: by default\nthe portfolio with the largest Sharpe ratio, fully invested and long only."

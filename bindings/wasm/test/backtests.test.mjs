@@ -49,6 +49,16 @@ test("the optimisation report explains the weights", () => {
   assert.equal(report.history.weights.statistics.observations, assets.dates.length);
   assert.deepEqual(Object.keys(results.weights), ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]);
   assert.ok(result.toHtml("Six asset classes").includes("<title>Six asset classes</title>"));
+  // The frontier only when asked for: it changes the report, not the weights.
+  assert.deepEqual(report.frontier, []);
+  assert.ok(result.toHtml().includes("frontier: true in JavaScript"));
+  const drawn = assets.optimise({ method: "maximum_sharpe", max_weight: 0.4, frontier: true });
+  assert.ok(drawn.report.frontier.length > 10);
+  assert.deepEqual(drawn.results.weights, results.weights);
+  assert.ok(drawn.toHtml().includes("The efficient frontier"));
+  assert.deepEqual(paths(() => assets.compare({ methods: ["equal_weight"], frontier: true })), [
+    "options.frontier",
+  ]);
 });
 
 test("methods compared walk-forward with the same limits and costs", () => {

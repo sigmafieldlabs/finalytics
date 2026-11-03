@@ -29,8 +29,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `compare` and the backtest report of `backtest`. The optimisation report explains the weights:
   what they are expected to deliver, each asset's weight against its share of the risk, the
   diversification ratio and the number of assets in effect, the correlations, where the weights
-  sit on the efficient frontier under the same limits, how they and equal weight would have done
-  on the returns they were fitted to, and how they were found. The comparison report scores each
+  sit against each asset and equal weight, how they and equal weight would have done on the
+  returns they were fitted to, and how they were found. It draws the efficient frontier under
+  the same limits when asked (`.with_frontier()` in Rust, `frontier=True` in Python,
+  `frontier: true` in JavaScript); this is off by default, since the frontier takes 30 more
+  optimisations, and the page says how to turn it on. The comparison report scores each
   method on the periods it was tested on: return, volatility,
   Sharpe and Sortino ratios, drawdown, CVaR and turnover side by side; growth, calendar-year
   returns, drawdowns and the Sharpe ratio over three years; in sample against out of sample; the
@@ -47,7 +50,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and `result.results`. Printing a result prints its report as text, and `result.show()` shows
   it as a page; the raw results print as a table too (`OptimisationResult`, `BacktestResults`).
   An optimisation's weights are `result.results.weights`, and `portfolio.rebalance` takes the
-  whole result in Rust, Python and JavaScript. `Assets::optimise_with` runs an optimisation from
+  whole result in Rust, Python and JavaScript; an optimisation that found no weights is a
+  validation error at `targets` rather than a target of all cash. `Assets::optimise_with` runs an optimisation from
   `OptimiseOptions`, as JSON gives them.
 - Baseline methods: equal weight and inverse volatility (`Objective::EqualWeight`,
   `Objective::InverseVolatility`, `method="equal_weight"` and `"inverse_volatility"`), solved

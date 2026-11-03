@@ -270,6 +270,7 @@ class Assets:
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
         expected_returns: Mapping[str, float] | None = None,
+        frontier: bool = False,
         name: str | None = None,
     ) -> _types.Optimisation:
         """The optimisation of the risky assets by `method`, fully invested: the weights in
@@ -295,6 +296,11 @@ class Assets:
         volatility, risk parity, risk budgeting and hierarchical risk parity are fully invested
         and long only, and take no limits. Expected returns are the annualised historical means
         unless `expected_returns` gives others.
+
+        ``frontier=True`` draws the efficient frontier under the same limits in the report. It
+        takes 30 more optimisations, so it adds time that grows with the number of assets, to
+        seconds for hundreds of assets; without it, the report shows the weights against each
+        asset and equal weight.
         """
         options = self._options(
             method,
@@ -311,6 +317,7 @@ class Assets:
             groups=groups,
             expected_returns=expected_returns,
         )
+        options = dataclasses.replace(options, frontier=bool(frontier))
         result = loads(_types.Optimisation, call(self._native.optimise, dumps(options)))
         results = result.results
         if results.weights is not None:
