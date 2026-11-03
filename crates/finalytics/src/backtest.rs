@@ -53,8 +53,7 @@ pub use finalytics_reports::{
 use crate::assets::{AssetGroup, Assets, Method, OptimiseOptions};
 
 /// A comparison: the comparison report on several methods backtested side by side, and the
-/// raw results. Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a
-/// page.
+/// raw results. Printing it prints the report, and showing it shows the report as a page.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
@@ -66,7 +65,7 @@ pub struct Comparison {
 }
 
 /// A backtest: the backtest report on one allocation against its benchmark, and the raw
-/// results. Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a page.
+/// results. Printing it prints the report, and showing it shows the report as a page.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]

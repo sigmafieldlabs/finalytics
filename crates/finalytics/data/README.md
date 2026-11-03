@@ -29,7 +29,7 @@ and the EUR/USD rate are real; the transactions are illustrative.
 | --- | --- |
 | `portfolio/transactions.csv` | Deposits, purchases, a sale, an FX conversion, the funds' distributions as dividends (with 15% tax withheld on the European fund's), an advisory fee and a withdrawal. |
 | `portfolio/instruments.csv` | Its five funds: Vanguard Total Stock Market (`VTI`), iShares STOXX Europe 600 (`EXSA`, in euros on Xetra), Vanguard Total Bond Market (`BND`), SPDR Gold Shares (`GLD`) and Vanguard Real Estate (`VNQ`), with their currencies, asset classes and regions. |
-| `portfolio/accounts.csv` | The two accounts, with their owner and tax wrapper. |
+| `portfolio/accounts.csv` | The two accounts, with their owner and tax wrapper; the retirement account is not taxable. |
 | `portfolio/prices.csv` | Daily closes of the funds on US trading days (for `EXSA`, the last Xetra close), and `BENCH`: a balanced benchmark built from the funds' total returns, 55% equity, 35% bonds and 10% real assets, rebalanced monthly. |
 | `portfolio/fx.csv` | The daily EUR/USD rate. |
 | `portfolio/report-options.json` | The options of the portfolio's full report: grouping, the benchmark's segments for attribution, the T-bills' return over the period as the risk-free rate, and four scenarios. |

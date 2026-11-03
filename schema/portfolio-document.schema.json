@@ -63,6 +63,11 @@
             "type": "string"
           },
           "description": "Classifications by scheme, for grouping accounts: for example `owner: Alice` or\n`wrapper: ISA`."
+        },
+        "taxable": {
+          "type": "boolean",
+          "description": "Whether gains are taxed when they are realised: true by default. A retirement account,\nor another tax-deferred or tax-exempt account, is not taxable, so rebalancing estimates\nno tax on its sales.",
+          "default": true
         }
       },
       "required": [

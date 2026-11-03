@@ -792,6 +792,7 @@ impl OptimisationReport {
                 nav: &nav,
                 version: &c.version,
                 digest: &c.digest,
+                source: "the assets' returns",
             },
             &body,
         )

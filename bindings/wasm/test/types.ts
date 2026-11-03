@@ -29,6 +29,8 @@ import init, {
   type Matrix,
   type Objective,
   type OptimisationResult,
+  type RebalanceReport,
+  type RebalanceResults,
   type PortfolioReport,
   type PerformanceReport,
   type Problem,
@@ -60,8 +62,12 @@ export async function example(worker: Worker): Promise<void> {
   const returns: Float64Array = performance.returns;
   const dates: string[] = performance.dates;
   const threeYears = performance.period("3Y");
-  const plan = books.rebalance({ SPY: 1 }, { accounts: ["main"], lot_method: "highest_cost" });
+  const plan = books.rebalance({ SPY: 1 }, { accounts: ["main"], lot_method: "highest_cost", name: "Main" });
+  const planReport: RebalanceReport = plan.report;
+  const planResults: RebalanceResults = plan.results;
+  const planText: string = `${plan}` + plan.results.toText() + plan.toHtml();
   const traded: Portfolio = books.withRebalance(plan);
+  const tradedAgain: Portfolio = books.withRebalance(plan.results);
   const report: PortfolioReport = traded.report({ benchmark: "SPY", group_by: ["asset_class"] });
   const assets = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
   const result = assets.optimise({
@@ -110,6 +116,7 @@ export async function example(worker: Worker): Promise<void> {
 
   console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown, report, weights);
   console.log(optimisation, solved, optimisationText, rebalanced, single, fixedRuns, comparedData, comparedPage, raw);
+  console.log(planReport, planResults, planText, tradedAgain);
 }
 
 // Factor models: estimation, risk and a problem with exposure limits.

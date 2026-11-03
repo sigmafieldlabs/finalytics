@@ -419,6 +419,112 @@ fn tax_aware_sales_take_losses_first_and_estimate_the_tax() {
 }
 
 #[test]
+fn an_account_that_is_not_taxable_pays_no_tax() {
+    let (mut portfolio, market) = lots_portfolio();
+    let targets = vec![
+        (HoldingKey::Instrument(id("SPY")), 75_000.0 / 173_000.0),
+        (HoldingKey::Instrument(id("BOND")), 0.5),
+    ];
+    let mut options = RebalanceOptions::default();
+    options.tax = Some(TaxRates::new(dec("0.4"), dec("0.2")));
+    let taxed = rebalance(
+        &Books::build(&portfolio, &market).unwrap(),
+        &market,
+        d(DATE),
+        &main_account(),
+        &targets,
+        &options,
+    )
+    .unwrap();
+    assert!(taxed.taxable);
+    // The tax-aware sale takes the loss lot and the short-term gain: no long-term gain.
+    let sale = taxed.trades.iter().find(|t| t.side == Side::Sell).unwrap();
+    assert_eq!(sale.long_term_gain_base, Some(Decimal::ZERO));
+
+    portfolio.accounts[0].taxable = false;
+    let books = Books::build(&portfolio, &market).unwrap();
+    let plan = rebalance(
+        &books,
+        &market,
+        d(DATE),
+        &main_account(),
+        &targets,
+        &options,
+    )
+    .unwrap();
+    assert!(!plan.taxable);
+    assert_eq!(plan.tax_base, None);
+    let sale = plan.trades.iter().find(|t| t.side == Side::Sell).unwrap();
+    assert_eq!(sale.tax_base, None);
+    // Lots by the lot method, first in, first out: 100 long-term at a gain of 200 each, and 50
+    // short-term at a loss of 20 each.
+    assert_eq!(sale.realised_gain_base, Some(dec("19000")));
+    assert_eq!(sale.long_term_gain_base, Some(dec("20000")));
+    let combined = rebalance_accounts(
+        &books,
+        &market,
+        d(DATE),
+        &[main_account()],
+        &targets,
+        &options,
+    )
+    .unwrap();
+    assert_eq!(combined.tax_base, Some(Decimal::ZERO));
+    assert_eq!(combined.base_currency, Currency::USD);
+}
+
+#[test]
+fn purchases_leave_room_for_fees_when_the_targets_leave_no_cash() {
+    let portfolio = portfolio();
+    let market = market();
+    let books = Books::build(&portfolio, &market).unwrap();
+    let mut options = RebalanceOptions::default();
+    options.fees = {
+        let mut fees = Fees::default();
+        fees.rate = dec("0.001");
+        fees.minimum = dec("5");
+        fees
+    };
+    // Fully invested: the fees have no cash to come from but the purchases.
+    let targets = vec![
+        (HoldingKey::Instrument(id("SPY")), 0.6),
+        (HoldingKey::Instrument(id("BOND")), 0.25),
+        (HoldingKey::Instrument(id("SAP")), 0.15),
+    ];
+    for whole_units in [false, true] {
+        options.whole_units = whole_units;
+        let plan = rebalance(
+            &books,
+            &market,
+            d(DATE),
+            &main_account(),
+            &targets,
+            &options,
+        )
+        .unwrap();
+        assert!(plan.warnings.is_empty(), "{:?}", plan.warnings);
+        let mut after = portfolio.clone();
+        after
+            .transactions
+            .extend(plan.transactions("rebalance-").unwrap());
+        let rebuilt = Books::build(&after, &market).unwrap();
+        let holdings = rebuilt.holdings_on(d(DATE));
+        for (account, currency, amount) in holdings.cash() {
+            if account == &main_account() {
+                assert!(amount >= Decimal::ZERO, "{currency} {amount}");
+            }
+        }
+        // Little is left in cash: the fees, and whole units' rounding.
+        let cash = plan
+            .weights_after
+            .get(&HoldingKey::Cash(Currency::USD))
+            .copied()
+            .unwrap_or(0.0);
+        assert!(cash < if whole_units { 0.02 } else { 0.001 }, "{cash}");
+    }
+}
+
+#[test]
 fn fees_are_paid_and_recorded_as_the_books_record_them() {
     let portfolio = portfolio();
     let market = market();

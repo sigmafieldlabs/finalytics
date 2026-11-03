@@ -17,7 +17,10 @@ rates, plus cash):
 2. **Fees.** Each trade pays $\max(\text{minimum}, \text{per trade} + \text{rate} \times
    \text{value})$ in the instrument's currency, rounded to its minor units (no fees by default).
    A purchase is reduced so that it and its fee fit the target; a sale pays its fee from the
-   proceeds.
+   proceeds. When the trades and their fees would need more base-currency cash than the account
+   has, as when the targets leave no cash for the fees, the purchases are sized again on $V$ less
+   the shortfall, and a shortfall that rounding leaves is taken from the largest purchase, so the
+   trades fit the cash the account has.
 3. **Lots.** Each sale closes lots by the chosen method (first in, first out by default; highest
    cost first defers gains), or with tax rates by the tax they cost (below), exactly as the
    ledger would, and records the gain it would realise in the base currency after fees: the
@@ -29,7 +32,9 @@ rates, plus cash):
 5. **Result.** The proposal lists the sales, then the purchases, and the conversions, with the
    weights before and after, the turnover (the value traded, sales and purchases, over $V$), the
    realised gain, the fees, the estimated tax, and warnings for carried prices or a shortfall of
-   base-currency cash.
+   base-currency cash. The rebalance report sets it out with the weights before, at the target
+   and after, and the volatility and expected return before and after, from the holdings'
+   annualised returns with the Ledoit–Wolf covariance and historical means, cash riskless.
 
 `transactions(plan)` turns the proposal into ledger transactions on $D$ (sales naming their lots,
 then conversions, then purchases, each with its fee), so that applying it to the books gives the
@@ -43,8 +48,10 @@ the base currency and $t = t_l$ if it has been held for more than $H$ days, $t_s
 takes lots in increasing order of that tax: losses first, which save the most, then the gains
 taxed least; ties go to the lot opened first. Each sale reports its estimated tax, $\sum t_k
 g_k$ over its lots' gains $g_k$ after fees, negative when its losses save more than its gains
-cost, and the proposal reports the total. The rates are the caller's: no particular tax code's
-rules (such as wash sales) are applied.
+cost, the part of its gain from lots held long-term, and the proposal reports the total. An
+account that is not taxable (`taxable` false in its record), such as a retirement account, pays no
+tax: its sales close lots by the lot method and report no tax. The rates are the caller's: no
+particular tax code's rules (such as wash sales) are applied.
 
 ### Several accounts
 
@@ -92,7 +99,7 @@ weights before and after, turnover, realised gains, fees and tax.
 >>> proposal = portfolio.rebalance(
 ...     {"SPY": 0.5, "BOND": 0.3, "SAP": 0.15}, lot_method="highest_cost", whole_units=True
 ... )
->>> [plan] = proposal.accounts
+>>> [plan] = proposal.results.accounts
 >>> plan.value_base, round(plan.turnover, 6), plan.realised_gain_base
 (Decimal('112500'), 0.613893, Decimal('1850'))
 >>> for trade in plan.trades:
@@ -129,12 +136,12 @@ of SPY, now at 500: one bought at 300 more than two years ago, one at 520 and on
 >>> market = fl.MarketData(prices={"SPY": {"2026-03-10": 500}, "BOND": {"2026-03-10": 100}})
 >>> portfolio = fl.Portfolio(data, market)
 >>> targets = {"SPY": 0.4, "BOND": 0.5}
->>> [fifo] = portfolio.rebalance(targets, whole_units=True).accounts
+>>> [fifo] = portfolio.rebalance(targets, whole_units=True).results.accounts
 >>> [(l.lot, l.quantity) for l in fifo.trades[0].lots], fifo.realised_gain_base
 ([('t2', Decimal('100')), ('t3', Decimal('61'))], Decimal('18780'))
 >>> tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
 >>> fees = fl.opt.Fees(rate=decimal.Decimal("0.0005"), minimum=decimal.Decimal("5"))
->>> [plan] = portfolio.rebalance(targets, whole_units=True, tax=tax, fees=fees).accounts
+>>> [plan] = portfolio.rebalance(targets, whole_units=True, tax=tax, fees=fees).results.accounts
 >>> [(l.lot, l.quantity) for l in plan.trades[0].lots], plan.realised_gain_base, plan.tax_base, plan.fees_base
 ([('t3', Decimal('100')), ('t4', Decimal('61'))], Decimal('1009.75'), Decimal('403.900'), Decimal('83.45'))
 

@@ -103,7 +103,7 @@ pub enum Method {
 const FRONTIER_POINTS: usize = 30;
 
 /// An optimisation: the optimisation report on the weights chosen, and the raw results.
-/// Printing it prints the report; [`Show::show`](crate::Show::show) shows it as a page.
+/// Printing it prints the report, and showing it shows the report as a page.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]

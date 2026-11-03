@@ -250,6 +250,14 @@ fn parse_kind(text: &str) -> std::result::Result<InstrumentKind, String> {
         .ok_or_else(|| format!("{text:?} is not a kind; use one of equity, fund, etf, bond, future, option, fx_forward, other"))
 }
 
+fn parse_bool(text: &str) -> std::result::Result<bool, String> {
+    match text.to_ascii_lowercase().as_str() {
+        "true" | "yes" => Ok(true),
+        "false" | "no" => Ok(false),
+        _ => Err(format!("{text:?} is not true or false")),
+    }
+}
+
 fn parse_lot_method(text: &str) -> std::result::Result<LotMethod, String> {
     serde_json::from_value(serde_json::Value::String(text.to_ascii_lowercase())).map_err(|_| {
         format!("{text:?} is not a lot method; use fifo, lifo, highest_cost, lowest_cost, average_cost or specific_id")
@@ -328,8 +336,10 @@ pub fn instruments_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Instr
     finish(report, instruments)
 }
 
-/// Reads accounts. Columns: `id` (required); `name` and `lot_method` (optional, first-in
-/// first-out by default); `class.<scheme>` for classifications (for example `class.owner`).
+/// Reads accounts. Columns: `id` (required); `name`, `lot_method` (first-in first-out by
+/// default) and `taxable` (`true` by default; `false` for a tax-deferred or tax-exempt account,
+/// such as a retirement account), all optional; `class.<scheme>` for classifications (for example
+/// `class.owner`).
 pub fn accounts_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Account>> {
     let mut report = ValidationReport::new();
     let Some(table) = Table::read(text, options, &mut report) else {
@@ -350,12 +360,14 @@ pub fn accounts_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Account>
             AccountId::new(t).ok_or_else(|| format!("{t:?} is not a valid identifier"))
         });
         let lot_method = row.optional("lot_method", parse_lot_method);
-        let (Some(id), Some(lot_method)) = (id, lot_method) else {
+        let taxable = row.optional("taxable", parse_bool);
+        let (Some(id), Some(lot_method), Some(taxable)) = (id, lot_method, taxable) else {
             continue;
         };
         let mut account = Account::new(id);
         account.name = row.raw("name").map(str::to_owned);
         account.lot_method = lot_method.unwrap_or_default();
+        account.taxable = taxable.unwrap_or(true);
         for (i, name) in table.names.iter().enumerate() {
             let Some(value) = values.get(i).filter(|v| !v.is_empty()) else {
                 continue;

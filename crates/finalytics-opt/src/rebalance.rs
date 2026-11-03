@@ -103,8 +103,12 @@ impl TaxRates {
 }
 
 impl TaxRates {
+    fn is_long_term(&self, acquired: Date, sold: Date) -> bool {
+        acquired.days_until(sold) > self.long_term_after_days
+    }
+
     fn rate(&self, acquired: Date, sold: Date) -> Decimal {
-        if acquired.days_until(sold) > self.long_term_after_days {
+        if self.is_long_term(acquired, sold) {
             self.long_term
         } else {
             self.short_term
@@ -159,8 +163,12 @@ pub struct ProposedTrade {
     /// would record it.
     pub realised_gain_base: Option<Decimal>,
     /// For a sale with tax rates, the estimated tax on its gains in the base currency; negative
-    /// when its losses save tax.
+    /// when its losses save tax. None in an account that is not taxable.
     pub tax_base: Option<Decimal>,
+    /// For a sale with tax rates, the part of its realised gain from lots held long-term; the
+    /// rest is short-term.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_term_gain_base: Option<Decimal>,
 }
 
 /// A proposed currency conversion.
@@ -199,10 +207,19 @@ pub struct Rebalance {
     pub realised_gain_base: Decimal,
     /// The fees of all the trades, in the base currency.
     pub fees_base: Decimal,
-    /// With tax rates, the estimated tax on the sales' gains in the base currency.
+    /// With tax rates, the estimated tax on the sales' gains in the base currency; None in an
+    /// account that is not taxable.
     pub tax_base: Option<Decimal>,
+    /// Whether the account's gains are taxed when they are realised.
+    #[serde(default = "yes")]
+    #[cfg_attr(feature = "schema", schemars(extend("default" = true)))]
+    pub taxable: bool,
     /// Carried prices, a shortfall of cash, and trades left out by rounding.
     pub warnings: ValidationReport,
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// Proposes the trades that move `account` to `targets`: a weight for each holding, as a share of
@@ -377,140 +394,225 @@ pub fn rebalance(
     };
     let weights_before = weights(&quantities, &cash);
 
-    let mut sales = Vec::new();
-    let mut purchases = Vec::new();
-    for id in &instruments {
-        let unit = &units[id];
-        if unit.base <= Decimal::ZERO {
-            warnings.warning(
-                format!("prices.{id}"),
-                "has no positive price, so it is not traded",
-            );
-            continue;
-        }
-        let held = quantities.get(id).copied().unwrap_or_default();
-        let weight = wanted
-            .get(&HoldingKey::Instrument(id.clone()))
-            .copied()
-            .unwrap_or(0.0);
-        let target = value_base * from_f64(weight);
-        let mut quantity = ((target - held * unit.base) / unit.base).round_dp(10);
-        if quantity > Decimal::ZERO && !options.fees.is_zero() {
-            quantity = fee_adjusted(quantity, unit, &options.fees);
-        }
-        if options.whole_units {
-            quantity = quantity.trunc();
-        }
-        // Sell everything when the target is zero, whatever the rounding.
-        if weight == 0.0 {
-            quantity = -held;
-        }
-        let quantity = quantity.max(-held);
-        if quantity.is_zero() {
-            continue;
-        }
-        let value_base = (quantity.abs() * unit.base).round_dp(10);
-        if value_base < options.minimum_trade {
-            warnings.warning(
-                format!("trades.{id}"),
-                format!("a trade worth {value_base} is below the minimum and left out"),
-            );
-            continue;
-        }
-        let side = if quantity > Decimal::ZERO {
-            Side::Buy
-        } else {
-            Side::Sell
-        };
-        let quantity = quantity.abs();
-        let value_local = (quantity * unit.local).round_dp(10);
-        let fees = if options.fees.is_zero() {
-            Decimal::ZERO
-        } else {
-            options.fees.of(value_local, unit.currency)
-        };
-        let rate = rates[&unit.currency];
-        let (lots, realised_gain_base, tax_base) = match side {
-            Side::Buy => (Vec::new(), None, None),
-            Side::Sell => {
-                let lots = match &options.tax {
-                    Some(tax) => {
-                        let picks =
-                            cheapest_lots(&holdings, account, id, quantity, unit, rate, tax, date);
-                        holdings.lots_for_picks(account, id, &picks)?
-                    }
-                    None => holdings.lots_for_sale(account, id, quantity, options.lot_method)?,
-                };
-                // Proceeds after fees, split across the lots as the books split them.
-                let proceeds = quantity * unit.local - fees;
-                let gains = lot_gains(&lots, quantity, proceeds, rate);
-                let gain: Decimal = gains.iter().sum();
-                let tax = options.tax.as_ref().map(|tax| {
-                    lots.iter()
-                        .zip(&gains)
-                        .map(|(l, g)| tax.rate(l.acquired, date) * g)
-                        .sum::<Decimal>()
-                        .round_dp(10)
-                });
-                (lots, Some(gain), tax)
+    let taxable = books
+        .accounts()
+        .iter()
+        .find(|a| &a.id == account)
+        .is_none_or(|a| a.taxable);
+    let taxed = options.tax.as_ref().filter(|_| taxable);
+    // The trades with purchases sized on `investable`, the value the targets share. Sales are
+    // sized on the account's value; when the fees would take the base-currency cash below
+    // zero, purchases are sized again on a value less the shortfall, so that the trades fit the
+    // cash the account has.
+    let attempt = |investable: Decimal,
+                   trims: &BTreeMap<InstrumentId, Decimal>|
+     -> Result<Planned> {
+        let mut quantities = quantities.clone();
+        let mut cash = cash.clone();
+        let mut warnings = ValidationReport::new();
+        let mut sales = Vec::new();
+        let mut purchases = Vec::new();
+        for id in &instruments {
+            let unit = &units[id];
+            if unit.base <= Decimal::ZERO {
+                warnings.warning(
+                    format!("prices.{id}"),
+                    "has no positive price, so it is not traded",
+                );
+                continue;
             }
-        };
-        let trade = ProposedTrade {
-            instrument: id.clone(),
-            side,
-            quantity,
-            price: unit.price,
-            currency: unit.currency,
-            value_local,
-            value_base,
-            lots,
-            fees_local: fees,
-            realised_gain_base,
-            tax_base,
-        };
-        let balance = cash.entry(unit.currency).or_default();
-        match side {
-            Side::Buy => {
-                *balance -= value_local + fees;
-                *quantities.entry(id.clone()).or_default() += quantity;
-                purchases.push(trade);
+            let held = quantities.get(id).copied().unwrap_or_default();
+            let weight = wanted
+                .get(&HoldingKey::Instrument(id.clone()))
+                .copied()
+                .unwrap_or(0.0);
+            let size = |value: Decimal| {
+                ((value * from_f64(weight) - held * unit.base) / unit.base).round_dp(10)
+            };
+            let mut quantity = size(value_base);
+            if quantity > Decimal::ZERO {
+                quantity = size(investable).max(Decimal::ZERO);
+                if !options.fees.is_zero() {
+                    quantity = fee_adjusted(quantity, unit, &options.fees);
+                }
+                if let Some(trim) = trims.get(id) {
+                    quantity = (quantity - trim).max(Decimal::ZERO);
+                }
             }
-            Side::Sell => {
-                *balance += value_local - fees;
-                *quantities.entry(id.clone()).or_default() -= quantity;
-                sales.push(trade);
+            if options.whole_units {
+                quantity = quantity.trunc();
+            }
+            // Sell everything when the target is zero, whatever the rounding.
+            if weight == 0.0 {
+                quantity = -held;
+            }
+            let quantity = quantity.max(-held);
+            if quantity.is_zero() {
+                continue;
+            }
+            let value_base = (quantity.abs() * unit.base).round_dp(10);
+            if value_base < options.minimum_trade {
+                warnings.warning(
+                    format!("trades.{id}"),
+                    format!("a trade worth {value_base} is below the minimum and left out"),
+                );
+                continue;
+            }
+            let side = if quantity > Decimal::ZERO {
+                Side::Buy
+            } else {
+                Side::Sell
+            };
+            let quantity = quantity.abs();
+            let value_local = (quantity * unit.local).round_dp(10);
+            let fees = if options.fees.is_zero() {
+                Decimal::ZERO
+            } else {
+                options.fees.of(value_local, unit.currency)
+            };
+            let rate = rates[&unit.currency];
+            let (lots, realised_gain_base, tax_base, long_term_gain_base) = match side {
+                Side::Buy => (Vec::new(), None, None, None),
+                Side::Sell => {
+                    let lots = match taxed {
+                        Some(tax) => {
+                            let picks = cheapest_lots(
+                                &holdings, account, id, quantity, unit, rate, tax, date,
+                            );
+                            holdings.lots_for_picks(account, id, &picks)?
+                        }
+                        None => {
+                            holdings.lots_for_sale(account, id, quantity, options.lot_method)?
+                        }
+                    };
+                    // Proceeds after fees, split across the lots as the books split them.
+                    let proceeds = quantity * unit.local - fees;
+                    let gains = lot_gains(&lots, quantity, proceeds, rate);
+                    let gain: Decimal = gains.iter().sum();
+                    let tax = taxed.map(|tax| {
+                        lots.iter()
+                            .zip(&gains)
+                            .map(|(l, g)| tax.rate(l.acquired, date) * g)
+                            .sum::<Decimal>()
+                            .round_dp(10)
+                    });
+                    let long_term = options.tax.as_ref().map(|tax| {
+                        lots.iter()
+                            .zip(&gains)
+                            .filter(|(l, _)| tax.is_long_term(l.acquired, date))
+                            .map(|(_, g)| *g)
+                            .sum::<Decimal>()
+                    });
+                    (lots, Some(gain), tax, long_term)
+                }
+            };
+            let trade = ProposedTrade {
+                instrument: id.clone(),
+                side,
+                quantity,
+                price: unit.price,
+                currency: unit.currency,
+                value_local,
+                value_base,
+                lots,
+                fees_local: fees,
+                realised_gain_base,
+                tax_base,
+                long_term_gain_base,
+            };
+            let balance = cash.entry(unit.currency).or_default();
+            match side {
+                Side::Buy => {
+                    *balance -= value_local + fees;
+                    *quantities.entry(id.clone()).or_default() += quantity;
+                    purchases.push(trade);
+                }
+                Side::Sell => {
+                    *balance += value_local - fees;
+                    *quantities.entry(id.clone()).or_default() -= quantity;
+                    sales.push(trade);
+                }
             }
         }
-    }
 
-    // Convert each foreign currency to its target balance through the base currency.
-    let mut conversions = Vec::new();
-    let foreign: Vec<Currency> = cash.keys().copied().filter(|c| *c != base).collect();
-    for currency in foreign {
-        let rate = rates[&currency];
-        if rate <= Decimal::ZERO {
-            continue;
+        // Convert each foreign currency to its target balance through the base currency.
+        let mut conversions = Vec::new();
+        let foreign: Vec<Currency> = cash.keys().copied().filter(|c| *c != base).collect();
+        for currency in foreign {
+            let rate = rates[&currency];
+            if rate <= Decimal::ZERO {
+                continue;
+            }
+            let weight = wanted
+                .get(&HoldingKey::Cash(currency))
+                .copied()
+                .unwrap_or(0.0);
+            let target = (value_base * from_f64(weight) / rate).round_dp(currency.minor_units());
+            let need = target - cash[&currency];
+            let amount = Money::new(need.abs(), currency).round(Rounding::HalfEven);
+            if amount.is_zero() {
+                continue;
+            }
+            let in_base = Money::new(amount.amount() * rate, base).round(Rounding::HalfEven);
+            let (sell, buy) = if need > Decimal::ZERO {
+                (in_base, amount)
+            } else {
+                (amount, in_base)
+            };
+            *cash.entry(sell.currency()).or_default() -= sell.amount();
+            *cash.entry(buy.currency()).or_default() += buy.amount();
+            conversions.push(ProposedConversion { sell, buy });
         }
-        let weight = wanted
-            .get(&HoldingKey::Cash(currency))
-            .copied()
-            .unwrap_or(0.0);
-        let target = (value_base * from_f64(weight) / rate).round_dp(currency.minor_units());
-        let need = target - cash[&currency];
-        let amount = Money::new(need.abs(), currency).round(Rounding::HalfEven);
-        if amount.is_zero() {
-            continue;
+        Ok(Planned {
+            sales,
+            purchases,
+            conversions,
+            quantities,
+            cash,
+            warnings,
+        })
+    };
+    // First the value the purchases share is reduced by the shortfall, which makes room for
+    // fees in proportion; a shortfall that rounding leaves is then taken from the largest
+    // purchase.
+    let mut investable = value_base;
+    let mut trims: BTreeMap<InstrumentId, Decimal> = BTreeMap::new();
+    let mut planned = attempt(investable, &trims)?;
+    for round in 0..8 {
+        let short = -planned.cash[&base];
+        if short <= Decimal::ZERO {
+            break;
         }
-        let in_base = Money::new(amount.amount() * rate, base).round(Rounding::HalfEven);
-        let (sell, buy) = if need > Decimal::ZERO {
-            (in_base, amount)
+        if round < 2 {
+            investable -= short;
         } else {
-            (amount, in_base)
-        };
-        *cash.entry(sell.currency()).or_default() -= sell.amount();
-        *cash.entry(buy.currency()).or_default() += buy.amount();
-        conversions.push(ProposedConversion { sell, buy });
+            let Some(largest) = planned
+                .purchases
+                .iter()
+                .max_by(|a, b| a.value_base.cmp(&b.value_base))
+            else {
+                break;
+            };
+            let unit = &units[&largest.instrument];
+            let mut cut = short / unit.base;
+            cut = if options.whole_units {
+                cut.ceil()
+            } else {
+                cut.round_dp(10) + Decimal::new(1, 10)
+            };
+            *trims.entry(largest.instrument.clone()).or_default() += cut;
+        }
+        planned = attempt(investable, &trims)?;
     }
+    let Planned {
+        mut sales,
+        purchases,
+        conversions,
+        quantities,
+        cash,
+        warnings: found,
+    } = planned;
+    warnings.merge("", found);
     if cash[&base] < Decimal::ZERO {
         warnings.warning(
             format!("cash.{base}"),
@@ -529,10 +631,7 @@ pub fn rebalance(
         .map(|t| t.fees_local * rates[&t.currency])
         .sum::<Decimal>()
         .round_dp(10);
-    let tax_base = options
-        .tax
-        .as_ref()
-        .map(|_| sales.iter().filter_map(|t| t.tax_base).sum());
+    let tax_base = taxed.map(|_| sales.iter().filter_map(|t| t.tax_base).sum());
     let weights_after = weights(&quantities, &cash);
     sales.extend(purchases);
     Ok(Rebalance {
@@ -547,8 +646,19 @@ pub fn rebalance(
         realised_gain_base,
         fees_base,
         tax_base,
+        taxable,
         warnings,
     })
+}
+
+/// The trades of one sizing of a rebalance, with the holdings and cash they leave.
+struct Planned {
+    sales: Vec<ProposedTrade>,
+    purchases: Vec<ProposedTrade>,
+    conversions: Vec<ProposedConversion>,
+    quantities: BTreeMap<InstrumentId, Decimal>,
+    cash: BTreeMap<Currency, Decimal>,
+    warnings: ValidationReport,
 }
 
 /// The trades that move several accounts together to target weights of their combined value,
@@ -556,9 +666,11 @@ pub fn rebalance(
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
-pub struct CombinedRebalance {
+pub struct RebalanceResults {
     /// The proposal for each account with value, in the order given.
     pub accounts: Vec<Rebalance>,
+    /// The base currency, of the values below.
+    pub base_currency: Currency,
     /// The accounts' combined value in the base currency.
     pub value_base: Decimal,
     /// Each holding's weight in the combined value before the trades.
@@ -592,7 +704,7 @@ pub fn rebalance_accounts(
     accounts: &[AccountId],
     targets: &[(HoldingKey, f64)],
     options: &RebalanceOptions,
-) -> Result<CombinedRebalance> {
+) -> Result<RebalanceResults> {
     let base = books.base_currency();
     let mut report = ValidationReport::new();
     if accounts.is_empty() {
@@ -607,7 +719,7 @@ pub fn rebalance_accounts(
     report.into_result(())?;
     if let [account] = accounts {
         let proposal = rebalance(books, market, date, account, targets, options)?;
-        return Ok(combine(vec![proposal], options));
+        return Ok(combine(vec![proposal], base, options));
     }
     let valuation = books.value_on(date, market)?;
     // Each account's value of each holding other than base cash, and its total value.
@@ -712,11 +824,15 @@ pub fn rebalance_accounts(
         )?);
     }
 
-    Ok(combine(proposals, options))
+    Ok(combine(proposals, base, options))
 }
 
 /// The proposals of several accounts as one.
-fn combine(proposals: Vec<Rebalance>, options: &RebalanceOptions) -> CombinedRebalance {
+fn combine(
+    proposals: Vec<Rebalance>,
+    base_currency: Currency,
+    options: &RebalanceOptions,
+) -> RebalanceResults {
     let value_base: Decimal = proposals.iter().map(|p| p.value_base).sum();
     let combine = |pick: fn(&Rebalance) -> &BTreeMap<HoldingKey, f64>| {
         let mut out: BTreeMap<HoldingKey, f64> = BTreeMap::new();
@@ -733,7 +849,7 @@ fn combine(proposals: Vec<Rebalance>, options: &RebalanceOptions) -> CombinedReb
         .iter()
         .map(|p| p.turnover * to_f64(p.value_base))
         .sum();
-    CombinedRebalance {
+    RebalanceResults {
         weights_before: combine(|p| &p.weights_before),
         weights_after: combine(|p| &p.weights_after),
         turnover: traded / to_f64(value_base),
@@ -744,7 +860,143 @@ fn combine(proposals: Vec<Rebalance>, options: &RebalanceOptions) -> CombinedReb
             .as_ref()
             .map(|_| proposals.iter().filter_map(|p| p.tax_base).sum()),
         value_base,
+        base_currency,
         accounts: proposals,
+    }
+}
+
+const MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// `value` to `places` decimals, with thousands separated by commas and a true minus sign.
+fn grouped(value: Decimal, places: u32) -> String {
+    let text = format!("{:.*}", places as usize, value.abs().round_dp(places));
+    let (whole, fraction) = text
+        .split_once('.')
+        .map_or((text.as_str(), None), |(w, f)| (w, Some(f)));
+    let mut out = String::new();
+    for (k, c) in whole.chars().enumerate() {
+        if k > 0 && (whole.len() - k) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    if let Some(fraction) = fraction {
+        out.push('.');
+        out.push_str(fraction);
+    }
+    if value < Decimal::ZERO {
+        out.insert(0, '−');
+    }
+    out
+}
+
+impl std::fmt::Display for RebalanceResults {
+    /// The trades of every account, one line each, with the turnover, fees, tax and realised
+    /// gain.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let trades: usize = self.accounts.iter().map(|a| a.trades.len()).sum();
+        let date = self.accounts.first().map(|a| a.date);
+        write!(
+            f,
+            "RebalanceResults · {} · {}",
+            plural(self.accounts.len(), "account"),
+            plural(trades, "trade")
+        )?;
+        if let Some(d) = date {
+            write!(
+                f,
+                " · prices of {} {} {}",
+                d.day(),
+                MONTHS[(d.month().clamp(1, 12) - 1) as usize],
+                d.year()
+            )?;
+        }
+        writeln!(f)?;
+        writeln!(f)?;
+        let width = self
+            .accounts
+            .iter()
+            .map(|a| a.account.as_str().chars().count())
+            .chain([7])
+            .max()
+            .unwrap_or(7)
+            .min(16);
+        let cell = |text: &str| {
+            let count = text.chars().count();
+            if count > width {
+                let mut out: String = text.chars().take(width - 1).collect();
+                out.push('…');
+                out
+            } else {
+                format!("{text}{}", " ".repeat(width - count))
+            }
+        };
+        writeln!(
+            f,
+            "  {}  {:<4} {:>9}  {:<10} {:>14} {:>18}",
+            cell("Account"),
+            "Side",
+            "Units",
+            "Instrument",
+            "Price",
+            "Value"
+        )?;
+        for a in &self.accounts {
+            for t in &a.trades {
+                writeln!(
+                    f,
+                    "  {}  {:<4} {:>9}  {:<10} {:>14} {:>18}",
+                    cell(a.account.as_str()),
+                    t.side.to_string(),
+                    grouped(t.quantity, t.quantity.normalize().scale().min(4)),
+                    t.instrument.as_str(),
+                    format!("{} {}", grouped(t.price, 2), t.currency),
+                    format!("{} {}", grouped(t.value_local, 2), t.currency)
+                )?;
+            }
+            for c in &a.conversions {
+                writeln!(
+                    f,
+                    "  {}  Convert {} {} to {} {}",
+                    cell(a.account.as_str()),
+                    grouped(c.sell.amount(), 2),
+                    c.sell.currency(),
+                    grouped(c.buy.amount(), 2),
+                    c.buy.currency()
+                )?;
+            }
+        }
+        let base = self.base_currency;
+        writeln!(f)?;
+        write!(
+            f,
+            "  Turnover {:.1}% · fees {} {base}",
+            self.turnover * 100.0,
+            grouped(self.fees_base, 2)
+        )?;
+        if let Some(tax) = self.tax_base {
+            write!(f, " · tax {} {base}", grouped(tax, 2))?;
+        }
+        writeln!(f)?;
+        writeln!(
+            f,
+            "  Realised gain {} {base}.",
+            grouped(self.realised_gain_base, 2)
+        )?;
+        write!(
+            f,
+            "  Each account's trades, conversions and weights are in results.accounts[k]."
+        )
+    }
+}
+
+fn plural(n: usize, word: &str) -> String {
+    if n == 1 {
+        format!("1 {word}")
+    } else {
+        format!("{n} {word}s")
     }
 }
 

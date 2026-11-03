@@ -118,7 +118,7 @@ def test_lot_preview_and_rebalancing(books, portfolio, market):
     lots = books.lots_for_sale("2026-10-30", "main", "SPY", 10)
     assert [(l.lot, l.quantity) for l in lots] == [("t2", 10)]
     proposal = books.rebalance({"SPY": 0.4, "BOND": 0.4, "SAP": 0.15}, accounts=["main"], lot_method="highest_cost")
-    [plan] = proposal.accounts
+    [plan] = proposal.results.accounts
     assert plan.date == datetime.date(2026, 10, 30)
     assert {trade.instrument for trade in plan.trades} == {"SPY", "BOND", "SAP"}
     after = fl.PortfolioData(
@@ -137,7 +137,9 @@ def test_lot_preview_and_rebalancing(books, portfolio, market):
 def test_rebalancing_with_fees_and_tax(books, portfolio, market):
     fees = fl.opt.Fees(rate=decimal.Decimal("0.001"), minimum=decimal.Decimal("5"))
     tax = fl.opt.TaxRates(short_term=decimal.Decimal("0.4"), long_term=decimal.Decimal("0.2"))
-    [plan] = books.rebalance({"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, accounts=["main"], fees=fees, tax=tax).accounts
+    [plan] = books.rebalance(
+        {"SPY": 0.2, "BOND": 0.5, "SAP": 0.15}, accounts=["main"], fees=fees, tax=tax
+    ).results.accounts
     assert all(t.fees_local >= 5 for t in plan.trades)
     sales = [t for t in plan.trades if t.side == "sell"]
     assert sales and all(t.tax_base is not None for t in sales)
@@ -155,7 +157,7 @@ def test_rebalancing_with_fees_and_tax(books, portfolio, market):
 
 def test_rebalancing_several_accounts(books):
     accounts = sorted({a.id for a in books.data.accounts})
-    plan = books.rebalance({"SPY": 0.3, "BOND": 0.4}, accounts=accounts)
+    plan = books.rebalance({"SPY": 0.3, "BOND": 0.4}, accounts=accounts).results
     assert [p.account for p in plan.accounts] == [a for a in accounts if any(p.account == a for p in plan.accounts)]
     after = dict(plan.weights_after)
     assert abs(after["SPY"] - 0.3) < 1e-6

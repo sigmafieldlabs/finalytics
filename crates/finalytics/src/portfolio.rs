@@ -2,21 +2,23 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use finalytics_core::{Currency, Date, Error, Result, ValidationReport};
+use serde::{Deserialize, Serialize};
+
+use finalytics_core::{Currency, Date, Decimal, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, PortfolioDocument, market_from_csv, portfolio_from_csv};
 use finalytics_ledger::LotMethod;
 use finalytics_ledger::{
     AccountId, Books, HoldingKey, MarketData, PortfolioData, Transaction, Valuation, ValueSeries,
 };
 use finalytics_opt::{
-    CombinedRebalance, Fees, RebalanceOptions, SolveStatus, TaxRates, rebalance_accounts,
+    Fees, RebalanceOptions, RebalanceResults, SolveStatus, TaxRates, rebalance_accounts,
 };
 use finalytics_perf::{FlowTiming, Performance};
 use finalytics_reports::{
     AttributionInputs, AttributionReport, HoldingsReport, NamedScenario, OverviewReport,
-    PerformanceReport, PortfolioReport, ReportOptions, RiskReport, ScenariosReport, Source,
-    attribution_report, holdings_report, overview_report, performance_report, portfolio_report,
-    risk_report, scenarios_report,
+    PerformanceReport, PortfolioReport, RebalanceReport, ReportOptions, RiskReport,
+    ScenariosReport, Source, attribution_report, holdings_report, overview_report,
+    performance_report, portfolio_report, risk_report, scenarios_report,
 };
 use finalytics_risk::{holding_returns, holding_weights};
 
@@ -185,9 +187,14 @@ impl Portfolio {
         Portfolio::new(data, self.market.clone())
     }
 
-    /// The same portfolio with the trades of a rebalancing proposal made on its date: each
-    /// account's sales, conversions and purchases, as transactions.
-    pub fn with_rebalance(&self, proposal: &CombinedRebalance) -> Result<Portfolio> {
+    /// The same portfolio with the trades of a rebalancing made on its date: each account's
+    /// sales, conversions and purchases, as transactions. It takes the rebalancing or its raw
+    /// results.
+    pub fn with_rebalance<'r>(
+        &self,
+        proposal: impl Into<&'r RebalanceResults>,
+    ) -> Result<Portfolio> {
+        let proposal: &RebalanceResults = proposal.into();
         let mut added = Vec::new();
         for account in &proposal.accounts {
             let stem = format!("rebalance-{}-{}", account.date, account.account);
@@ -317,8 +324,8 @@ impl Portfolio {
 
     /// The trades that move the accounts to `targets`, weights by holding such as an
     /// optimisation's, as shares of their combined value at the last price date: one proposal
-    /// per account. [`Rebalancing::build`] finds them, and reports an optimisation that found no
-    /// weights as an error.
+    /// per account, with the rebalance report. [`RebalanceBuilder::build`] finds them, and
+    /// reports an optimisation that found no weights as an error.
     ///
     /// ```
     /// use finalytics::{Method, datasets};
@@ -326,47 +333,110 @@ impl Portfolio {
     /// let portfolio = datasets::portfolio();
     /// let target = portfolio.assets()?.optimise(Method::MinimumVariance).build()?;
     /// let proposal = portfolio.rebalance(&target).whole_units().build()?;
-    /// assert_eq!(proposal.accounts.len(), 2);
+    /// assert_eq!(proposal.results.accounts.len(), 2);
     /// # Ok::<(), finalytics::Error>(())
     /// ```
-    pub fn rebalance(&self, targets: impl Into<Targets>) -> Rebalancing<'_> {
-        Rebalancing {
+    pub fn rebalance(&self, targets: impl Into<Targets>) -> RebalanceBuilder<'_> {
+        RebalanceBuilder {
             portfolio: self,
             targets: targets.into(),
             accounts: None,
+            as_of: None,
+            name: None,
             options: RebalanceOptions::default(),
         }
     }
 
-    /// The trades that move every account together to `targets`, as `options` say.
-    /// [`Portfolio::rebalance`] builds the same options step by step.
+    /// The trades that move every account together to `targets`, as `options` say, with the
+    /// rebalance report. [`Portfolio::rebalance`] builds the same options step by step.
     pub fn rebalance_with(
         &self,
         targets: &BTreeMap<HoldingKey, f64>,
         options: &RebalanceOptions,
-    ) -> Result<CombinedRebalance> {
+    ) -> Result<Rebalancing> {
         let accounts: Vec<AccountId> = self.data.accounts.iter().map(|a| a.id.clone()).collect();
         self.rebalance_accounts_with(&accounts, targets, options)
     }
 
     /// The trades that move `accounts` together to `targets`, as shares of their combined value
-    /// at the last price date.
+    /// at the last price date, with the rebalance report.
     pub fn rebalance_accounts_with(
         &self,
         accounts: &[AccountId],
         targets: &BTreeMap<HoldingKey, f64>,
         options: &RebalanceOptions,
-    ) -> Result<CombinedRebalance> {
-        let targets: Vec<(HoldingKey, f64)> =
-            targets.iter().map(|(k, w)| (k.clone(), *w)).collect();
-        rebalance_accounts(
-            &self.books,
-            &self.market,
-            self.date_or_last(None)?,
+    ) -> Result<Rebalancing> {
+        self.rebalancing(
             accounts,
-            &targets,
+            self.date_or_last(None)?,
+            targets,
+            (None, Vec::new()),
             options,
         )
+    }
+
+    /// The trades that move `accounts` to `targets` on `date`, and the rebalance report on them:
+    /// the volatility and expected return before and after come from the holdings' returns up
+    /// to `date`, as the optimisation of [`Portfolio::assets`] estimates them.
+    fn rebalancing(
+        &self,
+        accounts: &[AccountId],
+        date: Date,
+        targets: &BTreeMap<HoldingKey, f64>,
+        (method, limits): (Option<String>, Vec<String>),
+        options: &RebalanceOptions,
+    ) -> Result<Rebalancing> {
+        let list: Vec<(HoldingKey, f64)> = targets.iter().map(|(k, w)| (k.clone(), *w)).collect();
+        let results =
+            rebalance_accounts(&self.books, &self.market, date, accounts, &list, options)?;
+        let instruments: Vec<HoldingKey> = results
+            .weights_before
+            .keys()
+            .chain(results.weights_after.keys())
+            .chain(targets.keys())
+            .filter(|k| matches!(k, HoldingKey::Instrument(_)))
+            .cloned()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        let dates: Vec<Date> = self.dates().into_iter().filter(|d| *d <= date).collect();
+        let assets = holding_returns(&self.books, &instruments, &dates, &self.market)
+            .ok()
+            .and_then(|found| Assets::from_returns(found.dates, found.table).ok());
+        let covariance = assets.as_ref().and_then(|a| a.covariance().ok());
+        let means = assets.as_ref().map(Assets::mean_returns);
+        let estimates = match (&assets, &covariance, &means) {
+            (Some(a), Some(c), Some(m)) => match (a.dates().first(), a.dates().last()) {
+                (Some(&start), Some(&end)) => Some(finalytics_reports::RebalanceEstimateInputs {
+                    covariance: &c.matrix,
+                    expected_returns: m,
+                    covariance_method: a.covariance_method(),
+                    periods_per_year: a.periods_per_year(),
+                    start,
+                    end,
+                }),
+                _ => None,
+            },
+            _ => None,
+        };
+        let valuation = self.books.value_on(date, &self.market)?;
+        let unrealised_gain_base: f64 = valuation
+            .positions
+            .iter()
+            .filter(|p| accounts.contains(&p.account))
+            .map(|p| f64::try_from(p.unrealised_base).unwrap_or(0.0))
+            .sum();
+        let report = finalytics_reports::rebalance_report(finalytics_reports::RebalanceInputs {
+            results: &results,
+            targets,
+            method,
+            limits,
+            accounts: self.books.accounts(),
+            options,
+            unrealised_gain_base,
+            estimates,
+        })?;
+        Ok(Rebalancing { report, results })
     }
 
     fn source(&self) -> Source {
@@ -438,19 +508,23 @@ impl Portfolio {
 
 /// Target weights by holding, for [`Portfolio::rebalance`]: an optimisation's weights by asset,
 /// or weights by instrument identifier (`"USD cash"` for cash). An optimisation that found no
-/// weights is not a target: [`Rebalancing::build`] reports it.
+/// weights is not a target: [`RebalanceBuilder::build`] reports it.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Targets {
     weights: Vec<(String, f64)>,
     /// How an optimisation that found no weights ended.
     unsolved: Option<SolveStatus>,
+    /// The method of the optimisation the weights came from, for the report.
+    method: Option<String>,
+    /// That optimisation's limits in words.
+    limits: Vec<String>,
 }
 
 impl Targets {
     fn new(weights: Vec<(String, f64)>) -> Targets {
         Targets {
             weights,
-            unsolved: None,
+            ..Targets::default()
         }
     }
 
@@ -478,11 +552,19 @@ impl Targets {
 
 impl From<&OptimisationResult> for Targets {
     fn from(result: &OptimisationResult) -> Targets {
+        let method = serde_json::to_value(&result.solution.objective)
+            .ok()
+            .and_then(|v| serde_json::from_value::<crate::Method>(v["type"].clone()).ok())
+            .map(|m| m.label().to_owned());
         match &result.weights {
-            Some(weights) => Targets::new(weights.iter().map(|(a, w)| (a.clone(), *w)).collect()),
+            Some(weights) => Targets {
+                method,
+                ..Targets::new(weights.iter().map(|(a, w)| (a.clone(), *w)).collect())
+            },
             None => Targets {
-                weights: Vec::new(),
                 unsolved: Some(result.status),
+                method,
+                ..Targets::default()
             },
         }
     }
@@ -490,7 +572,12 @@ impl From<&OptimisationResult> for Targets {
 
 impl From<&crate::Optimisation> for Targets {
     fn from(optimisation: &crate::Optimisation) -> Targets {
-        Targets::from(&optimisation.results)
+        let context = &optimisation.report.context;
+        Targets {
+            method: Some(context.method.clone()),
+            limits: context.limits.clone(),
+            ..Targets::from(&optimisation.results)
+        }
     }
 }
 
@@ -513,44 +600,86 @@ impl<S: Into<String>, const N: usize> From<[(S, f64); N]> for Targets {
 }
 
 /// Rebalancing targets given as JSON: weights by holding, or an optimisation, whole or its raw
-/// results, whose weights are the targets. An optimisation that found no weights, and a name
-/// that is not a holding, are errors at `targets`. The Python and JavaScript packages use it;
-/// from Rust, pass the optimisation to [`Portfolio::rebalance`].
+/// results, whose weights are the targets. [`RebalanceBuilder::build`] reports an optimisation
+/// that found no weights, and a name that is not a holding, at `targets`. The Python and
+/// JavaScript packages use it; from Rust, pass the optimisation to [`Portfolio::rebalance`].
 #[doc(hidden)]
-pub fn targets_from_json(text: &str) -> Result<BTreeMap<HoldingKey, f64>> {
+pub fn targets_from_json(text: &str) -> Result<Targets> {
     let mut value: serde_json::Value = finalytics_formats::from_json(text, "targets")?;
+    let context = value
+        .get("report")
+        .and_then(|r| r.get("context"))
+        .filter(|c| c.is_object())
+        .cloned();
     if let Some(results) = value.get_mut("results").filter(|v| v.is_object()) {
         value = results.take();
     }
-    let targets = if value
+    if value
         .get("solution")
         .is_some_and(serde_json::Value::is_object)
     {
         let result: OptimisationResult =
             finalytics_formats::from_json(&value.to_string(), "targets")?;
-        Targets::from(&result)
+        let mut targets = Targets::from(&result);
+        if let Some(context) = context {
+            if let Some(method) = context.get("method").and_then(serde_json::Value::as_str) {
+                targets.method = Some(method.to_owned());
+            }
+            if let Some(limits) = context.get("limits").and_then(serde_json::Value::as_array) {
+                targets.limits = limits
+                    .iter()
+                    .filter_map(|l| l.as_str().map(str::to_owned))
+                    .collect();
+            }
+        }
+        Ok(targets)
     } else {
         let weights: BTreeMap<String, f64> =
             finalytics_formats::from_json(&value.to_string(), "targets")?;
-        Targets::from(weights)
-    };
-    let mut report = ValidationReport::new();
-    let holdings = targets.holdings(&mut report);
-    report.into_result(holdings)
+        Ok(Targets::from(weights))
+    }
+}
+
+/// A rebalancing: the rebalance report on the trades, and the raw results, each account's
+/// proposal. Printing it prints the report, showing it shows the report as a page, and the
+/// portfolio's `with_rebalance` makes the trades.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct Rebalancing {
+    /// The rebalance report: how the weights move, what the trades change and cost, each
+    /// account's trades, what to check, and how the trades were found.
+    pub report: RebalanceReport,
+    /// The raw results: each account's trades, conversions, weights and costs.
+    pub results: RebalanceResults,
+}
+
+impl std::fmt::Display for Rebalancing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.report.fmt(f)
+    }
+}
+
+impl<'a> From<&'a Rebalancing> for &'a RebalanceResults {
+    fn from(rebalancing: &'a Rebalancing) -> &'a RebalanceResults {
+        &rebalancing.results
+    }
 }
 
 /// A rebalancing of a portfolio's accounts to target weights, built step by step;
-/// [`Rebalancing::build`] finds the trades.
+/// [`RebalanceBuilder::build`] finds the trades.
 #[derive(Debug, Clone)]
 #[must_use = "a rebalancing does nothing until `build` runs it"]
-pub struct Rebalancing<'a> {
+pub struct RebalanceBuilder<'a> {
     portfolio: &'a Portfolio,
     targets: Targets,
     accounts: Option<Vec<String>>,
+    as_of: Option<String>,
+    name: Option<String>,
     options: RebalanceOptions,
 }
 
-impl Rebalancing<'_> {
+impl RebalanceBuilder<'_> {
     /// The accounts to rebalance together, by identifier; every account by default.
     pub fn accounts<S: AsRef<str>>(mut self, accounts: impl IntoIterator<Item = S>) -> Self {
         self.accounts = Some(
@@ -586,16 +715,44 @@ impl Rebalancing<'_> {
         self
     }
 
+    /// Leaves out trades worth less than `value` in the base currency.
+    pub fn minimum_trade(mut self, value: f64) -> Self {
+        self.options.minimum_trade = Decimal::try_from(value).unwrap_or(Decimal::MAX);
+        self
+    }
+
+    /// The date of the prices, such as `"2026-06-30"`: the last price date by default.
+    pub fn as_of(mut self, date: &str) -> Self {
+        self.as_of = Some(date.to_owned());
+        self
+    }
+
+    /// The report's title, such as `"Morgan family portfolio"`.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_owned());
+        self
+    }
+
     /// Every option at once, in place of those set so far.
     pub fn options(mut self, options: RebalanceOptions) -> Self {
         self.options = options;
         self
     }
 
-    /// Finds the trades: one proposal per account.
-    pub fn build(&self) -> Result<CombinedRebalance> {
+    /// Finds the trades, one proposal per account, with the rebalance report.
+    pub fn build(&self) -> Result<Rebalancing> {
         let mut report = ValidationReport::new();
         let targets = self.targets.holdings(&mut report);
+        let date = match &self.as_of {
+            Some(text) => match text.parse::<Date>() {
+                Ok(d) => Some(d),
+                Err(_) => {
+                    report.error("as_of", format!("{text:?} is not a date"));
+                    None
+                }
+            },
+            None => None,
+        };
         let accounts: Vec<AccountId> = match &self.accounts {
             Some(ids) => ids
                 .iter()
@@ -616,8 +773,15 @@ impl Rebalancing<'_> {
                 .collect(),
         };
         report.into_result(())?;
-        self.portfolio
-            .rebalance_accounts_with(&accounts, &targets, &self.options)
+        let mut rebalancing = self.portfolio.rebalancing(
+            &accounts,
+            self.portfolio.date_or_last(date)?,
+            &targets,
+            (self.targets.method.clone(), self.targets.limits.clone()),
+            &self.options,
+        )?;
+        rebalancing.report.name.clone_from(&self.name);
+        Ok(rebalancing)
     }
 }
 

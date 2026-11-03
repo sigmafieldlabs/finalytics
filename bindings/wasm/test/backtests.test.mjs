@@ -158,6 +158,31 @@ test("mistakes are reported where they were made", () => {
   assert.deepEqual(paths(() => assets.optimise({ objective: "minimum_variance" })), ["options.objective"]);
 });
 
+test("a rebalance has a report and the raw results", () => {
+  const portfolio = datasets.portfolio();
+  const target = portfolio.assets().optimise({ method: "minimum_variance", bounds: { min: 0.05, max: 0.4 } });
+  const result = portfolio.rebalance(target, {
+    whole_units: true,
+    fees: { rate: "0.0005", minimum: "1" },
+    tax: { short_term: "0.37", long_term: "0.20" },
+    name: "Morgan family portfolio",
+  });
+  assert.deepEqual(Object.keys(result), ["report", "results"]);
+  const text = `${result}`;
+  assert.equal(text, result.report.toText());
+  assert.ok(text.includes("FINALYTICS  ·  REBALANCE") && text.includes("Morgan family portfolio"));
+  assert.ok(text.split("\n").every((line) => [...line].length <= 80));
+  assert.ok(`${result.results}`.startsWith("RebalanceResults · 2 accounts"));
+  assert.ok(result.toHtml().includes("Rebalance report"));
+  const [brokerage, ira] = result.report.accounts;
+  assert.ok(brokerage.taxable && brokerage.tax_base > 0);
+  assert.ok(!ira.taxable && ira.tax_base == null && ira.realised_gain_base > 0);
+  assert.ok(result.report.accounts.every((a) => a.warnings.length === 0));
+  assert.equal(result.report.context.method, "Minimum variance");
+  const after = portfolio.withRebalance(result);
+  assert.ok(Number(after.valuation().total_base) > 0);
+});
+
 test("a report lays itself out as text and HTML, and shows", async () => {
   const portfolio = datasets.portfolio();
   const report = portfolio.report({ ...datasets.reportOptions(), name: "Morgan family portfolio" });

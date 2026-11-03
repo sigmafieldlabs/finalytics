@@ -66,6 +66,8 @@ export interface RebalanceChoices extends Partial<RebalanceOptions> {
   accounts?: string[];
   /** The date of the prices used; the last price date by default. */
   date?: Date;
+  /** The report's title, such as `"Morgan family portfolio"`. */
+  name?: string;
 }
 
 /**
@@ -649,13 +651,22 @@ impl Portfolio {
             .into())
     }
 
-    /// The same portfolio with the trades of a rebalancing proposal made on its date.
+    /// The same portfolio with the trades of a rebalancing made on its date: the result of
+    /// `rebalance`, or its raw results.
     #[wasm_bindgen(js_name = withRebalance)]
     pub fn with_rebalance(
         &self,
-        #[wasm_bindgen(unchecked_param_type = "CombinedRebalance")] proposal: JsValue,
+        #[wasm_bindgen(
+            unchecked_param_type = "Result<RebalanceReport, RebalanceResults> | RebalanceResults"
+        )]
+        proposal: JsValue,
     ) -> Result<Portfolio, JsValue> {
-        let proposal: finalytics::opt::CombinedRebalance = from_js(proposal, "proposal")?;
+        let mut value: serde_json::Value = from_js(proposal, "proposal")?;
+        if let Some(results) = value.get_mut("results").filter(|v| v.is_object()) {
+            value = results.take();
+        }
+        let proposal: finalytics::opt::RebalanceResults =
+            finalytics::formats::from_json(&value.to_string(), "proposal").map_err(error)?;
         Ok(self.inner.with_rebalance(&proposal).map_err(error)?.into())
     }
 
@@ -1017,9 +1028,9 @@ impl Portfolio {
     /// The trades that move the accounts (by default every account; `choices.accounts` names
     /// others) together to `targets`, as shares of their combined value: weights by holding, or
     /// an optimisation of the portfolio's assets, whose weights are its targets (one that found
-    /// no weights is a `ValidationError`). One proposal per account; `withRebalance` makes its
-    /// trades.
-    #[wasm_bindgen(unchecked_return_type = "CombinedRebalance")]
+    /// no weights is a `ValidationError`). The rebalance report is in `report`, and each
+    /// account's proposal in `results`; `withRebalance` makes the trades.
+    #[wasm_bindgen(unchecked_return_type = "Result<RebalanceReport, RebalanceResults>")]
     pub fn rebalance(
         &self,
         #[wasm_bindgen(
@@ -1030,37 +1041,31 @@ impl Portfolio {
     ) -> Result<JsValue, JsValue> {
         let targets: serde_json::Value = from_js(targets, "targets")?;
         let targets = finalytics::targets_from_json(&targets.to_string()).map_err(error)?;
-        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let mut choices: serde_json::Map<String, serde_json::Value> = optional(choices, "choices")?;
-        let accounts = match choices.remove("accounts") {
-            None | Some(serde_json::Value::Null) => self
-                .inner
-                .data()
-                .accounts
-                .iter()
-                .map(|a| a.id.clone())
-                .collect(),
-            Some(value) => {
-                let names: Vec<String> =
-                    finalytics::formats::from_json(&value.to_string(), "accounts")
-                        .map_err(error)?;
-                names
-                    .iter()
-                    .map(|a| parse_account(a))
-                    .collect::<Result<Vec<_>, _>>()?
-            }
+        let name = match choices.remove("name") {
+            None | Some(serde_json::Value::Null) => None,
+            Some(serde_json::Value::String(name)) => Some(name),
+            Some(_) => return Err(invalid("choices.name", "must be text")),
+        };
+        let accounts: Option<Vec<String>> = match choices.remove("accounts") {
+            None | Some(serde_json::Value::Null) => None,
+            Some(value) => Some(
+                finalytics::formats::from_json(&value.to_string(), "accounts").map_err(error)?,
+            ),
         };
         let (on, options) = self.dated_choices::<RebalanceOptions>(choices)?;
-        let plan = finalytics::opt::rebalance_accounts(
-            self.inner.books(),
-            self.inner.market(),
-            on,
-            &accounts,
-            &targets,
-            &options,
-        )
-        .map_err(error)?;
-        to_js(&plan)
+        let mut builder = self
+            .inner
+            .rebalance(targets)
+            .options(options)
+            .as_of(&on.to_string());
+        if let Some(accounts) = accounts {
+            builder = builder.accounts(accounts);
+        }
+        if let Some(name) = &name {
+            builder = builder.name(name);
+        }
+        to_js(&builder.build().map_err(error)?)
     }
 
     /// What `shocks` would do to the holdings, with their risk before and after if the choices
@@ -2120,7 +2125,7 @@ pub fn report_text(
 #[wasm_bindgen(js_name = reportHtml)]
 pub fn report_html(
     #[wasm_bindgen(
-        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport"
+        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport | RebalanceReport"
     )]
     report: JsValue,
     name: Option<String>,

@@ -350,7 +350,12 @@ impl NativePortfolio {
     }
 
     fn with_rebalance(&self, proposal: &str) -> PyResult<NativePortfolio> {
-        let proposal: finalytics::opt::CombinedRebalance = from_json(proposal, "proposal")?;
+        let mut value: serde_json::Value = from_json(proposal, "proposal")?;
+        if let Some(results) = value.get_mut("results").filter(|v| v.is_object()) {
+            value = results.take();
+        }
+        let proposal: finalytics::opt::RebalanceResults =
+            from_json(&value.to_string(), "proposal")?;
         Ok(self
             .portfolio
             .with_rebalance(&proposal)
@@ -568,27 +573,28 @@ impl NativePortfolio {
         to_json(&plan)
     }
 
+    #[pyo3(signature = (on, accounts, targets, options, name=None))]
     fn rebalance_accounts(
         &self,
         on: &str,
         accounts: &str,
         targets: &str,
         options: &str,
+        name: Option<&str>,
     ) -> PyResult<String> {
-        let accounts: Vec<finalytics::AccountId> = from_json(accounts, "accounts")?;
+        let accounts: Vec<String> = from_json(accounts, "accounts")?;
         let targets = finalytics::targets_from_json(targets).map_err(engine)?;
-        let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let options: RebalanceOptions = from_json(options, "options")?;
-        let plan = finalytics::opt::rebalance_accounts(
-            self.portfolio.books(),
-            self.portfolio.market(),
-            date(on)?,
-            &accounts,
-            &targets,
-            &options,
-        )
-        .map_err(engine)?;
-        to_json(&plan)
+        let mut builder = self
+            .portfolio
+            .rebalance(targets)
+            .accounts(accounts)
+            .options(options)
+            .as_of(on);
+        if let Some(name) = name {
+            builder = builder.name(name);
+        }
+        to_json(&builder.build().map_err(engine)?)
     }
 
     fn shock_scenario(&self, on: &str, shocks: &str, options: &str) -> PyResult<String> {

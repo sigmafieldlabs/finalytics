@@ -5,7 +5,9 @@ use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use finalytics_core::{Error, Result};
-use finalytics_reports::{BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport};
+use finalytics_reports::{
+    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport,
+};
 
 use crate::Optimisation;
 use crate::backtest::{Backtest, Comparison};
@@ -70,6 +72,18 @@ impl Show for Comparison {
 }
 
 impl Show for Backtest {
+    fn html(&self) -> String {
+        self.report.to_html(None)
+    }
+}
+
+impl Show for RebalanceReport {
+    fn html(&self) -> String {
+        self.to_html(None)
+    }
+}
+
+impl Show for crate::Rebalancing {
     fn html(&self) -> String {
         self.report.to_html(None)
     }

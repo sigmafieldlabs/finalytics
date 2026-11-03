@@ -58,7 +58,7 @@ pub use problem::{
     ReturnUncertainty, TrackingErrorLimit, TradeLimits, Turnover,
 };
 pub use rebalance::{
-    CombinedRebalance, Fees, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, Side,
+    Fees, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, RebalanceResults, Side,
     TaxRates, rebalance, rebalance_accounts,
 };
 pub use resample::{ResampledSolution, Resampling};

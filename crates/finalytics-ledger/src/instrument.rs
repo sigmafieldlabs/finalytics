@@ -85,6 +85,15 @@ fn one() -> Decimal {
     Decimal::ONE
 }
 
+fn yes() -> bool {
+    true
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_yes(value: &bool) -> bool {
+    *value
+}
+
 fn is_one(value: &Decimal) -> bool {
     *value == Decimal::ONE
 }
@@ -127,16 +136,23 @@ pub struct Account {
     /// `wrapper: ISA`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub classifications: BTreeMap<String, String>,
+    /// Whether gains are taxed when they are realised: true by default. A retirement account,
+    /// or another tax-deferred or tax-exempt account, is not taxable, so rebalancing estimates
+    /// no tax on its sales.
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    #[cfg_attr(feature = "schema", schemars(extend("default" = true)))]
+    pub taxable: bool,
 }
 
 impl Account {
-    /// An account using first-in, first-out lot relief, with no classifications.
+    /// A taxable account using first-in, first-out lot relief, with no classifications.
     pub fn new(id: AccountId) -> Account {
         Account {
             id,
             name: None,
             lot_method: LotMethod::Fifo,
             classifications: BTreeMap::new(),
+            taxable: true,
         }
     }
 

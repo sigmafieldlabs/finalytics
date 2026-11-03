@@ -243,18 +243,18 @@ fn a_portfolio_hands_its_holdings_to_the_optimiser() {
         .unwrap();
     let targets: BTreeMap<HoldingKey, f64> = result.results.holdings();
     let proposal = portfolio.rebalance(&result).build().unwrap();
-    assert_eq!(proposal.accounts.len(), 2);
+    assert_eq!(proposal.results.accounts.len(), 2);
     let same = portfolio
         .rebalance_with(&targets, &RebalanceOptions::default())
         .unwrap();
-    assert_eq!(same, proposal);
+    assert_eq!(same.results, proposal.results);
     let ira = portfolio
         .rebalance(&result)
         .accounts(["ira"])
         .whole_units()
         .build()
         .unwrap();
-    assert_eq!(ira.accounts.len(), 1);
+    assert_eq!(ira.results.accounts.len(), 1);
     let unknown = paths(portfolio.rebalance([("VTI", 0.5), ("XYZ", 0.5)]).build());
     assert!(
         unknown.iter().all(|p| p.starts_with("targets")),

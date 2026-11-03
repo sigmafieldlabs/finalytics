@@ -174,10 +174,12 @@ VTI,fund,USD,Vanguard Total Stock Market ETF,Equity,North America
 
 ### Accounts
 
-`id`, with optional `name`, `lot_method` and `class.<scheme>` columns such as `class.owner`. The
-lot method chooses the lots a sale closes: `fifo` (the default), `lifo`, `highest_cost`,
-`lowest_cost`, `average_cost` or `specific_id`. Without an accounts file, each account the
-transactions name is created with first in, first out.
+`id`, with optional `name`, `lot_method`, `taxable` and `class.<scheme>` columns such as
+`class.owner`. The lot method chooses the lots a sale closes: `fifo` (the default), `lifo`,
+`highest_cost`, `lowest_cost`, `average_cost` or `specific_id`. `taxable` is `true` by default;
+`false` marks a tax-deferred or tax-exempt account, such as a retirement account, whose sales
+rebalancing does not tax. Without an accounts file, each account the transactions name is
+created taxable, with first in, first out.
 
 ### Base currency
 

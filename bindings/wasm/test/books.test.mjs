@@ -31,7 +31,7 @@ test("rebalancing proposals apply to the books", () => {
   const books = new fl.Portfolio(portfolio, market);
   const targets = { SPY: 0.4, BOND: 0.4, SAP: 0.15 };
   const proposal = books.rebalance(targets, { accounts: ["main"], lot_method: "highest_cost" });
-  const [plan] = proposal.accounts;
+  const [plan] = proposal.results.accounts;
   assert.equal(plan.date, "2026-10-30");
   const transactions = fl.rebalanceTransactions(plan);
   const after = new fl.Portfolio({ ...portfolio, transactions: [...portfolio.transactions, ...transactions] }, market);
@@ -48,11 +48,11 @@ test("rebalancing with fees, tax rates and several accounts", () => {
     accounts: ["main"],
     fees: { rate: "0.001", minimum: "5" },
     tax: { short_term: "0.4", long_term: "0.2" },
-  }).accounts;
+  }).results.accounts;
   assert.ok(plan.trades.every((t) => Number(t.fees_local) >= 5));
   assert.ok(plan.tax_base !== null && plan.tax_base !== undefined);
   const combined = books.rebalance(targets, { accounts: ["isa", "main"] });
-  close(combined.weights_after.SPY, 0.2, 1e-6, "combined SPY weight");
+  close(combined.results.weights_after.SPY, 0.2, 1e-6, "combined SPY weight");
   books.free();
 });
 

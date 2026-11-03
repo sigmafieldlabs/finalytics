@@ -43,10 +43,11 @@ test("the portfolio dataset, from report to trades", () => {
   assert.deepEqual(assets.labels, ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
   const result = assets.optimise({ method: "minimum_variance", bounds: { min: 0.05, max: 0.5 } });
   const proposal = portfolio.rebalance(result);
-  assert.deepEqual(proposal, portfolio.rebalance(result.results));
-  assert.deepEqual(proposal, portfolio.rebalance(result.results.weights));
-  assert.equal(proposal.accounts.length, 2);
+  assert.deepEqual(proposal.results, portfolio.rebalance(result.results).results);
+  assert.deepEqual(proposal.results, portfolio.rebalance(result.results.weights).results);
+  assert.equal(proposal.results.accounts.length, 2);
   const after = portfolio.withRebalance(proposal).weights();
+  assert.deepEqual(after, portfolio.withRebalance(proposal.results).weights());
   for (const [holding, target] of Object.entries(result.results.weights)) {
     close(after[holding], target, 0.01, holding);
   }

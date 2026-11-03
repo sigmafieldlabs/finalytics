@@ -106,6 +106,12 @@ class Account:
     ISA`.
     """
 
+    taxable: bool = True
+    """Whether gains are taxed when they are realised: true by default. A retirement account, or
+    another tax-deferred or tax-exempt account, is not taxable, so rebalancing estimates no tax
+    on its sales.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class AccountHoldings:
@@ -163,6 +169,49 @@ class AccountSeries:
 
     warnings: ValidationReport
     """Prices and rates carried forward from earlier dates."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class AccountTrades:
+    """One account's part of a rebalance."""
+
+    account: str
+    """The account's identifier."""
+
+    name: str
+    """The account's name, or its identifier."""
+
+    taxable: bool
+    """Whether its gains are taxed when realised."""
+
+    value_base: float
+    """Its value before the trades."""
+
+    turnover: float
+    """The value traded as a share of its value."""
+
+    trades: list[TradeRow]
+    """Sales, then purchases."""
+
+    conversions: list[ConversionRow]
+    """Currency conversions."""
+
+    fees_base: float
+    """The fees of its trades."""
+
+    realised_gain_base: float
+    """The gain its sales realise, after fees."""
+
+    long_term_gain_base: float | None = None
+    """With tax rates, the part of that gain from lots held long-term."""
+
+    tax_base: float | None = None
+    """With tax rates and a taxable account, the estimated tax on its sales."""
+
+    warnings: list[Issue]
+    """What to check before making the trades: carried prices, a shortfall of cash, and trades left
+    out.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -473,7 +522,7 @@ class AttributionReport(PrintedReport):
 @dataclass(frozen=True, kw_only=True)
 class Backtest(Result):
     """A backtest: the backtest report on one allocation against its benchmark, and the raw results.
-    Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+    Printing it prints the report, and showing it shows the report as a page.
     """
 
     report: BacktestReport
@@ -896,37 +945,6 @@ ColumnKind = Union[TextColumn, DateColumn, NumberColumn, IntegerColumn, Fraction
 
 
 @dataclass(frozen=True, kw_only=True)
-class CombinedRebalance:
-    """The trades that move several accounts together to target weights of their combined value, one
-    proposal per account.
-    """
-
-    accounts: list[Rebalance]
-    """The proposal for each account with value, in the order given."""
-
-    value_base: decimal.Decimal
-    """The accounts' combined value in the base currency."""
-
-    weights_before: dict[str, float]
-    """Each holding's weight in the combined value before the trades."""
-
-    weights_after: dict[str, float]
-    """Each holding's weight in the combined value after the trades."""
-
-    turnover: float
-    """The value traded in all the accounts, as a share of their combined value."""
-
-    realised_gain_base: decimal.Decimal
-    """The gain the sales would realise in the base currency, after fees."""
-
-    fees_base: decimal.Decimal
-    """The fees of all the trades, in the base currency."""
-
-    tax_base: decimal.Decimal | None = None
-    """With tax rates, the estimated tax on the sales' gains in the base currency."""
-
-
-@dataclass(frozen=True, kw_only=True)
 class Company:
     """A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry."""
 
@@ -946,7 +964,7 @@ class Company:
 @dataclass(frozen=True, kw_only=True)
 class Comparison(Result):
     """A comparison: the comparison report on several methods backtested side by side, and the raw
-    results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+    results. Printing it prints the report, and showing it shows the report as a page.
     """
 
     report: ComparisonReport
@@ -1052,6 +1070,23 @@ class Contribution:
 
     average_weight: float
     """The holding's average share of the portfolio's value at the end of each day."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ConversionRow:
+    """One currency conversion."""
+
+    sell: float
+    """The amount sold."""
+
+    sell_currency: str
+    """Its currency."""
+
+    buy: float
+    """The amount bought."""
+
+    buy_currency: str
+    """Its currency."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1906,6 +1941,26 @@ class HoldingLine:
 
 
 @dataclass(frozen=True, kw_only=True)
+class HoldingMove:
+    """A holding's weight before the trades, at the target and after."""
+
+    holding: str
+    """The holding: an instrument's identifier, or a currency followed by ` cash`."""
+
+    before: float
+    """The weight before the trades."""
+
+    target: float
+    """The target weight; base-currency cash takes what the targets leave."""
+
+    after: float
+    """The weight after the trades."""
+
+    value_after_base: float
+    """The value after the trades."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class HoldingReturns:
     """Returns of holdings in the base currency between consecutive dates."""
 
@@ -2487,7 +2542,7 @@ Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetRetur
 @dataclass(frozen=True, kw_only=True)
 class Optimisation(Result):
     """An optimisation: the optimisation report on the weights chosen, and the raw results. Printing
-    it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+    it prints the report, and showing it shows the report as a page.
     """
 
     report: OptimisationReport
@@ -3237,7 +3292,12 @@ class ProposedTrade:
 
     tax_base: decimal.Decimal | None = None
     """For a sale with tax rates, the estimated tax on its gains in the base currency; negative when
-    its losses save tax.
+    its losses save tax. None in an account that is not taxable.
+    """
+
+    long_term_gain_base: decimal.Decimal | None = None
+    """For a sale with tax rates, the part of its realised gain from lots held long-term; the rest
+    is short-term.
     """
 
 
@@ -3373,10 +3433,77 @@ class Rebalance:
     """The fees of all the trades, in the base currency."""
 
     tax_base: decimal.Decimal | None = None
-    """With tax rates, the estimated tax on the sales' gains in the base currency."""
+    """With tax rates, the estimated tax on the sales' gains in the base currency; None in an
+    account that is not taxable.
+    """
+
+    taxable: bool = True
+    """Whether the account's gains are taxed when they are realised."""
 
     warnings: ValidationReport
     """Carried prices, a shortfall of cash, and trades left out by rounding."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class RebalanceContext:
+    """What a rebalance report describes: the date, the targets, the accounts and the choices."""
+
+    version: str
+    """The engine's version."""
+
+    digest: str
+    """A SHA-256 digest of the targets, the choices and the proposal."""
+
+    date: datetime.date
+    """The date of the prices."""
+
+    base_currency: str
+    """The currency of the values."""
+
+    method: str | None = None
+    """The method of the optimisation the targets came from, such as "Minimum variance"; absent for
+    weights given by holding.
+    """
+
+    limits: list[str]
+    """That optimisation's limits in words, such as "5% to 40% in each asset"."""
+
+    whole_units: bool
+    """Whether trades are in whole units."""
+
+    lot_method: LotMethod
+    """How sales choose lots when no tax rates are given."""
+
+    minimum_trade: float
+    """The smallest trade, in the base currency."""
+
+    fees: Fees
+    """The fees each trade pays."""
+
+    tax: TaxRates | None = None
+    """The tax rates on realised gains, if given."""
+
+    estimates: RebalanceEstimates | None = None
+    """The estimates behind the volatility and expected return before and after; absent when the
+    holdings' returns could not be estimated.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class RebalanceEstimates:
+    """The estimates behind a rebalance's volatility and expected return."""
+
+    covariance: CovarianceMethod
+    """The covariance estimator."""
+
+    periods_per_year: float
+    """Return periods in a year."""
+
+    start: datetime.date
+    """The first date of the returns."""
+
+    end: datetime.date
+    """The last date of the returns."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3401,6 +3528,67 @@ class RebalanceOptions:
     """Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,
     losses first, and the tax is estimated.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class RebalanceReport(ReportPage):
+    """The trades that move a portfolio's accounts to target weights: how each holding's weight
+    moves, what the trades change and cost, each account's trades, and what to check before
+    making them.
+    """
+
+    context: RebalanceContext
+    """What was rebalanced, to what, and how."""
+
+    summary: RebalanceSummary
+    """The trades and their costs, and what they change."""
+
+    holdings: list[HoldingMove]
+    """Each holding's weight before the trades, at the target and after, in the accounts together:
+    the largest target first, then cash.
+    """
+
+    accounts: list[AccountTrades]
+    """Each account's trades, conversions, costs and warnings."""
+
+    name: str | None = None
+    """The report's title, such as "Morgan family portfolio": shown when it is printed or laid out
+    as a page.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class RebalanceResults(PrintedResults):
+    """The trades that move several accounts together to target weights of their combined value, one
+    proposal per account.
+    """
+
+    accounts: list[Rebalance]
+    """The proposal for each account with value, in the order given."""
+
+    base_currency: str
+    """The base currency, of the values below."""
+
+    value_base: decimal.Decimal
+    """The accounts' combined value in the base currency."""
+
+    weights_before: dict[str, float]
+    """Each holding's weight in the combined value before the trades."""
+
+    weights_after: dict[str, float]
+    """Each holding's weight in the combined value after the trades."""
+
+    turnover: float
+    """The value traded in all the accounts, as a share of their combined value."""
+
+    realised_gain_base: decimal.Decimal
+    """The gain the sales would realise in the base currency, after fees."""
+
+    fees_base: decimal.Decimal
+    """The fees of all the trades, in the base currency."""
+
+    tax_base: decimal.Decimal | None = None
+    """With tax rates, the estimated tax on the sales' gains in the base currency."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3452,6 +3640,71 @@ RebalanceSchedule = Union[Monthly, Quarterly, Yearly, Drift, Never]
 """When the portfolio trades back to its target weights. Between trades the weights drift with
 prices.
 """
+
+
+@dataclass(frozen=True, kw_only=True)
+class RebalanceSummary:
+    """The trades of a rebalance in figures: how many, how much is traded, what they cost and what
+    they change.
+    """
+
+    value_base: float
+    """The accounts' combined value."""
+
+    trades: int
+    """The number of trades."""
+
+    sales: int
+    """The number of sales."""
+
+    purchases: int
+    """The number of purchases."""
+
+    turnover: float
+    """The value traded as a share of the combined value."""
+
+    traded_base: float
+    """The value traded."""
+
+    fees_base: float
+    """The fees of all the trades."""
+
+    realised_gain_base: float
+    """The gain the sales realise, after fees."""
+
+    long_term_gain_base: float | None = None
+    """With tax rates, the part of the realised gain from lots held long-term."""
+
+    tax_base: float | None = None
+    """With tax rates, the estimated tax on the sales in taxable accounts."""
+
+    unrealised_gain_base: float
+    """The unrealised gain of the accounts before the trades."""
+
+    before: RiskReturn | None = None
+    """Volatility and expected return a year before the trades."""
+
+    after: RiskReturn | None = None
+    """After the trades."""
+
+    target: RiskReturn | None = None
+    """At the targets."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Rebalancing(Result):
+    """A rebalancing: the rebalance report on the trades, and the raw results, each account's
+    proposal. Printing it prints the report, showing it shows the report as a page, and the
+    portfolio's `with_rebalance` makes the trades.
+    """
+
+    report: RebalanceReport
+    """The rebalance report: how the weights move, what the trades change and cost, each account's
+    trades, what to check, and how the trades were found.
+    """
+
+    results: RebalanceResults
+    """The raw results: each account's trades, conversions, weights and costs."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4631,6 +4884,38 @@ class TradeLimits:
 
 
 @dataclass(frozen=True, kw_only=True)
+class TradeRow:
+    """One proposed trade."""
+
+    side: Side
+    """Buy or sell."""
+
+    quantity: float
+    """The units traded."""
+
+    instrument: str
+    """The instrument's identifier."""
+
+    price: float
+    """The price per unit, in the instrument's currency."""
+
+    currency: str
+    """The instrument's currency."""
+
+    value_base: float
+    """The value traded, in the base currency."""
+
+    fees_local: float
+    """The fee, in the instrument's currency."""
+
+    realised_gain_base: float | None = None
+    """For a sale, the gain it realises, after fees."""
+
+    tax_base: float | None = None
+    """For a sale in a taxable account with tax rates, the estimated tax."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Buy:
     """Buy `quantity` units at `price` per unit, paying `fees` on top."""
 
@@ -5236,6 +5521,7 @@ __all__ = [
     "AccountId",
     "AccountLine",
     "AccountSeries",
+    "AccountTrades",
     "AccountsPerformance",
     "Allocation",
     "AllocationRow",
@@ -5274,7 +5560,6 @@ __all__ = [
     "Cell",
     "Column",
     "ColumnKind",
-    "CombinedRebalance",
     "Company",
     "Comparison",
     "ComparisonReport",
@@ -5282,6 +5567,7 @@ __all__ = [
     "Confidence",
     "Constraints",
     "Contribution",
+    "ConversionRow",
     "CorrelationStress",
     "CountUnit",
     "CovarianceEstimate",
@@ -5344,6 +5630,7 @@ __all__ = [
     "HoldingImpact",
     "HoldingKey",
     "HoldingLine",
+    "HoldingMove",
     "HoldingReturns",
     "HoldingRiskReturn",
     "HoldingRow",
@@ -5431,8 +5718,14 @@ __all__ = [
     "RealisedGain",
     "RealisedSummary",
     "Rebalance",
+    "RebalanceContext",
+    "RebalanceEstimates",
     "RebalanceOptions",
+    "RebalanceReport",
+    "RebalanceResults",
     "RebalanceSchedule",
+    "RebalanceSummary",
+    "Rebalancing",
     "RelativeStatistics",
     "ReportKind",
     "ReportOptions",
@@ -5503,6 +5796,7 @@ __all__ = [
     "Trade",
     "TradeAllocation",
     "TradeLimits",
+    "TradeRow",
     "Transaction",
     "TransactionId",
     "TransactionKind",

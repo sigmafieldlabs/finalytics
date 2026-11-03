@@ -203,12 +203,110 @@ fn an_optimisation_without_weights_is_not_a_target() {
         )]
     );
     // The same through JSON, as the other languages give it.
-    let json = serde_json::to_string(&failed).unwrap();
-    assert!(finalytics::targets_from_json(&json).is_err());
-    let json = serde_json::to_string(&failed.results).unwrap();
-    assert!(finalytics::targets_from_json(&json).is_err());
-    let weights = r#"{"VTI": 0.6, "BND": 0.4}"#;
-    assert_eq!(finalytics::targets_from_json(weights).unwrap().len(), 2);
+    for json in [
+        serde_json::to_string(&failed).unwrap(),
+        serde_json::to_string(&failed.results).unwrap(),
+    ] {
+        let targets = finalytics::targets_from_json(&json).unwrap();
+        assert!(portfolio.rebalance(targets).build().is_err());
+    }
+    let weights = finalytics::targets_from_json(r#"{"VTI": 0.6, "BND": 0.4}"#).unwrap();
+    assert!(portfolio.rebalance(weights).build().is_ok());
+}
+
+#[test]
+fn a_rebalance_has_a_report_and_raw_results() {
+    use finalytics::opt::{Fees, TaxRates};
+    let portfolio = datasets::portfolio();
+    let target = portfolio
+        .assets()
+        .unwrap()
+        .optimise(Method::MinimumVariance)
+        .bounds(0.05, 0.4)
+        .build()
+        .unwrap();
+    let mut fees = Fees::default();
+    fees.rate = "0.0005".parse().unwrap();
+    fees.minimum = "1".parse().unwrap();
+    let result = portfolio
+        .rebalance(&target)
+        .whole_units()
+        .fees(fees)
+        .tax(TaxRates::new(
+            "0.37".parse().unwrap(),
+            "0.2".parse().unwrap(),
+        ))
+        .name("Morgan family portfolio")
+        .build()
+        .unwrap();
+    let r = &result.report;
+    assert_eq!(r.context.method.as_deref(), Some("Minimum variance"));
+    assert_eq!(r.context.limits, ["5% to 40% in each asset"]);
+    // The report's figures are the proposal's.
+    let s = &r.summary;
+    assert_eq!(s.trades, 10);
+    close(s.turnover, result.results.turnover, "turnover");
+    let held: f64 = r.holdings.iter().map(|h| h.after).sum();
+    close(held, 1.0, "weights after");
+    let target_total: f64 = r.holdings.iter().map(|h| h.target).sum();
+    close(target_total, 1.0, "targets");
+    let (before, after) = (s.before.as_ref().unwrap(), s.after.as_ref().unwrap());
+    assert!(after.volatility < before.volatility);
+    // The target's figures are the optimisation's: the same estimates.
+    let at = s.target.as_ref().unwrap();
+    close(
+        at.volatility,
+        target.results.volatility.unwrap(),
+        "target volatility",
+    );
+    close(
+        at.expected_return,
+        target.results.expected_return.unwrap(),
+        "target return",
+    );
+    assert!((after.volatility - at.volatility).abs() < 1e-3);
+    // The retirement account is not taxable, and nothing goes short of cash.
+    let [brokerage, ira] = &r.accounts[..] else {
+        panic!("two accounts")
+    };
+    assert!(brokerage.taxable && brokerage.tax_base.unwrap() > 0.0);
+    assert!(!ira.taxable && ira.tax_base.is_none() && ira.realised_gain_base > 0.0);
+    assert_eq!(s.tax_base, brokerage.tax_base);
+    let long = s.long_term_gain_base.unwrap();
+    assert!(long > 0.0 && long <= s.realised_gain_base);
+    assert!(r.accounts.iter().all(|a| a.warnings.is_empty()));
+    // It prints, lays out as a page and exports, as JSON gives it too.
+    let text = result.to_string();
+    assert!(text.contains("FINALYTICS  ·  REBALANCE") && text.contains("not taxed"));
+    assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
+    let raw = result.results.to_string();
+    assert!(raw.starts_with("RebalanceResults · 2 accounts · 10 trades"));
+    assert!(raw.lines().all(|l| l.chars().count() <= 80), "{raw}");
+    let page = r.to_html(None);
+    for anchor in ["r-summary", "r-trades", "r-costs", "r-method"] {
+        assert!(page.contains(&format!(r#"id="{anchor}""#)), "{anchor}");
+    }
+    assert!(page.contains("<title>Morgan family portfolio</title>") && !page.contains("<script"));
+    let json = serde_json::to_string(r).unwrap();
+    assert_eq!(finalytics::reports::report_text(&json, None).unwrap(), text);
+    assert_eq!(finalytics::reports::report_html(&json, None).unwrap(), page);
+    let tables = finalytics::reports::report_tables(&json).unwrap();
+    assert_eq!(
+        tables.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
+        ["holdings", "trades"]
+    );
+    let raw_json = serde_json::to_string(&result.results).unwrap();
+    assert_eq!(finalytics::results_text(&raw_json).unwrap(), raw);
+    // The trades apply to the portfolio, from the result or its raw results.
+    let traded = portfolio.with_rebalance(&result).unwrap();
+    assert_eq!(
+        traded.weights(None).unwrap(),
+        portfolio
+            .with_rebalance(&result.results)
+            .unwrap()
+            .weights(None)
+            .unwrap()
+    );
 }
 
 #[test]

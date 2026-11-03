@@ -1,3 +1,3 @@
-id,name,lot_method,class.owner,class.wrapper
-brokerage,Brokerage account,fifo,Alex,Taxable
-ira,Retirement account,fifo,Alex,Tax-deferred
+id,name,lot_method,taxable,class.owner,class.wrapper
+brokerage,Brokerage account,fifo,true,Alex,Taxable
+ira,Retirement account,fifo,false,Alex,Tax-deferred

@@ -1,8 +1,9 @@
 //! Report data: one report per workstation screen (holdings, overview, performance, risk,
 //! attribution and scenarios), each computed in one call from a portfolio's books and market
-//! data, and three reports on assets: the optimisation report, on the weights an optimisation
-//! chose; the comparison report, on several methods backtested side by side; and the backtest
-//! report, on one allocation.
+//! data; three reports on assets: the optimisation report, on the weights an optimisation
+//! chose, the comparison report, on several methods backtested side by side, and the backtest
+//! report, on one allocation; and the rebalance report, on the trades that move a portfolio's
+//! accounts to target weights.
 //!
 //! A report carries everything its screen draws and exports, not only summary figures: series
 //! over time, breakdowns, grids, distributions and tables, each labelled with its units, so a
@@ -26,6 +27,7 @@ mod html;
 mod optimisation;
 mod overview;
 mod performance;
+mod rebalance;
 mod report;
 mod risk;
 mod scenarios;
@@ -55,6 +57,12 @@ pub use overview::{Headline, HoldingRiskReturn, OverviewReport, PortfolioPoint, 
 pub use performance::{
     MonthFlows, PerformanceReport, PeriodRow, SchemeContributions, YearReturn, performance_report,
 };
+pub use rebalance::{
+    AccountTrades, ConversionRow, HoldingMove, RebalanceContext, RebalanceEstimates,
+    RebalanceReport, RebalanceSummary, TradeRow,
+};
+#[doc(hidden)]
+pub use rebalance::{RebalanceEstimateInputs, RebalanceInputs, rebalance_report};
 pub use report::{PortfolioReport, portfolio_report};
 pub use risk::{HoldingsRisk, RiskReport, TailRow, risk_report};
 pub use scenarios::{

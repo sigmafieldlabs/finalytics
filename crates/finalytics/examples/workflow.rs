@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 4. Trade: what each account buys and sells, in whole units.
     let proposal = portfolio.rebalance(&target).whole_units().build()?;
-    for account in &proposal.accounts {
+    for account in &proposal.results.accounts {
         for trade in &account.trades {
             println!(
                 "{} {} {} {}",

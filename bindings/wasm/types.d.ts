@@ -13,6 +13,12 @@ export interface Account {
    * `wrapper: ISA`.
    */
   classifications?: Record<string, string>;
+  /**
+   * Whether gains are taxed when they are realised: true by default. A retirement account,
+   * or another tax-deferred or tax-exempt account, is not taxable, so rebalancing estimates
+   * no tax on its sales.
+   */
+  taxable?: boolean;
 }
 
 /** One account's holdings. */
@@ -65,6 +71,37 @@ export interface AccountSeries {
   lines: AccountLine[];
   /** Prices and rates carried forward from earlier dates. */
   warnings: ValidationReport;
+}
+
+/** One account's part of a rebalance. */
+export interface AccountTrades {
+  /** The account's identifier. */
+  account: string;
+  /** The account's name, or its identifier. */
+  name: string;
+  /** Whether its gains are taxed when realised. */
+  taxable: boolean;
+  /** Its value before the trades. */
+  value_base: number;
+  /** The value traded as a share of its value. */
+  turnover: number;
+  /** Sales, then purchases. */
+  trades: TradeRow[];
+  /** Currency conversions. */
+  conversions: ConversionRow[];
+  /** The fees of its trades. */
+  fees_base: number;
+  /** The gain its sales realise, after fees. */
+  realised_gain_base: number;
+  /** With tax rates, the part of that gain from lots held long-term. */
+  long_term_gain_base?: number | null;
+  /** With tax rates and a taxable account, the estimated tax on its sales. */
+  tax_base?: number | null;
+  /**
+   * What to check before making the trades: carried prices, a shortfall of cash, and trades
+   * left out.
+   */
+  warnings: Issue[];
 }
 
 /** The performance of one account, a group of accounts or the whole household over a period. */
@@ -293,7 +330,7 @@ export interface AttributionReport {
 
 /**
  * A backtest: the backtest report on one allocation against its benchmark, and the raw
- * results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+ * results. Printing it prints the report, and showing it shows the report as a page.
  */
 export interface Backtest {
   /** The backtest report. */
@@ -581,29 +618,6 @@ export type ColumnKind =
     type: "boolean";
   };
 
-/**
- * The trades that move several accounts together to target weights of their combined value,
- * one proposal per account.
- */
-export interface CombinedRebalance {
-  /** The proposal for each account with value, in the order given. */
-  accounts: Rebalance[];
-  /** The accounts' combined value in the base currency. */
-  value_base: Decimal;
-  /** Each holding's weight in the combined value before the trades. */
-  weights_before: Record<string, number>;
-  /** Each holding's weight in the combined value after the trades. */
-  weights_after: Record<string, number>;
-  /** The value traded in all the accounts, as a share of their combined value. */
-  turnover: number;
-  /** The gain the sales would realise in the base currency, after fees. */
-  realised_gain_base: Decimal;
-  /** The fees of all the trades, in the base currency. */
-  fees_base: Decimal;
-  /** With tax rates, the estimated tax on the sales' gains in the base currency. */
-  tax_base?: Decimal | null;
-}
-
 /** A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry. */
 export interface Company {
   /** The ticker, the company's column in `sp500`, such as `"AAPL"`. */
@@ -618,8 +632,7 @@ export interface Company {
 
 /**
  * A comparison: the comparison report on several methods backtested side by side, and the
- * raw results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a
- * page.
+ * raw results. Printing it prints the report, and showing it shows the report as a page.
  */
 export interface Comparison {
   /** The comparison report: each method scored on the periods it was tested on. */
@@ -700,6 +713,18 @@ export interface Contribution {
   currency_effect?: number | null;
   /** The holding's average share of the portfolio's value at the end of each day. */
   average_weight: number;
+}
+
+/** One currency conversion. */
+export interface ConversionRow {
+  /** The amount sold. */
+  sell: number;
+  /** Its currency. */
+  sell_currency: Currency;
+  /** The amount bought. */
+  buy: number;
+  /** Its currency. */
+  buy_currency: Currency;
 }
 
 /** A stress of a covariance matrix: volatilities scaled and correlations moved toward one. */
@@ -1346,6 +1371,20 @@ export interface HoldingLine {
   expenses_base: Decimal[];
 }
 
+/** A holding's weight before the trades, at the target and after. */
+export interface HoldingMove {
+  /** The holding: an instrument's identifier, or a currency followed by ` cash`. */
+  holding: string;
+  /** The weight before the trades. */
+  before: number;
+  /** The target weight; base-currency cash takes what the targets leave. */
+  target: number;
+  /** The weight after the trades. */
+  after: number;
+  /** The value after the trades. */
+  value_after_base: number;
+}
+
 /** Returns of holdings in the base currency between consecutive dates. */
 export interface HoldingReturns {
   /** The holdings, in the order of the table's columns. */
@@ -1768,7 +1807,7 @@ export type Objective =
 
 /**
  * An optimisation: the optimisation report on the weights chosen, and the raw results.
- * Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page.
+ * Printing it prints the report, and showing it shows the report as a page.
  */
 export interface Optimisation {
   /**
@@ -2323,9 +2362,14 @@ export interface ProposedTrade {
   realised_gain_base?: Decimal | null;
   /**
    * For a sale with tax rates, the estimated tax on its gains in the base currency; negative
-   * when its losses save tax.
+   * when its losses save tax. None in an account that is not taxable.
    */
   tax_base?: Decimal | null;
+  /**
+   * For a sale with tax rates, the part of its realised gain from lots held long-term; the
+   * rest is short-term.
+   */
+  long_term_gain_base?: Decimal | null;
 }
 
 /** Where a report's numbers come from, so that a saved report can be checked to reproduce. */
@@ -2419,10 +2463,61 @@ export interface Rebalance {
   realised_gain_base: Decimal;
   /** The fees of all the trades, in the base currency. */
   fees_base: Decimal;
-  /** With tax rates, the estimated tax on the sales' gains in the base currency. */
+  /**
+   * With tax rates, the estimated tax on the sales' gains in the base currency; None in an
+   * account that is not taxable.
+   */
   tax_base?: Decimal | null;
+  /** Whether the account's gains are taxed when they are realised. */
+  taxable?: boolean;
   /** Carried prices, a shortfall of cash, and trades left out by rounding. */
   warnings: ValidationReport;
+}
+
+/** What a rebalance report describes: the date, the targets, the accounts and the choices. */
+export interface RebalanceContext {
+  /** The engine's version. */
+  version: string;
+  /** A SHA-256 digest of the targets, the choices and the proposal. */
+  digest: string;
+  /** The date of the prices. */
+  date: Date;
+  /** The currency of the values. */
+  base_currency: Currency;
+  /**
+   * The method of the optimisation the targets came from, such as "Minimum variance"; absent
+   * for weights given by holding.
+   */
+  method?: string | null;
+  /** That optimisation's limits in words, such as "5% to 40% in each asset". */
+  limits: string[];
+  /** Whether trades are in whole units. */
+  whole_units: boolean;
+  /** How sales choose lots when no tax rates are given. */
+  lot_method: LotMethod;
+  /** The smallest trade, in the base currency. */
+  minimum_trade: number;
+  /** The fees each trade pays. */
+  fees: Fees;
+  /** The tax rates on realised gains, if given. */
+  tax?: TaxRates | null;
+  /**
+   * The estimates behind the volatility and expected return before and after; absent when
+   * the holdings' returns could not be estimated.
+   */
+  estimates?: RebalanceEstimates | null;
+}
+
+/** The estimates behind a rebalance's volatility and expected return. */
+export interface RebalanceEstimates {
+  /** The covariance estimator. */
+  covariance: CovarianceMethod;
+  /** Return periods in a year. */
+  periods_per_year: number;
+  /** The first date of the returns. */
+  start: Date;
+  /** The last date of the returns. */
+  end: Date;
 }
 
 /** Choices for `rebalance`. */
@@ -2443,6 +2538,55 @@ export interface RebalanceOptions {
    * losses first, and the tax is estimated.
    */
   tax?: TaxRates | null;
+}
+
+/**
+ * The trades that move a portfolio's accounts to target weights: how each holding's weight
+ * moves, what the trades change and cost, each account's trades, and what to check before
+ * making them.
+ */
+export interface RebalanceReport {
+  /** What was rebalanced, to what, and how. */
+  context: RebalanceContext;
+  /** The trades and their costs, and what they change. */
+  summary: RebalanceSummary;
+  /**
+   * Each holding's weight before the trades, at the target and after, in the accounts
+   * together: the largest target first, then cash.
+   */
+  holdings: HoldingMove[];
+  /** Each account's trades, conversions, costs and warnings. */
+  accounts: AccountTrades[];
+  /**
+   * The report's title, such as "Morgan family portfolio": shown when it is printed or laid
+   * out as a page.
+   */
+  name?: string | null;
+}
+
+/**
+ * The trades that move several accounts together to target weights of their combined value,
+ * one proposal per account.
+ */
+export interface RebalanceResults {
+  /** The proposal for each account with value, in the order given. */
+  accounts: Rebalance[];
+  /** The base currency, of the values below. */
+  base_currency: Currency;
+  /** The accounts' combined value in the base currency. */
+  value_base: Decimal;
+  /** Each holding's weight in the combined value before the trades. */
+  weights_before: Record<string, number>;
+  /** Each holding's weight in the combined value after the trades. */
+  weights_after: Record<string, number>;
+  /** The value traded in all the accounts, as a share of their combined value. */
+  turnover: number;
+  /** The gain the sales would realise in the base currency, after fees. */
+  realised_gain_base: Decimal;
+  /** The fees of all the trades, in the base currency. */
+  fees_base: Decimal;
+  /** With tax rates, the estimated tax on the sales' gains in the base currency. */
+  tax_base?: Decimal | null;
 }
 
 /**
@@ -2470,6 +2614,56 @@ export type RebalanceSchedule =
   | {
     type: "never";
   };
+
+/**
+ * The trades of a rebalance in figures: how many, how much is traded, what they cost and what
+ * they change.
+ */
+export interface RebalanceSummary {
+  /** The accounts' combined value. */
+  value_base: number;
+  /** The number of trades. */
+  trades: number;
+  /** The number of sales. */
+  sales: number;
+  /** The number of purchases. */
+  purchases: number;
+  /** The value traded as a share of the combined value. */
+  turnover: number;
+  /** The value traded. */
+  traded_base: number;
+  /** The fees of all the trades. */
+  fees_base: number;
+  /** The gain the sales realise, after fees. */
+  realised_gain_base: number;
+  /** With tax rates, the part of the realised gain from lots held long-term. */
+  long_term_gain_base?: number | null;
+  /** With tax rates, the estimated tax on the sales in taxable accounts. */
+  tax_base?: number | null;
+  /** The unrealised gain of the accounts before the trades. */
+  unrealised_gain_base: number;
+  /** Volatility and expected return a year before the trades. */
+  before?: RiskReturn | null;
+  /** After the trades. */
+  after?: RiskReturn | null;
+  /** At the targets. */
+  target?: RiskReturn | null;
+}
+
+/**
+ * A rebalancing: the rebalance report on the trades, and the raw results, each account's
+ * proposal. Printing it prints the report, showing it shows the report as a page, and the
+ * portfolio's `with_rebalance` makes the trades.
+ */
+export interface Rebalancing {
+  /**
+   * The rebalance report: how the weights move, what the trades change and cost, each
+   * account's trades, what to check, and how the trades were found.
+   */
+  report: RebalanceReport;
+  /** The raw results: each account's trades, conversions, weights and costs. */
+  results: RebalanceResults;
+}
 
 /** Statistics of a returns series against a benchmark's returns over the same periods. */
 export interface RelativeStatistics {
@@ -3374,6 +3568,28 @@ export interface TradeLimits {
   minimum?: number | null;
   /** The largest number of assets traded. */
   maximum_count?: number | null;
+}
+
+/** One proposed trade. */
+export interface TradeRow {
+  /** Buy or sell. */
+  side: Side;
+  /** The units traded. */
+  quantity: number;
+  /** The instrument's identifier. */
+  instrument: string;
+  /** The price per unit, in the instrument's currency. */
+  price: number;
+  /** The instrument's currency. */
+  currency: Currency;
+  /** The value traded, in the base currency. */
+  value_base: number;
+  /** The fee, in the instrument's currency. */
+  fees_local: number;
+  /** For a sale, the gain it realises, after fees. */
+  realised_gain_base?: number | null;
+  /** For a sale in a taxable account with tax rates, the estimated tax. */
+  tax_base?: number | null;
 }
 
 /**

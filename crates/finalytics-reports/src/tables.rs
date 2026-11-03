@@ -10,7 +10,7 @@ use crate::context::{ReportKind, invalid, label, to_f64};
 use crate::shapes::{Grid, Unit};
 use crate::{
     AttributionReport, BacktestReport, ComparisonReport, HoldingsReport, OptimisationReport,
-    OverviewReport, PerformanceReport, RiskReport, ScenariosReport,
+    OverviewReport, PerformanceReport, RebalanceReport, RiskReport, ScenariosReport,
 };
 
 /// What a column holds, so that an export can format it.
@@ -95,6 +95,7 @@ pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
         Some(Assets::Optimisation) => {
             return Ok(read_report::<OptimisationReport>(value)?.tables());
         }
+        Some(Assets::Rebalance) => return Ok(read_report::<RebalanceReport>(value)?.tables()),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -130,6 +131,7 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
         Some(Assets::Optimisation) => {
             return Ok(read::<OptimisationReport>(value)?.to_text(name));
         }
+        Some(Assets::Rebalance) => return Ok(read::<RebalanceReport>(value)?.to_text(name)),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -148,7 +150,8 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
     Ok(page.finish())
 }
 
-/// The six reports, or the optimisation, comparison or backtest report, given as JSON, as one HTML
+/// The six reports, or the optimisation, comparison, backtest or rebalance report, given as JSON,
+/// as one HTML
 /// page titled with `name` if given. The Python and JavaScript packages use it; from Rust, call
 /// the report's `to_html`.
 #[doc(hidden)]
@@ -163,6 +166,9 @@ pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
         Some(Assets::Optimisation) => {
             return Ok(read_report::<OptimisationReport>(value)?.to_html(name));
         }
+        Some(Assets::Rebalance) => {
+            return Ok(read_report::<RebalanceReport>(value)?.to_html(name));
+        }
         None => {}
     }
     let report: crate::PortfolioReport = serde_json::from_value(value)
@@ -170,11 +176,12 @@ pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
     Ok(report.to_html(name))
 }
 
-/// The reports on assets, told apart by their fields.
+/// The reports with a context rather than a provenance, told apart by their fields.
 enum Assets {
     Optimisation,
     Comparison,
     Backtest,
+    Rebalance,
 }
 
 fn backtest_kind(value: &serde_json::Value) -> Option<Assets> {
@@ -185,6 +192,8 @@ fn backtest_kind(value: &serde_json::Value) -> Option<Assets> {
         Some(Assets::Comparison)
     } else if value.get("strategy").is_some() {
         Some(Assets::Backtest)
+    } else if value.get("holdings").is_some() && value.get("accounts").is_some() {
+        Some(Assets::Rebalance)
     } else {
         None
     }
@@ -352,6 +361,75 @@ impl OptimisationReport {
             weights,
             grid_table("correlation", "Asset", &self.correlation),
         ]
+    }
+}
+
+impl RebalanceReport {
+    /// The report's tables: each holding's weight before, at the target and after, and every
+    /// trade.
+    pub fn tables(&self) -> Vec<ReportTable> {
+        let base = ColumnKind::Money {
+            currency: self.context.base_currency,
+        };
+        let holdings = table(
+            "holdings",
+            "Weights",
+            vec![
+                col("holding", "Holding", ColumnKind::Text),
+                col("before", "Before", ColumnKind::Fraction),
+                col("target", "Target", ColumnKind::Fraction),
+                col("after", "After", ColumnKind::Fraction),
+                col("value_after", "Value after", base),
+            ],
+            self.holdings
+                .iter()
+                .map(|h| {
+                    vec![
+                        t(h.holding.as_str()),
+                        n(h.before),
+                        n(h.target),
+                        n(h.after),
+                        n(h.value_after_base),
+                    ]
+                })
+                .collect(),
+        );
+        let trades = table(
+            "trades",
+            "Trades",
+            vec![
+                col("account", "Account", ColumnKind::Text),
+                col("side", "Side", ColumnKind::Text),
+                col("quantity", "Units", ColumnKind::Number),
+                col("instrument", "Instrument", ColumnKind::Text),
+                col("price", "Price", ColumnKind::Number),
+                col("currency", "Currency", ColumnKind::Text),
+                col("value", "Value", base),
+                col("fee", "Fee", ColumnKind::Number),
+                col("realised_gain", "Realised gain", base),
+                col("tax", "Estimated tax", base),
+            ],
+            self.accounts
+                .iter()
+                .flat_map(|a| {
+                    a.trades.iter().map(move |x| {
+                        vec![
+                            t(a.account.as_str()),
+                            t(x.side.to_string().as_str()),
+                            n(x.quantity),
+                            t(x.instrument.as_str()),
+                            n(x.price),
+                            t(x.currency.to_string().as_str()),
+                            n(x.value_base),
+                            n(x.fees_local),
+                            o(x.realised_gain_base),
+                            o(x.tax_base),
+                        ]
+                    })
+                })
+                .collect(),
+        );
+        vec![holdings, trades]
     }
 }
 

@@ -97,7 +97,7 @@ fn api() -> Value {
     add::<opt::FrontierPoint>(&mut g);
     add::<opt::RebalanceOptions>(&mut g);
     add::<opt::Rebalance>(&mut g);
-    add::<opt::CombinedRebalance>(&mut g);
+    add::<opt::RebalanceResults>(&mut g);
     add::<opt::BlackLitterman>(&mut g);
     add::<opt::BlackLittermanEstimate>(&mut g);
     add::<opt::Resampling>(&mut g);
@@ -118,6 +118,9 @@ fn api() -> Value {
     add::<finalytics::ComparisonReport>(&mut g);
     add::<finalytics::BacktestReport>(&mut g);
     add::<finalytics::backtest::BacktestResults>(&mut g);
+    // Rebalancing.
+    add::<finalytics::Rebalancing>(&mut g);
+    add::<finalytics::RebalanceReport>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

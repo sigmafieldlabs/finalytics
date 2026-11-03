@@ -63,7 +63,7 @@ for name, mix in [("Now", report.overview.current), ("After", target.results)]:
 
 # 4. Trade: what each account buys and sells, in whole units.
 proposal = portfolio.rebalance(target, whole_units=True)
-for account in proposal.accounts:
+for account in proposal.results.accounts:
     for trade in account.trades:
         print(account.account, trade.side, trade.quantity, trade.instrument)
 ```
@@ -77,12 +77,12 @@ Now: volatility 9.5%, expected return 14.3%
 After: volatility 7.5%, expected return 11.2%
 brokerage sell 394 VTI
 brokerage buy 898 BND
-brokerage buy 1024 EXSA
+brokerage buy 1023 EXSA
 brokerage buy 30 GLD
 brokerage buy 200 VNQ
 ira sell 259 VTI
-ira buy 571 BND
-ira buy 651 EXSA
+ira buy 570 BND
+ira buy 650 EXSA
 ira buy 19 GLD
 ira buy 127 VNQ
 ```

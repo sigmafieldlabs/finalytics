@@ -11,48 +11,62 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Backtests: `assets.compare(methods)` tests several optimisation methods side by side under the
   same limits and settings, and `assets.backtest(method)` or `assets.backtest(weights)` tests one
-  allocation, optionally against a benchmark (`finalytics::backtest`). Each returns its report
-  and every return and trade behind it (`BacktestResults`); `Assets::compare_with` and
+  allocation, optionally against a benchmark (`finalytics::backtest`). Each returns its report and
+  every return and trade behind it (`BacktestResults`); `Assets::compare_with` and
   `Assets::backtest_with` run the same backtests from `BacktestOptions`, as JSON gives them.
-  Optimisation methods are refitted through time, or fixed weights held, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
-  band, or never, net of trading costs in basis points of the value traded. Strategies are
-  validated in sample, on a holdout from a date, or walk-forward, refitting at each calendar
-  rebalance on a rolling or expanding window of years or periods; for walk-forward validation
-  the in-sample results use the same periods, so the two compare directly. A refit that finds
-  no weights keeps the weights held and is recorded, and cash, held before a first fit,
-  earns the risk-free return. A benchmark is fixed weights held alike or an index's prices. The
-  limits on weights apply to the methods that take them, and the results note where they did
-  not. Every return, trade, turnover and cost is checked against an independent simulation
-  (`scripts/reference/backtest.py`). A walk-forward comparison of seven methods on the S&P 500
-  dataset is a new performance budget: under 5 seconds natively.
-- Three reports on assets: the optimisation report of `optimise`, the comparison report of
-  `compare` and the backtest report of `backtest`. The optimisation report explains the weights:
-  what they are expected to deliver, each asset's weight against its share of the risk, the
-  diversification ratio and the number of assets in effect, the correlations, where the weights
-  sit against each asset and equal weight, how they and equal weight would have done on the
-  returns they were fitted to, and how they were found. It draws the efficient frontier under
-  the same limits when asked (`.with_frontier()` in Rust, `frontier=True` in Python,
-  `frontier: true` in JavaScript); this is off by default, since the frontier takes 30 more
-  optimisations, and the page says how to turn it on. The comparison report scores each
-  method on the periods it was tested on: return, volatility,
+  Optimisation methods are refitted through time, or fixed weights held, rebalanced monthly,
+  quarterly, yearly, when a weight drifts beyond a band, or never, net of trading costs in basis
+  points of the value traded. Strategies are validated in sample, on a holdout from a date, or
+  walk-forward, refitting at each calendar rebalance on a rolling or expanding window of years or
+  periods; for walk-forward validation the in-sample results use the same periods, so the two
+  compare directly. A refit that finds no weights keeps the weights held and is recorded, and cash,
+  held before a first fit, earns the risk-free return. A benchmark is fixed weights held alike or an
+  index's prices. The limits on weights apply to the methods that take them, and the results note
+  where they did not. Every return, trade, turnover and cost is checked against an independent
+  simulation (`scripts/reference/backtest.py`). A walk-forward comparison of seven methods on the
+  S&P 500 dataset is a new performance budget: under 5 seconds natively.
+- Three reports on assets: the optimisation report of `optimise`, the comparison report of `compare`
+  and the backtest report of `backtest`. The optimisation report explains the weights: what they are
+  expected to deliver, each asset's weight against its share of the risk, the diversification ratio
+  and the number of assets in effect, the correlations, where the weights sit against each asset and
+  equal weight, how they and equal weight would have done on the returns they were fitted to, and
+  how they were found. It draws the efficient frontier under the same limits when asked
+  (`.with_frontier()` in Rust, `frontier=True` in Python, `frontier: true` in JavaScript); this is
+  off by default, since the frontier takes 30 more optimisations, and the page says how to turn it
+  on. The comparison report scores each method on the periods it was tested on: return, volatility,
   Sharpe and Sortino ratios, drawdown, CVaR and turnover side by side; growth, calendar-year
   returns, drawdowns and the Sharpe ratio over three years; in sample against out of sample; the
-  weights at the last refit and at each refit; and how the methods were tested, including
-  refits that found no weights. The backtest report shows the allocation, its statistics in and
-  out of sample against the benchmark (with tracking error, information ratio and beta), growth
-  and drawdown over the whole history with a holdout shaded apart, the weights held as they
-  drift between rebalances, turnover and trading costs, and returns by year and month. All three
-  are data (`OptimisationReport`, `ComparisonReport`, `BacktestReport`), print as text 80 columns
-  wide, lay out as one HTML page with `show()`, and export as tables. Daily returns are charted month by month, and
-  the S&P 500's 55 stocks are summarised as the largest holdings and the rest.
-- One shape for every result on assets: `optimise`, `compare` and `backtest` each return the
-  report and the raw results (`Optimisation`, `Comparison` and `Backtest`), as `result.report`
-  and `result.results`. Printing a result prints its report as text, and `result.show()` shows
-  it as a page; the raw results print as a table too (`OptimisationResult`, `BacktestResults`).
-  An optimisation's weights are `result.results.weights`, and `portfolio.rebalance` takes the
-  whole result in Rust, Python and JavaScript; an optimisation that found no weights is a
-  validation error at `targets` rather than a target of all cash. `Assets::optimise_with` runs an optimisation from
-  `OptimiseOptions`, as JSON gives them.
+  weights at the last refit and at each refit; and how the methods were tested, including refits
+  that found no weights. The backtest report shows the allocation, its statistics in and out of
+  sample against the benchmark (with tracking error, information ratio and beta), growth and
+  drawdown over the whole history with a holdout shaded apart, the weights held as they drift
+  between rebalances, turnover and trading costs, and returns by year and month. All three are data
+  (`OptimisationReport`, `ComparisonReport`, `BacktestReport`), print as text 80 columns wide, lay
+  out as one HTML page with `show()`, and export as tables. Daily returns are charted month by
+  month, and the S&P 500's 55 stocks are summarised as the largest holdings and the rest.
+- One shape for every result: `optimise`, `compare` and `backtest` on assets, and `rebalance`
+  on a portfolio, each return the report and the raw results (`Optimisation`, `Comparison`,
+  `Backtest` and `Rebalancing`), as `result.report` and `result.results`. Printing a result
+  prints its report as text, and `result.show()` shows it as a page; the raw results print as a
+  table too (`OptimisationResult`, `BacktestResults`, `RebalanceResults`). An optimisation's
+  weights are `result.results.weights`, and `portfolio.rebalance` takes the whole result in
+  Rust, Python and JavaScript; an optimisation that found no weights is a validation error at
+  `targets` rather than a target of all cash. `portfolio.with_rebalance` takes the rebalancing
+  or its raw results. `Assets::optimise_with` runs an optimisation from `OptimiseOptions`, as
+  JSON gives them.
+- The rebalance report, built by `portfolio.rebalance`: each holding's weight before, at the
+  target and after; the volatility and expected return before and after, with the estimates the
+  optimisation of the portfolio's assets uses; each account's trades and currency conversions;
+  the fees, the realised gains split into long-term and short-term, and the estimated tax by
+  account; and what to check before trading. It is data (`RebalanceReport`), prints 80 columns
+  wide, shows as a page and exports as tables, and names the method and limits of the
+  optimisation the targets came from. The Rust builder is `RebalanceBuilder`, with `as_of`,
+  `minimum_trade` and `name`; Python and JavaScript take `name`.
+- Accounts that are not taxable: `taxable: false` in an account's record (a `taxable` column in
+  an accounts file), for a retirement or other tax-deferred or tax-exempt account. Tax-aware
+  rebalancing estimates no tax on its sales, which close lots by the lot method. The portfolio
+  dataset's retirement account is not taxable. With tax rates, each proposed sale also reports
+  the part of its gain from lots held long-term (`long_term_gain_base`).
 - Baseline methods: equal weight and inverse volatility (`Objective::EqualWeight`,
   `Objective::InverseVolatility`, `method="equal_weight"` and `"inverse_volatility"`), solved
   by formula, and risk parity by name (`Method::RiskParity`, `method="risk_parity"`), risk
@@ -72,14 +86,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `optimise_with`, `report_with` and `rebalance_with`, and `finalytics::prelude` imports what
   the builders need. Identifiers implement `FromStr`, `OptimisationResult::holdings` gives an
   optimisation's weights by holding, and a trade's `Side` displays as `buy` or `sell`.
-- Reports show themselves: `report.show()` opens the report's HTML page in the default
-  browser, or with the command in the `BROWSER` environment variable; in Python it shows inline
-  in a Jupyter notebook, and in JavaScript in a frame inside a page's element
-  (`report.show(element)`), with `report.toHtml()` and `report.toText()`. This holds for the
-  portfolio report and for the results of `optimise`, `compare` and `backtest`. A report carries a name
-  (`.name(...)` in Rust, `name=` in Python, `name` in JavaScript), shown as or under its title. In Rust, `show`, `save_html` and reading files by path (`Portfolio::builder()`,
-  `AssetsBuilder::prices_file`) are behind the default `io` feature, which the WebAssembly
-  build leaves out, and report `Error::Io` when they fail.
+- Reports show themselves: `report.show()` opens the report's HTML page in the default browser, or
+  with the command in the `BROWSER` environment variable; in Python it shows inline in a Jupyter
+  notebook, and in JavaScript in a frame inside a page's element (`report.show(element)`), with
+  `report.toHtml()` and `report.toText()`. This holds for the portfolio report and for the results
+  of `optimise`, `compare` and `backtest`. A report carries a name (`.name(...)` in Rust, `name=` in
+  Python, `name` in JavaScript), shown as or under its title. In Rust, `show`, `save_html` and
+  reading files by path (`Portfolio::builder()`, `AssetsBuilder::prices_file`) are behind the
+  default `io` feature, which the WebAssembly build leaves out, and report `Error::Io` when they
+  fail.
 - A data guide (`docs/data.md`): every input, column by column, with the dataset files as
   examples and advice on bringing data from brokers and data providers; its examples run as
   tests.
@@ -195,6 +210,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   before them.
 - `formats::portfolio_from_csv` takes the base currency and the instruments file as options.
 - Rebalancing one account through `rebalance_accounts` gives exactly `rebalance`'s proposal.
+- Rebalancing leaves room for fees. When the trades and their fees would need more
+  base-currency cash than an account has, as when the targets leave no cash, the purchases are
+  sized again so that they fit, and a shortfall that rounding leaves comes from the largest
+  purchase; before, the proposal took the cash below zero with a warning. The README's workflow,
+  which has no fees, now buys one unit fewer of EXSA in the brokerage account and of BND and
+  EXSA in the retirement account, where whole units had overspent.
+- `CombinedRebalance` is `RebalanceResults`, and records the base currency;
+  `Portfolio::rebalance_with` and `rebalance_accounts_with` return the rebalancing with its
+  report. In Python and JavaScript, `portfolio.rebalance` returns the rebalancing, with each
+  account's proposal in `result.results.accounts`.
 - Rust: the performance types and functions are in `finalytics::performance` rather than at the
   crate's root, and `finalytics::numeric` is no longer public. Semantic versioning covers the
   `finalytics` crate; the crates it is built from say that their own API may change in any

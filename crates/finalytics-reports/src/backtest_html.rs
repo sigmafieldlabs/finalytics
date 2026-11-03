@@ -986,6 +986,8 @@ pub(crate) struct Frame<'a> {
     pub(crate) nav: &'a [(&'a str, &'a str)],
     pub(crate) version: &'a str,
     pub(crate) digest: &'a str,
+    /// What every figure is computed from, such as "the assets' returns".
+    pub(crate) source: &'a str,
 }
 
 /// A report page: the frame around `body`.
@@ -997,6 +999,7 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
         nav,
         version,
         digest,
+        source,
     } = *f;
     let nav: String = nav
         .iter()
@@ -1016,11 +1019,12 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
 <div class="meta">{meta}</div></div>
 <nav>{nav}</nav>
 {body}
-<div class="foot">Every figure is computed by Finalytics {version} from the assets' returns; the same inputs give the same report, identified by the input digest <code>{digest}</code>.</div>
+<div class="foot">Every figure is computed by Finalytics {version} from {source}; the same inputs give the same report, identified by the input digest <code>{digest}</code>.</div>
 </div></body></html>
 "#,
         version = esc(version),
         title = esc(title),
+        source = esc(source),
         light = base64(LOGO_LIGHT),
         dark = base64(LOGO_DARK),
     )
@@ -1795,6 +1799,7 @@ impl ComparisonReport {
                 nav: &nav,
                 version: &c.version,
                 digest: &c.digest,
+                source: "the assets' returns",
             },
             &body,
         )
@@ -2410,6 +2415,7 @@ impl BacktestReport {
                 ],
                 version: &c.version,
                 digest: &c.digest,
+                source: "the assets' returns",
             },
             &body,
         )

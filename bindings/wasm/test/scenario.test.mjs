@@ -29,7 +29,7 @@ function results(portfolio, market) {
   const [plan] = books.rebalance(
     { SPY: 0.4, BOND: 0.4, SAP: 0.15 },
     { accounts: ["main"], date: last, lot_method: "highest_cost" },
-  ).accounts;
+  ).results.accounts;
   return {
     valuation_total_base: books.valuation(last).total_base,
     realised_gains_base: books.realisedGains().map((g) => g.gain_base),

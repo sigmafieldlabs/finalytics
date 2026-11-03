@@ -98,9 +98,11 @@ def test_from_holdings_to_trades():
     assert assets.labels == ["BND", "EXSA", "GLD", "VNQ", "VTI"] and assets.periods_per_year == 252
     result = assets.optimise(method="minimum_variance", bounds=(0.05, 0.5))
     proposal = portfolio.rebalance(result)
-    assert proposal == portfolio.rebalance(result.results) == portfolio.rebalance(result.results.weights)
-    assert len(proposal.accounts) == 2
+    same = [portfolio.rebalance(result.results), portfolio.rebalance(result.results.weights)]
+    assert all(other.results == proposal.results for other in same)
+    assert len(proposal.results.accounts) == 2
     after = portfolio.with_rebalance(proposal).weights()
+    assert after == portfolio.with_rebalance(proposal.results).weights()
     for holding, target in result.results.weights.items():
         assert after[holding] == pytest.approx(target, abs=0.01)
     failed = assets.optimise(method="minimum_variance", max_weight=0.1)
@@ -179,3 +181,33 @@ def test_the_sp500_dataset():
     assets = fl.Assets(prices, risk_free_asset="T-Bills")
     assert assets.periods_per_year == 252 and len(assets.labels) == 56
     assert fl.datasets.sp500_table().labels == list(prices.columns)
+
+
+def test_a_rebalance_has_a_report_and_raw_results():
+    portfolio = fl.datasets.portfolio()
+    target = portfolio.assets().optimise(method="minimum_variance", bounds=(0.05, 0.40))
+    fees = fl.opt.Fees(rate="0.0005", minimum="1")
+    tax = fl.opt.TaxRates(short_term="0.37", long_term="0.20")
+    result = portfolio.rebalance(target, whole_units=True, fees=fees, tax=tax, name="Morgan family portfolio")
+    assert isinstance(result, fl.types.Rebalancing)
+    assert isinstance(result.report, fl.reports.RebalanceReport)
+    assert isinstance(result.results, fl.opt.RebalanceResults)
+    text = str(result)
+    assert text == result.to_text() and "FINALYTICS  ·  REBALANCE" in text and "Morgan family portfolio" in text
+    assert all(len(line) <= 80 for line in text.splitlines())
+    printed = str(result.results)
+    assert printed.startswith("RebalanceResults · 2 accounts")
+    assert all(len(line) <= 80 for line in printed.splitlines())
+    assert "<title>Morgan family portfolio</title>" in result.to_html() and "Rebalance report" in result.to_html()
+    report = result.report
+    assert report.context.method == "Minimum variance" and report.context.limits == ["5% to 40% in each asset"]
+    assert report.summary.after.volatility < report.summary.before.volatility
+    # The retirement account is not taxable: its sales realise gains but pay no tax.
+    brokerage, ira = report.accounts
+    assert brokerage.taxable and brokerage.tax_base > 0
+    assert not ira.taxable and ira.tax_base is None and ira.realised_gain_base > 0
+    assert report.summary.tax_base == brokerage.tax_base
+    # Purchases leave room for the fees, so no account goes short of cash.
+    assert all(a.warnings == [] for a in report.accounts)
+    assert all(w >= 0 for w in result.results.weights_after.values())
+    assert [t.name for t in fl.reports.tables(report)] == ["holdings", "trades"]

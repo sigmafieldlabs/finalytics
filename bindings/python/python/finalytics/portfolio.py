@@ -403,9 +403,11 @@ class Portfolio:
         text = dumps(list(transactions))
         return Portfolio._wrap(call(self._native.with_transactions, text))
 
-    def with_rebalance(self, proposal: _types.CombinedRebalance) -> Portfolio:
-        """The same portfolio with the trades of a rebalancing proposal (from :meth:`rebalance`)
-        made on its date."""
+    def with_rebalance(self, proposal: _types.Rebalancing | _types.RebalanceResults) -> Portfolio:
+        """The same portfolio with the trades of a rebalancing (from :meth:`rebalance`), or of
+        its raw results, made on its date."""
+        if isinstance(proposal, _types.Rebalancing):
+            proposal = proposal.results
         return Portfolio._wrap(call(self._native.with_rebalance, dumps(proposal)))
 
     def with_market(self, market: MarketData) -> Portfolio:
@@ -518,35 +520,44 @@ class Portfolio:
         minimum_trade: decimal.Decimal | int | str = 0,
         fees: _types.Fees | None = None,
         tax: _types.TaxRates | None = None,
-    ) -> _types.CombinedRebalance:
+        name: str | None = None,
+    ) -> _types.Rebalancing:
         """The trades that move `accounts` (by default every account) together to `targets`:
         weights by holding (an instrument's identifier, or ``"USD cash"`` and the like), as
         shares of their combined value on `date` (by default the last price date), or an
         optimisation of the portfolio's assets, whose weights are its targets (one that found
-        no weights is a :class:`ValidationError`). The proposal has one rebalance per account;
-        :meth:`with_rebalance` makes its trades.
+        no weights is a :class:`ValidationError`). The rebalance report is in
+        ``result.report``, which ``print(result)`` prints and ``result.show()`` shows, and each
+        account's proposal in ``result.results``; :meth:`with_rebalance` makes the trades.
+        `name` titles the report.
 
         Instruments held but not listed are sold; base-currency cash takes the weight the
         targets leave, and other currencies are converted to their targets (zero if not
         listed). A holding above its target is sold from the accounts that hold it in
         proportion to their holdings, and one below is bought in proportion to the value each
-        account has free; trades do not move cash between accounts. Each trade pays `fees`;
-        with `tax` rates, sales take the lots that cost the least tax, and the tax is estimated.
+        account has free; trades do not move cash between accounts. Each trade pays `fees`,
+        and purchases leave room for them. With `tax` rates, sales in taxable accounts take the
+        lots that cost the least tax, and the tax is estimated; an account that is not taxable,
+        such as a retirement account, pays none.
         """
         options = self._rebalance_options(lot_method, whole_units, minimum_trade, fees, tax)
         if isinstance(targets, _types.Optimisation):
-            targets = targets.results
-        if not isinstance(targets, _types.OptimisationResult):
-            targets = {k: float(w) for k, w in targets.items()}
+            # The method and limits name the targets in the report.
+            text = dumps({"report": {"context": targets.report.context}, "results": targets.results})
+        elif isinstance(targets, _types.OptimisationResult):
+            text = dumps(targets)
+        else:
+            text = dumps({k: float(w) for k, w in targets.items()})
         chosen = [a.id for a in self.data.accounts] if accounts is None else list(accounts)
-        text = call(
+        result = call(
             self._native.rebalance_accounts,
             self._date_or_last_price(date),
             json.dumps(chosen),
-            dumps(targets),
+            text,
             dumps(options),
+            name,
         )
-        return loads(_types.CombinedRebalance, text)
+        return loads(_types.Rebalancing, result)
 
     def shock_scenario(
         self,

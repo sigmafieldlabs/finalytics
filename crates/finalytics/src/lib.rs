@@ -85,8 +85,8 @@
 //! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
 //! non-exhaustive too, so a `match` on one needs a wildcard arm.
 
-/// The raw results of an optimisation, a comparison or a backtest, given as JSON, as text. The
-/// Python and JavaScript packages use it; from Rust, display the results.
+/// The raw results of an optimisation, a comparison, a backtest or a rebalancing, given as JSON,
+/// as text. The Python and JavaScript packages use it; from Rust, display the results.
 #[doc(hidden)]
 pub fn results_text(results: &str) -> Result<String> {
     let invalid = |message: String| {
@@ -104,9 +104,13 @@ pub fn results_text(results: &str) -> Result<String> {
         let result: BacktestResults =
             serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
         Ok(result.to_string())
+    } else if value.get("weights_before").is_some() {
+        let result: opt::RebalanceResults =
+            serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
+        Ok(result.to_string())
     } else {
         Err(invalid(
-            "are not the results of an optimisation or a backtest".to_owned(),
+            "are not the results of an optimisation, a backtest or a rebalancing".to_owned(),
         ))
     }
 }
@@ -152,14 +156,16 @@ pub use assets::{
 };
 pub use backtest::{Backtest, BacktestResults, Comparison};
 pub use finalytics_reports::{
-    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport,
+    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport,
 };
 pub use finalytics_risk::PriceTable;
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;
 #[doc(hidden)]
 pub use portfolio::targets_from_json;
-pub use portfolio::{Portfolio, PortfolioCsv, Rebalancing, ReportBuilder, Targets};
+pub use portfolio::{
+    Portfolio, PortfolioCsv, RebalanceBuilder, Rebalancing, ReportBuilder, Targets,
+};
 #[cfg(feature = "io")]
 pub use show::Show;
 
@@ -243,12 +249,12 @@ pub mod reports {
 /// ```
 pub mod opt {
     pub use finalytics_opt::{
-        AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, CombinedRebalance, Constraints,
+        AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, Constraints,
         FactorExposureLimit, Fees, FrontierPoint, GroupLimit, Linkage, Objective, Prior, Problem,
-        ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, ResampledSolution,
-        Resampling, ReturnUncertainty, Side, Solution, SolveMethod, SolveStatus, TaxRates,
-        TrackingErrorLimit, TradeLimits, Turnover, View, ViewUncertainty, implied_risk_aversion,
-        rebalance, rebalance_accounts,
+        ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, RebalanceResults,
+        ResampledSolution, Resampling, ReturnUncertainty, Side, Solution, SolveMethod, SolveStatus,
+        TaxRates, TrackingErrorLimit, TradeLimits, Turnover, View, ViewUncertainty,
+        implied_risk_aversion, rebalance, rebalance_accounts,
     };
 }
 

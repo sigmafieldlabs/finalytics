@@ -29,6 +29,11 @@
             "type": "string"
           },
           "description": "Classifications by scheme, for grouping accounts: for example `owner: Alice` or\n`wrapper: ISA`."
+        },
+        "taxable": {
+          "type": "boolean",
+          "description": "Whether gains are taxed when they are realised: true by default. A retirement account,\nor another tax-deferred or tax-exempt account, is not taxable, so rebalancing estimates\nno tax on its sales.",
+          "default": true
         }
       },
       "required": [
@@ -152,6 +157,93 @@
         "warnings"
       ],
       "description": "Each account's values and external flows on a set of dates: the input to performance by\naccount and by group of accounts."
+    },
+    "AccountTrades": {
+      "type": "object",
+      "properties": {
+        "account": {
+          "type": "string",
+          "description": "The account's identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "The account's name, or its identifier."
+        },
+        "taxable": {
+          "type": "boolean",
+          "description": "Whether its gains are taxed when realised."
+        },
+        "value_base": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value before the trades."
+        },
+        "turnover": {
+          "type": "number",
+          "format": "double",
+          "description": "The value traded as a share of its value."
+        },
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TradeRow"
+          },
+          "description": "Sales, then purchases."
+        },
+        "conversions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConversionRow"
+          },
+          "description": "Currency conversions."
+        },
+        "fees_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The fees of its trades."
+        },
+        "realised_gain_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The gain its sales realise, after fees."
+        },
+        "long_term_gain_base": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "With tax rates, the part of that gain from lots held long-term."
+        },
+        "tax_base": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "With tax rates and a taxable account, the estimated tax on its sales."
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          },
+          "description": "What to check before making the trades: carried prices, a shortfall of cash, and trades\nleft out."
+        }
+      },
+      "required": [
+        "account",
+        "name",
+        "taxable",
+        "value_base",
+        "turnover",
+        "trades",
+        "conversions",
+        "fees_base",
+        "realised_gain_base",
+        "warnings"
+      ],
+      "description": "One account's part of a rebalance."
     },
     "AccountsPerformance": {
       "type": "object",
@@ -674,7 +766,7 @@
         "report",
         "results"
       ],
-      "description": "A backtest: the backtest report on one allocation against its benchmark, and the raw\nresults. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a page."
+      "description": "A backtest: the backtest report on one allocation against its benchmark, and the raw\nresults. Printing it prints the report, and showing it shows the report as a page."
     },
     "BacktestContext": {
       "type": "object",
@@ -1453,72 +1545,6 @@
       ],
       "description": "What a column holds, so that an export can format it."
     },
-    "CombinedRebalance": {
-      "type": "object",
-      "properties": {
-        "accounts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Rebalance"
-          },
-          "description": "The proposal for each account with value, in the order given."
-        },
-        "value_base": {
-          "description": "The accounts' combined value in the base currency.",
-          "$ref": "#/$defs/Decimal"
-        },
-        "weights_before": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "number",
-            "format": "double"
-          },
-          "description": "Each holding's weight in the combined value before the trades."
-        },
-        "weights_after": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "number",
-            "format": "double"
-          },
-          "description": "Each holding's weight in the combined value after the trades."
-        },
-        "turnover": {
-          "type": "number",
-          "format": "double",
-          "description": "The value traded in all the accounts, as a share of their combined value."
-        },
-        "realised_gain_base": {
-          "description": "The gain the sales would realise in the base currency, after fees.",
-          "$ref": "#/$defs/Decimal"
-        },
-        "fees_base": {
-          "description": "The fees of all the trades, in the base currency.",
-          "$ref": "#/$defs/Decimal"
-        },
-        "tax_base": {
-          "description": "With tax rates, the estimated tax on the sales' gains in the base currency.",
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Decimal"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "accounts",
-        "value_base",
-        "weights_before",
-        "weights_after",
-        "turnover",
-        "realised_gain_base",
-        "fees_base"
-      ],
-      "description": "The trades that move several accounts together to target weights of their combined value,\none proposal per account."
-    },
     "Company": {
       "type": "object",
       "properties": {
@@ -1563,7 +1589,7 @@
         "report",
         "results"
       ],
-      "description": "A comparison: the comparison report on several methods backtested side by side, and the\nraw results. Printing it prints the report; `Show::show`(crate::Show::show) shows it as a\npage."
+      "description": "A comparison: the comparison report on several methods backtested side by side, and the\nraw results. Printing it prints the report, and showing it shows the report as a page."
     },
     "ComparisonReport": {
       "type": "object",
@@ -1786,6 +1812,36 @@
         "average_weight"
       ],
       "description": "What one holding added to the portfolio's return over a period."
+    },
+    "ConversionRow": {
+      "type": "object",
+      "properties": {
+        "sell": {
+          "type": "number",
+          "format": "double",
+          "description": "The amount sold."
+        },
+        "sell_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "Its currency."
+        },
+        "buy": {
+          "type": "number",
+          "format": "double",
+          "description": "The amount bought."
+        },
+        "buy_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "Its currency."
+        }
+      },
+      "required": [
+        "sell",
+        "sell_currency",
+        "buy",
+        "buy_currency"
+      ],
+      "description": "One currency conversion."
     },
     "CorrelationStress": {
       "type": "object",
@@ -3466,6 +3522,43 @@
       ],
       "description": "One holding's values, trades and income on each date of a `HoldingSeries`.\n\nTrades, income and expenses are those since the previous date. Value moved between holdings\n(a purchase moves cash into a share) appears as a trade out of one line and into another, so\ntrades across all lines add up to the portfolio's external flows plus its income. Fees and\ntaxes charged to an account rather than to a holding are expenses of its cash: they lower the\ncash's value without being a loss on it, so a holding's gain on a date is its change in value\nless its trades, plus its income and its expenses."
     },
+    "HoldingMove": {
+      "type": "object",
+      "properties": {
+        "holding": {
+          "type": "string",
+          "description": "The holding: an instrument's identifier, or a currency followed by ` cash`."
+        },
+        "before": {
+          "type": "number",
+          "format": "double",
+          "description": "The weight before the trades."
+        },
+        "target": {
+          "type": "number",
+          "format": "double",
+          "description": "The target weight; base-currency cash takes what the targets leave."
+        },
+        "after": {
+          "type": "number",
+          "format": "double",
+          "description": "The weight after the trades."
+        },
+        "value_after_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The value after the trades."
+        }
+      },
+      "required": [
+        "holding",
+        "before",
+        "target",
+        "after",
+        "value_after_base"
+      ],
+      "description": "A holding's weight before the trades, at the target and after."
+    },
     "HoldingReturns": {
       "type": "object",
       "properties": {
@@ -4698,7 +4791,7 @@
         "report",
         "results"
       ],
-      "description": "An optimisation: the optimisation report on the weights chosen, and the raw results.\nPrinting it prints the report; `Show::show`(crate::Show::show) shows it as a page."
+      "description": "An optimisation: the optimisation report on the weights chosen, and the raw results.\nPrinting it prints the report, and showing it shows the report as a page."
     },
     "OptimisationContext": {
       "type": "object",
@@ -6136,7 +6229,18 @@
           ]
         },
         "tax_base": {
-          "description": "For a sale with tax rates, the estimated tax on its gains in the base currency; negative\nwhen its losses save tax.",
+          "description": "For a sale with tax rates, the estimated tax on its gains in the base currency; negative\nwhen its losses save tax. None in an account that is not taxable.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "long_term_gain_base": {
+          "description": "For a sale with tax rates, the part of its realised gain from lots held long-term; the\nrest is short-term.",
           "anyOf": [
             {
               "$ref": "#/$defs/Decimal"
@@ -6387,7 +6491,7 @@
           "$ref": "#/$defs/Decimal"
         },
         "tax_base": {
-          "description": "With tax rates, the estimated tax on the sales' gains in the base currency.",
+          "description": "With tax rates, the estimated tax on the sales' gains in the base currency; None in an\naccount that is not taxable.",
           "anyOf": [
             {
               "$ref": "#/$defs/Decimal"
@@ -6396,6 +6500,11 @@
               "type": "null"
             }
           ]
+        },
+        "taxable": {
+          "type": "boolean",
+          "description": "Whether the account's gains are taxed when they are realised.",
+          "default": true
         },
         "warnings": {
           "$ref": "#/$defs/ValidationReport",
@@ -6416,6 +6525,121 @@
         "warnings"
       ],
       "description": "The trades that move an account to target weights, and their effects."
+    },
+    "RebalanceContext": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "The engine's version."
+        },
+        "digest": {
+          "type": "string",
+          "description": "A SHA-256 digest of the targets, the choices and the proposal."
+        },
+        "date": {
+          "$ref": "#/$defs/Date",
+          "description": "The date of the prices."
+        },
+        "base_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency of the values."
+        },
+        "method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The method of the optimisation the targets came from, such as \"Minimum variance\"; absent\nfor weights given by holding."
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "That optimisation's limits in words, such as \"5% to 40% in each asset\"."
+        },
+        "whole_units": {
+          "type": "boolean",
+          "description": "Whether trades are in whole units."
+        },
+        "lot_method": {
+          "$ref": "#/$defs/LotMethod",
+          "description": "How sales choose lots when no tax rates are given."
+        },
+        "minimum_trade": {
+          "type": "number",
+          "format": "double",
+          "description": "The smallest trade, in the base currency."
+        },
+        "fees": {
+          "$ref": "#/$defs/Fees",
+          "description": "The fees each trade pays."
+        },
+        "tax": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaxRates"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The tax rates on realised gains, if given."
+        },
+        "estimates": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RebalanceEstimates"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The estimates behind the volatility and expected return before and after; absent when\nthe holdings' returns could not be estimated."
+        }
+      },
+      "required": [
+        "version",
+        "digest",
+        "date",
+        "base_currency",
+        "limits",
+        "whole_units",
+        "lot_method",
+        "minimum_trade",
+        "fees"
+      ],
+      "description": "What a rebalance report describes: the date, the targets, the accounts and the choices."
+    },
+    "RebalanceEstimates": {
+      "type": "object",
+      "properties": {
+        "covariance": {
+          "$ref": "#/$defs/CovarianceMethod",
+          "description": "The covariance estimator."
+        },
+        "periods_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "Return periods in a year."
+        },
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The first date of the returns."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The last date of the returns."
+        }
+      },
+      "required": [
+        "covariance",
+        "periods_per_year",
+        "start",
+        "end"
+      ],
+      "description": "The estimates behind a rebalance's volatility and expected return."
     },
     "RebalanceOptions": {
       "type": "object",
@@ -6458,6 +6682,118 @@
         }
       },
       "description": "Choices for `rebalance`."
+    },
+    "RebalanceReport": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/RebalanceContext",
+          "description": "What was rebalanced, to what, and how."
+        },
+        "summary": {
+          "$ref": "#/$defs/RebalanceSummary",
+          "description": "The trades and their costs, and what they change."
+        },
+        "holdings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HoldingMove"
+          },
+          "description": "Each holding's weight before the trades, at the target and after, in the accounts\ntogether: the largest target first, then cash."
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountTrades"
+          },
+          "description": "Each account's trades, conversions, costs and warnings."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The report's title, such as \"Morgan family portfolio\": shown when it is printed or laid\nout as a page."
+        }
+      },
+      "required": [
+        "context",
+        "summary",
+        "holdings",
+        "accounts"
+      ],
+      "description": "The trades that move a portfolio's accounts to target weights: how each holding's weight\nmoves, what the trades change and cost, each account's trades, and what to check before\nmaking them."
+    },
+    "RebalanceResults": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Rebalance"
+          },
+          "description": "The proposal for each account with value, in the order given."
+        },
+        "base_currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The base currency, of the values below."
+        },
+        "value_base": {
+          "description": "The accounts' combined value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "weights_before": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Each holding's weight in the combined value before the trades."
+        },
+        "weights_after": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Each holding's weight in the combined value after the trades."
+        },
+        "turnover": {
+          "type": "number",
+          "format": "double",
+          "description": "The value traded in all the accounts, as a share of their combined value."
+        },
+        "realised_gain_base": {
+          "description": "The gain the sales would realise in the base currency, after fees.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "fees_base": {
+          "description": "The fees of all the trades, in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "tax_base": {
+          "description": "With tax rates, the estimated tax on the sales' gains in the base currency.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "accounts",
+        "base_currency",
+        "value_base",
+        "weights_before",
+        "weights_after",
+        "turnover",
+        "realised_gain_base",
+        "fees_base"
+      ],
+      "description": "The trades that move several accounts together to target weights of their combined value,\none proposal per account."
     },
     "RebalanceSchedule": {
       "oneOf": [
@@ -6534,6 +6870,138 @@
         }
       ],
       "description": "When the portfolio trades back to its target weights. Between trades the weights drift with\nprices."
+    },
+    "RebalanceSummary": {
+      "type": "object",
+      "properties": {
+        "value_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The accounts' combined value."
+        },
+        "trades": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of trades."
+        },
+        "sales": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of sales."
+        },
+        "purchases": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of purchases."
+        },
+        "turnover": {
+          "type": "number",
+          "format": "double",
+          "description": "The value traded as a share of the combined value."
+        },
+        "traded_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The value traded."
+        },
+        "fees_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The fees of all the trades."
+        },
+        "realised_gain_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The gain the sales realise, after fees."
+        },
+        "long_term_gain_base": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "With tax rates, the part of the realised gain from lots held long-term."
+        },
+        "tax_base": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "With tax rates, the estimated tax on the sales in taxable accounts."
+        },
+        "unrealised_gain_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The unrealised gain of the accounts before the trades."
+        },
+        "before": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiskReturn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Volatility and expected return a year before the trades."
+        },
+        "after": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiskReturn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "After the trades."
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiskReturn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "At the targets."
+        }
+      },
+      "required": [
+        "value_base",
+        "trades",
+        "sales",
+        "purchases",
+        "turnover",
+        "traded_base",
+        "fees_base",
+        "realised_gain_base",
+        "unrealised_gain_base"
+      ],
+      "description": "The trades of a rebalance in figures: how many, how much is traded, what they cost and what\nthey change."
+    },
+    "Rebalancing": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/RebalanceReport",
+          "description": "The rebalance report: how the weights move, what the trades change and cost, each\naccount's trades, what to check, and how the trades were found."
+        },
+        "results": {
+          "$ref": "#/$defs/RebalanceResults",
+          "description": "The raw results: each account's trades, conversions, weights and costs."
+        }
+      },
+      "required": [
+        "report",
+        "results"
+      ],
+      "description": "A rebalancing: the rebalance report on the trades, and the raw results, each account's\nproposal. Printing it prints the report, showing it shows the report as a page, and the\nportfolio's `with_rebalance` makes the trades."
     },
     "RelativeStatistics": {
       "type": "object",
@@ -8910,6 +9378,69 @@
         }
       },
       "description": "Limits on the trades from the current portfolio (the turnover's current weights). They are\nnot convex, so the solver's portfolio is adjusted by a heuristic, reported as the method\n`trade_elimination`, which is not guaranteed to find the best portfolio within the limits."
+    },
+    "TradeRow": {
+      "type": "object",
+      "properties": {
+        "side": {
+          "$ref": "#/$defs/Side",
+          "description": "Buy or sell."
+        },
+        "quantity": {
+          "type": "number",
+          "format": "double",
+          "description": "The units traded."
+        },
+        "instrument": {
+          "type": "string",
+          "description": "The instrument's identifier."
+        },
+        "price": {
+          "type": "number",
+          "format": "double",
+          "description": "The price per unit, in the instrument's currency."
+        },
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The instrument's currency."
+        },
+        "value_base": {
+          "type": "number",
+          "format": "double",
+          "description": "The value traded, in the base currency."
+        },
+        "fees_local": {
+          "type": "number",
+          "format": "double",
+          "description": "The fee, in the instrument's currency."
+        },
+        "realised_gain_base": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "For a sale, the gain it realises, after fees."
+        },
+        "tax_base": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "For a sale in a taxable account with tax rates, the estimated tax."
+        }
+      },
+      "required": [
+        "side",
+        "quantity",
+        "instrument",
+        "price",
+        "currency",
+        "value_base",
+        "fees_local"
+      ],
+      "description": "One proposed trade."
     },
     "Transaction": {
       "type": "object",
