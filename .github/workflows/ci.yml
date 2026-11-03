@@ -89,7 +89,7 @@ jobs:
           size=$(gzip -9 -c bindings/wasm/pkg/finalytics_bg.wasm | wc -c)
           echo "The engine is $size bytes gzipped (budget 2 MiB)"
           test "$size" -le 2097152
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Test the npm package in Node
@@ -117,7 +117,7 @@ jobs:
       - name: Check the native budgets
         run: cargo run --release -p finalytics-bench --bin budgets -- --write-document large.json
       - run: bindings/wasm/build.sh
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Check the WebAssembly budget
