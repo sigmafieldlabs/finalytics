@@ -76,6 +76,63 @@ fn risk_parity_equalises_risk_shares() {
 }
 
 #[test]
+fn equal_weight_and_inverse_volatility_follow_their_formulas() {
+    let equal = problem().solve(&Objective::EqualWeight).unwrap();
+    assert_eq!(equal.status, SolveStatus::Optimal);
+    assert_eq!(equal.method, SolveMethod::ClosedForm);
+    assert_eq!(equal.weights.as_deref(), Some(&[0.25; 4][..]));
+    // Equal weight needs no estimates at all.
+    let mut bare = Problem::from_covariance(covariance());
+    bare.covariance = None;
+    assert_eq!(
+        bare.solve(&Objective::EqualWeight)
+            .unwrap()
+            .weights
+            .unwrap(),
+        [0.25; 4]
+    );
+
+    let inverse = problem().solve(&Objective::InverseVolatility).unwrap();
+    let w = inverse.weights.unwrap();
+    // Volatilities 20%, 12%, 6% and 16%: weights in proportion to 5, 8.33, 16.67 and 6.25.
+    let raw = [1.0 / 0.20, 1.0 / 0.12, 1.0 / 0.06, 1.0 / 0.16];
+    let total: f64 = raw.iter().sum();
+    for (got, r) in w.iter().zip(raw) {
+        assert!((got - r / total).abs() < 1e-12);
+    }
+    assert!(
+        (inverse.volatility.unwrap() - risk_decomposition(&w, &covariance()).unwrap().volatility)
+            .abs()
+            < 1e-12
+    );
+
+    let mut limited = problem();
+    limited.constraints.bounds = Bound { min: 0.0, max: 0.3 };
+    for objective in [Objective::EqualWeight, Objective::InverseVolatility] {
+        assert_eq!(
+            paths(limited.solve(&objective).unwrap_err()),
+            ["constraints"]
+        );
+    }
+    let riskless = Matrix::new(labels(), {
+        let mut values = covariance().values().to_vec();
+        values[15] = 0.0;
+        values[3] = 0.0;
+        values[7] = 0.0;
+        values[11] = 0.0;
+        values[12] = 0.0;
+        values[13] = 0.0;
+        values[14] = 0.0;
+        values
+    })
+    .unwrap();
+    let error = Problem::from_covariance(riskless)
+        .solve(&Objective::InverseVolatility)
+        .unwrap_err();
+    assert_eq!(paths(error), ["covariance[3]"]);
+}
+
+#[test]
 fn infeasible_constraints_give_a_status_not_weights() {
     let mut constraints = Constraints::default();
     constraints.bounds = Bound { min: 0.0, max: 0.2 };

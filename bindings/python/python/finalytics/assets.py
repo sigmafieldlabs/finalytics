@@ -245,7 +245,12 @@ class Assets:
           `uncertainty`, a :class:`~finalytics.types.ReturnUncertainty`);
         - ``"target_return"`` and ``"target_volatility"``, with an annual `target`;
         - ``"minimum_cvar"``, at `confidence` (0.95 by default);
-        - ``"risk_budgeting"``, with `budgets` by asset (equal shares by default).
+        - ``"risk_budgeting"``, with `budgets` by asset (equal shares by default);
+        - ``"equal_weight"`` and ``"inverse_volatility"``, the baselines estimated portfolios
+          must beat.
+
+        Equal weight, inverse volatility, risk budgeting and hierarchical risk parity are fully
+        invested and long only, and take no other limits.
 
         `bounds` limits every weight, ``(0, 1)`` by default; `asset_bounds` limits particular
         assets, such as ``{"Gold": (0, 0.1)}``; `groups` limits the total weight of groups of

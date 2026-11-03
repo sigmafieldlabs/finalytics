@@ -33,6 +33,20 @@ impl SolveStatus {
     }
 }
 
+/// The status in words, as it is written in JSON: `infeasible`, `iteration_limit`.
+impl std::fmt::Display for SolveStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            SolveStatus::Optimal => "optimal",
+            SolveStatus::NearlyOptimal => "nearly_optimal",
+            SolveStatus::Infeasible => "infeasible",
+            SolveStatus::Unbounded => "unbounded",
+            SolveStatus::IterationLimit => "iteration_limit",
+            SolveStatus::NumericalDifficulty => "numerical_difficulty",
+        })
+    }
+}
+
 /// The method that produced a solution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -45,6 +59,8 @@ pub enum SolveMethod {
     Newton,
     /// Hierarchical clustering and recursive bisection, without a solver.
     RecursiveBisection,
+    /// A formula, without a solver: equal weight and inverse volatility.
+    ClosedForm,
     /// The interior-point solver, followed by a heuristic for trade limits: trades below the
     /// minimum, and the smallest trades beyond the largest number allowed, are left out and the
     /// rest re-optimised, round by round. Not guaranteed to find the best portfolio within the

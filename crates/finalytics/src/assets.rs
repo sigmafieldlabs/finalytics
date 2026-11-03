@@ -84,10 +84,47 @@ pub enum ObjectiveName {
     MaximumDiversification,
     /// The smallest conditional value at risk of the periods' returns, at `confidence`.
     MinimumCvar,
+    /// Every asset with the same weight: the naive portfolio that estimated ones must beat.
+    EqualWeight,
+    /// Weights in proportion to the inverse of each asset's volatility.
+    InverseVolatility,
     /// Each asset's share of the risk equal to its budget (equal shares without `budgets`).
     RiskBudgeting,
     /// Hierarchical risk parity.
     HierarchicalRiskParity,
+}
+
+impl ObjectiveName {
+    /// The method's name in words, such as `"Maximum Sharpe"`, for reports.
+    pub fn label(self) -> &'static str {
+        match self {
+            ObjectiveName::MinimumVariance => "Minimum variance",
+            ObjectiveName::MeanVariance => "Mean–variance",
+            ObjectiveName::RobustMeanVariance => "Robust mean–variance",
+            ObjectiveName::TargetReturn => "Target return",
+            ObjectiveName::TargetVolatility => "Target volatility",
+            ObjectiveName::MaximumSharpe => "Maximum Sharpe",
+            ObjectiveName::MaximumDiversification => "Maximum diversification",
+            ObjectiveName::MinimumCvar => "Minimum CVaR",
+            ObjectiveName::EqualWeight => "Equal weight",
+            ObjectiveName::InverseVolatility => "Inverse volatility",
+            ObjectiveName::RiskBudgeting => "Risk parity",
+            ObjectiveName::HierarchicalRiskParity => "Hierarchical risk parity",
+        }
+    }
+
+    /// Whether the method takes limits on the weights. Equal weight, inverse volatility, risk
+    /// budgeting and hierarchical risk parity give a fully invested, long-only portfolio and take
+    /// none.
+    pub fn takes_limits(self) -> bool {
+        !matches!(
+            self,
+            ObjectiveName::EqualWeight
+                | ObjectiveName::InverseVolatility
+                | ObjectiveName::RiskBudgeting
+                | ObjectiveName::HierarchicalRiskParity
+        )
+    }
 }
 
 /// A group of assets whose total weight is limited.
@@ -323,7 +360,7 @@ impl Assets {
     }
 
     /// The returns of the risky assets.
-    fn risky_returns(&self) -> Result<ReturnsTable> {
+    pub(crate) fn risky_returns(&self) -> Result<ReturnsTable> {
         let Some(skip) = self.risk_free_asset else {
             return Ok(self.returns.clone());
         };
@@ -338,6 +375,42 @@ impl Assets {
                 .map(|i| self.returns.columns()[i].clone())
                 .collect(),
         )
+    }
+
+    /// The return of cash in each period: the risk-free asset's, or the risk-free rate spread
+    /// evenly over the periods of a year.
+    pub(crate) fn cash_returns(&self) -> Vec<f64> {
+        match self.risk_free_asset {
+            Some(i) => self.returns.columns()[i].clone(),
+            None => vec![self.risk_free_rate / self.periods_per_year; self.dates.len()],
+        }
+    }
+
+    /// The same assets over the periods `rows` only, with the same settings: the periods per
+    /// year, the estimator, and the risk-free asset (whose mean over `rows` becomes the rate) or
+    /// rate.
+    pub(crate) fn window(&self, rows: std::ops::Range<usize>) -> Result<Assets> {
+        let returns = ReturnsTable::new(
+            self.labels().to_vec(),
+            self.returns
+                .columns()
+                .iter()
+                .map(|c| c[rows.clone()].to_vec())
+                .collect(),
+        )?;
+        let mut window = Assets {
+            dates: self.dates[rows].to_vec(),
+            returns,
+            periods_per_year: self.periods_per_year,
+            risk_free_rate: self.risk_free_rate,
+            risk_free_asset: self.risk_free_asset,
+            covariance_method: self.covariance_method,
+            warnings: ValidationReport::new(),
+        };
+        if let Some(i) = self.risk_free_asset {
+            window.risk_free_rate = window.mean_returns()[i];
+        }
+        Ok(window)
     }
 
     /// Problems met reading the prices that did not stop the assets being built, such as dates
@@ -551,6 +624,8 @@ fn objective(
         ObjectiveName::MinimumCvar => Objective::MinimumCvar {
             confidence: options.confidence.unwrap_or(0.95),
         },
+        ObjectiveName::EqualWeight => Objective::EqualWeight,
+        ObjectiveName::InverseVolatility => Objective::InverseVolatility,
         ObjectiveName::RiskBudgeting => Objective::RiskBudgeting {
             budgets: options.budgets.as_ref().map(|by_asset| {
                 labels
@@ -627,6 +702,16 @@ impl Optimiser<'_> {
     pub fn minimum_cvar(mut self, confidence: f64) -> Self {
         self.options.confidence = Some(confidence);
         self.objective(ObjectiveName::MinimumCvar)
+    }
+
+    /// Every asset with the same weight.
+    pub fn equal_weight(self) -> Self {
+        self.objective(ObjectiveName::EqualWeight)
+    }
+
+    /// Weights in proportion to the inverse of each asset's volatility.
+    pub fn inverse_volatility(self) -> Self {
+        self.objective(ObjectiveName::InverseVolatility)
     }
 
     /// Each asset's share of the risk equal to its budget; equal shares with no budgets.

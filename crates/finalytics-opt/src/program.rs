@@ -159,8 +159,14 @@ impl Program {
         );
         let p = CscMatrix::new_from_triplets(n, n, pi, pj, pv);
 
+        // Tighter than the solver's defaults (1e-8), so that a weight that belongs at a bound
+        // ends within about 1e-6 of it rather than 1e-4, which matters when weights are refitted
+        // and traded again and again in a backtest.
         let settings = DefaultSettings {
             verbose: false,
+            tol_gap_abs: 1e-10,
+            tol_gap_rel: 1e-10,
+            tol_feas: 1e-10,
             ..DefaultSettings::default()
         };
         let mut solver = match DefaultSolver::new(&p, &self.linear, &a, &b, &cones, settings) {

@@ -621,6 +621,176 @@
       ],
       "description": "The attribution report."
     },
+    "Backtest": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets the strategies hold."
+        },
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The date each period of the data ends on."
+        },
+        "cash": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The return of cash in each period: the risk-free return."
+        },
+        "periods_per_year": {
+          "type": "number",
+          "format": "double",
+          "description": "The number of periods in a year."
+        },
+        "settings": {
+          "$ref": "#/$defs/Settings",
+          "description": "How the backtest was run."
+        },
+        "strategies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StrategyResult"
+          },
+          "description": "Each strategy, in the order given."
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrategyResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The benchmark, if one was given."
+        }
+      },
+      "required": [
+        "assets",
+        "dates",
+        "cash",
+        "periods_per_year",
+        "settings",
+        "strategies"
+      ],
+      "description": "The result of a backtest: every strategy, and the benchmark if one was given, on the same\nassets and dates."
+    },
+    "BacktestOptions": {
+      "type": "object",
+      "properties": {
+        "strategies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Strategy"
+          },
+          "description": "The strategies, in the order of the results.",
+          "default": []
+        },
+        "validation": {
+          "$ref": "#/$defs/Validation",
+          "description": "How the strategies are validated: in sample by default.",
+          "default": {
+            "type": "in_sample"
+          }
+        },
+        "rebalance": {
+          "$ref": "#/$defs/RebalanceSchedule",
+          "description": "When the portfolio trades back to its targets: quarterly by default.",
+          "default": {
+            "type": "quarterly"
+          }
+        },
+        "trading_cost_bps": {
+          "type": "number",
+          "format": "double",
+          "description": "The cost of trading, in basis points of the value traded: 10 is 0.1%.",
+          "default": 0.0
+        },
+        "benchmark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Benchmark"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What the strategies are compared with, if anything.",
+          "default": null
+        }
+      },
+      "description": "What a backtest tests and how."
+    },
+    "Benchmark": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "weights"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The name in the results: `Benchmark` by default.",
+              "default": null
+            },
+            "weights": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number",
+                "format": "double"
+              },
+              "description": "The weights, by asset, adding up to one."
+            }
+          },
+          "required": [
+            "type",
+            "weights"
+          ],
+          "description": "Fixed weights by asset, held and rebalanced as the strategies are, with the same costs."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "prices"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The name in the results: the column's by default.",
+              "default": null
+            },
+            "prices": {
+              "$ref": "#/$defs/PriceTable",
+              "description": "The prices."
+            }
+          },
+          "required": [
+            "type",
+            "prices"
+          ],
+          "description": "An index or fund, by its prices: one column, with a price on or before each date of the\nassets and one before the first."
+        }
+      ],
+      "description": "What the strategies are compared with."
+    },
     "BenchmarkPeriod": {
       "type": "object",
       "properties": {
@@ -2297,6 +2467,24 @@
         "shocks"
       ],
       "description": "Returns of a factor model's factors, which give each instrument in the model the return its\nexposures imply."
+    },
+    "Failure": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/Date",
+          "description": "The date of the refit."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why there were no weights, such as `infeasible`."
+        }
+      },
+      "required": [
+        "date",
+        "reason"
+      ],
+      "description": "A refit that found no weights."
     },
     "Fees": {
       "type": "object",
@@ -4021,6 +4209,32 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "equal_weight"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Every asset with the same weight, `1 / n`: the naive portfolio that estimated ones must\nbeat out of sample (DeMiguel, Garlappi and Uppal, 2009). Uses no estimates and no solver;\nonly the default constraints apply."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "inverse_volatility"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Weights in proportion to the inverse of each asset's volatility, scaled to sum to one:\nrisk parity when the assets are uncorrelated. Uses only the variances and no solver; only\nthe default constraints apply."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "risk_budgeting"
             },
             "budgets": {
@@ -4103,6 +4317,16 @@
           "type": "string",
           "const": "minimum_cvar",
           "description": "The smallest conditional value at risk of the periods' returns, at `confidence`."
+        },
+        {
+          "type": "string",
+          "const": "equal_weight",
+          "description": "Every asset with the same weight: the naive portfolio that estimated ones must beat."
+        },
+        {
+          "type": "string",
+          "const": "inverse_volatility",
+          "description": "Weights in proportion to the inverse of each asset's volatility."
         },
         {
           "type": "string",
@@ -5608,6 +5832,82 @@
       },
       "description": "Choices for `rebalance`."
     },
+    "RebalanceSchedule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "monthly"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "At the end of each month."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "quarterly"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "At the end of each quarter (the default)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "yearly"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "At the end of each year."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "drift"
+            },
+            "band": {
+              "type": "number",
+              "format": "double",
+              "description": "The largest difference allowed between a weight and its target, such as 0.05 for\nfive percentage points."
+            }
+          },
+          "required": [
+            "type",
+            "band"
+          ],
+          "description": "At the end of any period in which a weight is more than `band` away from its target."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "never"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Never: the portfolio buys its target weights once and holds them (buy and hold)."
+        }
+      ],
+      "description": "When the portfolio trades back to its target weights. Between trades the weights drift with\nprices."
+    },
     "RelativeStatistics": {
       "type": "object",
       "properties": {
@@ -6244,6 +6544,48 @@
         "rolling"
       ],
       "description": "The risk report."
+    },
+    "Run": {
+      "type": "object",
+      "properties": {
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The date each period ends on."
+        },
+        "returns": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The return of each period, net of the cost of the trades made at the end of the one\nbefore."
+        },
+        "start": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights bought at the start, by asset; what they leave is held in cash. The start\ncosts nothing."
+        },
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Trade"
+          },
+          "description": "Every trade after the start."
+        }
+      },
+      "required": [
+        "dates",
+        "returns",
+        "start",
+        "trades"
+      ],
+      "description": "A strategy held over a run of periods, rebalanced on the schedule, net of trading costs."
     },
     "ScenarioDefinition": {
       "oneOf": [
@@ -6886,6 +7228,32 @@
       ],
       "description": "A labelled series of numbers over time, for a line or bar chart."
     },
+    "Settings": {
+      "type": "object",
+      "properties": {
+        "validation": {
+          "$ref": "#/$defs/Validation",
+          "description": "How the strategies are validated: in sample by default.",
+          "default": {
+            "type": "in_sample"
+          }
+        },
+        "rebalance": {
+          "$ref": "#/$defs/RebalanceSchedule",
+          "description": "When the portfolio trades back to its targets: quarterly by default.",
+          "default": {
+            "type": "quarterly"
+          }
+        },
+        "trading_cost_bps": {
+          "type": "number",
+          "format": "double",
+          "description": "The cost of trading, in basis points of the value traded: 10 is 0.1%. Zero by default.",
+          "default": 0.0
+        }
+      },
+      "description": "How a backtest is run."
+    },
     "Severity": {
       "oneOf": [
         {
@@ -7205,6 +7573,11 @@
         },
         {
           "type": "string",
+          "const": "closed_form",
+          "description": "A formula, without a solver: equal weight and inverse volatility."
+        },
+        {
+          "type": "string",
           "const": "trade_elimination",
           "description": "The interior-point solver, followed by a heuristic for trade limits: trades below the\nminimum, and the smallest trades beyond the largest number allowed, are left out and the\nrest re-optimised, round by round. Not guaranteed to find the best portfolio within the\nlimits."
         }
@@ -7401,6 +7774,125 @@
       },
       "description": "Conventions for `statistics` and `relative_statistics`."
     },
+    "Strategy": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "optimise"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The name in the results; the method's own by default, such as `Maximum Sharpe`.",
+              "default": null
+            },
+            "options": {
+              "$ref": "#/$defs/OptimiseOptions",
+              "description": "The method, its parameters and the limits on the weights.",
+              "default": {
+                "objective": "maximum_sharpe",
+                "risk_free_rate": null,
+                "target": null,
+                "risk_aversion": null,
+                "uncertainty": null,
+                "confidence": null,
+                "budgets": null,
+                "linkage": null,
+                "bounds": null,
+                "asset_bounds": {},
+                "groups": {},
+                "expected_returns": {}
+              }
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "An optimisation, refitted as the validation says. The limits of `options` apply to the\nmethods that take them; equal weight, inverse volatility, risk parity and hierarchical\nrisk parity are fully invested and long only."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "weights"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The name in the results: `Weights` by default.",
+              "default": null
+            },
+            "weights": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number",
+                "format": "double"
+              },
+              "description": "The weights, by asset."
+            }
+          },
+          "required": [
+            "type",
+            "weights"
+          ],
+          "description": "Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash."
+        }
+      ],
+      "description": "A strategy to backtest."
+    },
+    "StrategyResult": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The strategy's name."
+        },
+        "in_sample": {
+          "$ref": "#/$defs/Run",
+          "description": "The returns of weights tested on the history they were fitted to."
+        },
+        "out_of_sample": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Run"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The returns of weights tested on history they had not seen."
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Failure"
+          },
+          "description": "Each refit that found no weights, when the weights held were kept."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Anything the reader should know about how the strategy was run, such as limits that did\nnot apply to it."
+        }
+      },
+      "required": [
+        "name",
+        "in_sample",
+        "failures",
+        "notes"
+      ],
+      "description": "One strategy's backtest.\n\n`in_sample` holds the returns of weights fitted to the history they are tested on: the\nwhole history for in-sample validation; the history before the test for a holdout; and, for\nwalk-forward validation, the whole history, tested on the same periods as `out_of_sample`, so\nthat the two can be compared directly. `out_of_sample` holds the returns of weights tested on\nhistory they had not seen; it is absent for in-sample validation."
+    },
     "TailMethod": {
       "oneOf": [
         {
@@ -7549,6 +8041,45 @@
         "limit"
       ],
       "description": "A limit on ex-ante tracking error against a benchmark."
+    },
+    "Trade": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/Date",
+          "description": "The date at whose end the trade is made."
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights after the trade, by asset; what they leave is held in cash."
+        },
+        "turnover": {
+          "type": "number",
+          "format": "double",
+          "description": "The share of the portfolio's value bought (or, equally, sold): half the sum of the\nchanges in weight, cash included."
+        },
+        "cost": {
+          "type": "number",
+          "format": "double",
+          "description": "The cost of the trade as a share of the portfolio's value."
+        },
+        "refit": {
+          "type": "boolean",
+          "description": "Whether the weights were refitted, rather than restored."
+        }
+      },
+      "required": [
+        "date",
+        "weights",
+        "turnover",
+        "cost",
+        "refit"
+      ],
+      "description": "A trade back to target weights, or to new ones after a refit."
     },
     "TradeLimits": {
       "type": "object",
@@ -8213,6 +8744,79 @@
         }
       ],
       "description": "What the numbers of a series, grid or column measure."
+    },
+    "Validation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "in_sample"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Weights fitted once to the whole history and tested on it: what the strategy would have\ndone with perfect knowledge of the period. The default."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "holdout"
+            },
+            "start": {
+              "$ref": "#/$defs/Date",
+              "description": "The first date of the test."
+            }
+          },
+          "required": [
+            "type",
+            "start"
+          ],
+          "description": "Weights fitted once to the history before `start`, and tested on the history from\n`start` on."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "walk_forward"
+            },
+            "years": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "description": "The years of history each refit uses, such as 5.",
+              "default": null
+            },
+            "periods": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint",
+              "minimum": 0,
+              "description": "The periods of history each refit uses, such as 60 months, in place of `years`.",
+              "default": null
+            },
+            "expanding": {
+              "type": "boolean",
+              "description": "Whether each refit uses all the history so far (`true`) rather than only the last\nwindow (`false`, the default). The first fit still waits for a full window.",
+              "default": false
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Weights refitted at each calendar rebalance on the window of history before it, and\nheld until the next: every return in the test comes after the weights were chosen. The\nwindow is given in years or in periods."
+        }
+      ],
+      "description": "How a strategy's weights are tested: on the history they were fitted to, or on later\nhistory they had not seen."
     },
     "ValidationReport": {
       "type": "object",

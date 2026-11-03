@@ -274,6 +274,58 @@ export interface AttributionReport {
   time_weighted?: number | null;
 }
 
+/**
+ * The result of a backtest: every strategy, and the benchmark if one was given, on the same
+ * assets and dates.
+ */
+export interface Backtest {
+  /** The assets the strategies hold. */
+  assets: string[];
+  /** The date each period of the data ends on. */
+  dates: Date[];
+  /** The return of cash in each period: the risk-free return. */
+  cash: number[];
+  /** The number of periods in a year. */
+  periods_per_year: number;
+  /** How the backtest was run. */
+  settings: Settings;
+  /** Each strategy, in the order given. */
+  strategies: StrategyResult[];
+  /** The benchmark, if one was given. */
+  benchmark?: StrategyResult | null;
+}
+
+/** What a backtest tests and how. */
+export interface BacktestOptions {
+  /** The strategies, in the order of the results. */
+  strategies?: Strategy[];
+  /** How the strategies are validated: in sample by default. */
+  validation?: Validation;
+  /** When the portfolio trades back to its targets: quarterly by default. */
+  rebalance?: RebalanceSchedule;
+  /** The cost of trading, in basis points of the value traded: 10 is 0.1%. */
+  trading_cost_bps?: number;
+  /** What the strategies are compared with, if anything. */
+  benchmark?: Benchmark | null;
+}
+
+/** What the strategies are compared with. */
+export type Benchmark =
+  | {
+    type: "weights";
+    /** The name in the results: `Benchmark` by default. */
+    name?: string | null;
+    /** The weights, by asset, adding up to one. */
+    weights: Record<string, number>;
+  }
+  | {
+    type: "prices";
+    /** The name in the results: the column's by default. */
+    name?: string | null;
+    /** The prices. */
+    prices: PriceTable;
+  };
+
 /** The benchmark's segments over one period. */
 export interface BenchmarkPeriod {
   /** The start of the period. */
@@ -896,6 +948,14 @@ export interface FactorShocks {
    * shocked ones under the model's factor covariance. Without it, they return zero.
    */
   propagate?: boolean;
+}
+
+/** A refit that found no weights. */
+export interface Failure {
+  /** The date of the refit. */
+  date: Date;
+  /** Why there were no weights, such as `infeasible`. */
+  reason: string;
 }
 
 /**
@@ -1543,6 +1603,12 @@ export type Objective =
     confidence: number;
   }
   | {
+    type: "equal_weight";
+  }
+  | {
+    type: "inverse_volatility";
+  }
+  | {
     type: "risk_budgeting";
     /** The risk budgets, one per asset, each greater than zero; they are scaled to sum to one. */
     budgets?: number[] | null;
@@ -1557,7 +1623,7 @@ export type Objective =
  * What an optimisation seeks, by name. The parameters some objectives need are given beside
  * it, in `OptimiseOptions`.
  */
-export type ObjectiveName = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "risk_budgeting" | "hierarchical_risk_parity";
+export type ObjectiveName = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "equal_weight" | "inverse_volatility" | "risk_budgeting" | "hierarchical_risk_parity";
 
 /**
  * The result of an optimisation over assets: the weights by asset, with their expected return,
@@ -2093,6 +2159,32 @@ export interface RebalanceOptions {
   tax?: TaxRates | null;
 }
 
+/**
+ * When the portfolio trades back to its target weights. Between trades the weights drift with
+ * prices.
+ */
+export type RebalanceSchedule =
+  | {
+    type: "monthly";
+  }
+  | {
+    type: "quarterly";
+  }
+  | {
+    type: "yearly";
+  }
+  | {
+    type: "drift";
+    /**
+     * The largest difference allowed between a weight and its target, such as 0.05 for
+     * five percentage points.
+     */
+    band: number;
+  }
+  | {
+    type: "never";
+  };
+
 /** Statistics of a returns series against a benchmark's returns over the same periods. */
 export interface RelativeStatistics {
   /** The number of returns. */
@@ -2316,6 +2408,24 @@ export interface RiskReport {
    * error.
    */
   rolling: Series[];
+}
+
+/** A strategy held over a run of periods, rebalanced on the schedule, net of trading costs. */
+export interface Run {
+  /** The date each period ends on. */
+  dates: Date[];
+  /**
+   * The return of each period, net of the cost of the trades made at the end of the one
+   * before.
+   */
+  returns: number[];
+  /**
+   * The weights bought at the start, by asset; what they leave is held in cash. The start
+   * costs nothing.
+   */
+  start: Record<string, number>;
+  /** Every trade after the start. */
+  trades: Trade[];
 }
 
 /** What a scenario does: shocks, or a historical period replayed. */
@@ -2554,6 +2664,16 @@ export interface Series {
   values: number[];
 }
 
+/** How a backtest is run. */
+export interface Settings {
+  /** How the strategies are validated: in sample by default. */
+  validation?: Validation;
+  /** When the portfolio trades back to its targets: quarterly by default. */
+  rebalance?: RebalanceSchedule;
+  /** The cost of trading, in basis points of the value traded: 10 is 0.1%. Zero by default. */
+  trading_cost_bps?: number;
+}
+
 /** How serious a validation issue is. */
 export type Severity = "warning" | "error";
 
@@ -2662,7 +2782,7 @@ export interface Solution {
 }
 
 /** The method that produced a solution. */
-export type SolveMethod = "interior_point" | "newton" | "recursive_bisection" | "trade_elimination";
+export type SolveMethod = "interior_point" | "newton" | "recursive_bisection" | "closed_form" | "trade_elimination";
 
 /** How an optimisation ended. */
 export type SolveStatus = "optimal" | "nearly_optimal" | "infeasible" | "unbounded" | "iteration_limit" | "numerical_difficulty";
@@ -2751,6 +2871,48 @@ export interface StatisticsOptions {
   target_return?: number;
 }
 
+/** A strategy to backtest. */
+export type Strategy =
+  | {
+    type: "optimise";
+    /** The name in the results; the method's own by default, such as `Maximum Sharpe`. */
+    name?: string | null;
+    /** The method, its parameters and the limits on the weights. */
+    options?: OptimiseOptions;
+  }
+  | {
+    type: "weights";
+    /** The name in the results: `Weights` by default. */
+    name?: string | null;
+    /** The weights, by asset. */
+    weights: Record<string, number>;
+  };
+
+/**
+ * One strategy's backtest.
+ *
+ * `in_sample` holds the returns of weights fitted to the history they are tested on: the
+ * whole history for in-sample validation; the history before the test for a holdout; and, for
+ * walk-forward validation, the whole history, tested on the same periods as `out_of_sample`, so
+ * that the two can be compared directly. `out_of_sample` holds the returns of weights tested on
+ * history they had not seen; it is absent for in-sample validation.
+ */
+export interface StrategyResult {
+  /** The strategy's name. */
+  name: string;
+  /** The returns of weights tested on the history they were fitted to. */
+  in_sample: Run;
+  /** The returns of weights tested on history they had not seen. */
+  out_of_sample?: Run | null;
+  /** Each refit that found no weights, when the weights held were kept. */
+  failures: Failure[];
+  /**
+   * Anything the reader should know about how the strategy was run, such as limits that did
+   * not apply to it.
+   */
+  notes: string[];
+}
+
 /** How the tail of the return distribution is estimated. */
 export type TailMethod = "historical" | "parametric" | "cornish_fisher";
 
@@ -2820,6 +2982,23 @@ export interface TrackingErrorLimit {
    * covariance matrix's volatility.
    */
   limit: number;
+}
+
+/** A trade back to target weights, or to new ones after a refit. */
+export interface Trade {
+  /** The date at whose end the trade is made. */
+  date: Date;
+  /** The weights after the trade, by asset; what they leave is held in cash. */
+  weights: Record<string, number>;
+  /**
+   * The share of the portfolio's value bought (or, equally, sold): half the sum of the
+   * changes in weight, cash included.
+   */
+  turnover: number;
+  /** The cost of the trade as a share of the portfolio's value. */
+  cost: number;
+  /** Whether the weights were refitted, rather than restored. */
+  refit: boolean;
 }
 
 /**
@@ -3048,6 +3227,32 @@ export type Unit =
   }
   | {
     type: "count";
+  };
+
+/**
+ * How a strategy's weights are tested: on the history they were fitted to, or on later
+ * history they had not seen.
+ */
+export type Validation =
+  | {
+    type: "in_sample";
+  }
+  | {
+    type: "holdout";
+    /** The first date of the test. */
+    start: Date;
+  }
+  | {
+    type: "walk_forward";
+    /** The years of history each refit uses, such as 5. */
+    years?: number | null;
+    /** The periods of history each refit uses, such as 60 months, in place of `years`. */
+    periods?: number | null;
+    /**
+     * Whether each refit uses all the history so far (`true`) rather than only the last
+     * window (`false`, the default). The first fit still waits for a full window.
+     */
+    expanding?: boolean;
   };
 
 /**

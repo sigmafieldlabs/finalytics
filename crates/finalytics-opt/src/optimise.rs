@@ -2,7 +2,8 @@
 
 use web_time::Instant;
 
-use finalytics_core::Result;
+use finalytics_core::{Result, ValidationReport};
+use finalytics_risk::Matrix;
 
 use crate::problem::{
     AssetBound, Objective, Prepared, Problem, ReturnUncertainty, RiskModel, TRADED, TradeLimits,
@@ -196,6 +197,24 @@ impl Problem {
                 let found = risk_budget::solve(&prepared.risk().dense(), &budgets)?;
                 (found.status, found.weights, found.method, found.iterations)
             }
+            Objective::EqualWeight => {
+                let n = prepared.n;
+                (
+                    SolveStatus::Optimal,
+                    Some(vec![1.0 / n as f64; n]),
+                    SolveMethod::ClosedForm,
+                    0,
+                )
+            }
+            Objective::InverseVolatility => {
+                let weights = inverse_volatility(&prepared.risk().dense())?;
+                (
+                    SolveStatus::Optimal,
+                    Some(weights),
+                    SolveMethod::ClosedForm,
+                    0,
+                )
+            }
             Objective::HierarchicalRiskParity { linkage } => {
                 let weights = hrp::weights(&prepared.risk().dense(), *linkage)?;
                 (
@@ -217,6 +236,30 @@ impl Problem {
             &prepared, objective, status, weights, method, iterations, started,
         ))
     }
+}
+
+/// Weights in proportion to the inverse of each asset's volatility, scaled to sum to one.
+fn inverse_volatility(covariance: &Matrix) -> Result<Vec<f64>> {
+    let n = covariance.labels().len();
+    let mut report = ValidationReport::new();
+    let inverse: Vec<f64> = (0..n)
+        .map(|i| {
+            let variance = covariance.get(i, i);
+            if variance.is_nan() || variance <= 0.0 {
+                report.error(
+                    format!("covariance[{i}]"),
+                    format!(
+                        "{} has no volatility, so inverse volatility cannot weight it",
+                        covariance.labels()[i]
+                    ),
+                );
+            }
+            1.0 / variance.sqrt()
+        })
+        .collect();
+    report.into_result(())?;
+    let total: f64 = inverse.iter().sum();
+    Ok(inverse.iter().map(|v| v / total).collect())
 }
 
 /// Solves one of the solver-based objectives: the status, the weights and the iterations.
@@ -390,7 +433,10 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
                 }
             }
         }
-        Objective::RiskBudgeting { .. } | Objective::HierarchicalRiskParity { .. } => {}
+        Objective::EqualWeight
+        | Objective::InverseVolatility
+        | Objective::RiskBudgeting { .. }
+        | Objective::HierarchicalRiskParity { .. } => {}
     }
     (program, layout)
 }
@@ -597,7 +643,9 @@ fn report(
         Objective::RiskBudgeting { budgets } => {
             risk_budget::largest_gap(&risk?.dense(), w, budgets.as_deref())
         }
-        Objective::HierarchicalRiskParity { .. } => None,
+        Objective::EqualWeight
+        | Objective::InverseVolatility
+        | Objective::HierarchicalRiskParity { .. } => None,
     });
     let mut max_violation = weights.as_ref().map(|w| prepared.violation(w));
     if let (Some(v), Some(w)) = (&mut max_violation, &weights) {

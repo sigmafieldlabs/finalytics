@@ -72,6 +72,7 @@ pub use finalytics_ledger::{
 pub use finalytics_formats::PortfolioDocument;
 
 mod assets;
+pub mod backtest;
 pub mod datasets;
 mod portfolio;
 

@@ -277,7 +277,7 @@ efficient frontier.
 | Path | Contents |
 | --- | --- |
 | `crates/finalytics` | The public Rust API |
-| `crates/finalytics-*` | The layers behind it: core, ledger, formats, performance, risk, optimisation, reports |
+| `crates/finalytics-*` | The layers behind it: core, ledger, formats, performance, risk, optimisation, backtests, reports |
 | `bindings/python` | The Python package |
 | `bindings/wasm` | The WebAssembly module and npm package |
 | `schema` | JSON Schema of the data types, including the portfolio document |

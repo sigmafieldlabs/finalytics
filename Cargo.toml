@@ -29,6 +29,7 @@ finalytics-perf = { path = "crates/finalytics-perf", version = "=1.0.0-alpha.0" 
 finalytics-risk = { path = "crates/finalytics-risk", version = "=1.0.0-alpha.0" }
 finalytics-opt = { path = "crates/finalytics-opt", version = "=1.0.0-alpha.0" }
 finalytics-reports = { path = "crates/finalytics-reports", version = "=1.0.0-alpha.0" }
+finalytics-backtest = { path = "crates/finalytics-backtest", version = "=1.0.0-alpha.0" }
 finalytics = { path = "crates/finalytics", version = "=1.0.0-alpha.0", default-features = false }
 
 rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde"] }

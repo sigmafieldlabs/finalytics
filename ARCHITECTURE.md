@@ -30,6 +30,7 @@ finalytics-perf      returns, periods, contribution, benchmark comparison
 finalytics-risk      statistics, drawdowns, covariance, VaR and expected shortfall, risk decomposition
    ↑
 finalytics-opt       optimisation: convex formulations, risk parity, HRP, frontiers, rebalancing
+finalytics-backtest  backtests: strategies held through time, validation, rebalancing, costs
    ↑
 finalytics-reports   report data for each screen: chart-ready series, provenance, export tables
    ↑

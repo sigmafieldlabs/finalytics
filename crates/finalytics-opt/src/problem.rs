@@ -274,6 +274,14 @@ pub enum Objective {
         /// The confidence level, for example 0.95.
         confidence: f64,
     },
+    /// Every asset with the same weight, `1 / n`: the naive portfolio that estimated ones must
+    /// beat out of sample (DeMiguel, Garlappi and Uppal, 2009). Uses no estimates and no solver;
+    /// only the default constraints apply.
+    EqualWeight,
+    /// Weights in proportion to the inverse of each asset's volatility, scaled to sum to one:
+    /// risk parity when the assets are uncorrelated. Uses only the variances and no solver; only
+    /// the default constraints apply.
+    InverseVolatility,
     /// Weights at which each asset's share of the portfolio's volatility equals its budget
     /// (Spinu, 2013). Without budgets every asset contributes equally (risk parity). Only the
     /// default constraints apply.
@@ -305,7 +313,7 @@ impl Objective {
     }
 
     fn needs_covariance(&self) -> bool {
-        !matches!(self, Objective::MinimumCvar { .. })
+        !matches!(self, Objective::MinimumCvar { .. } | Objective::EqualWeight)
     }
 }
 
@@ -702,13 +710,16 @@ impl Problem {
         }
         let fixed_form = matches!(
             objective,
-            Objective::RiskBudgeting { .. } | Objective::HierarchicalRiskParity { .. }
+            Objective::EqualWeight
+                | Objective::InverseVolatility
+                | Objective::RiskBudgeting { .. }
+                | Objective::HierarchicalRiskParity { .. }
         );
         if fixed_form && !c.only_fully_invested_long_only() {
             report.error(
                 "constraints",
-                "risk budgeting and hierarchical risk parity give a fully invested, long-only \
-                 portfolio and take no other constraints",
+                "equal weight, inverse volatility, risk budgeting and hierarchical risk parity \
+                 give a fully invested, long-only portfolio and take no other constraints",
             );
         }
         bounds

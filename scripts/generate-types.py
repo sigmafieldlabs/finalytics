@@ -69,6 +69,8 @@ VARIANT_NAMES = {
         "count": "CountUnit",
     },
     "ScenarioDefinition": {"shocks": "ShockScenario", "historical": "HistoricalScenario"},
+    "Strategy": {"optimise": "OptimisedStrategy", "weights": "FixedWeights"},
+    "Benchmark": {"weights": "BenchmarkWeights", "prices": "BenchmarkPrices"},
     "ShockSource": {
         "instrument": "InstrumentSource",
         "group": "GroupSource",

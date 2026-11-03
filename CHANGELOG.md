@@ -9,6 +9,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Backtests (`finalytics::backtest`, `Assets::simulate`): optimisation methods refitted through
+  time, or fixed weights, rebalanced monthly, quarterly, yearly, when a weight drifts beyond a
+  band, or never, net of trading costs in basis points of the value traded. Strategies are
+  validated in sample, on a holdout from a date, or walk-forward, refitting at each calendar
+  rebalance on a rolling or expanding window of years or periods; for walk-forward validation
+  the in-sample results use the same periods, so the two compare directly. A refit that finds
+  no weights keeps the weights held and is recorded, and cash, held before a first fit,
+  earns the risk-free return. A benchmark is fixed weights held alike or an index's prices. The
+  limits on weights apply to the methods that take them, and the results note where they did
+  not. Every return, trade, turnover and cost is checked against an independent simulation
+  (`scripts/reference/backtest.py`). A walk-forward comparison of seven methods on the S&P 500
+  dataset is a new performance budget: under 5 seconds natively.
+- Two baseline methods: equal weight and inverse volatility (`Objective::EqualWeight`,
+  `Objective::InverseVolatility`, `objective="equal_weight"` and `"inverse_volatility"`), solved
+  by formula. `ObjectiveName::label` names each method in words, and `SolveStatus` displays as
+  it is written in JSON.
 - The READMEs open with one workflow in each language: review the portfolio dataset with every
   report, find the holdings that carry its risk, choose the least risky mix of the same funds,
   and get each account's trades. The Rust programs in the README are the crate's examples
@@ -71,6 +87,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The optimiser solves to a tolerance of 1e-10 rather than the solver's default of 1e-8, so that
+  a weight that belongs at a bound ends within a few millionths of it rather than up to 1e-4
+  away; this matters when weights are refitted and traded repeatedly. Optimised weights change
+  by less than 1e-7 in the shared test scenario.
 - JavaScript: `Assets.optimise` gives the weights in the order of the assets, as Python does,
   rather than in the order of their names.
 - Rust: the result types, the option types and the enumerations that may grow are

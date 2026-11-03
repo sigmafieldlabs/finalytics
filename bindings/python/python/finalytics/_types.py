@@ -64,7 +64,7 @@ of them.
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
-ObjectiveName = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "risk_budgeting", "hierarchical_risk_parity"]
+ObjectiveName = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "equal_weight", "inverse_volatility", "risk_budgeting", "hierarchical_risk_parity"]
 """What an optimisation seeks, by name. The parameters some objectives need are given beside it, in
 `OptimiseOptions`.
 """
@@ -78,7 +78,7 @@ Severity = Literal["warning", "error"]
 Side = Literal["buy", "sell"]
 """Buy or sell."""
 
-SolveMethod = Literal["interior_point", "newton", "recursive_bisection", "trade_elimination"]
+SolveMethod = Literal["interior_point", "newton", "recursive_bisection", "closed_form", "trade_elimination"]
 """The method that produced a solution."""
 
 SolveStatus = Literal["optimal", "nearly_optimal", "infeasible", "unbounded", "iteration_limit", "numerical_difficulty"]
@@ -446,6 +446,88 @@ class AttributionReport(PrintedReport):
     attribution's portfolio return (`sum w r` in each period, linked), which leaves out trading
     within each period.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Backtest:
+    """The result of a backtest: every strategy, and the benchmark if one was given, on the same
+    assets and dates.
+    """
+
+    assets: list[str]
+    """The assets the strategies hold."""
+
+    dates: list[datetime.date]
+    """The date each period of the data ends on."""
+
+    cash: list[float]
+    """The return of cash in each period: the risk-free return."""
+
+    periods_per_year: float
+    """The number of periods in a year."""
+
+    settings: Settings
+    """How the backtest was run."""
+
+    strategies: list[StrategyResult]
+    """Each strategy, in the order given."""
+
+    benchmark: StrategyResult | None = None
+    """The benchmark, if one was given."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BacktestOptions:
+    """What a backtest tests and how."""
+
+    strategies: list[Strategy] = field(default_factory=list)
+    """The strategies, in the order of the results."""
+
+    validation: Validation = field(default_factory=lambda: {'type': 'in_sample'})
+    """How the strategies are validated: in sample by default."""
+
+    rebalance: RebalanceSchedule = field(default_factory=lambda: {'type': 'quarterly'})
+    """When the portfolio trades back to its targets: quarterly by default."""
+
+    trading_cost_bps: float = 0.0
+    """The cost of trading, in basis points of the value traded: 10 is 0.1%."""
+
+    benchmark: Benchmark | None = None
+    """What the strategies are compared with, if anything."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BenchmarkWeights:
+    """Fixed weights by asset, held and rebalanced as the strategies are, with the same costs."""
+
+    TYPE: ClassVar[str] = "weights"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """The name in the results: `Benchmark` by default."""
+
+    weights: dict[str, float]
+    """The weights, by asset, adding up to one."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class BenchmarkPrices:
+    """An index or fund, by its prices: one column, with a price on or before each date of the
+    assets and one before the first.
+    """
+
+    TYPE: ClassVar[str] = "prices"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """The name in the results: the column's by default."""
+
+    prices: PriceTable
+    """The prices."""
+
+
+Benchmark = Union[BenchmarkWeights, BenchmarkPrices]
+"""What the strategies are compared with."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1323,6 +1405,17 @@ class FactorShocks:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Failure:
+    """A refit that found no weights."""
+
+    date: datetime.date
+    """The date of the refit."""
+
+    reason: str
+    """Why there were no weights, such as `infeasible`."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Fees:
     """The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,
     rounded to the currency's minor units. Purchases are sized so that the purchase and its fee
@@ -2157,6 +2250,28 @@ class MinimumCvar:
 
 
 @dataclass(frozen=True, kw_only=True)
+class EqualWeight:
+    """Every asset with the same weight, `1 / n`: the naive portfolio that estimated ones must beat
+    out of sample (DeMiguel, Garlappi and Uppal, 2009). Uses no estimates and no solver; only the
+    default constraints apply.
+    """
+
+    TYPE: ClassVar[str] = "equal_weight"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class InverseVolatility:
+    """Weights in proportion to the inverse of each asset's volatility, scaled to sum to one: risk
+    parity when the assets are uncorrelated. Uses only the variances and no solver; only the
+    default constraints apply.
+    """
+
+    TYPE: ClassVar[str] = "inverse_volatility"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class RiskBudgeting:
     """Weights at which each asset's share of the portfolio's volatility equals its budget (Spinu,
     2013). Without budgets every asset contributes equally (risk parity). Only the default
@@ -2184,7 +2299,7 @@ class HierarchicalRiskParity:
     """How clusters are joined."""
 
 
-Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetReturn, TargetVolatility, MaximumSharpe, MaximumDiversification, MinimumCvar, RiskBudgeting, HierarchicalRiskParity]
+Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetReturn, TargetVolatility, MaximumSharpe, MaximumDiversification, MinimumCvar, EqualWeight, InverseVolatility, RiskBudgeting, HierarchicalRiskParity]
 """What an optimisation seeks."""
 
 
@@ -2937,6 +3052,57 @@ class RebalanceOptions:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Monthly:
+    """At the end of each month."""
+
+    TYPE: ClassVar[str] = "monthly"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Quarterly:
+    """At the end of each quarter (the default)."""
+
+    TYPE: ClassVar[str] = "quarterly"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Yearly:
+    """At the end of each year."""
+
+    TYPE: ClassVar[str] = "yearly"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Drift:
+    """At the end of any period in which a weight is more than `band` away from its target."""
+
+    TYPE: ClassVar[str] = "drift"
+    """The value of the `type` tag that identifies this variant."""
+
+    band: float
+    """The largest difference allowed between a weight and its target, such as 0.05 for five
+    percentage points.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Never:
+    """Never: the portfolio buys its target weights once and holds them (buy and hold)."""
+
+    TYPE: ClassVar[str] = "never"
+    """The value of the `type` tag that identifies this variant."""
+
+
+RebalanceSchedule = Union[Monthly, Quarterly, Yearly, Drift, Never]
+"""When the portfolio trades back to its target weights. Between trades the weights drift with
+prices.
+"""
+
+
+@dataclass(frozen=True, kw_only=True)
 class RelativeStatistics:
     """Statistics of a returns series against a benchmark's returns over the same periods."""
 
@@ -3227,6 +3393,26 @@ class RiskReport(PrintedReport):
     rolling: list[Series]
     """Rolling annualised volatility, Sharpe ratio and, with a benchmark, beta and tracking error.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Run:
+    """A strategy held over a run of periods, rebalanced on the schedule, net of trading costs."""
+
+    dates: list[datetime.date]
+    """The date each period ends on."""
+
+    returns: list[float]
+    """The return of each period, net of the cost of the trades made at the end of the one before.
+    """
+
+    start: dict[str, float]
+    """The weights bought at the start, by asset; what they leave is held in cash. The start costs
+    nothing.
+    """
+
+    trades: list[Trade]
+    """Every trade after the start."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3547,6 +3733,20 @@ class Series:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Settings:
+    """How a backtest is run."""
+
+    validation: Validation = field(default_factory=lambda: {'type': 'in_sample'})
+    """How the strategies are validated: in sample by default."""
+
+    rebalance: RebalanceSchedule = field(default_factory=lambda: {'type': 'quarterly'})
+    """When the portfolio trades back to its targets: quarterly by default."""
+
+    trading_cost_bps: float = 0.0
+    """The cost of trading, in basis points of the value traded: 10 is 0.1%. Zero by default."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class InstrumentSource:
     """Its own shock."""
 
@@ -3800,6 +4000,70 @@ class StatisticsOptions:
 
 
 @dataclass(frozen=True, kw_only=True)
+class OptimisedStrategy:
+    """An optimisation, refitted as the validation says. The limits of `options` apply to the
+    methods that take them; equal weight, inverse volatility, risk parity and hierarchical risk
+    parity are fully invested and long only.
+    """
+
+    TYPE: ClassVar[str] = "optimise"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """The name in the results; the method's own by default, such as `Maximum Sharpe`."""
+
+    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(objective="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, asset_bounds={}, groups={}, expected_returns={}))
+    """The method, its parameters and the limits on the weights."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class FixedWeights:
+    """Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash."""
+
+    TYPE: ClassVar[str] = "weights"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """The name in the results: `Weights` by default."""
+
+    weights: dict[str, float]
+    """The weights, by asset."""
+
+
+Strategy = Union[OptimisedStrategy, FixedWeights]
+"""A strategy to backtest."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class StrategyResult:
+    """One strategy's backtest.
+
+    `in_sample` holds the returns of weights fitted to the history they are tested on: the whole
+    history for in-sample validation; the history before the test for a holdout; and, for
+    walk-forward validation, the whole history, tested on the same periods as `out_of_sample`, so
+    that the two can be compared directly. `out_of_sample` holds the returns of weights tested on
+    history they had not seen; it is absent for in-sample validation.
+    """
+
+    name: str
+    """The strategy's name."""
+
+    in_sample: Run
+    """The returns of weights tested on the history they were fitted to."""
+
+    out_of_sample: Run | None = None
+    """The returns of weights tested on history they had not seen."""
+
+    failures: list[Failure]
+    """Each refit that found no weights, when the weights held were kept."""
+
+    notes: list[str]
+    """Anything the reader should know about how the strategy was run, such as limits that did not
+    apply to it.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class TailRisk:
     """Value at risk and expected shortfall over one period of the returns.
 
@@ -3879,6 +4143,28 @@ class TrackingErrorLimit:
     """The largest tracking error allowed, `sqrt((w - b)' C (w - b))`, in the units of the
     covariance matrix's volatility.
     """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Trade:
+    """A trade back to target weights, or to new ones after a refit."""
+
+    date: datetime.date
+    """The date at whose end the trade is made."""
+
+    weights: dict[str, float]
+    """The weights after the trade, by asset; what they leave is held in cash."""
+
+    turnover: float
+    """The share of the portfolio's value bought (or, equally, sold): half the sum of the changes in
+    weight, cash included.
+    """
+
+    cost: float
+    """The cost of the trade as a share of the portfolio's value."""
+
+    refit: bool
+    """Whether the weights were refitted, rather than restored."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4275,6 +4561,56 @@ Unit = Union[MoneyUnit, FractionUnit, RatioUnit, LevelUnit, CountUnit]
 
 
 @dataclass(frozen=True, kw_only=True)
+class InSample:
+    """Weights fitted once to the whole history and tested on it: what the strategy would have done
+    with perfect knowledge of the period. The default.
+    """
+
+    TYPE: ClassVar[str] = "in_sample"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Holdout:
+    """Weights fitted once to the history before `start`, and tested on the history from `start` on.
+    """
+
+    TYPE: ClassVar[str] = "holdout"
+    """The value of the `type` tag that identifies this variant."""
+
+    start: datetime.date
+    """The first date of the test."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class WalkForward:
+    """Weights refitted at each calendar rebalance on the window of history before it, and held
+    until the next: every return in the test comes after the weights were chosen. The window is
+    given in years or in periods.
+    """
+
+    TYPE: ClassVar[str] = "walk_forward"
+    """The value of the `type` tag that identifies this variant."""
+
+    years: float | None = None
+    """The years of history each refit uses, such as 5."""
+
+    periods: int | None = None
+    """The periods of history each refit uses, such as 60 months, in place of `years`."""
+
+    expanding: bool = False
+    """Whether each refit uses all the history so far (`true`) rather than only the last window
+    (`false`, the default). The first fit still waits for a full window.
+    """
+
+
+Validation = Union[InSample, Holdout, WalkForward]
+"""How a strategy's weights are tested: on the history they were fitted to, or on later history they
+had not seen.
+"""
+
+
+@dataclass(frozen=True, kw_only=True)
 class ValidationReport:
     """Every problem found while validating an input, rather than only the first.
 
@@ -4413,17 +4749,21 @@ class YearReturn:
 # The tag property and the class of each variant, by union.
 UNIONS = {
     "Allocation": ("type", {"exchange": ExchangeAllocation, "expense": Expense, "income": IncomeAllocation, "trade": TradeAllocation}),
+    "Benchmark": ("type", {"prices": BenchmarkPrices, "weights": BenchmarkWeights}),
     "ColumnKind": ("type", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
     "CovarianceMethod": ("type", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
     "Effect": ("type", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
-    "Objective": ("type", {"hierarchical_risk_parity": HierarchicalRiskParity, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
+    "Objective": ("type", {"equal_weight": EqualWeight, "hierarchical_risk_parity": HierarchicalRiskParity, "inverse_volatility": InverseVolatility, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
     "Period": ("type", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
     "Prior": ("type", {"market": MarketPrior, "returns": ReturnsPrior}),
+    "RebalanceSchedule": ("type", {"drift": Drift, "monthly": Monthly, "never": Never, "quarterly": Quarterly, "yearly": Yearly}),
     "ReturnUncertainty": ("type", {"box": Box, "ellipsoid": Ellipsoid}),
     "ScenarioDefinition": ("type", {"historical": HistoricalScenario, "shocks": ShockScenario}),
     "ShockSource": ("type", {"cash": CashSource, "factor": FactorSource, "group": GroupSource, "history": HistorySource, "instrument": InstrumentSource, "none": NoSource, "proxy": ProxySource}),
+    "Strategy": ("type", {"optimise": OptimisedStrategy, "weights": FixedWeights}),
     "TransactionKind": ("type", {"buy": Buy, "deposit": Deposit, "dividend": Dividend, "fee": Fee, "fx_conversion": FxConversion, "interest": Interest, "merger": Merger, "return_of_capital": ReturnOfCapital, "sell": Sell, "spin_off": SpinOff, "split": Split, "symbol_change": SymbolChange, "tax": Tax, "transfer_in": TransferIn, "transfer_out": TransferOut, "withdrawal": Withdrawal}),
     "Unit": ("type", {"count": CountUnit, "fraction": FractionUnit, "level": LevelUnit, "money": MoneyUnit, "ratio": RatioUnit}),
+    "Validation": ("type", {"holdout": Holdout, "in_sample": InSample, "walk_forward": WalkForward}),
     "ViewUncertainty": ("type", {"confidence": Confidence, "proportional": Proportional, "variance": Variance}),
 }
 
@@ -4449,8 +4789,13 @@ __all__ = [
     "AttributionInputs",
     "AttributionPeriod",
     "AttributionReport",
+    "Backtest",
+    "BacktestOptions",
+    "Benchmark",
     "BenchmarkPeriod",
+    "BenchmarkPrices",
     "BenchmarkSegment",
+    "BenchmarkWeights",
     "Bin",
     "BlackLitterman",
     "BlackLittermanEstimate",
@@ -4489,8 +4834,10 @@ __all__ = [
     "DocumentFxRates",
     "DocumentMarketData",
     "Drawdown",
+    "Drift",
     "Effect",
     "Ellipsoid",
+    "EqualWeight",
     "Event",
     "Ewma",
     "ExcessReturn",
@@ -4504,8 +4851,10 @@ __all__ = [
     "FactorRisk",
     "FactorShocks",
     "FactorSource",
+    "Failure",
     "Fee",
     "Fees",
+    "FixedWeights",
     "Flow",
     "FlowKind",
     "FlowTiming",
@@ -4535,8 +4884,10 @@ __all__ = [
     "HoldingSeries",
     "HoldingsReport",
     "HoldingsRisk",
+    "Holdout",
     "Household",
     "HouseholdOptions",
+    "InSample",
     "IncomeAllocation",
     "IncomeSummary",
     "Instrument",
@@ -4545,6 +4896,7 @@ __all__ = [
     "InstrumentSource",
     "IntegerColumn",
     "Interest",
+    "InverseVolatility",
     "Issue",
     "LedoitWolf",
     "LevelUnit",
@@ -4571,7 +4923,9 @@ __all__ = [
     "MoneyUnit",
     "MonthFlows",
     "MonthToDate",
+    "Monthly",
     "NamedScenario",
+    "Never",
     "NoSource",
     "NumberColumn",
     "Oas",
@@ -4579,6 +4933,7 @@ __all__ = [
     "ObjectiveName",
     "OptimisationResult",
     "OptimiseOptions",
+    "OptimisedStrategy",
     "OverviewReport",
     "PerformanceReport",
     "Period",
@@ -4600,11 +4955,13 @@ __all__ = [
     "Provenance",
     "ProxySource",
     "QuarterToDate",
+    "Quarterly",
     "RatioUnit",
     "RealisedGain",
     "RealisedSummary",
     "Rebalance",
     "RebalanceOptions",
+    "RebalanceSchedule",
     "RelativeStatistics",
     "ReportKind",
     "ReportOptions",
@@ -4620,6 +4977,7 @@ __all__ = [
     "RiskDecomposition",
     "RiskReport",
     "RobustMeanVariance",
+    "Run",
     "Sample",
     "ScenarioDefinition",
     "ScenarioOptions",
@@ -4638,6 +4996,7 @@ __all__ = [
     "SegmentEffects",
     "Sell",
     "Series",
+    "Settings",
     "Severity",
     "ShockScenario",
     "ShockSource",
@@ -4654,6 +5013,8 @@ __all__ = [
     "Split",
     "Statistics",
     "StatisticsOptions",
+    "Strategy",
+    "StrategyResult",
     "SymbolChange",
     "TailMethod",
     "TailRisk",
@@ -4665,6 +5026,7 @@ __all__ = [
     "TextColumn",
     "TimeSeries",
     "TrackingErrorLimit",
+    "Trade",
     "TradeAllocation",
     "TradeLimits",
     "Transaction",
@@ -4674,14 +5036,17 @@ __all__ = [
     "TransferOut",
     "Turnover",
     "Unit",
+    "Validation",
     "ValidationReport",
     "Valuation",
     "ValueSeries",
     "Variance",
     "View",
     "ViewUncertainty",
+    "WalkForward",
     "Withdrawal",
     "YearReturn",
     "YearToDate",
+    "Yearly",
     "Years",
 ]
