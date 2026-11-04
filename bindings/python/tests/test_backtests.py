@@ -73,7 +73,9 @@ def test_methods_compared_walk_forward(assets):
     assert report.context.settings.validation == fl.WalkForward(years=5)
     assert report.context.window == 60 and report.context.test_start == assets.dates[60]
     minimum = report.strategies[1]
-    assert len(minimum.tested.growth.dates) == len(assets.dates) - 60
+    # From 100 at the end of the period before the test.
+    assert len(minimum.tested.growth.dates) == len(assets.dates) - 60 + 1
+    assert minimum.tested.growth.dates[0] == assets.dates[59] and minimum.tested.growth.values[0] == 100
     assert minimum.in_sample.start == minimum.tested.start
     assert all(w <= 0.4 + 1e-6 for w in minimum.weights[-1].weights.values())
     assert report.strategies[2].notes == ["Fully invested and long only; the limits on weights do not apply."]
@@ -121,7 +123,7 @@ def test_one_method_or_fixed_weights(assets):
     assert isinstance(raw, fl.types.BacktestResults)
     assert len(raw.strategies[0].in_sample.returns) == len(assets.dates)
     tested = report.strategy.tested.growth.dates
-    assert len(result.results.strategies[0].out_of_sample.returns) == len(tested)
+    assert len(result.results.strategies[0].out_of_sample.returns) == len(tested) - 1
 
 
 def test_an_index_as_the_benchmark():
@@ -186,6 +188,15 @@ def test_a_report_shows_in_a_browser_or_a_notebook(monkeypatch):
     path.unlink()
     frame = report._repr_html_()
     assert frame.startswith("<iframe srcdoc=") and "&lt;title&gt;Morgan family portfolio" in frame
+    # In a theme of its own, whatever the reader's setting.
+    assert '<html lang="en" data-theme="light">' in report.to_html(theme="light")
+    assert '<html lang="en">' in report.to_html()
+    path = report.show(theme="dark")
+    assert '<html lang="en" data-theme="dark">' in path.read_text(encoding="utf-8")
+    path.unlink()
+    with pytest.raises(fl.ValidationError) as found:
+        report.to_html(theme="night")
+    assert [i.path for i in found.value.issues] == ["theme"]
 
 
 def test_a_report_shows_inline_in_a_notebook(monkeypatch):

@@ -82,6 +82,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rebalancing every so many periods, `Rebalance::Every { periods }` (`fl.Every(periods=21)`,
   `{ every: { periods: 21 } }`), counted from the first period of each run; walk-forward
   validation refits on it as on a calendar schedule.
+- A theme for report pages: `theme="light"` or `"dark"` on `to_html`, `save_html` and `show` in
+  Python, the last argument of `toHtml`, `saveHtml` and `show` in JavaScript, and
+  `report.with_theme(Theme::Dark)` in Rust. The default, `"auto"`, follows the reader's setting
+  as before.
+- `Assets::origin()`: the date of the prices the first returns are measured from. Backtest and
+  optimisation reports start the growth of 100 at 100, and the drawdown at 0, on the date a run
+  enters: that date, or the end of the period before a test.
 
 ### Changed
 
@@ -132,6 +139,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a second-order cone often end so.
 - Limits in a sentence start in lower case after the first ("at most 40% in any asset; at least 4
   effective assets").
+- Report pages are easier to read: muted text has a contrast of at least 4.5:1 in light mode, and
+  labels on coloured bars are black or white, whichever reads better on that colour; charts keep
+  a legible width on narrow screens and scroll, and wide tables and charts show a shadow at an
+  edge with more to see; long tile values keep to one line; growth charts and the portfolio's
+  efficient frontier have axis titles. On risk-and-return charts, labels avoid points and each
+  other and stay inside the chart, the optimised weights are drawn in the ink rather than an
+  asset's colour, and the legend shows the colours of the assets held.
+- Text reports wrap long headings rather than cutting them short, number the columns of
+  correlation matrices as the rows are, name accounts in the lots table as the accounts table
+  does, and say what the HTML says about the in-sample history (rebalanced quarterly, without
+  trading costs) and what in sample covers in a comparison.
 - `Resampling` no longer implements `Eq`, as it holds a number of periods a year.
 - Portfolio documents reject unknown fields, such as a misspelt `quantty`, at their path.
 - A report grouped by a scheme no instrument is classified by is an error at
@@ -155,6 +173,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   paths rather than as a JSON error. `frontier` checks its option names, as `optimise` does.
 - Differences shown beside rounded figures (excess returns, changes in the Sharpe ratio, the total
   of fees and tax) are the differences of the figures as shown, so that they add up.
+- The portfolio report's correlation columns are headed with the holdings' full names, as the
+  rows are ("EUR cash", not "EUR").
 - A method that never found weights is marked as holding cash in the comparison tables, is left
   out of the summary's best figures, and its note says that it held only cash, rather than that
   it kept the weights it held. Failures of the fit to the whole history, for the run in sample,

@@ -35,9 +35,15 @@ Python, `report.to_string()` in Rust, `reportText(report)` in JavaScript. The fu
 lays out as one HTML page (`report.to_html(name)`, `report.save_html(path, name)` in Python,
 `reportHtml(report, name)` in JavaScript), with the portfolio's name as its title if given: inline
 styles and SVG charts with hover details, no scripts or external resources, in the reader's light
-or dark theme, and one report to a printed page. Both show the report's figures as computed, and
-both are built in the engine, so they are the same in every language. A table too wide for the
-text's columns is split into several, each repeating its first column.
+or dark theme, and one report to a printed page. `theme="light"` or `"dark"` (`to_html`,
+`save_html` and `show` in Python; the last argument of `toHtml`, `saveHtml` and `show` in
+JavaScript; `report.with_theme(Theme::Dark)` in Rust) keeps the page in one theme whatever the
+reader's setting. On a narrow screen, charts keep a width at which their text can be read and
+scroll sideways, as wide tables do, with a shadow at the edge that has more to see. Both show
+the report's figures as computed, and both are built in the engine, so they are the same in
+every language. A table too wide for the text's columns is split into several, each repeating its
+first column; a heading too long for a line wraps between its parts, and the columns of a
+correlation matrix are numbered as its rows are.
 
 ## Provenance
 

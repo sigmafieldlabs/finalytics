@@ -15,6 +15,19 @@ import pathlib
 import sys
 import tempfile
 import webbrowser
+from typing import Literal
+
+Theme = Literal["auto", "light", "dark"]
+"""The colours of a report's page: ``"auto"`` (the default) follows the reader's light or dark
+setting; ``"light"`` and ``"dark"`` keep to one."""
+
+
+def _theme(theme: str) -> str:
+    if theme not in ("auto", "light", "dark"):
+        from finalytics._errors import invalid
+
+        raise invalid(("theme", f"must be 'auto', 'light' or 'dark', not {theme!r}"))
+    return theme
 
 
 class PrintedReport:
@@ -41,47 +54,54 @@ class ReportPage(PrintedReport):
 
     __slots__ = ()
 
-    def to_html(self, name: str | None = None) -> str:
+    def to_html(self, name: str | None = None, *, theme: Theme = "auto") -> str:
         """The report as one self-contained HTML page, with `name`, if given, as its title:
         inline styles and SVG charts with hover details, no scripts or external resources, in
-        the reader's light or dark theme, and laid out for printing."""
+        `theme` (the reader's light or dark setting by default, or ``"light"`` or ``"dark"``),
+        and laid out for printing."""
         from finalytics import _finalytics
         from finalytics._convert import dumps
         from finalytics._errors import call
 
-        return call(_finalytics.report_html, dumps(self), name)
+        return call(_finalytics.report_html, dumps(self), name, _theme(theme))
 
-    def save_html(self, path: str | os.PathLike[str], name: str | None = None) -> pathlib.Path:
+    def save_html(
+        self, path: str | os.PathLike[str], name: str | None = None, *, theme: Theme = "auto"
+    ) -> pathlib.Path:
         """Writes :meth:`to_html` to `path`, and returns the path."""
         target = pathlib.Path(path)
-        target.write_text(self.to_html(name), encoding="utf-8")
+        target.write_text(self.to_html(name, theme=theme), encoding="utf-8")
         return target
 
-    def show(self) -> pathlib.Path | None:
-        """Shows the report: inline in a Jupyter notebook, and otherwise in the default
-        browser, or with the command in the ``BROWSER`` environment variable if it is set,
-        returning the path of the page it opens, as Rust and JavaScript do."""
+    def show(self, *, theme: Theme = "auto") -> pathlib.Path | None:
+        """Shows the report in `theme`: inline in a Jupyter notebook, and otherwise in the
+        default browser, or with the command in the ``BROWSER`` environment variable if it is
+        set, returning the path of the page it opens, as Rust and JavaScript do."""
         if _notebook():
             from IPython.display import display
 
             # As raw HTML, which IPython shows as it is, without its advice on frames.
-            display({"text/html": self._repr_html_()}, raw=True)
+            display({"text/html": self._frame(theme)}, raw=True)
             return None
         if sys.platform == "emscripten":
             raise RuntimeError("cannot open a browser here; use to_html() for the page")
+        page = self.to_html(theme=theme)
         with tempfile.NamedTemporaryFile(
             "w", prefix="finalytics-report-", suffix=".html", delete=False, encoding="utf-8"
         ) as file:
-            file.write(self.to_html())
+            file.write(page)
         path = pathlib.Path(file.name)
         if not webbrowser.open(path.as_uri()):
             raise RuntimeError(f"cannot open a browser; the report is at {path}")
         return path
 
     def _repr_html_(self) -> str:
+        return self._frame("auto")
+
+    def _frame(self, theme: Theme) -> str:
         # The page keeps its own styles inside a frame, apart from the notebook's, and the frame
         # grows to the report's height where the notebook allows it.
-        page = html.escape(self.to_html(), quote=True)
+        page = html.escape(self.to_html(theme=theme), quote=True)
         grow = "this.style.height = this.contentDocument.documentElement.scrollHeight + 'px'"
         return (
             f'<iframe srcdoc="{page}" title="Report" onload="{grow}" '
@@ -127,19 +147,21 @@ class Result:
         """The report as text for printing, 80 columns wide."""
         return self.report.to_text(name)  # type: ignore[attr-defined]
 
-    def to_html(self, name: str | None = None) -> str:
-        """The report as one self-contained HTML page."""
-        return self.report.to_html(name)  # type: ignore[attr-defined]
+    def to_html(self, name: str | None = None, *, theme: Theme = "auto") -> str:
+        """The report as one self-contained HTML page, in `theme`."""
+        return self.report.to_html(name, theme=theme)  # type: ignore[attr-defined]
 
-    def save_html(self, path: str | os.PathLike[str], name: str | None = None) -> pathlib.Path:
+    def save_html(
+        self, path: str | os.PathLike[str], name: str | None = None, *, theme: Theme = "auto"
+    ) -> pathlib.Path:
         """Writes the report's page to `path`, and returns the path."""
-        return self.report.save_html(path, name)  # type: ignore[attr-defined]
+        return self.report.save_html(path, name, theme=theme)  # type: ignore[attr-defined]
 
-    def show(self) -> pathlib.Path | None:
-        """Shows the report: inline in a Jupyter notebook, and otherwise in the default
-        browser, or with the command in the ``BROWSER`` environment variable if it is set,
-        returning the path of the page it opens."""
-        return self.report.show()  # type: ignore[attr-defined]
+    def show(self, *, theme: Theme = "auto") -> pathlib.Path | None:
+        """Shows the report in `theme`: inline in a Jupyter notebook, and otherwise in the
+        default browser, or with the command in the ``BROWSER`` environment variable if it is
+        set, returning the path of the page it opens."""
+        return self.report.show(theme=theme)  # type: ignore[attr-defined]
 
     def _repr_html_(self) -> str:
         return self.report._repr_html_()  # type: ignore[attr-defined]

@@ -39,7 +39,7 @@ fn header(page: &mut Page, kind: &str, title: Option<&str>, lines: &[String], c:
         page.line(title);
     }
     for line in lines {
-        page.line(line);
+        page.parts(line);
     }
     page.rule('━');
 }
@@ -340,6 +340,7 @@ impl ComparisonReport {
                 &rows,
                 None,
             );
+            page.note(&crate::backtest_html::in_and_out(c));
         }
         page.section(&format!("Growth of 100, {}", tested.to_lowercase()));
         let growth: Vec<(&str, &crate::Series)> = entries

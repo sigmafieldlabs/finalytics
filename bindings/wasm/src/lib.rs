@@ -150,23 +150,31 @@ export interface ReportChoices extends Partial<ReportOptions> {
   name?: string;
 }
 
+/**
+ * The colours of a report's page: `"auto"` (the default) follows the reader's light or dark
+ * setting; `"light"` and `"dark"` keep to one.
+ */
+export type Theme = "auto" | "light" | "dark";
+
 /** The ways to lay out a report: as text, as an HTML page, or shown. */
 export interface ReportMethods {
   /** The report as text for printing, 80 columns wide, with `name`, if given, under the title. */
   toText(name?: string): string;
   /**
    * The report as one self-contained HTML page, with `name`, if given, as its title: inline
-   * styles and SVG charts, no scripts, in light and dark themes, ready to print.
+   * styles and SVG charts, no scripts, in `theme` (the reader's light or dark setting by
+   * default), ready to print.
    */
-  toHtml(name?: string): string;
-  /** In Node.js, writes `toHtml(name)` to `path`, and returns the path. */
-  saveHtml(path: string, name?: string): string;
+  toHtml(name?: string, theme?: Theme): string;
+  /** In Node.js, writes `toHtml(name, theme)` to `path`, and returns the path. */
+  saveHtml(path: string, name?: string, theme?: Theme): string;
   /**
-   * Shows the report. In a browser, in a frame inside `element`, or else in a new window. In
-   * Node.js, in the default browser, or with the command in the `BROWSER` environment variable if
-   * it is set; the page is saved to a temporary file, whose path is returned.
+   * Shows the report, in `theme`. In a browser, in a frame inside `element`, or else in a new
+   * window. In Node.js, in the default browser, or with the command in the `BROWSER`
+   * environment variable if it is set; the page is saved to a temporary file, whose path is
+   * returned.
    */
-  show(element?: Element): string | undefined;
+  show(element?: Element, theme?: Theme): string | undefined;
 }
 
 /** Raw results that print as text: `${results}` or `results.toText()`. */
@@ -188,11 +196,11 @@ export interface Result<R, D> {
   /** The report as text for printing, 80 columns wide, with `name`, if given, under the title. */
   toText(name?: string): string;
   /** The report as one self-contained HTML page, with `name`, if given, as its title. */
-  toHtml(name?: string): string;
+  toHtml(name?: string, theme?: Theme): string;
   /** In Node.js, writes the report's page to `path`, and returns the path. */
-  saveHtml(path: string, name?: string): string;
+  saveHtml(path: string, name?: string, theme?: Theme): string;
   /** Shows the report, as `report.show` does. */
-  show(element?: Element): string | undefined;
+  show(element?: Element, theme?: Theme): string | undefined;
   toString(): string;
 }
 
@@ -2235,12 +2243,20 @@ pub fn report_html(
     )]
     report: JsValue,
     name: Option<String>,
+    #[wasm_bindgen(unchecked_param_type = "Theme")] theme: Option<String>,
 ) -> Result<String, JsValue> {
     let text = js_sys::JSON::stringify(&report)
         .map_err(|_| invalid("report", "could not be written as JSON"))?
         .as_string()
         .unwrap_or_default();
-    finalytics::reports::report_html(&text, name.as_deref()).map_err(error)
+    let theme: finalytics::Theme = match theme.as_deref() {
+        None => finalytics::Theme::Auto,
+        Some(name) => serde_json::from_value(serde_json::Value::String(name.to_owned()))
+            .map_err(|_| invalid("theme", "must be \"auto\", \"light\" or \"dark\""))?,
+    };
+    finalytics::reports::report_html(&text, name.as_deref())
+        .map(|page| theme.apply(&page))
+        .map_err(error)
 }
 
 /// The raw results of `Assets.optimise`, `Assets.compare` or `Assets.backtest` as text: the

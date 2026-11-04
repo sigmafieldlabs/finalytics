@@ -181,6 +181,22 @@ pub(crate) fn lower_name(name: &str) -> String {
     }
 }
 
+/// What in sample and out of sample cover in a comparison, in a sentence or two.
+pub(crate) fn in_and_out(c: &BacktestContext) -> String {
+    let tested = span(c.test_start, c.test_end);
+    match c.settings.validation {
+        Validation::WalkForward { .. } => format!(
+            "In sample, each method is fitted to the whole history and scored on the periods \
+             tested, {tested}: it sees the returns it is scored on, so it looks better than it \
+             can be. The gap to out of sample is the cost of estimating from the past."
+        ),
+        _ => format!(
+            "In sample is the history the weights were fitted to, {}; out of sample is {tested}.",
+            span(c.start, c.fit_end.unwrap_or(c.start))
+        ),
+    }
+}
+
 /// The limits on the weights in a sentence.
 pub(crate) fn limits_sentence(c: &BacktestContext) -> String {
     let limits: Vec<String> = c.limits.iter().map(|l| limit_in_sentence(l)).collect();
@@ -524,7 +540,7 @@ pub(crate) fn lines(
     let (lo, hi) = (lo.min(grid[0]), hi.max(grid.last().copied().unwrap_or(hi)));
     let span = if hi > lo { hi - lo } else { 1.0 };
     let y = |v: f64| t + (h - t - b) * (hi - v) / span;
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     if let Some(s) = shade {
         let sx = axis.x(s.at);
         let ly = if s.bottom { h - b - 8.0 } else { t + 16.0 };
@@ -685,7 +701,7 @@ fn year_columns(
     let band = (w - l - r) / categories.len() as f64;
     let m = series.len() as f64;
     let cw = 14f64.min((band - 4.0) / m - 1.0).max(1.0);
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     if let Some((i, left, right)) = shade {
         let _ = write!(
             out,
@@ -798,7 +814,7 @@ fn scatter(points: &[Point<'_>]) -> String {
     let (y0, y1) = (gy[0], gy.last().copied().unwrap_or(1.0));
     let x = |v: f64| l + (w - l - r) * (v - x0) / (x1 - x0).max(1e-12);
     let y = |v: f64| t + (h - t - b) * (y1 - v) / (y1 - y0).max(1e-12);
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     let ystep = gy.get(1).map_or(1.0, |g| g - gy[0]);
     for v in &gy {
         let _ = write!(
@@ -896,7 +912,7 @@ fn stacked(series: &[(&Series, &str)]) -> String {
         .collect();
     let top = totals.iter().copied().fold(1.0, f64::max);
     let y = |v: f64| t + (h - t - b) * (1.0 - v / top);
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     for v in [0.0, 0.25, 0.5, 0.75, 1.0] {
         let _ = write!(
             out,
@@ -986,7 +1002,7 @@ fn weight_strip(weights: &[WeightsAt], end: Date, rows: &[String], scale: f64) -
         return String::new();
     };
     let edge = |i: usize| axis.x(weights.get(i).map_or(end, |w| w.date));
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     for (a, name) in rows.iter().enumerate() {
         let _ = write!(
             out,
@@ -1563,7 +1579,11 @@ impl ComparisonReport {
             .collect();
         let mut performance = card(
             "Growth of 100",
-            &lines(&growth, &level, &level_tick, 280.0, false, None, None),
+            &crate::html::y_title(
+                &lines(&growth, &level, &level_tick, 280.0, false, None, None),
+                "Value of 100 invested",
+                280.0,
+            ),
             None,
         );
         if let Some((first, _)) = entries.first() {
@@ -1676,19 +1696,7 @@ impl ComparisonReport {
                     })
                 })
                 .collect();
-            let explain = match c.settings.validation {
-                Validation::WalkForward { .. } => {
-                    "In sample, each method is fitted to the whole history and scored on the same \
-                     periods: it sees the returns it is scored on, so it looks better than it can \
-                     be. The gap to the out-of-sample point is the cost of estimating from the past."
-                        .to_owned()
-                }
-                _ => format!(
-                    "In sample is the history the weights were fitted to, {}; out of sample is {}.",
-                    span(c.start, c.fit_end.unwrap_or(c.start)),
-                    range
-                ),
-            };
+            let explain = in_and_out(c);
             let legend_html = r#"<div class="legend"><span class="key"><i class="hollow"></i>In sample</span><span class="key"><i style="background:var(--ink2)"></i>Out of sample</span></div>"#;
             robustness.push_str(&card(
                 "In sample and out of sample",
@@ -2024,7 +2032,8 @@ impl BacktestReport {
                 };
                 let _ = write!(
                     segs,
-                    r#"<div class="seg" style="flex:{v:.4};background:{col}" title="{}: {}"><span>{inside}</span></div>"#,
+                    r#"<div class="seg" style="flex:{v:.4};background:{col};color:{}" title="{}: {}"><span>{inside}</span></div>"#,
+                    crate::html::on(col),
                     esc(asset),
                     esc(&pct(Some(*v), 1, false))
                 );
@@ -2344,14 +2353,18 @@ impl BacktestReport {
         }
         let growth_html = card(
             "Growth of 100",
-            &lines(
-                &growth_lines,
-                &level,
-                &level_tick,
+            &crate::html::y_title(
+                &lines(
+                    &growth_lines,
+                    &level,
+                    &level_tick,
+                    280.0,
+                    false,
+                    top_shade.as_ref(),
+                    None,
+                ),
+                "Value of 100 invested",
                 280.0,
-                false,
-                top_shade.as_ref(),
-                None,
             ),
             None,
         ) + &card(

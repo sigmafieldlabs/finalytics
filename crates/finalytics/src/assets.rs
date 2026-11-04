@@ -40,6 +40,9 @@ use finalytics_risk::{
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assets {
+    /// The date of the prices the first returns are measured from, when the assets came from
+    /// prices.
+    origin: Option<Date>,
     dates: Vec<Date>,
     returns: ReturnsTable,
     periods_per_year: f64,
@@ -406,7 +409,19 @@ impl Assets {
     pub fn from_prices(prices: &PriceTable) -> Result<Assets> {
         let found = prices.returns()?;
         let periods = periods_per_year(prices.dates());
+        // The latest date before the first return on which every asset has a price.
+        let origin = found.dates.first().and_then(|first| {
+            prices
+                .dates()
+                .iter()
+                .enumerate()
+                .take_while(|(_, d)| *d < first)
+                .filter(|(i, _)| prices.columns().iter().all(|c| c[*i].is_some()))
+                .map(|(_, d)| *d)
+                .last()
+        });
         Ok(Assets {
+            origin,
             dates: found.dates,
             returns: found.table,
             periods_per_year: periods,
@@ -443,6 +458,7 @@ impl Assets {
         report.into_result(())?;
         let periods = periods_per_year(&dates);
         Ok(Assets {
+            origin: None,
             dates,
             returns,
             periods_per_year: periods,
@@ -534,6 +550,12 @@ impl Assets {
         self.mean_method
     }
 
+    /// The date of the prices the first returns are measured from, when the assets came from
+    /// prices: the start of the first period.
+    pub fn origin(&self) -> Option<Date> {
+        self.origin
+    }
+
     /// The assets' labels.
     pub fn labels(&self) -> &[String] {
         self.returns.labels()
@@ -618,7 +640,12 @@ impl Assets {
                 .map(|c| c[rows.clone()].to_vec())
                 .collect(),
         )?;
+        let origin = match rows.start {
+            0 => self.origin,
+            i => Some(self.dates[i - 1]),
+        };
         let mut window = Assets {
+            origin,
             dates: self.dates[rows].to_vec(),
             returns,
             periods_per_year: self.periods_per_year,

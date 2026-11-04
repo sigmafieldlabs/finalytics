@@ -45,6 +45,10 @@ pub struct BacktestSetup {
     pub mean_returns: MeanMethod,
     /// The limits on the weights, in words, such as "At most 40% in any asset".
     pub limits: Vec<String>,
+    /// The date the first period starts from, when it is known: the date of the prices the
+    /// first returns are measured from.
+    #[serde(default)]
+    pub origin: Option<Date>,
 }
 
 impl BacktestSetup {
@@ -60,7 +64,15 @@ impl BacktestSetup {
             covariance,
             mean_returns: MeanMethod::Historical,
             limits,
+            origin: None,
         }
+    }
+
+    /// The same setup with the date the first period starts from.
+    #[must_use]
+    pub fn with_origin(mut self, origin: Option<Date>) -> BacktestSetup {
+        self.origin = origin;
+        self
     }
 
     /// The same setup with the optimisations' estimator of mean returns.
@@ -111,6 +123,9 @@ pub struct BacktestContext {
     pub window: Option<usize>,
     /// The annual risk-free return over the test, compounded from the periods' returns.
     pub risk_free_rate: f64,
+    /// The date the first period of the data starts from, when it is known.
+    #[serde(default)]
+    pub origin: Option<Date>,
 }
 
 /// One run of a strategy, summarised: its statistics, trading and the series its charts draw.
@@ -138,14 +153,14 @@ pub struct RunReport {
     pub costs_per_year: f64,
     /// The largest trade, as a share of value bought.
     pub largest_trade: f64,
-    /// The growth of 100, at the end of each month for daily or weekly returns, and of each
-    /// period otherwise.
+    /// The growth of 100, from 100 on the date the run enters (when it is known), at the end of
+    /// each month for daily or weekly returns, and of each period otherwise.
     pub growth: Series,
-    /// The fall from the highest value so far: the deepest in each month for daily or weekly
-    /// returns, and at each period otherwise.
+    /// The fall from the highest value so far, from 0 on the date the run enters: the deepest
+    /// in each month for daily or weekly returns, and at each period otherwise.
     pub drawdown: Series,
-    /// The Sharpe ratio over the past three years, at the same dates as the growth, when the
-    /// run is longer than three years.
+    /// The Sharpe ratio over the past three years, at the growth's dates once three years have
+    /// passed, when the run is longer than three years.
     pub rolling_sharpe: Option<Series>,
     /// The return in each calendar year.
     pub years: Vec<CalendarReturn>,
@@ -409,6 +424,7 @@ impl<'a> Inputs<'a> {
             fit_end,
             window,
             risk_free_rate: annual(&backtest.cash[first_test..last_test], ppy),
+            origin: setup.origin,
         };
         Ok(Inputs {
             backtest,
@@ -515,6 +531,30 @@ impl<'a> Inputs<'a> {
             falls.push(level / peak - 1.0);
         }
         let points = sample(&run.dates, ppy);
+        // The growth starts at 100, and the drawdown at 0, on the date the run enters: the end
+        // of the period before its first, or the start of the data.
+        let entry = match self.index(start) {
+            0 => self.context.origin,
+            i => Some(self.backtest.dates[i - 1]),
+        };
+        let at_entry = |values: Vec<f64>, first: f64| -> (Vec<Date>, Vec<f64>) {
+            let mut dates: Vec<Date> = points.iter().map(|(i, _)| run.dates[*i]).collect();
+            let mut values = values;
+            if let Some(entry) = entry {
+                dates.insert(0, entry);
+                values.insert(0, first);
+            }
+            (dates, values)
+        };
+        let (growth_dates, growth_values) =
+            at_entry(points.iter().map(|(i, _)| levels[*i]).collect(), 100.0);
+        let (drawdown_dates, drawdown_values) = at_entry(
+            points
+                .iter()
+                .map(|(i, from)| falls[*from..=*i].iter().copied().fold(0.0, f64::min))
+                .collect(),
+            0.0,
+        );
         let window = (ROLLING_YEARS * ppy).round() as usize;
         let rolling_sharpe = if run.returns.len() > window && window >= 2 {
             // Only the windows that end at the points charted.
@@ -557,17 +597,14 @@ impl<'a> Inputs<'a> {
             growth: Series {
                 name: "Growth of 100".to_owned(),
                 unit: Unit::Level,
-                dates: points.iter().map(|(i, _)| run.dates[*i]).collect(),
-                values: points.iter().map(|(i, _)| levels[*i]).collect(),
+                dates: growth_dates,
+                values: growth_values,
             },
             drawdown: Series {
                 name: "Drawdown".to_owned(),
                 unit: Unit::Fraction,
-                dates: points.iter().map(|(i, _)| run.dates[*i]).collect(),
-                values: points
-                    .iter()
-                    .map(|(i, from)| falls[*from..=*i].iter().copied().fold(0.0, f64::min))
-                    .collect(),
+                dates: drawdown_dates,
+                values: drawdown_values,
             },
             rolling_sharpe,
             years: years(&run.dates, &run.returns, ppy),

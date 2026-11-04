@@ -47,6 +47,7 @@ pub use holdings::{
     AccountHoldings, Concentration, HoldingRow, HoldingsReport, IncomeSummary, LotRow,
     RealisedSummary, holdings_report,
 };
+pub use html::Theme;
 pub use optimisation::{
     AllocationRow, GroupRow, OptimisationContext, OptimisationHistory, OptimisationReport,
     OptimisationSummary, ResamplingSummary, RiskReturn, ShortfallFigure,

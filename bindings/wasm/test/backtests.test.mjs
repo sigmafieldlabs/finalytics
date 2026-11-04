@@ -58,7 +58,13 @@ test("the optimisation report explains the weights", async () => {
   const file = join(tmpdir(), `finalytics-saved-${process.pid}.html`);
   assert.equal(result.saveHtml(file, "Saved"), file);
   assert.ok((await readFile(file, "utf8")).includes("<title>Saved</title>"));
+  // In a theme of its own, whatever the reader's setting.
+  result.saveHtml(file, undefined, "dark");
+  assert.ok((await readFile(file, "utf8")).includes('<html lang="en" data-theme="dark">'));
   await rm(file);
+  assert.ok(result.toHtml(undefined, "light").includes('data-theme="light"'));
+  assert.ok(result.toHtml().includes('<html lang="en">'));
+  assert.throws(() => result.toHtml(undefined, "night"), (e) => e.name === "ValidationError");
   // The frontier only when asked for: it changes the report, not the weights.
   assert.deepEqual(report.frontier, []);
   assert.ok(result.toHtml().includes("frontier: true in JavaScript"));
@@ -90,7 +96,9 @@ test("methods compared walk-forward with the same limits and costs", () => {
   assert.equal(report.context.settings.trading_cost_bps, 10);
   assert.equal(report.context.window, 60);
   const minimum = report.strategies[1];
-  assert.equal(minimum.tested.growth.dates.length, assets.dates.length - 60);
+  // From 100 at the end of the period before the test.
+  assert.equal(minimum.tested.growth.dates.length, assets.dates.length - 60 + 1);
+  assert.equal(minimum.tested.growth.values[0], 100);
   assert.ok(Object.values(minimum.weights.at(-1).weights).every((w) => w <= 0.4 + 1e-6));
   assert.equal(report.strategies[2].notes.length, 1, "risk parity takes no limits");
   assert.ok(result.toText().includes("FINALYTICS  ·  COMPARISON"));
@@ -130,9 +138,10 @@ test("one method, or fixed weights, against a benchmark", () => {
   assert.deepEqual(fixed.report.context.settings.rebalance, { type: "drift", band: 0.05 });
   // Every return and trade behind the report.
   assert.equal(fixed.results.strategies[0].in_sample.returns.length, assets.dates.length);
+  // The growth has a point more: 100 on the date the test enters.
   assert.equal(
     result.results.strategies[0].out_of_sample.returns.length,
-    report.strategy.tested.growth.dates.length,
+    report.strategy.tested.growth.dates.length - 1,
   );
 });
 

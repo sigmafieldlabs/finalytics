@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use finalytics_core::{Error, Result};
 use finalytics_reports::{
-    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport,
+    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport, Theme,
 };
 
 use crate::Optimisation;
@@ -44,6 +44,31 @@ pub trait Show {
         self.save_html(&path)?;
         open(&path, std::env::var("BROWSER").ok().as_deref())?;
         Ok(path)
+    }
+
+    /// The same report in `theme`, light or dark whatever the reader's setting, to save or to
+    /// show: `report.with_theme(Theme::Dark).save_html("report.html")`.
+    fn with_theme(&self, theme: Theme) -> Themed<'_, Self>
+    where
+        Self: Sized,
+    {
+        Themed {
+            report: self,
+            theme,
+        }
+    }
+}
+
+/// A report in a chosen theme, from [`Show::with_theme`].
+#[derive(Debug, Clone, Copy)]
+pub struct Themed<'a, T> {
+    report: &'a T,
+    theme: Theme,
+}
+
+impl<T: Show> Show for Themed<'_, T> {
+    fn html(&self) -> String {
+        self.theme.apply(&self.report.html())
     }
 }
 

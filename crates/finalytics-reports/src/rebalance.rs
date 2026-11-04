@@ -1021,7 +1021,7 @@ impl RebalanceReport {
         let (x0, x1) = (gx[0], gx.last().copied().unwrap_or(1.0));
         let x = |v: f64| l + (w - l - r) * (v - x0) / (x1 - x0).max(1e-12);
         let h = row * self.holdings.len() as f64 + 34.0;
-        let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+        let mut out = crate::html::svg_open(w, h);
         for v in &gx {
             let _ = write!(
                 out,
@@ -1156,7 +1156,7 @@ impl RebalanceReport {
         for line in wrap(&self.headline(), WIDTH) {
             page.line(line);
         }
-        page.line(format!(
+        page.parts(format!(
             "{} · {} · {} · one-way turnover {}",
             plural(self.accounts.len(), "account"),
             self.money(s.value_base),

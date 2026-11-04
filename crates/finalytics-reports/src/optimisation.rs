@@ -16,7 +16,7 @@ use crate::backtest_html::{
     notes_table, percent, section, span, table,
 };
 use crate::backtests::RunReport;
-use crate::html::{card, esc, heat, legend, ticks, tiles};
+use crate::html::{Labels, card, esc, heat, legend, ticks, tiles};
 use crate::shapes::{Grid, Unit};
 use crate::text::{
     L, NOISE, Page, R, WIDTH, bar, covariance_label, covariance_name, fit, mean_label, num,
@@ -628,9 +628,10 @@ impl OptimisationReport {
                     };
                     let _ = write!(
                         segs,
-                        r#"<div class="seg" style="flex:{:.4};background:{}" title="{}: {}"><span>{inside}</span></div>"#,
+                        r#"<div class="seg" style="flex:{:.4};background:{};color:{}" title="{}: {}"><span>{inside}</span></div>"#,
                         a.weight,
                         colour(&a.asset),
+                        crate::html::on(colour(&a.asset)),
                         esc(&a.asset),
                         esc(&percent(a.weight))
                     );
@@ -730,7 +731,7 @@ impl OptimisationReport {
                 .max(1e-12);
             let (w, row, x0, x1) = (880.0, 34.0, 140.0, 820.0);
             let h = row * held.len() as f64 + 16.0;
-            let mut svg = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+            let mut svg = crate::html::svg_open(w, h);
             for (k, a) in held.iter().enumerate() {
                 let y = 8.0 + k as f64 * row;
                 let _ = write!(
@@ -1075,7 +1076,7 @@ impl OptimisationReport {
         let y = |v: f64| t + (h - t - b) * (y1 - v) / (y1 - y0).max(1e-12);
         let ystep = gy.get(1).map_or(1.0, |g| g - gy[0]);
         let yplaces = usize::from(((ystep * 100.0) - (ystep * 100.0).round()).abs() > 1e-9);
-        let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+        let mut out = crate::html::svg_open(w, h);
         for v in &gy {
             let _ = write!(
                 out,
@@ -1130,13 +1131,13 @@ impl OptimisationReport {
                 path.join(" L")
             );
         }
-        // The assets, labelled, their labels kept apart.
-        let mut order: Vec<&AllocationRow> = self.allocation.iter().collect();
-        order.sort_by(|a, b| y(a.expected_return).total_cmp(&y(b.expected_return)));
-        let mut placed: Vec<(f64, f64)> = Vec::new();
-        let label_all = order.len() <= 12;
-        for a in order {
-            let (cx, cy) = (x(a.volatility), y(a.expected_return));
+        // The points: each asset, coloured if held and grey if not, equal weight, and the
+        // weights, in the ink so that no asset shares their colour.
+        let weights_at = (x(s.volatility), y(s.expected_return));
+        let equal_at = self
+            .equal_weight
+            .map(|e| (x(e.volatility), y(e.expected_return)));
+        for a in &self.allocation {
             let fill = if a.weight >= NOISE {
                 colour(&a.asset)
             } else {
@@ -1144,53 +1145,120 @@ impl OptimisationReport {
             };
             let _ = write!(
                 out,
-                r#"<circle cx="{cx:.1}" cy="{cy:.1}" r="5" style="fill:{fill}"><title>{}: return {}, volatility {}</title></circle>"#,
+                r#"<circle cx="{:.1}" cy="{:.1}" r="5" style="fill:{fill}"><title>{}: return {}, volatility {}</title></circle>"#,
+                x(a.volatility),
+                y(a.expected_return),
                 esc(&a.asset),
                 esc(&percent(a.expected_return)),
                 esc(&percent(a.volatility))
             );
-            if label_all || a.weight >= NOISE {
-                let (lx, mut ly) = (cx + 9.0, cy + 4.0);
-                while placed
-                    .iter()
-                    .any(|(px, py)| (ly - py).abs() < 14.0 && (lx - px).abs() < 90.0)
-                {
-                    ly += 14.0;
-                }
-                placed.push((lx, ly));
-                let _ = write!(
-                    out,
-                    r#"<text class="lab" x="{lx:.1}" y="{ly:.1}">{}</text>"#,
-                    esc(&a.asset)
-                );
-            }
         }
-        if let Some(e) = self.equal_weight {
+        if let (Some(e), Some((ex, ey))) = (self.equal_weight, equal_at) {
             let _ = write!(
                 out,
-                r#"<circle cx="{:.1}" cy="{:.1}" r="6" style="fill:var(--surface);stroke:var(--ink2);stroke-width:2"><title>Equal weight: return {}, volatility {}</title></circle><text class="lab" x="{:.1}" y="{:.1}">Equal weight</text>"#,
-                x(e.volatility),
-                y(e.expected_return),
+                r#"<circle cx="{ex:.1}" cy="{ey:.1}" r="6" style="fill:var(--surface);stroke:var(--ink2);stroke-width:2"><title>Equal weight: return {}, volatility {}</title></circle>"#,
                 esc(&percent(e.expected_return)),
                 esc(&percent(e.volatility)),
-                x(e.volatility) + 10.0,
-                y(e.expected_return) + 16.0
             );
         }
         let _ = write!(
             out,
-            r#"<circle cx="{:.1}" cy="{:.1}" r="8" style="fill:var(--s1);stroke:var(--surface);stroke-width:2"><title>The weights: return {}, volatility {}</title></circle><text class="lab" x="{:.1}" y="{:.1}" text-anchor="end" style="font-weight:600">The weights</text></svg>"#,
-            x(s.volatility),
-            y(s.expected_return),
+            r#"<circle cx="{:.1}" cy="{:.1}" r="8" style="fill:var(--ink);stroke:var(--surface);stroke-width:2"><title>The weights: return {}, volatility {}</title></circle>"#,
+            weights_at.0,
+            weights_at.1,
             esc(&percent(s.expected_return)),
             esc(&percent(s.volatility)),
-            x(s.volatility) - 12.0,
-            y(s.expected_return) - 12.0
         );
+        // The labels, where they overlap nothing: the weights first, then the assets held,
+        // largest first, then, when there are few, the rest, and equal weight.
+        let centres: Vec<(f64, f64)> = self
+            .allocation
+            .iter()
+            .map(|a| (x(a.volatility), y(a.expected_return)))
+            .chain(equal_at)
+            .chain(std::iter::once(weights_at))
+            .collect();
+        let mut labels = Labels::new((l, t, w - 4.0, h - b), &centres, 8.0);
+        let mut wanted: Vec<(f64, f64, String, bool)> =
+            vec![(weights_at.0, weights_at.1, "The weights".to_owned(), true)];
+        let mut held: Vec<&AllocationRow> = self
+            .allocation
+            .iter()
+            .filter(|a| a.weight >= NOISE)
+            .collect();
+        held.sort_by(|a, b| b.weight.total_cmp(&a.weight));
+        wanted.extend(held.iter().map(|a| {
+            (
+                x(a.volatility),
+                y(a.expected_return),
+                a.asset.clone(),
+                false,
+            )
+        }));
+        if self.allocation.len() <= 12 {
+            wanted.extend(
+                self.allocation
+                    .iter()
+                    .filter(|a| a.weight < NOISE)
+                    .map(|a| {
+                        (
+                            x(a.volatility),
+                            y(a.expected_return),
+                            a.asset.clone(),
+                            false,
+                        )
+                    }),
+            );
+        }
+        if let Some((ex, ey)) = equal_at {
+            wanted.push((ex, ey, "Equal weight".to_owned(), false));
+        }
+        for (cx, cy, text, bold) in wanted {
+            if let Some((lx, ly, anchor)) = labels.place(cx, cy, &text, 13.0) {
+                let weight = if bold {
+                    r#" style="font-weight:600""#
+                } else {
+                    ""
+                };
+                let _ = write!(
+                    out,
+                    r#"<text class="lab" x="{lx:.1}" y="{ly:.1}" text-anchor="{anchor}"{weight}>{}</text>"#,
+                    esc(&text)
+                );
+            }
+        }
+        out.push_str("</svg>");
+        // A swatch of the first colours of the assets held, which differ from asset to asset.
+        let colours: Vec<&str> = held.iter().take(3).map(|a| colour(&a.asset)).collect();
+        let swatch = match colours.as_slice() {
+            [] => String::new(),
+            [one] => (*one).to_owned(),
+            many => {
+                let step = 100.0 / many.len() as f64;
+                let stops: Vec<String> = many
+                    .iter()
+                    .enumerate()
+                    .map(|(k, c)| {
+                        format!("{c} {:.0}% {:.0}%", step * k as f64, step * (k + 1) as f64)
+                    })
+                    .collect();
+                format!("linear-gradient(90deg,{})", stops.join(","))
+            }
+        };
+        let unheld = self.allocation.iter().any(|a| a.weight < NOISE);
         let keys = format!(
-            r#"<div class="legend">{}<span class="key"><i class="hollow"></i>Equal weight</span>{}</div>"#,
-            key("The weights", "var(--s1)"),
-            key("Each asset", "var(--muted-fill)")
+            r#"<div class="legend">{}<span class="key"><i class="hollow"></i>Equal weight</span>{}{}</div>"#,
+            key("The weights", "var(--ink)"),
+            if swatch.is_empty() {
+                String::new()
+            } else {
+                key("Assets held", &swatch)
+            },
+            if unheld {
+                key("Assets not held", "var(--muted-fill)")
+            } else {
+                String::new()
+            }
         );
         keys + &out
     }
@@ -1214,8 +1282,8 @@ impl OptimisationReport {
         if let Some(name) = name {
             page.line(name);
         }
-        page.line(format!("{} · {} · {}", c.method, limits(c), c.status));
-        page.line(format!(
+        page.parts(format!("{} · {} · {}", c.method, limits(c), c.status));
+        page.parts(format!(
             "{} · {} · {} covariance{}",
             plural(c.assets.len(), "asset"),
             frequency(c.periods_per_year),
@@ -1336,17 +1404,21 @@ impl OptimisationReport {
         }
         if self.correlation.rows.len() <= 6 {
             page.section("Correlation");
-            let short: Vec<String> = self.correlation.columns.iter().map(|c| fit(c, 9)).collect();
+            // The columns are numbered as the rows are, so that no name is cut short.
+            let numbers: Vec<String> = (1..=self.correlation.columns.len())
+                .map(|k| k.to_string())
+                .collect();
             let head: Vec<&str> = std::iter::once("")
-                .chain(short.iter().map(String::as_str))
+                .chain(numbers.iter().map(String::as_str))
                 .collect();
             let rows: Vec<Vec<String>> = self
                 .correlation
                 .rows
                 .iter()
                 .zip(&self.correlation.values)
-                .map(|(r, values)| {
-                    std::iter::once(r.clone())
+                .enumerate()
+                .map(|(k, (r, values))| {
+                    std::iter::once(format!("{} {r}", k + 1))
                         .chain(values.iter().map(|v| num(*v, 2)))
                         .collect()
                 })
@@ -1368,8 +1440,9 @@ impl OptimisationReport {
             }
             page.blank();
             page.note(&format!(
-                "Return {} a year, volatility {}, Sharpe ratio {}, worst fall {}. In sample, so \
-                 it flatters the weights: a backtest tests them on returns they had not seen.",
+                "Return {} a year, volatility {}, Sharpe ratio {}, worst fall {}. Held from the \
+                 start and rebalanced quarterly, without trading costs. In sample, so it flatters \
+                 the weights: a backtest tests them on returns they had not seen.",
                 percent(w.statistics.annualised_return),
                 percent(w.statistics.volatility),
                 num(w.statistics.sharpe_ratio, 2),

@@ -1124,9 +1124,12 @@ fn report_text(report: &str, name: Option<&str>) -> PyResult<String> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (report, name=None))]
-fn report_html(report: &str, name: Option<&str>) -> PyResult<String> {
-    finalytics::reports::report_html(report, name).map_err(engine)
+#[pyo3(signature = (report, name=None, theme="auto"))]
+fn report_html(report: &str, name: Option<&str>, theme: &str) -> PyResult<String> {
+    let theme: finalytics::Theme = named(theme, "theme")?;
+    finalytics::reports::report_html(report, name)
+        .map(|page| theme.apply(&page))
+        .map_err(engine)
 }
 
 #[pyfunction]

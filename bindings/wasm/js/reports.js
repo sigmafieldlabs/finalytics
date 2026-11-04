@@ -37,17 +37,17 @@ function withReportMethods(report, page) {
     toText(name) {
       return reportText(this, name);
     },
-    toHtml(name) {
-      return reportHtml(this, name);
+    toHtml(name, theme) {
+      return reportHtml(this, name, theme);
     },
-    saveHtml(path, name) {
+    saveHtml(path, name, theme) {
       if (!page.save) {
         throw new Error("saveHtml writes a file, in Node.js; here, use toHtml() for the page");
       }
-      return page.save(path, reportHtml(this, name));
+      return page.save(path, reportHtml(this, name, theme));
     },
-    show(element) {
-      return page.show(reportHtml(this), element);
+    show(element, theme) {
+      return page.show(reportHtml(this, undefined, theme), element);
     },
     toString() {
       return reportText(this);
@@ -69,14 +69,14 @@ function withResultMethods(result, page) {
     toText(name) {
       return this.report.toText(name);
     },
-    toHtml(name) {
-      return this.report.toHtml(name);
+    toHtml(name, theme) {
+      return this.report.toHtml(name, theme);
     },
-    saveHtml(path, name) {
-      return this.report.saveHtml(path, name);
+    saveHtml(path, name, theme) {
+      return this.report.saveHtml(path, name, theme);
     },
-    show(element) {
-      return this.report.show(element);
+    show(element, theme) {
+      return this.report.show(element, theme);
     },
     toString() {
       return this.report.toText();

@@ -335,6 +335,7 @@ impl Assets {
             limits,
         )
         .with_mean_returns(self.mean_method())
+        .with_origin(self.origin())
     }
 
     /// Fixed weights by asset as one weight per risky asset, the risk-free asset as cash.

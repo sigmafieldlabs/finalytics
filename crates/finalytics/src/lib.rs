@@ -151,7 +151,7 @@ pub use assets::{
 };
 pub use backtest::{Backtest, BacktestResults, Comparison};
 pub use finalytics_reports::{
-    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport,
+    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport, Theme,
 };
 pub use finalytics_risk::PriceTable;
 #[cfg(feature = "io")]
@@ -162,7 +162,7 @@ pub use portfolio::{
 #[doc(hidden)]
 pub use portfolio::{RebalanceChoices, targets_from_json};
 #[cfg(feature = "io")]
-pub use show::Show;
+pub use show::{Show, Themed};
 
 /// Performance measurement: time- and money-weighted returns over reporting periods,
 /// contribution by holding and by group, households of accounts, and attribution against a

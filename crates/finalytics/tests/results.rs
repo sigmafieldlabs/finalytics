@@ -377,7 +377,12 @@ fn the_comparison_report_scores_each_method_on_its_test() {
             100.0 * out.growth(),
             "growth",
         );
-        assert_eq!(s.tested.growth.dates, out.dates);
+        // From 100 on the last date before the test, when the walk-forward strategy enters.
+        assert_eq!(s.tested.growth.dates[1..], out.dates[..]);
+        assert_eq!(s.tested.growth.values[0], 100.0);
+        assert_eq!(s.tested.drawdown.values[0], 0.0);
+        let entry = assets.dates()[assets.dates().partition_point(|d| *d < out.dates[0]) - 1];
+        assert_eq!(s.tested.growth.dates[0], entry);
         let worst = s.tested.drawdown.values.iter().copied().fold(0.0, f64::min);
         close(worst, s.tested.statistics.max_drawdown, "drawdown");
         // The years and the months compound to the whole.
@@ -461,7 +466,12 @@ fn the_backtest_report_shows_the_whole_history_of_a_holdout() {
         100.0 * ins.growth() * out.growth(),
         "the history chains in and out of sample",
     );
-    assert_eq!(history.strategy.growth.dates.len(), assets.dates().len());
+    // From 100 on the date of the first prices.
+    assert_eq!(
+        history.strategy.growth.dates.len(),
+        assets.dates().len() + 1
+    );
+    assert_eq!(history.strategy.growth.dates[0], assets.origin().unwrap());
     assert!(history.benchmark.is_some());
     let s = &report.strategy;
     assert_eq!(s.tested.start, out.dates[0]);

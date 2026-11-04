@@ -589,6 +589,9 @@ class BacktestContext:
     risk_free_rate: float
     """The annual risk-free return over the test, compounded from the periods' returns."""
 
+    origin: datetime.date | None = None
+    """The date the first period of the data starts from, when it is known."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class BacktestOptions:
@@ -4332,18 +4335,18 @@ class RunReport:
     """The largest trade, as a share of value bought."""
 
     growth: Series
-    """The growth of 100, at the end of each month for daily or weekly returns, and of each period
-    otherwise.
+    """The growth of 100, from 100 on the date the run enters (when it is known), at the end of each
+    month for daily or weekly returns, and of each period otherwise.
     """
 
     drawdown: Series
-    """The fall from the highest value so far: the deepest in each month for daily or weekly
-    returns, and at each period otherwise.
+    """The fall from the highest value so far, from 0 on the date the run enters: the deepest in
+    each month for daily or weekly returns, and at each period otherwise.
     """
 
     rolling_sharpe: Series | None = None
-    """The Sharpe ratio over the past three years, at the same dates as the growth, when the run is
-    longer than three years.
+    """The Sharpe ratio over the past three years, at the growth's dates once three years have
+    passed, when the run is longer than three years.
     """
 
     years: list[CalendarReturn]

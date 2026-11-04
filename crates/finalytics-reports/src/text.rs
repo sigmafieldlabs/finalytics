@@ -362,6 +362,38 @@ impl Page {
         self.lines.push(fit(text, WIDTH));
     }
 
+    /// A heading line of parts joined by " · ", wrapped between the parts (and within a part
+    /// too long for a line) rather than cut short.
+    pub(crate) fn parts(&mut self, text: impl AsRef<str>) {
+        let mut current = String::new();
+        for part in text.as_ref().trim_end().split(" · ") {
+            let joined = if current.is_empty() {
+                part.to_owned()
+            } else {
+                format!("{current} · {part}")
+            };
+            if width(&joined) <= WIDTH {
+                current = joined;
+                continue;
+            }
+            // A part that fits a line starts one after a long line; otherwise it carries on
+            // from the last, wrapped between words.
+            let mut pieces = if width(part) <= WIDTH && width(&current) >= WIDTH / 2 {
+                if !current.is_empty() {
+                    self.lines.push(format!("{current} ·"));
+                }
+                vec![part.to_owned()]
+            } else {
+                wrap(&joined, WIDTH)
+            };
+            current = pieces.pop().unwrap_or_default();
+            self.lines.extend(pieces);
+        }
+        if !current.is_empty() {
+            self.lines.push(current);
+        }
+    }
+
     pub(crate) fn blank(&mut self) {
         self.lines.push(String::new());
     }
@@ -962,7 +994,10 @@ pub(crate) fn holdings(page: &mut Page, h: &HoldingsReport) {
             .map(|x| {
                 vec![
                     x.lot.to_string(),
-                    x.account.to_string(),
+                    names
+                        .get(x.account.as_str())
+                        .cloned()
+                        .unwrap_or_else(|| x.account.to_string()),
                     x.instrument.to_string(),
                     date(x.acquired),
                     money(dec(x.quantity)),
@@ -1414,14 +1449,16 @@ pub(crate) fn risk(page: &mut Page, r: &RiskReport) {
         }
         page.section("Correlation");
         let (names, values, riskless) = with_risk(&hr.correlation);
-        let columns: Vec<String> = names.iter().map(|l| l.replace(" cash", "")).collect();
+        // The columns are numbered as the rows are, so that no name is cut short.
+        let columns: Vec<String> = (1..=names.len()).map(|k| k.to_string()).collect();
         let mut headings: Vec<&str> = vec![""];
         headings.extend(columns.iter().map(String::as_str));
         let rows: Vec<Vec<String>> = names
             .iter()
             .zip(&values)
-            .map(|(row, values)| {
-                std::iter::once(row.clone())
+            .enumerate()
+            .map(|(k, (row, values))| {
+                std::iter::once(format!("{} {row}", k + 1))
                     .chain(values.iter().map(|v| match v {
                         Some(v) => num(Some(*v), 2),
                         None => "·".to_owned(),
@@ -1681,6 +1718,26 @@ impl fmt::Display for PortfolioReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn heading_lines_wrap_between_their_parts() {
+        let mut page = Page::new(None);
+        let long = "at most 50% in any asset; Real (Gold, Real Estate): 10% to 50% together";
+        page.parts(format!("Minimum CVaR · {long} · optimal"));
+        page.parts(format!("{} · {}", "a".repeat(50), "b".repeat(40)));
+        let lines = page.lines.clone();
+        assert!(lines.iter().all(|l| width(l) <= WIDTH), "{lines:?}");
+        assert!(lines.iter().all(|l| !l.contains('…')));
+        assert_eq!(
+            lines[..2],
+            [
+                "Minimum CVaR · at most 50% in any asset; Real (Gold, Real Estate): 10% to 50%",
+                "together · optimal"
+            ]
+        );
+        assert_eq!(lines[2], format!("{} ·", "a".repeat(50)));
+        assert_eq!(lines[3], "b".repeat(40));
+    }
 
     #[test]
     fn numbers_are_formatted_for_reading() {

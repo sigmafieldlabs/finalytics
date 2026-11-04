@@ -526,6 +526,17 @@ fn builders_read_files_and_build_reports() {
             .unwrap()
             .starts_with("<!doctype html>")
     );
+    // In a theme of its own, whatever the reader's setting.
+    use finalytics::Show;
+    report
+        .with_theme(finalytics::Theme::Dark)
+        .save_html(&page)
+        .unwrap();
+    assert!(
+        std::fs::read_to_string(&page)
+            .unwrap()
+            .contains(r#"<html lang="en" data-theme="dark">"#)
+    );
     assert_eq!(
         paths(
             portfolio

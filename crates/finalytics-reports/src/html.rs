@@ -30,6 +30,101 @@ const SERIES: [&str; 3] = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 // ── Text and numbers ─────────────────────────────────────────────────────────────────────────
 
+/// The opening tag of a chart `w` by `h` in its own units. A chart as wide as the page keeps
+/// a minimum width on narrow screens, where its card scrolls, so that its text stays legible.
+pub(crate) fn svg_open(w: f64, h: f64) -> String {
+    let class = if w >= 600.0 { r#" class="chart""# } else { "" };
+    format!(r#"<svg{class} viewBox="0 0 {w} {h}" role="img">"#)
+}
+
+/// Places the labels of points on a chart beside their points, so that no label overlaps
+/// another, a point or the edge of the area given: each tries the right of its point, then the
+/// left, above, below and the diagonals, and is left out when none fits.
+pub(crate) struct Labels {
+    /// The area labels must stay inside: left, top, right and bottom.
+    area: (f64, f64, f64, f64),
+    /// The boxes taken by the points and the labels placed so far.
+    taken: Vec<(f64, f64, f64, f64)>,
+}
+
+impl Labels {
+    /// Labels inside `area` (left, top, right, bottom) for a chart with `points` of `radius`.
+    pub(crate) fn new(area: (f64, f64, f64, f64), points: &[(f64, f64)], radius: f64) -> Labels {
+        Labels {
+            area,
+            taken: points
+                .iter()
+                .map(|(x, y)| (x - radius, y - radius, x + radius, y + radius))
+                .collect(),
+        }
+    }
+
+    /// Where to write `text` at `size` beside the point at (`x`, `y`): the position of its
+    /// baseline and its anchor, or `None` when there is no room.
+    pub(crate) fn place(
+        &mut self,
+        x: f64,
+        y: f64,
+        text: &str,
+        size: f64,
+    ) -> Option<(f64, f64, &'static str)> {
+        let width = text.chars().count() as f64 * size * 0.56;
+        let gap = 9.0;
+        let candidates = [
+            (x + gap, y + size * 0.35, "start"),
+            (x - gap, y + size * 0.35, "end"),
+            (x, y - gap, "middle"),
+            (x, y + gap + size * 0.8, "middle"),
+            (x + gap, y - gap, "start"),
+            (x + gap, y + gap + size * 0.8, "start"),
+            (x - gap, y - gap, "end"),
+            (x - gap, y + gap + size * 0.8, "end"),
+        ];
+        let (left, top, right, bottom) = self.area;
+        for (lx, ly, anchor) in candidates {
+            let x0 = match anchor {
+                "start" => lx,
+                "end" => lx - width,
+                _ => lx - width / 2.0,
+            };
+            let rect = (x0, ly - size * 0.8, x0 + width, ly + size * 0.2);
+            let inside = rect.0 >= left && rect.2 <= right && rect.1 >= top && rect.3 <= bottom;
+            let clear = self
+                .taken
+                .iter()
+                .all(|t| rect.2 <= t.0 || rect.0 >= t.2 || rect.3 <= t.1 || rect.1 >= t.3);
+            if inside && clear {
+                self.taken.push(rect);
+                return Some((lx, ly, anchor));
+            }
+        }
+        None
+    }
+}
+
+/// `chart`, an SVG chart `h` high, with `title` along its vertical axis.
+pub(crate) fn y_title(chart: &str, title: &str, h: f64) -> String {
+    match chart.rfind("</svg>") {
+        Some(end) => format!(
+            r#"{}<text class="tick" transform="translate(10 {:.1}) rotate(-90)" text-anchor="middle">{}</text>{}"#,
+            &chart[..end],
+            h / 2.0,
+            esc(title),
+            &chart[end..]
+        ),
+        None => chart.to_owned(),
+    }
+}
+
+/// The colour of a label on a fill of `colour`: black or white, whichever has the higher
+/// contrast with that series' colour in the theme.
+pub(crate) fn on(colour: &str) -> String {
+    match colour.strip_prefix("var(--") {
+        Some(name) => format!("var(--on-{name}"),
+        None => "#fff".to_owned(),
+    }
+}
+
 pub(crate) fn esc(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for c in text.chars() {
@@ -168,7 +263,7 @@ fn line_chart(
     let span = if hi > lo { hi - lo } else { 1.0 };
     let x = |i: usize| l + (w - l - r) * i as f64 / (n - 1) as f64;
     let y = |v: f64| t + (h - t - b) * (hi - v) / span;
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     for v in &grid {
         let _ = write!(
             out,
@@ -375,8 +470,10 @@ fn hbars(items: &[(String, f64)], format: &dyn Fn(f64) -> String, colour: &str) 
     let scale = (right - left) / span;
     let x0 = left - lo * scale;
     let h = row * items.len() as f64 + 8.0;
-    let mut out = format!(
-        r#"<svg viewBox="0 0 {width} {h}" role="img"><line class="base" x1="{x0:.1}" x2="{x0:.1}" y1="0" y2="{h}"/>"#
+    let mut out = svg_open(width, h);
+    let _ = write!(
+        out,
+        r#"<line class="base" x1="{x0:.1}" x2="{x0:.1}" y1="0" y2="{h}"/>"#
     );
     for (k, (name, v)) in items.iter().enumerate() {
         let y = 4.0 + k as f64 * row;
@@ -437,7 +534,7 @@ fn columns(
     let y = |v: f64| t + (h - t - b) * (hi - v) / span;
     let band = (w - l - r) / categories.len() as f64;
     let cw = 24f64.min(band * 0.6 / series.len() as f64);
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     for v in &grid {
         let _ = write!(
             out,
@@ -506,8 +603,9 @@ fn segmented(slices: &[Slice], names: &dyn Fn(&str) -> String, label: &str, ccy:
         };
         let _ = write!(
             parts,
-            r#"<div class="seg" style="flex:{:.4};background:{colour}" title="{}: {} {ccy} ({})"><span>{inside}</span></div>"#,
+            r#"<div class="seg" style="flex:{:.4};background:{colour};color:{}" title="{}: {} {ccy} ({})"><span>{inside}</span></div>"#,
             s.weight.max(0.0),
+            on(colour),
             esc(&name),
             esc(&money(s.value)),
             esc(&share(s.weight))
@@ -551,7 +649,7 @@ fn histogram(bins: &[Bin], period: &str) -> String {
     let span = if hi_x > lo_x { hi_x - lo_x } else { 1.0 };
     let x = |v: f64| l + (w - l - r) * (v - lo_x) / span;
     let y = |v: f64| t + (h - t - b) * (hi - v) / hi;
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     for v in &grid {
         let _ = write!(
             out,
@@ -621,7 +719,7 @@ fn frontier_chart(
     current: &PortfolioPoint,
     holdings: &[HoldingRiskReturn],
 ) -> String {
-    let (w, h, l, r, t, b) = (880.0, 260.0, 56.0, 120.0, 12.0, 34.0);
+    let (w, h, l, r, t, b) = (880.0, 272.0, 56.0, 120.0, 24.0, 34.0);
     let xs: Vec<f64> = points
         .iter()
         .map(|p| p.volatility)
@@ -645,7 +743,7 @@ fn frontier_chart(
     let y_span = if y_hi > y_lo { y_hi - y_lo } else { 1.0 };
     let x = |v: f64| l + (w - l - r) * v / x_hi;
     let y = |v: f64| t + (h - t - b) * (y_hi - v) / y_span;
-    let mut out = format!(r#"<svg viewBox="0 0 {w} {h}" role="img">"#);
+    let mut out = crate::html::svg_open(w, h);
     for v in &yt {
         let _ = write!(
             out,
@@ -669,9 +767,11 @@ fn frontier_chart(
     }
     let _ = write!(
         out,
-        r#"<text class="tick" x="{:.1}" y="{}" text-anchor="middle">Volatility</text>"#,
+        r#"<text class="tick" x="{:.1}" y="{}" text-anchor="middle">Volatility, a year</text><text class="tick" x="{}" y="{}">Expected return, a year</text>"#,
         (l + w - r) / 2.0,
-        h - 2.0
+        h - 2.0,
+        l - 44.0,
+        t - 10.0
     );
     let path = points
         .iter()
@@ -689,20 +789,35 @@ fn frontier_chart(
         out,
         r#"<path class="line" d="{path}" style="stroke:var(--s1)"/>"#
     );
-    for item in holdings {
+    // The holdings, the largest labelled first, each label where it overlaps nothing.
+    let centres: Vec<(f64, f64)> = holdings
+        .iter()
+        .map(|i| (x(i.volatility), y(i.expected_return)))
+        .chain(std::iter::once((
+            x(current.volatility),
+            y(current.expected_return),
+        )))
+        .collect();
+    let mut labels = Labels::new((l, t, w - 4.0, h - b), &centres, 6.0);
+    let mut by_weight: Vec<&HoldingRiskReturn> = holdings.iter().collect();
+    by_weight.sort_by(|a, b| b.weight.total_cmp(&a.weight));
+    for item in by_weight {
         let name = holding(&item.holding);
+        let (cx, cy) = (x(item.volatility), y(item.expected_return));
         let _ = write!(
             out,
-            r#"<g><title>{}: return {}, volatility {}</title><circle class="dot" cx="{:.1}" cy="{:.1}" r="4" style="fill:var(--s3)"/></g><text class="lab" x="{:.1}" y="{:.1}">{}</text>"#,
+            r#"<g><title>{}: return {}, volatility {}</title><circle class="dot" cx="{cx:.1}" cy="{cy:.1}" r="4" style="fill:var(--s3)"/></g>"#,
             esc(&name),
             signed(item.expected_return),
             share(item.volatility),
-            x(item.volatility),
-            y(item.expected_return),
-            x(item.volatility) + 8.0,
-            y(item.expected_return) + 4.0,
-            esc(&name)
         );
+        if let Some((lx, ly, anchor)) = labels.place(cx, cy, &name, 13.0) {
+            let _ = write!(
+                out,
+                r#"<text class="lab" x="{lx:.1}" y="{ly:.1}" text-anchor="{anchor}">{}</text>"#,
+                esc(&name)
+            );
+        }
     }
     let _ = write!(
         out,
@@ -749,9 +864,16 @@ fn numbers(n: usize) -> Vec<usize> {
 pub(crate) fn tiles(items: &[(String, String, Option<String>)]) -> String {
     let mut out = String::from(r#"<div class="tiles">"#);
     for (label, value, sub) in items {
+        // A long value, such as "14.3% → 11.2%", in a smaller size, so that it keeps to one
+        // line in a narrow tile.
+        let class = if value.chars().count() > 9 {
+            "tv long"
+        } else {
+            "tv"
+        };
         let _ = write!(
             out,
-            r#"<div class="tile"><div class="tl">{}</div><div class="tv">{}</div>"#,
+            r#"<div class="tile"><div class="tl">{}</div><div class="{class}">{}</div>"#,
             esc(label),
             esc(value)
         );
@@ -896,7 +1018,11 @@ fn overview(o: &OverviewReport) -> String {
         };
         body.push_str(&card(
             "Growth of 100",
-            &line_chart(&o.growth.dates, &lines, &format, 240.0, false, false),
+            &y_title(
+                &line_chart(&o.growth.dates, &lines, &format, 240.0, false, false),
+                "Value of 100 invested",
+                240.0,
+            ),
             None,
         ));
     }
@@ -1600,12 +1726,11 @@ fn risk(r: &RiskReport) -> String {
     }
     if let Some(hr) = &r.holdings {
         let (rows, values, riskless) = crate::text::with_risk(&hr.correlation);
-        let columns: Vec<String> = rows.iter().map(|l| l.replace(" cash", "")).collect();
         let note = (!riskless.is_empty())
             .then(|| format!("{} has no risk and is left out.", riskless.join(", ")));
         body.push_str(&card(
             "Correlation",
-            &heat_table(&rows, &columns, &values, 1.0, &|v| num(Some(v), 2), true),
+            &heat_table(&rows, &rows, &values, 1.0, &|v| num(Some(v), 2), true),
             note.as_deref(),
         ));
     }
@@ -1835,6 +1960,46 @@ fn scenarios(s: &ScenariosReport) -> String {
 
 pub(crate) const CSS: &str = include_str!("../assets/report.css");
 
+/// The colours of a report's page: the reader's light or dark setting (the default), or one of
+/// the two always.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Theme {
+    /// Light or dark as the reader's system or browser is set.
+    #[default]
+    Auto,
+    /// Light, whatever the reader's setting.
+    Light,
+    /// Dark, whatever the reader's setting.
+    Dark,
+}
+
+impl Theme {
+    /// `page`, a report's HTML page from `to_html`, in this theme.
+    ///
+    /// ```
+    /// # mod finalytics { pub mod reports { pub use finalytics_reports::*; } }
+    /// use finalytics::reports::Theme;
+    ///
+    /// let page = "<!doctype html>\n<html lang=\"en\"><head></head></html>";
+    /// assert!(Theme::Dark.apply(page).contains(r#"<html lang="en" data-theme="dark">"#));
+    /// assert_eq!(Theme::Auto.apply(page), page);
+    /// ```
+    pub fn apply(self, page: &str) -> String {
+        let name = match self {
+            Theme::Auto => return page.to_owned(),
+            Theme::Light => "light",
+            Theme::Dark => "dark",
+        };
+        page.replacen(
+            r#"<html lang="en">"#,
+            &format!(r#"<html lang="en" data-theme="{name}">"#),
+            1,
+        )
+    }
+}
+
 impl PortfolioReport {
     /// The six reports as one self-contained HTML page, with the portfolio's `name` (or the
     /// report's own) as its title, if given: inline styles and SVG charts with hover details, no
@@ -1930,6 +2095,72 @@ mod tests {
         let t = ticks(-0.123, 0.0, 4);
         assert!(t[0] <= -0.123 && *t.last().unwrap_or(&1.0) >= 0.0);
         assert_eq!(ticks(5.0, 5.0, 4).len(), 2);
+    }
+
+    #[test]
+    fn labels_overlap_neither_points_nor_each_other_and_stay_inside() {
+        let points = [
+            (100.0, 100.0),
+            (150.0, 102.0),
+            (400.0, 20.0),
+            (790.0, 200.0),
+        ];
+        let mut labels = Labels::new((0.0, 0.0, 800.0, 240.0), &points, 6.0);
+        let mut boxes = Vec::new();
+        for (k, (x, y)) in points.iter().enumerate() {
+            let text = format!("Asset number {k}");
+            let (lx, ly, anchor) = labels.place(*x, *y, &text, 13.0).unwrap();
+            let width = text.chars().count() as f64 * 13.0 * 0.56;
+            let x0 = match anchor {
+                "start" => lx,
+                "end" => lx - width,
+                _ => lx - width / 2.0,
+            };
+            assert!(x0 >= 0.0 && x0 + width <= 800.0, "{text} leaves the area");
+            boxes.push((x0, ly - 10.4, x0 + width, ly + 2.6));
+        }
+        // The label at the right edge goes to the left of its point.
+        assert!(boxes[3].2 <= 790.0);
+        for (i, a) in boxes.iter().enumerate() {
+            for b in &boxes[i + 1..] {
+                assert!(a.2 <= b.0 || a.0 >= b.2 || a.3 <= b.1 || a.1 >= b.3);
+            }
+            for (x, y) in points {
+                assert!(a.2 <= x - 6.0 || a.0 >= x + 6.0 || a.3 <= y - 6.0 || a.1 >= y + 6.0);
+            }
+        }
+        // With no room left, a label is left out.
+        let mut crowded = Labels::new((0.0, 0.0, 60.0, 20.0), &[(30.0, 10.0)], 6.0);
+        assert_eq!(crowded.place(30.0, 10.0, "A long name", 13.0), None);
+    }
+
+    #[test]
+    fn a_theme_sets_the_page_colours() {
+        let page = "<!doctype html>\n<html lang=\"en\"><head></head><body></body></html>";
+        assert!(
+            Theme::Light
+                .apply(page)
+                .contains(r#"<html lang="en" data-theme="light">"#)
+        );
+        assert!(Theme::Dark.apply(page).contains(r#"data-theme="dark""#));
+        assert_eq!(Theme::Auto.apply(page), page);
+        assert!(CSS.contains(r#":root[data-theme="dark"]"#));
+    }
+
+    #[test]
+    fn wide_charts_keep_a_minimum_width_on_narrow_screens() {
+        assert!(svg_open(880.0, 200.0).starts_with(r#"<svg class="chart""#));
+        assert!(!svg_open(300.0, 200.0).contains("chart"));
+        assert!(CSS.contains("svg.chart{min-width:640px}"));
+    }
+
+    #[test]
+    fn labels_on_a_fill_follow_its_series() {
+        assert_eq!(on("var(--s3)"), "var(--on-s3)");
+        assert_eq!(on("var(--muted-fill)"), "var(--on-muted-fill)");
+        for k in 1..=8 {
+            assert_eq!(CSS.matches(&format!("--on-s{k}:")).count(), 3, "s{k}");
+        }
     }
 
     #[test]
