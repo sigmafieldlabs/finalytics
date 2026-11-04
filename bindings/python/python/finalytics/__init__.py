@@ -29,7 +29,7 @@ from importlib.metadata import version as _distribution_version
 from finalytics import datasets, opt, performance, reports, risk, types
 from finalytics._errors import FinalyticsError, ValidationError
 from finalytics._finalytics import version
-from finalytics._types import Drift, Holdout, InSample, WalkForward
+from finalytics._types import Drift, Every, Holdout, InSample, WalkForward
 from finalytics.assets import Assets
 from finalytics.performance import Performance, group_contributions, period
 from finalytics.portfolio import (
@@ -51,6 +51,7 @@ __all__ = [
     "Assets",
     "Document",
     "Drift",
+    "Every",
     "FinalyticsError",
     "Holdings",
     "Holdout",

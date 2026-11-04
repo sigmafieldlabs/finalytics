@@ -56,6 +56,7 @@ VARIANT_NAMES = {
     "Effect": {"set_lot": "LotSet", "close_lot": "LotClosed", "cash": "CashChange"},
     "Allocation": {"trade": "TradeAllocation", "income": "IncomeAllocation", "exchange": "ExchangeAllocation"},
     "Prior": {"market": "MarketPrior", "returns": "ReturnsPrior"},
+    "MeanMethod": {"historical": "HistoricalMean", "james_stein": "JamesSteinMean", "ewma": "EwmaMean"},
     "ColumnKind": {
         "text": "TextColumn",
         "date": "DateColumn",

@@ -45,7 +45,9 @@ from finalytics._types import (
     MarketPrior,
     MaximumSharpe,
     MeanVariance,
+    MinimumCdar,
     MinimumCvar,
+    MinimumSemivariance,
     MinimumVariance,
     Objective,
     Prior,
@@ -97,7 +99,9 @@ __all__ = [
     "MarketPrior",
     "MaximumSharpe",
     "MeanVariance",
+    "MinimumCdar",
     "MinimumCvar",
+    "MinimumSemivariance",
     "MinimumVariance",
     "Objective",
     "Prior",
@@ -212,12 +216,25 @@ class Problem(_types.Problem):
         return loads(Solution, call(_finalytics.solve, dumps(self), dumps(objective)))
 
     def resampled(
-        self, objective: Objective, *, observations: int, samples: int = 100, seed: int = 0
+        self,
+        objective: Objective,
+        *,
+        observations: int,
+        samples: int = 100,
+        seed: int = 0,
+        periods_per_year: float | None = None,
     ) -> ResampledSolution:
         """Resampled optimisation: the average of the optimal portfolios for `samples` sets of
         estimates, each re-made from a simulated history of `observations` periods (the length of
-        the history the estimates came from). The same `seed` gives the same result."""
-        resampling = Resampling(samples=int(samples), observations=int(observations), seed=int(seed))
+        the history the estimates came from). The same `seed` gives the same result. For
+        estimates annualised from returns with `periods_per_year` periods a year, the histories
+        are simulated period by period and their estimates annualised again."""
+        resampling = Resampling(
+            samples=int(samples),
+            observations=int(observations),
+            seed=int(seed),
+            periods_per_year=None if periods_per_year is None else float(periods_per_year),
+        )
         text = call(_finalytics.resampled, dumps(self), dumps(objective), dumps(resampling))
         return loads(ResampledSolution, text)
 

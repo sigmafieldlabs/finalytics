@@ -149,6 +149,14 @@ pub struct Constraints {
     pub factor_exposures: Vec<FactorExposureLimit>,
     /// Limits on the size and number of trades; they need the turnover's current weights.
     pub trades: Option<TradeLimits>,
+    /// The smallest expected return, net of trading costs, in the units of the expected
+    /// returns: a floor for the objectives that do not use expected returns, such as minimum
+    /// CVaR.
+    pub min_return: Option<f64>,
+    /// The smallest effective number of assets, `1 / sum w_i^2`, from 1 to the number of
+    /// assets: the constraint `sum w_i^2 <= 1 / k` of DeMiguel, Garlappi, Nogales and Uppal
+    /// (2009), which keeps the weights from concentrating in a few assets.
+    pub min_effective_assets: Option<f64>,
 }
 
 impl Default for Constraints {
@@ -163,6 +171,8 @@ impl Default for Constraints {
             tracking_error: None,
             factor_exposures: Vec::new(),
             trades: None,
+            min_return: None,
+            min_effective_assets: None,
         }
     }
 }
@@ -181,6 +191,8 @@ impl Constraints {
             && self.tracking_error.is_none()
             && self.factor_exposures.is_empty()
             && self.trades.is_none()
+            && self.min_return.is_none()
+            && self.min_effective_assets.is_none()
     }
 }
 
@@ -274,6 +286,17 @@ pub enum Objective {
         /// The confidence level, for example 0.95.
         confidence: f64,
     },
+    /// The smallest semivariance of the scenario returns below zero, `mean(min(r, 0)^2)` over
+    /// every scenario: the square of the downside deviation.
+    MinimumSemivariance,
+    /// The smallest conditional drawdown at risk of the scenario returns (Chekhlov, Uryasev and
+    /// Zabarankin, 2005): the Rockafellar–Uryasev tail mean of the drawdowns after each
+    /// scenario, measured on the cumulative sum of the returns from a start of zero, as a
+    /// linear programme.
+    MinimumCdar {
+        /// The confidence level, for example 0.95.
+        confidence: f64,
+    },
     /// Every asset with the same weight, `1 / n`: the naive portfolio that estimated ones must
     /// beat out of sample (DeMiguel, Garlappi and Uppal, 2009). Uses no estimates and no solver;
     /// only the default constraints apply.
@@ -313,7 +336,18 @@ impl Objective {
     }
 
     fn needs_covariance(&self) -> bool {
-        !matches!(self, Objective::MinimumCvar { .. } | Objective::EqualWeight)
+        !(self.uses_scenarios() || matches!(self, Objective::EqualWeight))
+    }
+
+    /// Whether the objective is measured on the scenario returns: minimum CVaR, semivariance
+    /// and CDaR.
+    pub(crate) fn uses_scenarios(&self) -> bool {
+        matches!(
+            self,
+            Objective::MinimumCvar { .. }
+                | Objective::MinimumSemivariance
+                | Objective::MinimumCdar { .. }
+        )
     }
 }
 
@@ -467,14 +501,17 @@ impl Problem {
             None if objective.needs_expected_returns() => {
                 report.error("expected_returns", "are needed for this objective");
             }
+            None if self.constraints.min_return.is_some() => {
+                report.error("expected_returns", "are needed for constraints.min_return");
+            }
             None => {}
         }
         match &self.scenarios {
             Some(s) if s.labels() != self.labels.as_slice() => {
                 report.error("scenarios.labels", "must be the problem's labels, in order");
             }
-            None if matches!(objective, Objective::MinimumCvar { .. }) => {
-                report.error("scenarios", "are needed for minimum CVaR");
+            None if objective.uses_scenarios() => {
+                report.error("scenarios", "are needed for this objective");
             }
             _ => {}
         }
@@ -683,10 +720,11 @@ impl Problem {
                     "must be a finite number, not negative",
                 );
             }
-            if matches!(objective, Objective::MinimumCvar { .. }) {
+            if objective.uses_scenarios() {
                 report.error(
                     "constraints.trades",
-                    "are not supported for minimum CVaR, whose optimum need not be unique",
+                    "are not supported for the objectives of scenario returns, whose optimum \
+                     need not be unique",
                 );
             }
         }
@@ -707,6 +745,19 @@ impl Problem {
             if let Some(b) = &limit.benchmark {
                 check_vector(b, n, &format!("{path}.benchmark"), report);
             }
+        }
+        if let Some(r) = c.min_return
+            && !r.is_finite()
+        {
+            report.error("constraints.min_return", "must be a finite number");
+        }
+        if let Some(k) = c.min_effective_assets
+            && !(k.is_finite() && k >= 1.0 && k <= n as f64)
+        {
+            report.error(
+                "constraints.min_effective_assets",
+                format!("must be from 1 to the number of assets, {n}"),
+            );
         }
         let fixed_form = matches!(
             objective,
@@ -874,6 +925,17 @@ impl Prepared<'_> {
                 .collect();
             worst = worst.max(self.risk().variance(&active).sqrt() - te.limit);
         }
+        if let Some(floor) = c.min_return {
+            let expected: f64 = weights
+                .iter()
+                .zip(self.expected_returns())
+                .map(|(w, m)| w * m)
+                .sum();
+            worst = worst.max(floor - (expected - crate::optimise::traded_costs(self, weights)));
+        }
+        if let Some(k) = c.min_effective_assets {
+            worst = worst.max(weights.iter().map(|w| w * w).sum::<f64>() - 1.0 / k);
+        }
         if let Some(RiskModel::Factors { model, .. }) = &self.risk {
             let x = model.portfolio_exposures(weights).unwrap_or_default();
             for (&(k, shift), limit) in self.exposure_limits.iter().zip(&c.factor_exposures) {
@@ -981,7 +1043,7 @@ fn check_objective(objective: &Objective, labels: &[String], report: &mut Valida
                 report.error("objective.risk_free_rate", "must be a finite number");
             }
         }
-        Objective::MinimumCvar { confidence } => {
+        Objective::MinimumCvar { confidence } | Objective::MinimumCdar { confidence } => {
             if !(*confidence > 0.0 && *confidence < 1.0) {
                 report.error(
                     "objective.confidence",

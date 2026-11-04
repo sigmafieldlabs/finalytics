@@ -274,10 +274,18 @@ fn solve_conic(
         .has_solution()
         .then(|| decode(&outcome.x, &layout, prepared.n))
         .flatten();
-    let status = if outcome.status.has_solution() && weights.is_none() {
-        SolveStatus::NumericalDifficulty
-    } else {
-        outcome.status
+    let status = match (&weights, outcome.status) {
+        (None, s) if s.has_solution() => SolveStatus::NumericalDifficulty,
+        // The solver stops nearly optimal when its iterates lose feasibility on the boundary of
+        // a second-order cone before the gap closes to 1e-10, as they can when the effective
+        // number of assets is limited. With the gap closed to the solver's own default
+        // tolerance, 1e-8, and every constraint met to 1e-9, the weights are optimal.
+        (Some(w), SolveStatus::NearlyOptimal)
+            if outcome.gap_closed && violation(prepared, objective, w) <= 1e-9 =>
+        {
+            SolveStatus::Optimal
+        }
+        (_, s) => s,
     };
     (status, weights, outcome.iterations)
 }
@@ -433,6 +441,58 @@ fn formulate(prepared: &Prepared<'_>, objective: &Objective) -> (Program, Layout
                 }
             }
         }
+        Objective::MinimumSemivariance => {
+            if let Some(scenarios) = &prepared.problem.scenarios {
+                // `d_s >= max(-r_s . w, 0)`, and the objective `sum d_s^2 / t`.
+                let t = scenarios.observations();
+                let shortfall = program.variables(t);
+                program.quadratic_diagonal(shortfall, &vec![1.0 / t as f64; t], 2.0);
+                for s in 0..t {
+                    let returns: Vec<f64> = scenarios.columns().iter().map(|c| -c[s]).collect();
+                    let mut coeffs = layout.on_weights(&returns);
+                    coeffs.push((shortfall + s, -1.0));
+                    program.at_most(Row::new(coeffs, 0.0));
+                    program.at_most(Row::new(vec![(shortfall + s, -1.0)], 0.0));
+                }
+            }
+        }
+        Objective::MinimumCdar { confidence } => {
+            if let Some(scenarios) = &prepared.problem.scenarios {
+                // The peaks `u_s` of the cumulative returns `c_s = sum_{k <= s} r_k . w`, from a
+                // start of zero: `u_s >= c_s`, `u_s >= u_{s-1}`, `u_0 >= 0`. The drawdowns
+                // `u_s - c_s` then enter the Rockafellar–Uryasev tail mean as losses do in
+                // minimum CVaR.
+                let t = scenarios.observations();
+                let alpha = 1.0 - confidence;
+                let peak = program.variables(t);
+                let threshold = program.variables(1);
+                let excess = program.variables(t);
+                program.linear[threshold] = 1.0;
+                let mut cumulative = vec![0.0; prepared.n];
+                for s in 0..t {
+                    for (c, column) in cumulative.iter_mut().zip(scenarios.columns()) {
+                        *c += column[s];
+                    }
+                    let mut coeffs = layout.on_weights(&cumulative);
+                    coeffs.push((peak + s, -1.0));
+                    program.at_most(Row::new(coeffs, 0.0));
+                    let mut rising = vec![(peak + s, -1.0)];
+                    if s > 0 {
+                        rising.push((peak + s - 1, 1.0));
+                    }
+                    program.at_most(Row::new(rising, 0.0));
+
+                    program.linear[excess + s] = 1.0 / (alpha * t as f64);
+                    let falls: Vec<f64> = cumulative.iter().map(|c| -c).collect();
+                    let mut coeffs = layout.on_weights(&falls);
+                    coeffs.push((peak + s, 1.0));
+                    coeffs.push((threshold, -1.0));
+                    coeffs.push((excess + s, -1.0));
+                    program.at_most(Row::new(coeffs, 0.0));
+                    program.at_most(Row::new(vec![(excess + s, -1.0)], 0.0));
+                }
+            }
+        }
         Objective::EqualWeight
         | Objective::InverseVolatility
         | Objective::RiskBudgeting { .. }
@@ -567,6 +627,23 @@ fn add_constraints(program: &mut Program, layout: &Layout, prepared: &Prepared<'
         rows.extend(risk_rows(prepared, layout, Some(&te.benchmark)));
         program.second_order_cone(rows);
     }
+    if let Some(floor) = c.min_return {
+        let mu = prepared.expected_returns();
+        let mut coeffs = layout.on_weights(&mu.iter().map(|m| -m).collect::<Vec<_>>());
+        coeffs.extend(
+            layout
+                .costs(prepared.costs())
+                .into_iter()
+                .map(|(i, c)| (i, -c)),
+        );
+        program.at_most(layout.row(coeffs, -floor));
+    }
+    if let Some(k) = c.min_effective_assets {
+        // `||w|| <= 1 / sqrt(k)`.
+        let mut rows = vec![layout.row(Vec::new(), 1.0 / k.sqrt())];
+        rows.extend((0..n).map(|i| Row::new(vec![(w + i, -1.0)], 0.0)));
+        program.second_order_cone(rows);
+    }
     if let Some(y) = layout.factors {
         for (&(k, shift), limit) in prepared.exposure_limits.iter().zip(&c.factor_exposures) {
             program.at_most(layout.row(vec![(y + k, 1.0)], limit.max + shift));
@@ -628,18 +705,28 @@ fn report(
             Some(weighted / volatility?)
         }
         Objective::MinimumCvar { confidence } => {
-            let scenarios = problem.scenarios.as_ref()?;
-            let returns: Vec<f64> = (0..scenarios.observations())
-                .map(|s| {
-                    scenarios
-                        .columns()
-                        .iter()
-                        .zip(w)
-                        .map(|(c, w)| c[s] * w)
-                        .sum()
+            let returns = scenario_returns(problem.scenarios.as_ref()?, w);
+            Some(cvar(&returns, 1.0 - confidence))
+        }
+        Objective::MinimumSemivariance => {
+            let returns = scenario_returns(problem.scenarios.as_ref()?, w);
+            let below: f64 = returns.iter().map(|r| r.min(0.0).powi(2)).sum();
+            Some(below / returns.len() as f64)
+        }
+        Objective::MinimumCdar { confidence } => {
+            let returns = scenario_returns(problem.scenarios.as_ref()?, w);
+            let mut cumulative = 0.0;
+            let mut peak: f64 = 0.0;
+            let falls: Vec<f64> = returns
+                .iter()
+                .map(|r| {
+                    cumulative += r;
+                    peak = peak.max(cumulative);
+                    // As a return, so that `cvar` takes its tail mean as a loss.
+                    cumulative - peak
                 })
                 .collect();
-            Some(cvar(&returns, 1.0 - confidence))
+            Some(cvar(&falls, 1.0 - confidence))
         }
         Objective::RiskBudgeting { budgets } => {
             risk_budget::largest_gap(&risk?.dense(), w, budgets.as_deref())
@@ -648,19 +735,7 @@ fn report(
         | Objective::InverseVolatility
         | Objective::HierarchicalRiskParity { .. } => None,
     });
-    let mut max_violation = weights.as_ref().map(|w| prepared.violation(w));
-    if let (Some(v), Some(w)) = (&mut max_violation, &weights) {
-        match objective {
-            Objective::TargetReturn { target } => {
-                let traded = traded_costs(prepared, w);
-                *v = v.max(target - (expected_return.unwrap_or(0.0) - traded));
-            }
-            Objective::TargetVolatility { target } => {
-                *v = v.max(volatility.unwrap_or(0.0) - target);
-            }
-            _ => {}
-        }
-    }
+    let max_violation = weights.as_ref().map(|w| violation(prepared, objective, w));
     Solution {
         objective: objective.clone(),
         status,
@@ -676,8 +751,29 @@ fn report(
     }
 }
 
+/// The largest amount by which `w` breaks a constraint or the objective's target, 0 if it meets
+/// them all.
+fn violation(prepared: &Prepared<'_>, objective: &Objective, w: &[f64]) -> f64 {
+    let v = prepared.violation(w);
+    match objective {
+        Objective::TargetReturn { target } => {
+            let expected: f64 = w
+                .iter()
+                .zip(prepared.expected_returns())
+                .map(|(a, b)| a * b)
+                .sum();
+            v.max(target - (expected - traded_costs(prepared, w)))
+        }
+        Objective::TargetVolatility { target } => match &prepared.risk {
+            Some(risk) => v.max(risk.variance(w).sqrt() - target),
+            None => v,
+        },
+        _ => v,
+    }
+}
+
 /// The trading costs of moving from the current weights to `w`.
-fn traded_costs(prepared: &Prepared<'_>, w: &[f64]) -> f64 {
+pub(crate) fn traded_costs(prepared: &Prepared<'_>, w: &[f64]) -> f64 {
     match (&prepared.constraints().turnover, prepared.costs()) {
         (Some(t), Some(costs)) => w
             .iter()
@@ -687,6 +783,20 @@ fn traded_costs(prepared: &Prepared<'_>, w: &[f64]) -> f64 {
             .sum(),
         _ => 0.0,
     }
+}
+
+/// The portfolio's return in each scenario.
+fn scenario_returns(scenarios: &finalytics_risk::ReturnsTable, w: &[f64]) -> Vec<f64> {
+    (0..scenarios.observations())
+        .map(|s| {
+            scenarios
+                .columns()
+                .iter()
+                .zip(w)
+                .map(|(c, w)| c[s] * w)
+                .sum()
+        })
+        .collect()
 }
 
 /// The Rockafellar–Uryasev CVaR of scenario returns at tail probability `alpha`, as a positive

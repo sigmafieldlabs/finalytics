@@ -334,6 +334,7 @@ impl Assets {
             self.covariance_method(),
             limits,
         )
+        .with_mean_returns(self.mean_method())
     }
 
     /// Fixed weights by asset as one weight per risky asset, the risk-free asset as cash.
@@ -433,6 +434,16 @@ pub(crate) fn limits(options: &OptimiseOptions) -> Vec<String> {
             pct(g.max)
         ));
     }
+    if let Some(target) = options.target.filter(|_| options.method.uses_scenarios()) {
+        out.push(format!("Expected return at least {} a year", pct(target)));
+    }
+    if let Some(k) = options.min_effective_assets {
+        let text = format!("{k:.2}");
+        out.push(format!(
+            "At least {} effective assets",
+            text.trim_end_matches('0').trim_end_matches('.')
+        ));
+    }
     out
 }
 
@@ -454,11 +465,13 @@ fn applicable(options: &OptimiseOptions) -> (OptimiseOptions, Vec<String>) {
         let limited = options.bounds.is_some()
             || options.max_weight.is_some()
             || !options.asset_bounds.is_empty()
-            || !options.groups.is_empty();
+            || !options.groups.is_empty()
+            || options.min_effective_assets.is_some();
         method.bounds = None;
         method.max_weight = None;
         method.asset_bounds.clear();
         method.groups.clear();
+        method.min_effective_assets = None;
         if limited {
             notes.push(
                 "Fully invested and long only; the limits on weights do not apply.".to_owned(),
@@ -673,9 +686,25 @@ macro_rules! common_setters {
             }
 
             /// The annual expected return or volatility to aim for, for target return and
-            /// target volatility.
+            /// target volatility, or the smallest annual expected return for minimum CVaR,
+            /// semivariance and CDaR.
             pub fn target(mut self, target: f64) -> Self {
                 self.common.options.target = Some(target);
+                self
+            }
+
+            /// The smallest effective number of assets, `1 / sum w^2`, such as 5, for the
+            /// methods that take limits on weights.
+            pub fn min_effective_assets(mut self, k: f64) -> Self {
+                self.common.options.min_effective_assets = Some(k);
+                self
+            }
+
+            /// Resampled optimisation, for the methods that use estimates: the average of the
+            /// optimal weights for `samples` histories, such as 200, simulated from the
+            /// estimates at each fit.
+            pub fn resample(mut self, samples: usize) -> Self {
+                self.common.options.resample = Some(samples);
                 self
             }
 
@@ -685,7 +714,8 @@ macro_rules! common_setters {
                 self
             }
 
-            /// The confidence of the conditional value at risk, for minimum CVaR.
+            /// The confidence of the conditional value at risk or drawdown at risk, for minimum
+            /// CVaR and CDaR.
             pub fn confidence(mut self, confidence: f64) -> Self {
                 self.common.options.confidence = Some(confidence);
                 self
@@ -743,7 +773,7 @@ macro_rules! common_setters {
                 self
             }
 
-            /// Weights refitted at each calendar rebalance on the last `window` of history,
+            /// Weights refitted at each scheduled rebalance on the last `window` of history,
             /// such as `Years(5)`, and tested on what follows.
             pub fn walk_forward(mut self, window: impl History) -> Self {
                 self.common.validation = window.walk_forward(false);
@@ -751,7 +781,7 @@ macro_rules! common_setters {
                 self
             }
 
-            /// Weights refitted at each calendar rebalance on all the history so far, from a
+            /// Weights refitted at each scheduled rebalance on all the history so far, from a
             /// first `window`.
             pub fn walk_forward_expanding(mut self, window: impl History) -> Self {
                 self.common.validation = window.walk_forward(true);

@@ -8,19 +8,19 @@ use finalytics_core::{Date, Decimal, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_ledger::HoldingKey;
 use finalytics_opt::{
-    AssetBound, Bound, Constraints, GroupLimit, Linkage, Objective, Problem, ReturnUncertainty,
-    Solution, SolveStatus,
+    AssetBound, Bound, Constraints, GroupLimit, Linkage, Objective, Problem, ResampledSolution,
+    Resampling, ReturnUncertainty, Solution, SolveStatus,
 };
 use finalytics_reports::OptimisationReport;
 use finalytics_risk::{
-    CovarianceEstimate, CovarianceMethod, Matrix, PriceTable, ReturnsTable, Statistics,
+    CovarianceEstimate, CovarianceMethod, Matrix, MeanMethod, PriceTable, ReturnsTable, Statistics,
     StatisticsOptions, TailMethod, TailRisk, covariance, periods_per_year, statistics, tail_risk,
 };
 
 /// The prices or returns of several assets over the same periods, with the settings that turn
 /// them into annual figures: the number of periods in a year (detected from the dates), the
-/// annual risk-free rate (zero by default) and the covariance estimator (Ledoit–Wolf by
-/// default).
+/// annual risk-free rate (zero by default), the covariance estimator (Ledoit–Wolf by default)
+/// and the estimator of mean returns (the historical mean by default).
 ///
 /// ```
 /// use finalytics::{Assets, Method, datasets};
@@ -46,6 +46,7 @@ pub struct Assets {
     risk_free_rate: f64,
     risk_free_asset: Option<usize>,
     covariance_method: CovarianceMethod,
+    mean_method: MeanMethod,
     warnings: ValidationReport,
 }
 
@@ -86,6 +87,10 @@ pub enum Method {
     MaximumDiversification,
     /// The smallest conditional value at risk of the periods' returns, at `confidence`.
     MinimumCvar,
+    /// The smallest semivariance of the periods' returns below zero.
+    MinimumSemivariance,
+    /// The smallest conditional drawdown at risk of the cumulative returns, at `confidence`.
+    MinimumCdar,
     /// Every asset with the same weight: the naive portfolio that estimated ones must beat.
     EqualWeight,
     /// Weights in proportion to the inverse of each asset's volatility.
@@ -153,6 +158,14 @@ impl Method {
                 "the smallest average loss in the worst periods, at the confidence given, \
                  from the historical returns as scenarios."
             }
+            Method::MinimumSemivariance => {
+                "the smallest mean square of the returns below zero, from the historical returns \
+                 as scenarios."
+            }
+            Method::MinimumCdar => {
+                "the smallest average of the worst drawdowns, at the confidence given, of the \
+                 historical returns added up period by period."
+            }
             Method::EqualWeight => "every asset with the same weight.",
             Method::InverseVolatility => {
                 "weights in proportion to the inverse of each asset's volatility."
@@ -179,6 +192,8 @@ impl Method {
             Method::MaximumSharpe => "Maximum Sharpe",
             Method::MaximumDiversification => "Maximum diversification",
             Method::MinimumCvar => "Minimum CVaR",
+            Method::MinimumSemivariance => "Minimum semivariance",
+            Method::MinimumCdar => "Minimum CDaR",
             Method::EqualWeight => "Equal weight",
             Method::InverseVolatility => "Inverse volatility",
             Method::RiskParity => "Risk parity",
@@ -195,6 +210,21 @@ impl Method {
             Some(first) => first.to_lowercase().chain(chars).collect(),
             None => String::new(),
         }
+    }
+
+    /// Whether the method is measured on the periods' returns as scenarios: minimum CVaR,
+    /// semivariance and CDaR.
+    pub(crate) fn uses_scenarios(self) -> bool {
+        matches!(
+            self,
+            Method::MinimumCvar | Method::MinimumSemivariance | Method::MinimumCdar
+        )
+    }
+
+    /// Whether the method's weights can be resampled: every method that uses estimates, other
+    /// than those measured on the periods' returns.
+    pub(crate) fn resamples(self) -> bool {
+        !(self == Method::EqualWeight || self.uses_scenarios())
     }
 
     /// Whether the method takes limits on the weights. Equal weight, inverse volatility, risk
@@ -236,13 +266,13 @@ pub struct OptimiseOptions {
     /// The annual risk-free rate for the Sharpe ratio; by default the assets' own.
     pub risk_free_rate: Option<f64>,
     /// The annual expected return (`target_return`) or volatility (`target_volatility`) to aim
-    /// for.
+    /// for, or the smallest annual expected return for minimum CVaR, semivariance and CDaR.
     pub target: Option<f64>,
     /// The weight on variance, for mean–variance objectives.
     pub risk_aversion: Option<f64>,
     /// The uncertainty of the expected returns, for robust mean–variance.
     pub uncertainty: Option<ReturnUncertainty>,
-    /// The confidence of the conditional value at risk: 0.95 by default.
+    /// The confidence of the conditional value at risk or drawdown at risk: 0.95 by default.
     pub confidence: Option<f64>,
     /// The risk budgets, by asset, for risk budgeting; equal without them.
     pub budgets: Option<BTreeMap<String, f64>>,
@@ -257,7 +287,15 @@ pub struct OptimiseOptions {
     pub asset_bounds: BTreeMap<String, Bound>,
     /// Limits on the total weight of groups of assets, by group name.
     pub groups: BTreeMap<String, AssetGroup>,
-    /// Annual expected returns by asset, in place of the historical means.
+    /// The smallest effective number of assets, `1 / sum w^2`, such as 5: the weights are
+    /// spread over at least as many assets as 5 equal weights would be.
+    pub min_effective_assets: Option<f64>,
+    /// Resampled optimisation (Michaud, 1998): the weights are the average of the optimal
+    /// weights for this many histories, such as 200, simulated from the estimates with as many
+    /// returns as the assets have, from random numbers with a fixed seed. For the methods that
+    /// use estimates, other than those measured on the periods' returns.
+    pub resample: Option<usize>,
+    /// Annual expected returns by asset, in place of the estimates.
     pub expected_returns: BTreeMap<String, f64>,
     /// Whether the optimisation report draws the efficient frontier under the same limits.
     /// Off by default: the frontier takes 30 more optimisations, so it adds time that grows with
@@ -300,8 +338,14 @@ pub struct OptimisationResult {
     pub sharpe_ratio: Option<f64>,
     /// The annual risk-free rate used.
     pub risk_free_rate: f64,
-    /// The solver's solution, with the objective, its value and the work done.
+    /// The solver's solution, with the objective, its value and the work done. With
+    /// resampling, it is the solution for the estimates themselves, and `weights` are the
+    /// average in `resampled`.
     pub solution: Solution,
+    /// For resampled optimisation, the average weights, how much each varied across the
+    /// simulated histories, and how many were solved.
+    #[serde(default)]
+    pub resampled: Option<ResampledSolution>,
 }
 
 /// The weights as text: each asset's weight, the largest first, with the expected return,
@@ -369,6 +413,7 @@ impl Assets {
             risk_free_rate: 0.0,
             risk_free_asset: None,
             covariance_method: CovarianceMethod::LedoitWolf,
+            mean_method: MeanMethod::Historical,
             warnings: found.warnings,
         })
     }
@@ -404,6 +449,7 @@ impl Assets {
             risk_free_rate: 0.0,
             risk_free_asset: None,
             covariance_method: CovarianceMethod::LedoitWolf,
+            mean_method: MeanMethod::Historical,
             warnings: ValidationReport::new(),
         })
     }
@@ -449,7 +495,7 @@ impl Assets {
             report.error("risk_free_asset", format!("unknown asset {asset}"));
             return Err(Error::Validation(report));
         };
-        self.risk_free_rate = self.mean_returns()[i];
+        self.risk_free_rate = self.historical_means()[i];
         self.risk_free_asset = Some(i);
         Ok(self)
     }
@@ -470,6 +516,22 @@ impl Assets {
     /// The covariance estimator.
     pub fn covariance_method(&self) -> CovarianceMethod {
         self.covariance_method
+    }
+
+    /// The same assets with another estimator of mean returns, checked on the risky assets'
+    /// returns: James–Stein needs more returns than risky assets.
+    pub fn with_mean_returns(mut self, method: MeanMethod) -> Result<Assets> {
+        self.mean_method = method;
+        let mut report = ValidationReport::new();
+        if let Err(e) = self.risky_means(&self.risky_returns()?) {
+            rehome(e, "mean_returns", &mut report)?;
+        }
+        report.into_result(self)
+    }
+
+    /// The estimator of mean returns.
+    pub fn mean_method(&self) -> MeanMethod {
+        self.mean_method
     }
 
     /// The assets' labels.
@@ -563,10 +625,11 @@ impl Assets {
             risk_free_rate: self.risk_free_rate,
             risk_free_asset: self.risk_free_asset,
             covariance_method: self.covariance_method,
+            mean_method: self.mean_method,
             warnings: ValidationReport::new(),
         };
         if let Some(i) = self.risk_free_asset {
-            window.risk_free_rate = window.mean_returns()[i];
+            window.risk_free_rate = window.historical_means()[i];
         }
         Ok(window)
     }
@@ -608,13 +671,48 @@ impl Assets {
         self.covariance()?.matrix.correlation()
     }
 
-    /// Each asset's historical mean return, annualised.
+    /// Each asset's expected return, annualised, by the assets' estimator of mean returns: the
+    /// risky assets' are estimated together, and the risk-free asset's is its historical mean,
+    /// the risk-free rate. These are the expected returns optimisation uses unless others are
+    /// given.
     pub fn mean_returns(&self) -> Vec<f64> {
+        let mut means = self.historical_means();
+        // The estimator was checked on the risky assets' returns when it was chosen.
+        if let Ok(risky) = self
+            .risky_returns()
+            .and_then(|returns| self.risky_means(&returns))
+        {
+            let slots = (0..means.len()).filter(|i| Some(*i) != self.risk_free_asset);
+            for (i, m) in slots.zip(risky) {
+                means[i] = m;
+            }
+        }
+        means
+    }
+
+    /// Each asset's historical mean return, annualised.
+    fn historical_means(&self) -> Vec<f64> {
         self.returns
             .columns()
             .iter()
             .map(|c| c.iter().sum::<f64>() / c.len() as f64 * self.periods_per_year)
             .collect()
+    }
+
+    /// The mean returns of `returns`, annualised, by the assets' estimator.
+    fn risky_means(&self, returns: &ReturnsTable) -> Result<Vec<f64>> {
+        if self.mean_method == MeanMethod::Historical {
+            return Ok(returns
+                .columns()
+                .iter()
+                .map(|c| c.iter().sum::<f64>() / c.len() as f64 * self.periods_per_year)
+                .collect());
+        }
+        Ok(finalytics_risk::mean_returns(returns, self.mean_method)?
+            .means
+            .iter()
+            .map(|m| m * self.periods_per_year)
+            .collect())
     }
 
     /// An optimisation of the risky assets by `method`, with the limits and parameters the
@@ -642,10 +740,11 @@ impl Assets {
         }
     }
 
-    /// Optimises a portfolio of the risky assets as `options` describe: annualised Ledoit–Wolf
-    /// covariance (or the assets' estimator), historical mean returns unless others are given,
-    /// and the method and limits of `options`. The result holds the optimisation report and
-    /// the raw results. [`Assets::optimise`] builds the same options step by step.
+    /// Optimises a portfolio of the risky assets as `options` describe: the annualised
+    /// covariance and mean returns by the assets' estimators (Ledoit–Wolf and the historical
+    /// mean unless others were chosen), expected returns given in `options` in place of the
+    /// estimates, and the method and limits of `options`. The result holds the optimisation
+    /// report and the raw results. [`Assets::optimise`] builds the same options step by step.
     pub fn optimise_with(&self, options: &OptimiseOptions) -> Result<Optimisation> {
         self.check_options(options, true).into_result(())?;
         let results = self.solve(options)?;
@@ -739,7 +838,10 @@ impl Assets {
             labels: &labels,
             weights: results.weights.as_ref(),
             expected_returns: &expected,
-            historical_means: options.expected_returns.is_empty(),
+            mean_returns: options
+                .expected_returns
+                .is_empty()
+                .then_some(self.mean_method),
             covariance: &covariance,
             risk_free_asset: self.risk_free_asset().map(str::to_owned),
             risk_free_rate: results.risk_free_rate,
@@ -756,6 +858,13 @@ impl Assets {
                 .iter()
                 .map(|(name, g)| (name.clone(), g.assets.clone(), g.min, g.max))
                 .collect(),
+            resampling: results.resampled.as_ref().map(|r| {
+                finalytics_reports::ResamplingSummary::new(
+                    options.resample.unwrap_or_default(),
+                    self.returns.observations(),
+                    r.solved,
+                )
+            }),
         })
     }
 
@@ -763,30 +872,68 @@ impl Assets {
     /// refits.
     pub(crate) fn solve(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
         let rf = options.risk_free_rate.unwrap_or(self.risk_free_rate);
-        let (problem, labels) = self.problem(options)?;
+        let (mut problem, labels) = self.problem(options)?;
+        // The floor on expected return of the downside methods; the frontier and the report's
+        // estimates do not have it.
+        if options.method.uses_scenarios() {
+            problem.constraints.min_return = options.target;
+        }
         let objective = objective(options, rf, &labels)?;
         let solution = problem
             .solve(&objective)
             .map_err(|e| user_paths(e, options))?;
-        let weights = solution.weights.as_ref().map(|w| {
+        // Resampling once the estimates themselves have a solution: without one, the status
+        // says why.
+        let resampled = match options.resample.filter(|_| options.method.resamples()) {
+            Some(samples) if solution.status.has_solution() => {
+                let resampling = Resampling::new(samples, self.returns.observations(), 0)
+                    .with_periods_per_year(self.periods_per_year);
+                Some(
+                    problem
+                        .resampled(&objective, &resampling)
+                        .map_err(|e| user_paths(e, options))?,
+                )
+            }
+            _ => None,
+        };
+        let (status, chosen, expected_return, volatility) = match &resampled {
+            Some(r) => (
+                if r.weights.is_some() {
+                    solution.status
+                } else {
+                    SolveStatus::NumericalDifficulty
+                },
+                r.weights.as_ref(),
+                r.expected_return,
+                r.volatility,
+            ),
+            None => (
+                solution.status,
+                solution.weights.as_ref(),
+                solution.expected_return,
+                solution.volatility,
+            ),
+        };
+        let weights = chosen.map(|w| {
             labels
                 .iter()
                 .cloned()
                 .zip(w.iter().copied())
                 .collect::<BTreeMap<String, f64>>()
         });
-        let sharpe_ratio = match (solution.expected_return, solution.volatility) {
+        let sharpe_ratio = match (expected_return, volatility) {
             (Some(r), Some(v)) if v > 0.0 => Some((r - rf) / v),
             _ => None,
         };
         Ok(OptimisationResult {
-            status: solution.status,
+            status,
             weights,
-            expected_return: solution.expected_return,
-            volatility: solution.volatility,
+            expected_return,
+            volatility,
             sharpe_ratio,
             risk_free_rate: rf,
             solution,
+            resampled,
         })
     }
 
@@ -934,6 +1081,10 @@ impl Assets {
                 (options.bounds.is_some(), "options.bounds"),
                 (!options.asset_bounds.is_empty(), "options.asset_bounds"),
                 (!options.groups.is_empty(), "options.groups"),
+                (
+                    options.min_effective_assets.is_some(),
+                    "options.min_effective_assets",
+                ),
             ];
             for (_, path) in limited.iter().filter(|(given, _)| *given) {
                 report.error(
@@ -942,6 +1093,33 @@ impl Assets {
                         "{name} is fully invested and long only, and takes no limits on weights"
                     ),
                 );
+            }
+        }
+
+        if let Some(k) = options.min_effective_assets {
+            let path = "options.min_effective_assets";
+            if !(k.is_finite() && k >= 1.0) {
+                report.error(path, format!("must be 1 or more, such as 5, not {k}"));
+            } else if k > n as f64 {
+                report.error(
+                    path,
+                    format!("must be at most the number of assets, {n}, not {k}"),
+                );
+            } else if report.is_empty() && method.takes_limits() {
+                let bounds: Vec<Bound> = risky
+                    .iter()
+                    .map(|a| options.asset_bounds.get(*a).copied().unwrap_or(default))
+                    .collect();
+                let most = most_effective_assets(&bounds);
+                if k > most * (1.0 + 1e-9) {
+                    report.error(
+                        path,
+                        format!(
+                            "the limits on weights allow at most {most:.2} effective assets, \
+                             fewer than {k}"
+                        ),
+                    );
+                }
             }
         }
 
@@ -963,10 +1141,14 @@ impl Assets {
         // The method's own parameters: those it needs, and, for one method, those it does not
         // use.
         let uses = |parameter: &str| match parameter {
-            "target" => matches!(method, Method::TargetReturn | Method::TargetVolatility),
+            "target" => {
+                matches!(method, Method::TargetReturn | Method::TargetVolatility)
+                    || method.uses_scenarios()
+            }
             "risk_aversion" => matches!(method, Method::MeanVariance | Method::RobustMeanVariance),
             "uncertainty" => method == Method::RobustMeanVariance,
-            "confidence" => method == Method::MinimumCvar,
+            "confidence" => matches!(method, Method::MinimumCvar | Method::MinimumCdar),
+            "resample" => method.resamples(),
             "budgets" => method == Method::RiskBudgeting,
             "linkage" => method == Method::HierarchicalRiskParity,
             _ => true,
@@ -976,6 +1158,7 @@ impl Assets {
             ("risk_aversion", options.risk_aversion.is_some()),
             ("uncertainty", options.uncertainty.is_some()),
             ("confidence", options.confidence.is_some()),
+            ("resample", options.resample.is_some()),
             ("budgets", options.budgets.is_some()),
             ("linkage", options.linkage.is_some()),
         ];
@@ -993,6 +1176,7 @@ impl Assets {
             } else if !is_given
                 && uses(parameter)
                 && matches!(parameter, "target" | "risk_aversion" | "uncertainty")
+                && !(parameter == "target" && method.uses_scenarios())
             {
                 report.error(path, format!("{name} needs {parameter}"));
             }
@@ -1023,6 +1207,14 @@ impl Assets {
                 format!("must be between 0 and 1, such as 0.95, not {c}"),
             );
         }
+        if let Some(samples) = options.resample
+            && samples < 2
+        {
+            report.error(
+                "options.resample",
+                format!("must be at least 2 histories, such as 200, not {samples}"),
+            );
+        }
         if let Some(budgets) = options.budgets.as_ref().filter(|_| uses("budgets")) {
             for (asset, b) in budgets {
                 let path = format!("options.budgets.{asset}");
@@ -1045,11 +1237,7 @@ impl Assets {
         self.check_options(options, false).into_result(())?;
         let returns = self.risky_returns()?;
         let labels = returns.labels().to_vec();
-        let mut expected: Vec<f64> = returns
-            .columns()
-            .iter()
-            .map(|c| c.iter().sum::<f64>() / c.len() as f64 * self.periods_per_year)
-            .collect();
+        let mut expected = self.risky_means(&returns)?;
         for (asset, r) in &options.expected_returns {
             if let Some(i) = labels.iter().position(|l| l == asset) {
                 expected[i] = *r;
@@ -1080,10 +1268,11 @@ impl Assets {
         let matrix = covariance(&returns, self.covariance_method)?
             .matrix
             .scaled(self.periods_per_year);
+        constraints.min_effective_assets = options.min_effective_assets;
         let mut problem = Problem::from_covariance(matrix)
             .with_expected_returns(expected)
             .with_constraints(constraints);
-        if options.method == Method::MinimumCvar {
+        if options.method.uses_scenarios() {
             problem = problem.with_scenarios(returns);
         }
         Ok((problem, labels))
@@ -1119,6 +1308,12 @@ fn user_paths(error: Error, options: &OptimiseOptions) -> Error {
                 || "options.groups".to_owned(),
                 |g| format!("options.groups.{g}"),
             )
+        } else if path == "constraints.min_effective_assets" {
+            "options.min_effective_assets".to_owned()
+        } else if path == "constraints.min_return" {
+            "options.target".to_owned()
+        } else if path.starts_with("resampling") {
+            "options.resample".to_owned()
         } else if let Some(rest) = path.strip_prefix("objective.") {
             format!("options.{rest}")
         } else if path == "constraints" || path == "objective" {
@@ -1182,6 +1377,10 @@ fn objective(
         Method::MaximumSharpe => Objective::MaximumSharpe { risk_free_rate },
         Method::MaximumDiversification => Objective::MaximumDiversification,
         Method::MinimumCvar => Objective::MinimumCvar {
+            confidence: options.confidence.unwrap_or(0.95),
+        },
+        Method::MinimumSemivariance => Objective::MinimumSemivariance,
+        Method::MinimumCdar => Objective::MinimumCdar {
             confidence: options.confidence.unwrap_or(0.95),
         },
         Method::EqualWeight => Objective::EqualWeight,
@@ -1249,9 +1448,22 @@ impl Optimise<'_> {
     }
 
     /// The annual expected return (target return) or volatility (target volatility) to aim
-    /// for.
+    /// for, or the smallest annual expected return for minimum CVaR, semivariance and CDaR.
     pub fn target(mut self, target: f64) -> Self {
         self.options.target = Some(target);
+        self
+    }
+
+    /// The smallest effective number of assets, `1 / sum w^2`, such as 5.
+    pub fn min_effective_assets(mut self, k: f64) -> Self {
+        self.options.min_effective_assets = Some(k);
+        self
+    }
+
+    /// Resampled optimisation: the average of the optimal weights for `samples` histories,
+    /// such as 200, simulated from the estimates.
+    pub fn resample(mut self, samples: usize) -> Self {
+        self.options.resample = Some(samples);
         self
     }
 
@@ -1267,7 +1479,8 @@ impl Optimise<'_> {
         self
     }
 
-    /// The confidence of the conditional value at risk, for minimum CVaR: 0.95 by default.
+    /// The confidence of the conditional value at risk or drawdown at risk, for minimum CVaR
+    /// and CDaR: 0.95 by default.
     pub fn confidence(mut self, confidence: f64) -> Self {
         self.options.confidence = Some(confidence);
         self
@@ -1360,6 +1573,7 @@ pub struct AssetsBuilder {
     risk_free_rate: Option<f64>,
     periods_per_year: Option<f64>,
     covariance: Option<CovarianceMethod>,
+    mean_returns: Option<MeanMethod>,
 }
 
 impl AssetsBuilder {
@@ -1416,6 +1630,12 @@ impl AssetsBuilder {
         self
     }
 
+    /// The estimator of mean returns: the historical mean by default.
+    pub fn mean_returns(mut self, method: MeanMethod) -> Self {
+        self.mean_returns = Some(method);
+        self
+    }
+
     /// Makes the assets, reporting every problem with what was given.
     pub fn build(self) -> Result<Assets> {
         let mut report = ValidationReport::new();
@@ -1444,6 +1664,7 @@ impl AssetsBuilder {
             risk_free_asset: self.risk_free_asset,
             periods_per_year: self.periods_per_year,
             covariance: self.covariance,
+            mean_returns: self.mean_returns,
         };
         settings.check(&mut report);
         report.into_result(())?;
@@ -1470,6 +1691,7 @@ pub struct AssetSettings {
     pub risk_free_asset: Option<String>,
     pub periods_per_year: Option<f64>,
     pub covariance: Option<CovarianceMethod>,
+    pub mean_returns: Option<MeanMethod>,
 }
 
 impl AssetSettings {
@@ -1505,6 +1727,17 @@ impl AssetSettings {
                 format!("must be between 0 and 1, such as 0.94, not {decay}"),
             );
         }
+        if let Some(CovarianceMethod::Statistical { factors: 0 }) = self.covariance {
+            report.error("covariance.factors", "must be at least 1, such as 3");
+        }
+        if let Some(MeanMethod::Ewma { decay }) = self.mean_returns
+            && !(decay > 0.0 && decay < 1.0)
+        {
+            report.error(
+                "mean_returns.decay",
+                format!("must be between 0 and 1, such as 0.94, not {decay}"),
+            );
+        }
     }
 
     /// `assets` with these settings, every problem with them reported together.
@@ -1524,8 +1757,62 @@ impl AssetSettings {
         if let Some(asset) = &self.risk_free_asset {
             assets = assets.with_risk_free_asset(asset)?;
         }
-        Ok(assets)
+        if let Some(method) = self.mean_returns {
+            assets.mean_method = method;
+        }
+        // The estimators chosen are checked on the risky assets' returns, as optimisation uses
+        // them, so that a choice the returns cannot support is reported here.
+        let mut report = ValidationReport::new();
+        let risky = assets.risky_returns()?;
+        if let Some(method) = self.covariance
+            && let Err(e) = covariance(&risky, method)
+        {
+            rehome(e, "covariance", &mut report)?;
+        }
+        if self.mean_returns.is_some()
+            && let Err(e) = assets.risky_means(&risky)
+        {
+            rehome(e, "mean_returns", &mut report)?;
+        }
+        report.into_result(assets)
     }
+}
+
+/// Adds the problems of `error`, if it is a validation error, to `report` at `path`, the setting
+/// that caused them; any other error is returned.
+fn rehome(error: Error, path: &str, report: &mut ValidationReport) -> Result<()> {
+    let Error::Validation(found) = error else {
+        return Err(error);
+    };
+    for issue in found.issues() {
+        report.error(path, issue.message.clone());
+    }
+    Ok(())
+}
+
+/// The largest effective number of assets, `1 / sum w^2`, of fully invested weights within
+/// `bounds`: the weights nearest equal, `clamp(level, min, max)` at the level where they sum to
+/// one. The bounds must allow a fully invested portfolio.
+fn most_effective_assets(bounds: &[Bound]) -> f64 {
+    let total = |level: f64| -> f64 { bounds.iter().map(|b| level.clamp(b.min, b.max)).sum() };
+    let mut low = bounds.iter().map(|b| b.min).fold(f64::INFINITY, f64::min);
+    let mut high = bounds
+        .iter()
+        .map(|b| b.max)
+        .fold(f64::NEG_INFINITY, f64::max);
+    for _ in 0..200 {
+        let mid = 0.5 * (low + high);
+        if total(mid) < 1.0 {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    let level = 0.5 * (low + high);
+    1.0 / bounds
+        .iter()
+        .map(|b| level.clamp(b.min, b.max).powi(2))
+        .sum::<f64>()
 }
 
 fn to_f64(value: Decimal) -> f64 {

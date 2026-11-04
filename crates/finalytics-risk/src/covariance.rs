@@ -33,6 +33,25 @@ pub enum CovarianceMethod {
     /// The empirical covariance (divisor n) shrunk towards a multiple of the identity with the
     /// oracle approximating shrinkage intensity of Chen, Wiesel, Eldar and Hero (2010).
     Oas,
+    /// The empirical covariance (divisor n) shrunk towards the matrix with the same variances
+    /// and every correlation the average sample correlation, with the intensity of Ledoit and
+    /// Wolf (2004, "Honey, I shrunk the sample covariance matrix").
+    ConstantCorrelation,
+    /// A statistical factor model of the first `factors` principal components of the sample
+    /// covariance, with each asset's variance kept: the covariance the model implies.
+    Statistical {
+        /// The number of components, between 1 and the smaller of the number of assets and of
+        /// returns less one.
+        factors: usize,
+    },
+    /// The sample correlation with the eigenvalues of noise replaced by their average: those
+    /// below the Marchenko–Pastur edge `(1 + sqrt(n / t))^2` of a random correlation matrix
+    /// of `n` assets and `t` returns. The variances are the sample's.
+    Denoised,
+    /// The analytical nonlinear shrinkage of Ledoit and Wolf (2020): each eigenvalue of the
+    /// sample covariance (divisor t - 1) shrunk by a kernel estimate of the spectral density,
+    /// for many assets against few returns.
+    NonlinearShrinkage,
 }
 
 /// The RiskMetrics decay.
@@ -51,6 +70,12 @@ enum Tagged {
     },
     LedoitWolf,
     Oas,
+    ConstantCorrelation,
+    Statistical {
+        factors: usize,
+    },
+    Denoised,
+    NonlinearShrinkage,
 }
 
 impl From<Tagged> for CovarianceMethod {
@@ -60,6 +85,10 @@ impl From<Tagged> for CovarianceMethod {
             Tagged::Ewma { decay } => CovarianceMethod::Ewma { decay },
             Tagged::LedoitWolf => CovarianceMethod::LedoitWolf,
             Tagged::Oas => CovarianceMethod::Oas,
+            Tagged::ConstantCorrelation => CovarianceMethod::ConstantCorrelation,
+            Tagged::Statistical { factors } => CovarianceMethod::Statistical { factors },
+            Tagged::Denoised => CovarianceMethod::Denoised,
+            Tagged::NonlinearShrinkage => CovarianceMethod::NonlinearShrinkage,
         }
     }
 }
@@ -72,7 +101,8 @@ impl<'de> serde::de::Visitor<'de> for MethodVisitor {
 
     fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(
-            "a covariance method: sample, ewma, ledoit_wolf or oas, or an object with a type",
+            "a covariance method: sample, ewma, ledoit_wolf, oas, constant_correlation, denoised \
+             or nonlinear_shrinkage, or an object with a type",
         )
     }
 
@@ -84,8 +114,17 @@ impl<'de> serde::de::Visitor<'de> for MethodVisitor {
             }),
             "ledoit_wolf" => Ok(CovarianceMethod::LedoitWolf),
             "oas" => Ok(CovarianceMethod::Oas),
+            "constant_correlation" => Ok(CovarianceMethod::ConstantCorrelation),
+            "denoised" => Ok(CovarianceMethod::Denoised),
+            "nonlinear_shrinkage" => Ok(CovarianceMethod::NonlinearShrinkage),
+            "statistical" => Err(E::custom(
+                "a statistical covariance needs its number of factors, as \
+                 {\"type\": \"statistical\", \"factors\": 3}",
+            )),
             _ => Err(E::custom(format!(
-                "unknown covariance method {name:?}: use sample, ewma, ledoit_wolf or oas"
+                "unknown covariance method {name:?}: use sample, ewma, ledoit_wolf, oas, \
+                 constant_correlation, denoised or nonlinear_shrinkage, or \
+                 {{\"type\": \"statistical\", \"factors\": 3}}"
             ))),
         }
     }
@@ -169,6 +208,32 @@ pub fn covariance(returns: &ReturnsTable, method: CovarianceMethod) -> Result<Co
             let empirical = cross_products(&centred, None, t as f64);
             let shrinkage = oas(&empirical, n, t);
             (shrink(empirical, n, shrinkage), Some(shrinkage))
+        }
+        CovarianceMethod::ConstantCorrelation => {
+            let centred = centred(returns.columns(), None);
+            let (values, shrinkage) = constant_correlation(&centred, n, t);
+            (values, Some(shrinkage))
+        }
+        CovarianceMethod::Statistical { factors } => {
+            let model = crate::factor::statistical_model(returns, factors)?.model;
+            (model.covariance().values().to_vec(), None)
+        }
+        CovarianceMethod::Denoised => {
+            let centred = centred(returns.columns(), None);
+            let sample = cross_products(&centred, None, (t - 1) as f64);
+            (denoised(&sample, n, t)?, None)
+        }
+        CovarianceMethod::NonlinearShrinkage => {
+            // The kernel's bandwidth, (t - 1)^(-1/3), must be below 1 / sqrt(5).
+            if t < 13 {
+                return Err(invalid(
+                    "returns",
+                    "nonlinear shrinkage needs at least 13 returns per asset",
+                ));
+            }
+            let centred = centred(returns.columns(), None);
+            let sample = cross_products(&centred, None, (t - 1) as f64);
+            (nonlinear_shrinkage(&sample, n, t - 1)?, None)
         }
     };
     Ok(CovarianceEstimate {
@@ -274,6 +339,212 @@ fn oas(empirical: &[f64], n: usize, t: usize) -> f64 {
     }
 }
 
+/// The Ledoit–Wolf (2004) shrinkage towards constant correlation of the empirical covariance of
+/// the `centred` returns (`n` assets, `t` returns), with its intensity: a translation of the
+/// authors' `covCor`.
+fn constant_correlation(centred: &[Vec<f64>], n: usize, t: usize) -> (Vec<f64>, f64) {
+    let tf = t as f64;
+    let sample = cross_products(centred, None, tf);
+    let var: Vec<f64> = (0..n).map(|i| sample[i * n + i]).collect();
+    let sd: Vec<f64> = var.iter().map(|v| v.max(0.0).sqrt()).collect();
+    if n < 2 || sd.contains(&0.0) {
+        return (sample, 0.0);
+    }
+    let mut correlations = 0.0;
+    for i in 0..n {
+        for j in 0..n {
+            if i != j {
+                correlations += sample[i * n + j] / (sd[i] * sd[j]);
+            }
+        }
+    }
+    let r_bar = correlations / (n * (n - 1)) as f64;
+    let mut prior = vec![0.0; n * n];
+    for i in 0..n {
+        for j in 0..n {
+            prior[i * n + j] = if i == j {
+                var[i]
+            } else {
+                r_bar * sd[i] * sd[j]
+            };
+        }
+    }
+    // pi: the sum of the asymptotic variances of the sample covariances.
+    let mut phi = 0.0;
+    let mut phi_diagonal = 0.0;
+    for i in 0..n {
+        for j in 0..n {
+            let mean_square: f64 = centred[i]
+                .iter()
+                .zip(&centred[j])
+                .map(|(a, b)| (a * a) * (b * b))
+                .sum::<f64>()
+                / tf;
+            let entry = mean_square - sample[i * n + j].powi(2);
+            phi += entry;
+            if i == j {
+                phi_diagonal += entry;
+            }
+        }
+    }
+    // rho: the asymptotic covariances of the target's entries with the sample's.
+    let mut theta_sum = 0.0;
+    for i in 0..n {
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            let term1: f64 = centred[i]
+                .iter()
+                .zip(&centred[j])
+                .map(|(a, b)| a.powi(3) * b)
+                .sum::<f64>()
+                / tf;
+            let theta = term1 - var[i] * sample[i * n + j];
+            theta_sum += sd[j] / sd[i] * theta;
+        }
+    }
+    let rho = phi_diagonal + r_bar * theta_sum;
+    let gamma: f64 = sample
+        .iter()
+        .zip(&prior)
+        .map(|(s, f)| (s - f).powi(2))
+        .sum();
+    let shrinkage = if gamma > 0.0 {
+        ((phi - rho) / gamma / tf).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let values = sample
+        .iter()
+        .zip(&prior)
+        .map(|(s, f)| shrinkage * f + (1.0 - shrinkage) * s)
+        .collect();
+    (values, shrinkage)
+}
+
+/// `sample` (`n` by `n`, from `t` returns) with its correlation's eigenvalues below the
+/// Marchenko–Pastur edge replaced by their average, which keeps the trace.
+fn denoised(sample: &[f64], n: usize, t: usize) -> Result<Vec<f64>> {
+    let sd: Vec<f64> = (0..n).map(|i| sample[i * n + i].max(0.0).sqrt()).collect();
+    if sd.contains(&0.0) {
+        return Err(invalid(
+            "returns",
+            "an asset's returns do not vary, so they have no correlation to denoise",
+        ));
+    }
+    let mut correlation = vec![0.0; n * n];
+    for i in 0..n {
+        for j in 0..n {
+            correlation[i * n + j] = sample[i * n + j] / (sd[i] * sd[j]);
+        }
+    }
+    let (mut values, vectors) = crate::linalg::symmetric_eigen(&correlation, n)
+        .ok_or_else(|| invalid("returns", "the eigendecomposition did not converge"))?;
+    let edge = (1.0 + (n as f64 / t as f64).sqrt()).powi(2);
+    let noise: Vec<usize> = (0..n).filter(|k| values[*k] < edge).collect();
+    if !noise.is_empty() {
+        let average = noise.iter().map(|k| values[*k]).sum::<f64>() / noise.len() as f64;
+        for k in noise {
+            values[k] = average;
+        }
+    }
+    let mut rebuilt = vec![0.0; n * n];
+    for (l, v) in values.iter().zip(&vectors) {
+        for i in 0..n {
+            for j in 0..n {
+                rebuilt[i * n + j] += l * v[i] * v[j];
+            }
+        }
+    }
+    // Back to a unit diagonal, then to the sample's variances.
+    let scale: Vec<f64> = (0..n).map(|i| rebuilt[i * n + i].sqrt()).collect();
+    let mut out = vec![0.0; n * n];
+    for i in 0..n {
+        for j in 0..n {
+            out[i * n + j] = rebuilt[i * n + j] / (scale[i] * scale[j]) * sd[i] * sd[j];
+        }
+    }
+    Ok(out)
+}
+
+/// The analytical nonlinear shrinkage of Ledoit and Wolf (2020) of `sample` (`p` by `p`, with
+/// divisor `n`, the returns less one): a translation of the authors' `analytical_shrinkage`.
+fn nonlinear_shrinkage(sample: &[f64], p: usize, n: usize) -> Result<Vec<f64>> {
+    use std::f64::consts::PI;
+    let (mut lambda, mut vectors) = crate::linalg::symmetric_eigen(sample, p)
+        .ok_or_else(|| invalid("returns", "the eigendecomposition did not converge"))?;
+    // Ascending, as in the authors' code.
+    lambda.reverse();
+    vectors.reverse();
+    let (pf, nf) = (p as f64, n as f64);
+    let first = p.saturating_sub(n);
+    let kept: Vec<f64> = lambda[first..].to_vec();
+    if kept.iter().any(|l| *l <= 0.0) {
+        return Err(invalid(
+            "returns",
+            "the sample covariance has a zero eigenvalue among those kept, as when an asset is \
+             a combination of others or does not vary",
+        ));
+    }
+    let m = kept.len();
+    let h = nf.powf(-1.0 / 3.0);
+    let root5 = 5f64.sqrt();
+    let mut ftilde = vec![0.0; m];
+    let mut hilbert = vec![0.0; m];
+    for i in 0..m {
+        for j in 0..m {
+            let bandwidth = h * kept[j];
+            let x = (kept[i] - kept[j]) / bandwidth;
+            ftilde[i] += (3.0 / 4.0 / root5) * (1.0 - x * x / 5.0).max(0.0) / bandwidth;
+            let hf = if (x.abs() - root5).abs() < 1e-12 {
+                (-3.0 / 10.0 / PI) * x
+            } else {
+                (-3.0 / 10.0 / PI) * x
+                    + (3.0 / 4.0 / root5 / PI)
+                        * (1.0 - x * x / 5.0)
+                        * ((root5 - x) / (root5 + x)).abs().ln()
+            };
+            hilbert[i] += hf / bandwidth;
+        }
+        ftilde[i] /= m as f64;
+        hilbert[i] /= m as f64;
+    }
+    let shrunk: Vec<f64> = if p <= n {
+        let c = pf / nf;
+        (0..m)
+            .map(|i| {
+                let l = kept[i];
+                l / ((PI * c * l * ftilde[i]).powi(2) + (1.0 - c - PI * c * l * hilbert[i]).powi(2))
+            })
+            .collect()
+    } else {
+        let mean_inverse = kept.iter().map(|l| 1.0 / l).sum::<f64>() / m as f64;
+        let hilbert0 = (1.0 / PI)
+            * (3.0 / 10.0 / h / h
+                + 3.0 / 4.0 / root5 / h
+                    * (1.0 - 1.0 / 5.0 / h / h)
+                    * ((1.0 + root5 * h) / (1.0 - root5 * h)).ln())
+            * mean_inverse;
+        let zero = 1.0 / (PI * (pf - nf) / nf * hilbert0);
+        std::iter::repeat_n(zero, first)
+            .chain((0..m).map(|i| {
+                let l = kept[i];
+                l / (PI * PI * l * l * (ftilde[i].powi(2) + hilbert[i].powi(2)))
+            }))
+            .collect()
+    };
+    let mut out = vec![0.0; p * p];
+    for (d, v) in shrunk.iter().zip(&vectors) {
+        for i in 0..p {
+            for j in 0..p {
+                out[i * p + j] += d * v[i] * v[j];
+            }
+        }
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -308,9 +579,16 @@ mod tests {
         assert_eq!(read(r#"{"type": "oas"}"#).unwrap(), CovarianceMethod::Oas);
         let unknown = read(r#""ledoitwolf""#).unwrap_err().to_string();
         assert!(
-            unknown.contains("use sample, ewma, ledoit_wolf or oas"),
+            unknown.contains("use sample, ewma, ledoit_wolf, oas, constant_correlation"),
             "{unknown}"
         );
+        assert_eq!(
+            read(r#"{"type": "statistical", "factors": 2}"#).unwrap(),
+            CovarianceMethod::Statistical { factors: 2 }
+        );
+        let bare = read(r#""statistical""#).unwrap_err().to_string();
+        assert!(bare.contains("needs its number of factors"), "{bare}");
+        assert!(read(r#"{"type": "statistical"}"#).is_err());
         assert!(read(r#"{"type": "ewma", "decy": 0.9}"#).is_err());
         assert!(read(r#"{"type": "shrunk"}"#).is_err());
         // Written as objects, as before.

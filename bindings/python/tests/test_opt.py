@@ -9,6 +9,7 @@ from finalytics import opt
 from conftest import FIXTURES
 
 FIXTURE = json.loads((FIXTURES / "finalytics-opt/tests/fixtures/optimisation.json").read_text())
+DOWNSIDE = json.loads((FIXTURES / "finalytics-opt/tests/fixtures/downside.json").read_text())
 
 
 def problem() -> opt.Problem:
@@ -37,6 +38,22 @@ def test_solutions_match_the_reference(case):
     assert solution.status == "optimal"
     assert solution.objective_value == pytest.approx(case["objective_value"], rel=1e-7, abs=1e-7)
     if not isinstance(objective, opt.MinimumCvar):
+        np.testing.assert_allclose(solution.weights, case["weights"], atol=2e-5)
+
+
+@pytest.mark.parametrize("case", DOWNSIDE["cases"], ids=lambda c: c["name"])
+def test_downside_objectives_match_the_reference(case):
+    n = len(DOWNSIDE["labels"])
+    solution = opt.Problem.from_covariance(
+        np.array(DOWNSIDE["covariance"]).reshape(n, n),
+        labels=DOWNSIDE["labels"],
+        expected_returns=DOWNSIDE["expected_returns"],
+        scenarios=np.array(DOWNSIDE["scenarios"]).T,
+        constraints=fl._convert.from_json(opt.Constraints, case["constraints"]),
+    ).solve(fl._convert.from_json(opt.Objective, case["problem"]))
+    assert solution.status == "optimal" and solution.max_violation < 1e-7
+    assert solution.objective_value == pytest.approx(case["objective_value"], rel=1e-7, abs=1e-7)
+    if case["unique"]:
         np.testing.assert_allclose(solution.weights, case["weights"], atol=2e-5)
 
 

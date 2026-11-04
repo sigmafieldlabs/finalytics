@@ -130,8 +130,18 @@ export interface AssetsOptions {
   risk_free_asset?: string;
   /** 252 for daily returns, 52 for weekly, 12 for monthly; detected from the dates by default. */
   periods_per_year?: number;
-  /** `"ledoit_wolf"` (the default), `"sample"`, `"oas"` or `"ewma"` (decay 0.94), or a `CovarianceMethod`. */
+  /**
+   * `"ledoit_wolf"` (the default), `"sample"`, `"oas"`, `"ewma"` (decay 0.94),
+   * `"constant_correlation"`, `"denoised"` or `"nonlinear_shrinkage"`, or a `CovarianceMethod`
+   * such as `{ type: "statistical", factors: 3 }`.
+   */
   covariance?: CovarianceMethod["type"] | CovarianceMethod;
+  /**
+   * How expected returns are estimated: `"historical"` (the default), `"james_stein"` (shrunk
+   * towards the assets' average) or `"ewma"` (decay 0.94), or a `MeanMethod` such as
+   * `{ type: "ewma", decay: 0.97 }`.
+   */
+  mean_returns?: MeanMethod["type"] | MeanMethod;
 }
 
 /** Choices for `Portfolio.report`, all optional. */
@@ -198,7 +208,7 @@ export interface OptimiseChoices extends Partial<OptimiseOptions> {
 /**
  * How strategies are validated: `"in_sample"` (the default); `{ holdout: { start: "2016-11-01" } }`,
  * fitted on the history before the date and tested on the rest; or
- * `{ walk_forward: { years: 5 } }`, refitted at each calendar rebalance on the last five years
+ * `{ walk_forward: { years: 5 } }`, refitted at each scheduled rebalance on the last five years
  * (or on all the history so far, with `expanding: true`).
  */
 export type ValidationChoice =
@@ -209,7 +219,8 @@ export type ValidationChoice =
 
 /**
  * When the portfolio trades back to its targets: `"monthly"`, `"quarterly"` (the default),
- * `"yearly"`, `"never"`, or `{ drift: { band: 0.05 } }` when a weight drifts five points away.
+ * `"yearly"`, `"never"`, `{ drift: { band: 0.05 } }` when a weight drifts five points away, or
+ * `{ every: { periods: 21 } }` after every 21 periods.
  */
 export type RebalanceChoice =
   | "monthly"
@@ -217,6 +228,7 @@ export type RebalanceChoice =
   | "yearly"
   | "never"
   | { drift: { band: number } }
+  | { every: { periods: number } }
   | RebalanceSchedule;
 
 /** How `Assets.compare` and `Assets.backtest` run, all optional. */
@@ -1312,7 +1324,9 @@ impl Assets {
         to_js(&self.inner.correlation().map_err(error)?)
     }
 
-    /// Each asset's historical mean return, annualised.
+    /// Each asset's mean return, annualised, by the `mean_returns` estimator (the risk-free
+    /// asset's is its historical mean): the expected returns optimisation uses unless others are
+    /// given.
     #[wasm_bindgen(js_name = meanReturns, unchecked_return_type = "Record<string, number>")]
     pub fn mean_returns(&self) -> Result<JsValue, JsValue> {
         let means: BTreeMap<String, f64> = self

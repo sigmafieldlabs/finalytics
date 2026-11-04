@@ -26,11 +26,14 @@ from finalytics._convert import dumps, loads
 from finalytics._errors import call, invalid
 from finalytics._types import (
     AssetFit,
+    ConstantCorrelation,
     CorrelationStress,
     CovarianceEstimate,
     CovarianceMethod,
+    Denoised,
     Drawdown,
     Ewma,
+    EwmaMean,
     FactorContribution,
     FactorMethod,
     FactorModel,
@@ -40,10 +43,14 @@ from finalytics._types import (
     GroupImpact,
     GroupRisk,
     GroupShock,
+    HistoricalMean,
     HistoricalWindow,
     HoldingImpact,
+    JamesSteinMean,
     LedoitWolf,
     Matrix,
+    MeanMethod,
+    NonlinearShrinkage,
     Oas,
     RelativeStatistics,
     RiskDecomposition,
@@ -58,6 +65,7 @@ from finalytics._types import (
     SchemeRisk,
     ShockSource,
     Shocks,
+    Statistical,
     Statistics,
     StatisticsOptions,
     TailMethod,
@@ -66,11 +74,14 @@ from finalytics._types import (
 
 __all__ = [
     "AssetFit",
+    "ConstantCorrelation",
     "CorrelationStress",
     "CovarianceEstimate",
     "CovarianceMethod",
+    "Denoised",
     "Drawdown",
     "Ewma",
+    "EwmaMean",
     "FactorContribution",
     "FactorMethod",
     "FactorModel",
@@ -80,10 +91,14 @@ __all__ = [
     "GroupImpact",
     "GroupRisk",
     "GroupShock",
+    "HistoricalMean",
     "HistoricalWindow",
     "HoldingImpact",
+    "JamesSteinMean",
     "LedoitWolf",
     "Matrix",
+    "MeanMethod",
+    "NonlinearShrinkage",
     "Oas",
     "RelativeStatistics",
     "RiskDecomposition",
@@ -97,6 +112,8 @@ __all__ = [
     "SchemeRisk",
     "ShockSource",
     "Shocks",
+    "ShortfallDecomposition",
+    "Statistical",
     "Statistics",
     "StatisticsOptions",
     "TailMethod",
@@ -118,11 +135,11 @@ __all__ = [
     "regression_model",
     "relative_statistics",
     "risk_decomposition",
-    "shortfall_decomposition",
     "rolling_relative_statistics",
     "rolling_statistics",
     "rolling_tail_risk",
     "scaled",
+    "shortfall_decomposition",
     "statistical_model",
     "statistics",
     "stressed_covariance",
@@ -239,12 +256,34 @@ def drawdown_series(levels: Any, dates: Any = None) -> FloatArray:
     return _arrays.floats_from_buffer(call(_finalytics.drawdown_series, *_levels(levels, dates)))
 
 
-def _method(method: str | CovarianceMethod, decay: float) -> CovarianceMethod:
+_COVARIANCE_NAMES = "sample, ewma, ledoit_wolf, oas, constant_correlation, denoised or nonlinear_shrinkage"
+
+
+def _method(method: str | CovarianceMethod, decay: float, name: str = "method") -> CovarianceMethod:
     if not isinstance(method, str):
         return method
-    named = {"sample": Sample(), "ledoit_wolf": LedoitWolf(), "oas": Oas(), "ewma": Ewma(decay=decay)}
+    named = {
+        "sample": Sample(),
+        "ledoit_wolf": LedoitWolf(),
+        "oas": Oas(),
+        "ewma": Ewma(decay=decay),
+        "constant_correlation": ConstantCorrelation(),
+        "denoised": Denoised(),
+        "nonlinear_shrinkage": NonlinearShrinkage(),
+    }
+    if method == "statistical":
+        raise invalid((name, "a statistical factor model needs its number of factors: use Statistical(factors=3)"))
     if method not in named:
-        raise invalid(("method", f"unknown covariance method {method!r}: use sample, ewma, ledoit_wolf or oas"))
+        raise invalid((name, f"unknown covariance method {method!r}: use {_COVARIANCE_NAMES}, or Statistical(factors=...)"))
+    return named[method]
+
+
+def _mean(method: str | MeanMethod, name: str = "mean_returns") -> MeanMethod:
+    if not isinstance(method, str):
+        return method
+    named = {"historical": HistoricalMean(), "james_stein": JamesSteinMean(), "ewma": EwmaMean()}
+    if method not in named:
+        raise invalid((name, f"unknown mean method {method!r}: use historical, james_stein or ewma"))
     return named[method]
 
 
@@ -259,8 +298,11 @@ def covariance(
     one row per period and one column per asset, or as a pandas DataFrame (whose columns give the
     labels).
 
-    `method` is ``"sample"``, ``"ewma"`` (with `decay`), ``"ledoit_wolf"`` or ``"oas"``. The
-    matrix is per period: scale it to annualise, for example ``scaled(estimate.matrix, 252)``.
+    `method` is ``"sample"``, ``"ewma"`` (with `decay`), ``"ledoit_wolf"``, ``"oas"``,
+    ``"constant_correlation"``, ``"denoised"`` or ``"nonlinear_shrinkage"``, or a
+    :class:`~finalytics.types.CovarianceMethod` such as ``Statistical(factors=3)``; the methods
+    page on covariance describes each. The matrix is per period: scale it to annualise, for
+    example ``scaled(estimate.matrix, 252)``.
     """
     columns, names = _table(returns, labels)
     text = call(_finalytics.covariance, columns, names, dumps(_method(method, decay)))

@@ -16,7 +16,7 @@ use crate::html::{
     tiles,
 };
 use crate::shapes::Series;
-use crate::text::{covariance_name, month_name, num, pct, period_word, plural};
+use crate::text::{covariance_name, mean_label, month_name, num, pct, period_word, plural};
 
 /// The colours of the strategies, in order; a benchmark is drawn in the secondary ink.
 pub(crate) const SERIES: [&str; 8] = [
@@ -76,6 +76,7 @@ pub(crate) fn rebalancing(r: &Rebalance) -> String {
             )
         ),
         Rebalance::Never => "bought and held".to_owned(),
+        Rebalance::Every { periods } => format!("rebalanced every {}", plural(*periods, "period")),
         _ => "rebalanced".to_owned(),
     }
 }
@@ -93,6 +94,11 @@ pub(crate) fn rebalancing_sentence(r: &Rebalance) -> String {
             pct(Some(*band), 1, false)
         ),
         Rebalance::Never => "Never: the weights are bought once and drift with prices.".to_owned(),
+        Rebalance::Every { periods } => format!(
+            "Every {}, counted from the first period, to the targets; between rebalances the \
+             weights drift with prices.",
+            plural(*periods, "period")
+        ),
         _ => "As scheduled.".to_owned(),
     }
 }
@@ -185,10 +191,16 @@ pub(crate) fn limits_sentence(c: &BacktestContext) -> String {
 /// limit that starts with an asset's or a group's name, such as "Intl Equity: 0% to 30%", as it
 /// is.
 pub(crate) fn limit_in_sentence(limit: &str) -> String {
-    match limit.strip_prefix("At most ") {
-        Some(rest) => format!("at most {rest}"),
-        None => limit.to_owned(),
+    for start in ["At most ", "At least ", "Expected return "] {
+        if limit.starts_with(start) {
+            let mut chars = limit.chars();
+            return chars
+                .next()
+                .map(|c| c.to_lowercase().chain(chars).collect())
+                .unwrap_or_default();
+        }
     }
+    limit.to_owned()
 }
 
 /// Names joined as in a sentence: "a, b and c".
@@ -1274,8 +1286,9 @@ fn method_rows(
         rows.push((
             "Estimates",
             format!(
-                "{} and historical mean returns, annualised by {}.",
+                "{} and {} mean returns, annualised by {}.",
                 capitalise(&covariance_name(&c.covariance)),
+                mean_label(&c.mean_returns),
                 num(Some(c.periods_per_year), 0)
             ),
         ));
@@ -1284,7 +1297,7 @@ fn method_rows(
             if c.limits.is_empty() {
                 "Fully invested and long only.".to_owned()
             } else {
-                format!("{}; fully invested.", c.limits.join("; "))
+                format!("{}; fully invested.", capitalise(&limits_sentence(c)))
             },
         ));
     }

@@ -44,15 +44,26 @@ have produced (`Problem.resampled`):
 4. Average the optimal weights.
 
 $T$ should be the length of the history behind the estimates, so that the simulated estimates are
-as uncertain as the real ones. The average portfolio is more diversified and changes less from one
+as uncertain as the real ones. When the estimates are annual figures from returns with $P$
+periods a year, `periods_per_year` makes each simulated period one period of the returns: the
+histories are drawn from $m / P$ and $\Sigma / P$ and their estimates multiplied by $P$ again, so
+that a mean estimated from $T$ monthly returns has the standard error $\sigma / \sqrt{T / 12}$
+of the real one, rather than that of $T$ years.
+
+`Assets.optimise(resample=200)` resamples the assets' own estimates in this way, with $T$ the
+number of their returns, $P$ their periods per year and a fixed seed, for every method that uses
+estimates other than equal weight and the downside ones. The optimisation report says how many
+histories were simulated and solved; `results.resampled` holds each weight's standard deviation
+across them, and `results.solution` the optimum for the estimates themselves. The average portfolio is more diversified and changes less from one
 set of estimates to the next than the optimum for the estimates themselves. Each weight's standard
 deviation across the simulations is reported with it, as are the number of simulated problems
 solved and any the solver could not solve, which are left out of the average.
 
 The average of portfolios that satisfy a convex constraint satisfies it too, so the average meets
 every constraint that does not depend on the estimates (budget, bounds, groups, leverage,
-turnover). A tracking-error limit holds for each simulation's own covariance. Scenario-based
-objectives (minimum CVaR) and factor exposure limits are not supported.
+turnover). A tracking-error limit, or a floor on expected return, holds for each simulation's
+own estimates. Scenario-based objectives (minimum CVaR, semivariance and CDaR) and factor
+exposure limits are not supported.
 
 The random numbers come from SplitMix64 (Steele, Lea and Flood, 2014) through the Box–Muller
 transform, computed with portable mathematical functions, so that the same seed gives the same

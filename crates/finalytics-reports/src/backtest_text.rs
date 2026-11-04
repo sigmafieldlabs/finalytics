@@ -118,7 +118,10 @@ fn method(page: &mut Page, c: &BacktestContext, fitted: bool, fixed: bool) {
             if c.limits.is_empty() {
                 "Fully invested and long only.".to_owned()
             } else {
-                format!("{}; fully invested.", c.limits.join("; "))
+                format!(
+                    "{}; fully invested.",
+                    capitalise(&crate::backtest_html::limits_sentence(c))
+                )
             },
         ));
     }

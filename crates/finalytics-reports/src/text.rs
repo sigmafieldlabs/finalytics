@@ -9,7 +9,7 @@ use std::fmt;
 use finalytics_core::{Date, Decimal};
 use finalytics_ledger::HoldingKey;
 use finalytics_perf::Linking;
-use finalytics_risk::{CovarianceMethod, TailMethod};
+use finalytics_risk::{CovarianceMethod, MeanMethod, TailMethod};
 
 use crate::context::{Provenance, label};
 use crate::scenarios::ScenarioDefinition;
@@ -301,6 +301,21 @@ pub(crate) fn covariance_label(method: &CovarianceMethod) -> &'static str {
         CovarianceMethod::Ewma { .. } => "exponentially weighted",
         CovarianceMethod::LedoitWolf => "Ledoit–Wolf",
         CovarianceMethod::Oas => "oracle approximating shrinkage",
+        CovarianceMethod::ConstantCorrelation => "constant-correlation Ledoit–Wolf",
+        CovarianceMethod::Statistical { .. } => "statistical factor",
+        CovarianceMethod::Denoised => "denoised",
+        CovarianceMethod::NonlinearShrinkage => "nonlinear shrinkage",
+        _ => "estimated",
+    }
+}
+
+/// The estimator of mean returns as a label, such as "James–Stein"; with "mean" after it, it
+/// names the estimate.
+pub(crate) fn mean_label(method: &MeanMethod) -> &'static str {
+    match method {
+        MeanMethod::Historical => "historical",
+        MeanMethod::JamesStein => "James–Stein",
+        MeanMethod::Ewma { .. } => "exponentially weighted",
         _ => "estimated",
     }
 }

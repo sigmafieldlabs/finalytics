@@ -15,7 +15,7 @@ outputs are the engine's own.
 | [Households](households.md) | Accounts and their groups; performance by account and by group; contribution by account to the consolidated return |
 | [Return statistics and drawdowns](statistics.md) | Volatility, Sharpe, Sortino and Calmar ratios, moments, statistics against a benchmark, drawdowns |
 | [Value at risk and expected shortfall](tail-risk.md) | Historical, parametric and Cornish–Fisher estimates |
-| [Covariance estimation](covariance.md) | Sample, exponentially weighted, Ledoit–Wolf and OAS estimators |
+| [Covariance and mean returns](covariance.md) | Sample, exponentially weighted, shrinkage, statistical, denoised and nonlinear covariance estimators; historical, James–Stein and exponentially weighted means |
 | [Factor models](factor-models.md) | Regression, statistical and fundamental models; risk by factor; optimisation in factor form with exposure limits |
 | [Risk decomposition](risk-decomposition.md) | Marginal and component risk, ex-ante tracking error, risk by group |
 | [Portfolio optimisation](optimisation.md) | Each objective and constraint, its formulation, and how solutions are reported |

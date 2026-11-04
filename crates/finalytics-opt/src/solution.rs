@@ -102,9 +102,11 @@ pub struct Solution {
     pub weights: Option<Vec<f64>>,
     /// The value of the objective at the weights: the variance for minimum variance and target
     /// return; the utility for mean–variance; the expected return for target volatility; the
-    /// Sharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,
-    /// the largest difference between an asset's share of risk and its budget. Absent for
-    /// hierarchical risk parity, which optimises no objective.
+    /// Sharpe ratio; the diversification ratio; the CVaR, as a positive loss; the semivariance;
+    /// the CDaR, as a positive drawdown of the summed returns; for risk budgeting, the largest
+    /// difference between an asset's share of risk and its budget. Absent for hierarchical risk
+    /// parity, which optimises no objective. The downside measures are per period of the
+    /// scenarios.
     pub objective_value: Option<f64>,
     /// The expected return at the weights, when expected returns are given.
     pub expected_return: Option<f64>,

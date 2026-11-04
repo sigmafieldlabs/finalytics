@@ -30,7 +30,13 @@ GroupLike = _types.AssetGroup | tuple[Sequence[str], float, float]
 def _covariance(method: str | _types.CovarianceMethod) -> str:
     from finalytics.risk import _method
 
-    return dumps(_method(method, 0.94))
+    return dumps(_method(method, 0.94, "covariance"))
+
+
+def _mean(method: str | _types.MeanMethod) -> str:
+    from finalytics.risk import _mean
+
+    return dumps(_mean(method))
 
 
 def _price_table(prices: Any) -> _types.PriceTable:
@@ -81,9 +87,14 @@ class Assets:
       instead: its mean return is the risk-free rate, and optimisation leaves it out.
     - `periods_per_year`: 252 for daily returns, 52 for weekly, 12 for monthly; detected from
       the dates by default.
-    - `covariance`: ``"ledoit_wolf"`` (the default), ``"sample"``, ``"oas"`` or ``"ewma"``
-      (with a decay of 0.94), or a :class:`~finalytics.types.CovarianceMethod` such as
-      ``Ewma(decay=0.97)``.
+    - `covariance`: ``"ledoit_wolf"`` (the default), ``"sample"``, ``"oas"``, ``"ewma"``
+      (with a decay of 0.94), ``"constant_correlation"``, ``"denoised"`` or
+      ``"nonlinear_shrinkage"``, or a :class:`~finalytics.types.CovarianceMethod` such as
+      ``Ewma(decay=0.97)`` or ``Statistical(factors=3)``.
+    - `mean_returns`: how expected returns are estimated: ``"historical"`` (the default),
+      ``"james_stein"`` (shrunk towards the assets' average) or ``"ewma"`` (exponentially
+      weighted, with a decay of 0.94), or a :class:`~finalytics.types.MeanMethod` such as
+      ``EwmaMean(decay=0.97)``.
 
     ::
 
@@ -102,6 +113,7 @@ class Assets:
         risk_free_asset: str | None = None,
         periods_per_year: float | None = None,
         covariance: str | _types.CovarianceMethod = "ledoit_wolf",
+        mean_returns: str | _types.MeanMethod = "historical",
     ):
         if isinstance(prices, (str, os.PathLike)):
             from finalytics.portfolio import _text
@@ -109,7 +121,9 @@ class Assets:
             native = call(_finalytics.NativeAssets.from_csv, _text(prices))
         else:
             native = call(_finalytics.NativeAssets.from_prices, dumps(_price_table(prices)))
-        self._native = self._configure(native, risk_free_rate, risk_free_asset, periods_per_year, covariance)
+        self._native = self._configure(
+            native, risk_free_rate, risk_free_asset, periods_per_year, covariance, mean_returns
+        )
 
     @staticmethod
     def _configure(
@@ -118,12 +132,14 @@ class Assets:
         risk_free_asset: str | None,
         periods_per_year: float | None,
         covariance: str | _types.CovarianceMethod,
+        mean_returns: str | _types.MeanMethod,
     ) -> Any:
         settings = {
             "risk_free_rate": None if risk_free_rate is None else float(risk_free_rate),
             "risk_free_asset": risk_free_asset,
             "periods_per_year": None if periods_per_year is None else float(periods_per_year),
             "covariance": json.loads(_covariance(covariance)),
+            "mean_returns": json.loads(_mean(mean_returns)),
         }
         return call(native.with_settings, dumps(settings))
 
@@ -144,6 +160,7 @@ class Assets:
         risk_free_asset: str | None = None,
         periods_per_year: float | None = None,
         covariance: str | _types.CovarianceMethod = "ledoit_wolf",
+        mean_returns: str | _types.MeanMethod = "historical",
     ) -> Assets:
         """Assets from their returns: a pandas DataFrame indexed by the date each return ends on,
         with one column per asset, or a two-dimensional array (one row per period) with `dates`
@@ -163,7 +180,9 @@ class Assets:
             [[float(v) for v in array[:, j]] for j in range(array.shape[1])],
         )
         assets = cls._wrap(native)
-        assets._native = cls._configure(native, risk_free_rate, risk_free_asset, periods_per_year, covariance)
+        assets._native = cls._configure(
+            native, risk_free_rate, risk_free_asset, periods_per_year, covariance, mean_returns
+        )
         return assets
 
     @property
@@ -218,8 +237,9 @@ class Assets:
         return loads(_types.Matrix, call(self._native.correlation))
 
     def mean_returns(self) -> dict[str, float]:
-        """Each asset's historical mean return, annualised: the expected returns optimisation
-        uses unless others are given."""
+        """Each asset's mean return, annualised, by the `mean_returns` estimator (the risk-free
+        asset's is its historical mean): the expected returns optimisation uses unless others
+        are given."""
         return dict(zip(self.labels, self._native.mean_returns(), strict=True))
 
     def _options(
@@ -237,7 +257,9 @@ class Assets:
         max_weight: float | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
+        min_effective_assets: float | None = None,
         expected_returns: Mapping[str, float] | None = None,
+        resample: int | None = None,
     ) -> _types.OptimiseOptions:
         # Numbers JSON cannot hold, named by keyword: a comparison or backtest repeats the
         # options in each strategy.
@@ -247,6 +269,7 @@ class Assets:
             "risk_aversion": risk_aversion,
             "confidence": confidence,
             "max_weight": max_weight,
+            "min_effective_assets": min_effective_assets,
         }
         numbers.update({f"budgets.{k}": v for k, v in (budgets or {}).items()})
         numbers.update({f"expected_returns.{k}": v for k, v in (expected_returns or {}).items()})
@@ -266,7 +289,9 @@ class Assets:
             max_weight=None if max_weight is None else float(max_weight),
             asset_bounds={k: _bound(v) for k, v in (asset_bounds or {}).items()},
             groups={k: _group(v) for k, v in (groups or {}).items()},
+            min_effective_assets=None if min_effective_assets is None else float(min_effective_assets),
             expected_returns={k: float(v) for k, v in (expected_returns or {}).items()},
+            resample=None if resample is None else int(resample),
         )
 
     def optimise(
@@ -284,7 +309,9 @@ class Assets:
         max_weight: float | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
+        min_effective_assets: float | None = None,
         expected_returns: Mapping[str, float] | None = None,
+        resample: int | None = None,
         frontier: bool = False,
         name: str | None = None,
     ) -> _types.Optimisation:
@@ -299,7 +326,11 @@ class Assets:
           `uncertainty`, an :class:`~finalytics.types.Ellipsoid` or a
           :class:`~finalytics.types.Box`);
         - ``"target_return"`` and ``"target_volatility"``, with an annual `target`;
-        - ``"minimum_cvar"``, at `confidence` (0.95 by default);
+        - ``"minimum_cvar"``, ``"minimum_semivariance"`` and ``"minimum_cdar"``, measured on
+          the periods' returns: the expected shortfall at `confidence` (0.95 by default), the
+          mean square of the returns below zero, and the conditional drawdown at risk at
+          `confidence` of the returns added up period by period; with `target`, each keeps an
+          annual expected return of at least `target`;
         - ``"risk_parity"``, every asset with the same share of the risk, and
           ``"risk_budgeting"``, with shares given by `budgets` by asset;
         - ``"equal_weight"`` and ``"inverse_volatility"``, the baselines estimated portfolios
@@ -308,10 +339,18 @@ class Assets:
         `max_weight` is the largest weight of any asset, such as 0.4; `bounds` limits every
         weight, ``(0, 1)`` by default; `asset_bounds` limits particular assets, such as
         ``{"Gold": (0, 0.1)}``; `groups` limits the total weight of groups of assets, such as
-        ``{"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)}``. Equal weight, inverse
-        volatility, risk parity, risk budgeting and hierarchical risk parity are fully invested
-        and long only, and take no limits. Expected returns are the annualised historical means
+        ``{"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)}``; `min_effective_assets`, such
+        as 5, spreads the weights over at least as many assets as 5 equal weights would be,
+        holding ``1 / sum(w ** 2)`` at or above it. Equal weight, inverse volatility, risk
+        parity, risk budgeting and hierarchical risk parity are fully invested and long only,
+        and take no limits. Expected returns are the assets' estimates (see `mean_returns`)
         unless `expected_returns` gives others.
+
+        ``resample=200`` averages the optimal weights for 200 histories simulated from the
+        estimates, each as long as the assets' returns (Michaud's resampling), which makes the
+        weights less sensitive to errors in the estimates; ``result.results.resampled`` says how
+        much each weight varied. It applies to the methods that use estimates, other than those
+        measured on the periods' returns.
 
         ``frontier=True`` draws the efficient frontier under the same limits in the report. It
         takes 30 more optimisations, so it adds time that grows with the number of assets, to
@@ -331,7 +370,9 @@ class Assets:
             max_weight=max_weight,
             asset_bounds=asset_bounds,
             groups=groups,
+            min_effective_assets=min_effective_assets,
             expected_returns=expected_returns,
+            resample=resample,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
         result = loads(_types.Optimisation, call(self._native.optimise, dumps(options, "options")))
@@ -353,6 +394,7 @@ class Assets:
         max_weight: float | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
+        min_effective_assets: float | None = None,
         expected_returns: Mapping[str, float] | None = None,
     ) -> list[_types.FrontierPortfolio]:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
@@ -364,6 +406,7 @@ class Assets:
             max_weight=max_weight,
             asset_bounds=asset_bounds,
             groups=groups,
+            min_effective_assets=min_effective_assets,
             expected_returns=expected_returns,
         )
         return loads(list[_types.FrontierPortfolio], call(self._native.frontier, int(points), dumps(options, "options")))
@@ -383,6 +426,7 @@ class Assets:
         bounds: BoundLike | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
+        min_effective_assets: float | None = None,
         target: float | None = None,
         risk_aversion: float | None = None,
         uncertainty: _types.ReturnUncertainty | None = None,
@@ -391,6 +435,7 @@ class Assets:
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
         risk_free_rate: float | None = None,
+        resample: int | None = None,
     ) -> _types.Comparison:
         """The comparison of `methods`, each backtested on these assets with the same limits,
         rebalancing, validation and trading costs and scored on the periods it was tested on:
@@ -405,10 +450,12 @@ class Assets:
         - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
           ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
           tests on the rest; or :class:`~finalytics.WalkForward`, such as
-          ``fl.WalkForward(years=5)``, which refits at each calendar rebalance on the last
+          ``fl.WalkForward(years=5)``, which refits at each scheduled rebalance on the last
           five years (or all the history so far, with ``expanding=True``).
         - `rebalance`: ``"monthly"``, ``"quarterly"`` (the default), ``"yearly"``,
-          ``"never"`` or :class:`~finalytics.Drift`, such as ``fl.Drift(band=0.05)``.
+          ``"never"``, :class:`~finalytics.Drift`, such as ``fl.Drift(band=0.05)``, or
+          :class:`~finalytics.Every`, such as ``fl.Every(periods=21)`` for about once a month
+          with daily returns.
         - `trading_cost_bps`: the cost of trading in basis points of the value traded.
         - `benchmark`: weights by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}``, or an
           index's prices, such as ``fl.datasets.sp500_index()``; `benchmark_name` names it
@@ -422,6 +469,7 @@ class Assets:
             bounds=bounds,
             asset_bounds=asset_bounds,
             groups=groups,
+            min_effective_assets=min_effective_assets,
             target=target,
             risk_aversion=risk_aversion,
             uncertainty=uncertainty,
@@ -430,6 +478,7 @@ class Assets:
             linkage=linkage,
             expected_returns=expected_returns,
             risk_free_rate=risk_free_rate,
+            resample=resample,
         )
         if isinstance(methods, str):
             raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
@@ -463,6 +512,7 @@ class Assets:
         bounds: BoundLike | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
+        min_effective_assets: float | None = None,
         target: float | None = None,
         risk_aversion: float | None = None,
         uncertainty: _types.ReturnUncertainty | None = None,
@@ -471,6 +521,7 @@ class Assets:
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
         risk_free_rate: float | None = None,
+        resample: int | None = None,
     ) -> _types.Backtest:
         """The backtest of one strategy: a `method`, fitted as `validation` says, or fixed
         `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the
@@ -487,6 +538,7 @@ class Assets:
             bounds=bounds,
             asset_bounds=asset_bounds,
             groups=groups,
+            min_effective_assets=min_effective_assets,
             target=target,
             risk_aversion=risk_aversion,
             uncertainty=uncertainty,
@@ -495,6 +547,7 @@ class Assets:
             linkage=linkage,
             expected_returns=expected_returns,
             risk_free_rate=risk_free_rate,
+            resample=resample,
         )
         strategy: Any
         if weights is not None:

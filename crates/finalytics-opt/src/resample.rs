@@ -13,7 +13,7 @@ use crate::problem::{Objective, Problem};
 use crate::solution::SolveStatus;
 
 /// How to resample a problem's estimates.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Resampling {
@@ -25,6 +25,13 @@ pub struct Resampling {
     pub observations: usize,
     /// The seed of the random numbers. The same seed gives the same result on every platform.
     pub seed: u64,
+    /// For estimates annualised from returns with this many periods in a year (12 for
+    /// monthly), the histories are simulated period by period, from the estimates divided by
+    /// it, and their estimates annualised again, so that they are as uncertain as estimates
+    /// from `observations` periods. Without it, each simulated period is in the estimates' own
+    /// units.
+    #[serde(default)]
+    pub periods_per_year: Option<f64>,
 }
 
 impl Resampling {
@@ -35,7 +42,15 @@ impl Resampling {
             samples,
             observations,
             seed,
+            periods_per_year: None,
         }
+    }
+
+    /// The same resampling of estimates annualised from `periods` periods a year.
+    #[must_use]
+    pub fn with_periods_per_year(mut self, periods: f64) -> Self {
+        self.periods_per_year = Some(periods);
+        self
     }
 }
 
@@ -109,9 +124,9 @@ impl Problem {
     /// depend on the estimates; constraints that do (a tracking-error limit) hold for each
     /// simulated problem's own estimates.
     ///
-    /// Objectives that use scenario returns (minimum CVaR) and factor exposure limits are not
-    /// supported. With a factor model, the simulated histories come from the covariance it
-    /// implies.
+    /// Objectives that use scenario returns (minimum CVaR, semivariance and CDaR) and factor
+    /// exposure limits are not supported. With a factor model, the simulated histories come from
+    /// the covariance it implies.
     pub fn resampled(
         &self,
         objective: &Objective,
@@ -120,7 +135,7 @@ impl Problem {
         let started = Instant::now();
         let prepared = self.prepare(objective)?;
         let mut report = ValidationReport::new();
-        if matches!(objective, Objective::MinimumCvar { .. }) {
+        if objective.uses_scenarios() {
             report.error(
                 "objective",
                 "resampling needs an objective that uses the covariance matrix",
@@ -138,13 +153,24 @@ impl Problem {
         if resampling.observations < 2 {
             report.error("resampling.observations", "must be at least 2");
         }
+        let scale = resampling.periods_per_year.unwrap_or(1.0);
+        if !(scale.is_finite() && scale > 0.0) {
+            report.error("resampling.periods_per_year", "must be greater than zero");
+        }
         report.into_result(())?;
 
         let n = prepared.n;
         let covariance = prepared.risk().dense().into_owned();
         let mu = self.expected_returns.clone();
-        let means = mu.clone().unwrap_or_else(|| vec![0.0; n]);
-        let root = Root::of(&covariance)?;
+        // The histories are simulated per period and their estimates annualised again.
+        let means: Vec<f64> = mu
+            .clone()
+            .unwrap_or_else(|| vec![0.0; n])
+            .iter()
+            .map(|m| m / scale)
+            .collect();
+        let per_period = covariance.scaled(1.0 / scale);
+        let root = Root::of(&per_period)?;
         let mut normal = Normal::new(resampling.seed);
         let t = resampling.observations;
 
@@ -163,6 +189,7 @@ impl Problem {
                 .iter()
                 .map(|c| c.iter().sum::<f64>() / t as f64)
                 .collect();
+            let annual_means: Vec<f64> = sample_means.iter().map(|m| m * scale).collect();
             let mut values = vec![0.0; n * n];
             for i in 0..n {
                 for j in i..n {
@@ -171,7 +198,8 @@ impl Problem {
                         .zip(&history[j])
                         .map(|(a, b)| (a - sample_means[i]) * (b - sample_means[j]))
                         .sum::<f64>()
-                        / (t as f64 - 1.0);
+                        / (t as f64 - 1.0)
+                        * scale;
                     values[i * n + j] = v;
                     values[j * n + i] = v;
                 }
@@ -186,7 +214,7 @@ impl Problem {
                 })?);
             simulated.factor_model = None;
             if mu.is_some() {
-                simulated.expected_returns = Some(sample_means);
+                simulated.expected_returns = Some(annual_means);
             }
             match simulated.solve(objective) {
                 Ok(solution)
@@ -343,14 +371,50 @@ mod tests {
             samples: 1,
             observations: 1,
             seed: 0,
+            periods_per_year: Some(0.0),
         };
         let error = Problem::from_covariance(c)
             .resampled(&Objective::MinimumVariance, &bad)
             .unwrap_err();
-        assert!(error.to_string().contains("resampling.samples"), "{error}");
-        assert!(
-            error.to_string().contains("resampling.observations"),
-            "{error}"
-        );
+        for path in [
+            "resampling.samples",
+            "resampling.observations",
+            "resampling.periods_per_year",
+        ] {
+            assert!(error.to_string().contains(path), "{error}");
+        }
+    }
+
+    #[test]
+    fn annual_estimates_are_resampled_period_by_period() {
+        // Annual estimates resampled with 12 periods a year give the weights that the monthly
+        // estimates do when resampled month by month.
+        let labels: Vec<String> = vec!["a".into(), "b".into(), "c".into()];
+        let monthly = [0.004, 0.001, 0.0, 0.001, 0.009, 0.002, 0.0, 0.002, 0.0016];
+        let annual: Vec<f64> = monthly.iter().map(|v| v * 12.0).collect();
+        let means = [0.006, 0.004, 0.002];
+        let objective = Objective::MaximumSharpe {
+            risk_free_rate: 0.0,
+        };
+        let by_month =
+            Problem::from_covariance(Matrix::new(labels.clone(), monthly.to_vec()).unwrap())
+                .with_expected_returns(means.to_vec())
+                .resampled(&objective, &Resampling::new(20, 60, 7))
+                .unwrap();
+        let by_year = Problem::from_covariance(Matrix::new(labels, annual).unwrap())
+            .with_expected_returns(means.iter().map(|m| m * 12.0).collect())
+            .resampled(
+                &objective,
+                &Resampling::new(20, 60, 7).with_periods_per_year(12.0),
+            )
+            .unwrap();
+        for (a, b) in by_month
+            .weights
+            .unwrap()
+            .iter()
+            .zip(by_year.weights.unwrap())
+        {
+            assert!((a - b).abs() < 1e-6, "{a} against {b}");
+        }
     }
 }

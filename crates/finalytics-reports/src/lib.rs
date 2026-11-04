@@ -49,7 +49,7 @@ pub use holdings::{
 };
 pub use optimisation::{
     AllocationRow, GroupRow, OptimisationContext, OptimisationHistory, OptimisationReport,
-    OptimisationSummary, RiskReturn, ShortfallFigure,
+    OptimisationSummary, ResamplingSummary, RiskReturn, ShortfallFigure,
 };
 #[doc(hidden)]
 pub use optimisation::{OptimisationInputs, optimisation_report, weights_text};

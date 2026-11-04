@@ -14,8 +14,8 @@ use sha2::{Digest, Sha256};
 use finalytics_backtest::{BacktestResults, Failure, Run, Settings, StrategyResult, Validation};
 use finalytics_core::{Date, Error, Result, ValidationReport};
 use finalytics_risk::{
-    CovarianceMethod, RelativeStatistics, ReturnsTable, Statistics, StatisticsOptions, TailMethod,
-    TailRisk, relative_statistics, statistics, tail_risk,
+    CovarianceMethod, MeanMethod, RelativeStatistics, ReturnsTable, Statistics, StatisticsOptions,
+    TailMethod, TailRisk, relative_statistics, statistics, tail_risk,
 };
 
 use crate::shapes::{Grid, Series, Unit};
@@ -40,12 +40,16 @@ pub struct BacktestSetup {
     pub risk_free_asset: Option<String>,
     /// The covariance estimator of the optimisations.
     pub covariance: CovarianceMethod,
+    /// The estimator of the optimisations' mean returns.
+    #[serde(default)]
+    pub mean_returns: MeanMethod,
     /// The limits on the weights, in words, such as "At most 40% in any asset".
     pub limits: Vec<String>,
 }
 
 impl BacktestSetup {
-    /// A setup with `risk_free_asset`, the `covariance` estimator and the `limits` in words.
+    /// A setup with `risk_free_asset`, the `covariance` estimator and the `limits` in words; the
+    /// mean returns are historical unless [`BacktestSetup::with_mean_returns`] says otherwise.
     pub fn new(
         risk_free_asset: Option<String>,
         covariance: CovarianceMethod,
@@ -54,8 +58,16 @@ impl BacktestSetup {
         BacktestSetup {
             risk_free_asset,
             covariance,
+            mean_returns: MeanMethod::Historical,
             limits,
         }
+    }
+
+    /// The same setup with the optimisations' estimator of mean returns.
+    #[must_use]
+    pub fn with_mean_returns(mut self, method: MeanMethod) -> BacktestSetup {
+        self.mean_returns = method;
+        self
     }
 }
 
@@ -78,6 +90,9 @@ pub struct BacktestContext {
     pub periods_per_year: f64,
     /// The covariance estimator of the optimisations.
     pub covariance: CovarianceMethod,
+    /// The estimator of the optimisations' mean returns.
+    #[serde(default)]
+    pub mean_returns: MeanMethod,
     /// The limits on the weights, in words.
     pub limits: Vec<String>,
     /// How the backtest was run.
@@ -384,6 +399,7 @@ impl<'a> Inputs<'a> {
             risk_free_asset: setup.risk_free_asset.clone(),
             periods_per_year: ppy,
             covariance: setup.covariance,
+            mean_returns: setup.mean_returns,
             limits: setup.limits.clone(),
             settings: backtest.settings.clone(),
             start,

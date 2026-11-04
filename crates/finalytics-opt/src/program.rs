@@ -39,6 +39,9 @@ pub(crate) struct Program {
 /// The solver's result.
 pub(crate) struct Outcome {
     pub(crate) status: SolveStatus,
+    /// Whether the duality gap and the dual residual are within the solver's default tolerance,
+    /// 1e-8: the objective is optimal to that tolerance, whatever the status.
+    pub(crate) gap_closed: bool,
     pub(crate) x: Vec<f64>,
     pub(crate) iterations: u32,
 }
@@ -174,6 +177,7 @@ impl Program {
             Err(_) => {
                 return Outcome {
                     status: SolveStatus::NumericalDifficulty,
+                    gap_closed: false,
                     x: Vec::new(),
                     iterations: 0,
                 };
@@ -181,8 +185,10 @@ impl Program {
         };
         solver.solve();
         let solution = &solver.solution;
+        let info = &solver.info;
         Outcome {
             status: status(solution.status),
+            gap_closed: info.gap_abs.min(info.gap_rel) <= 1e-8 && info.res_dual <= 1e-8,
             x: solution.x.clone(),
             iterations: solution.iterations,
         }

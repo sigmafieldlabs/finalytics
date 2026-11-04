@@ -52,6 +52,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Benchmark` by default, or the column's name for an index's prices.
 - `Assets::frontier` returns `FrontierPortfolio`s, with their weights by asset (in the assets'
   order in JavaScript), rather than unlabelled lists.
+- Four covariance estimators: shrinkage towards constant correlation (`constant_correlation`),
+  a statistical factor model of the first principal components (`{"type": "statistical",
+  "factors": 3}`), the sample correlation denoised by the Marchenko–Pastur edge (`denoised`),
+  and the analytical nonlinear shrinkage of Ledoit and Wolf (2020) (`nonlinear_shrinkage`), in
+  `Assets(covariance=...)` and `fl.risk.covariance`. `scripts/reference/estimators.py` checks
+  them against translations of the authors' code and NumPy.
+- Estimators of mean returns: `Assets(mean_returns="james_stein")` shrinks the means towards
+  their average with the Efron–Morris intensity, and `"ewma"` weights recent returns more
+  (`MeanMethod`, `finalytics::risk::mean_returns`). Optimisation, the efficient frontier,
+  backtests and `mean_returns()` use them, and the reports name them. The historical mean is the
+  default; the risk-free asset's rate stays its historical mean.
+- `minimum_semivariance` and `minimum_cdar` optimise the downside of the periods' returns: the
+  mean square of the returns below zero, and the conditional drawdown at risk of the summed
+  returns (Chekhlov, Uryasev and Zabarankin, 2005). With `target`, they and `minimum_cvar` keep
+  an annual expected return of at least `target`. In the optimiser they are
+  `Objective::MinimumSemivariance` and `Objective::MinimumCdar`, with
+  `Constraints.min_return` for the floor.
+- `min_effective_assets` holds the effective number of assets, `1 / sum w^2`, at or above a
+  floor, the norm constraint of DeMiguel, Garlappi, Nogales and Uppal (2009)
+  (`Constraints.min_effective_assets` in the optimiser). Bounds that leave room for fewer are
+  reported before solving. `scripts/reference/downside_objectives.py` checks the new objectives
+  and limits against CVXPY.
+- `optimise(resample=200)` averages the optimal weights for 200 histories simulated from the
+  assets' estimates (Michaud, 1998), in `optimise`, `compare` and `backtest`; the result's
+  `resampled` holds each weight's standard deviation across them, and the report says how many
+  were solved. `Resampling.periods_per_year` simulates annualised estimates period by period, so
+  that they are as uncertain as estimates from that many periods of returns.
+- Rebalancing every so many periods, `Rebalance::Every { periods }` (`fl.Every(periods=21)`,
+  `{ every: { periods: 21 } }`), counted from the first period of each run; walk-forward
+  validation refits on it as on a calendar schedule.
 
 ### Changed
 
@@ -91,7 +121,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   internals (`constraints.bounds`).
 - `Assets` settings are checked together: `periods_per_year` above zero, a finite
   `risk_free_rate` above -1 (in Python, a rate of 0 with a risk-free asset is now an error too),
-  and an exponentially weighted decay between 0 and 1.
+  and an exponentially weighted decay between 0 and 1. The covariance and mean estimators chosen
+  are tried on the risky assets' returns when the assets are built, so that a choice the returns
+  cannot support is reported at `covariance` or `mean_returns` then.
+- The optimisation report's context names the estimator of the expected returns,
+  `mean_returns`, in place of `historical_means`; it is absent when expected returns were given.
+- An interior-point solution that stops short of the tolerance of 1e-10 is `optimal` when
+  its duality gap is within the solver's default tolerance of 1e-8 and its weights meet
+  every constraint to 1e-9; it was `nearly_optimal`. Constraints that bind on the boundary of
+  a second-order cone often end so.
+- Limits in a sentence start in lower case after the first ("at most 40% in any asset; at least 4
+  effective assets").
+- `Resampling` no longer implements `Eq`, as it holds a number of periods a year.
 - Portfolio documents reject unknown fields, such as a misspelt `quantty`, at their path.
 - A report grouped by a scheme no instrument is classified by is an error at
   `options.group_by[i]`, naming the schemes there are, rather than a single "unclassified" group.

@@ -84,6 +84,7 @@ fn api() -> Value {
     add::<risk::Drawdown>(&mut g);
     add::<risk::CovarianceMethod>(&mut g);
     add::<risk::CovarianceEstimate>(&mut g);
+    add::<risk::MeanMethod>(&mut g);
     add::<risk::RiskDecomposition>(&mut g);
     add::<risk::ShortfallDecomposition>(&mut g);
     add::<risk::GroupRisk>(&mut g);

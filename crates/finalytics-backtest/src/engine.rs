@@ -226,6 +226,16 @@ fn settings_split(
             "must be between 0 and 1, such as 0.05 for five percentage points",
         );
     }
+    if let Rebalance::Every { periods } = settings.rebalance {
+        if periods == 0 {
+            report.error("rebalance.periods", "must be at least 1, such as 21");
+        } else if periods >= n {
+            report.error(
+                "rebalance.periods",
+                format!("is {periods}, but the data has {n} periods: it would never rebalance"),
+            );
+        }
+    }
     match &settings.validation {
         Validation::InSample => Split::InSample,
         Validation::Holdout { start } => {
@@ -283,11 +293,11 @@ fn settings_split(
                     ),
                 );
             }
-            if !settings.rebalance.is_calendar() {
+            if !settings.rebalance.is_scheduled() {
                 report.error(
                     "rebalance",
-                    "walk-forward validation refits at each calendar rebalance: choose monthly, \
-                     quarterly or yearly",
+                    "walk-forward validation refits at each scheduled rebalance: choose \
+                     monthly, quarterly, yearly or every so many periods",
                 );
             }
             Split::WalkForward {
@@ -447,7 +457,7 @@ impl Simulation<'_, '_> {
     }
 
     /// Holds `start` (cash without it) over `rows`, trading on the schedule, and refitting at
-    /// each calendar rebalance with `refit` if given.
+    /// each scheduled rebalance with `refit` if given.
     fn run(
         &self,
         rows: Range<usize>,
@@ -485,7 +495,9 @@ impl Simulation<'_, '_> {
                 break;
             }
             let date = market.dates[t];
-            let calendar = self.rebalance.ends_period(date, market.dates[t + 1]);
+            let calendar = self
+                .rebalance
+                .due(date, market.dates[t + 1], t + 1 - rows.start);
             let mut refitted = false;
             if calendar && let Some(refit) = refit.as_mut() {
                 match refit(t)? {

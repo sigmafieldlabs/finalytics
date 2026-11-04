@@ -204,12 +204,12 @@ fn every_problem_with_the_options_is_found_before_solving() {
                 .optimise(Method::MinimumCvar)
                 .confidence(1.5)
                 .group("Equity", &["US Equity", "Gold"], 0.6, 0.4)
-                .target(0.1)
+                .risk_aversion(2.0)
                 .build()
         ),
         [
             "options.groups.Equity",
-            "options.target",
+            "options.risk_aversion",
             "options.confidence"
         ]
     );

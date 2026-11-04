@@ -8,6 +8,7 @@ const statisticsFixture = await json("crates/finalytics-risk/tests/fixtures/stat
 const covarianceFixture = await json("crates/finalytics-risk/tests/fixtures/covariance.json");
 const downsideFixture = await json("crates/finalytics-risk/tests/fixtures/downside.json");
 const optimisationFixture = await json("crates/finalytics-opt/tests/fixtures/optimisation.json");
+const objectivesFixture = await json("crates/finalytics-opt/tests/fixtures/downside.json");
 
 test("statistics match the reference", () => {
   for (const c of statisticsFixture.cases) {
@@ -63,12 +64,31 @@ test("optimisation matches the reference", () => {
     const solution = fl.solve({ ...base, constraints: c.constraints }, c.problem);
     assert.equal(solution.status, "optimal", c.name);
     close(solution.objective_value, c.objective_value, 1e-7, c.name);
-    if (c.problem.objective !== "minimum_cvar") {
+    if (c.problem.type !== "minimum_cvar") {
       solution.weights.forEach((w, k) => assert.ok(Math.abs(w - c.weights[k]) < 2e-5, `${c.name} weight ${k}`));
     }
   }
   const frontier = fl.frontier(base, 5);
   assert.equal(frontier.length, 5);
+});
+
+test("downside objectives and limits match the reference", () => {
+  const f = objectivesFixture;
+  const base = {
+    labels: f.labels,
+    covariance: { labels: f.labels, values: f.covariance },
+    expected_returns: f.expected_returns,
+    scenarios: { labels: f.labels, columns: f.scenarios },
+  };
+  for (const c of f.cases) {
+    const solution = fl.solve({ ...base, constraints: c.constraints }, c.problem);
+    assert.equal(solution.status, "optimal", c.name);
+    assert.ok(solution.max_violation < 1e-7, c.name);
+    close(solution.objective_value, c.objective_value, 1e-7, c.name);
+    if (c.unique) {
+      solution.weights.forEach((w, k) => assert.ok(Math.abs(w - c.weights[k]) < 2e-5, `${c.name} weight ${k}`));
+    }
+  }
 });
 
 test("validation errors list every issue", () => {

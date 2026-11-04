@@ -113,6 +113,46 @@ impl LeastSquares {
     }
 }
 
+/// The solution of `A x = b` for a symmetric positive definite `A` (`n` by `n`, row by row), by
+/// Cholesky factorisation; `None` if `A` is not positive definite.
+pub(crate) fn solve_symmetric(a: &[f64], n: usize, b: &[f64]) -> Option<Vec<f64>> {
+    let mut l = vec![0.0; n * n];
+    for j in 0..n {
+        let mut d = a[j * n + j];
+        for k in 0..j {
+            d -= l[j * n + k] * l[j * n + k];
+        }
+        if d.is_nan() || d <= 0.0 {
+            return None;
+        }
+        let d = d.sqrt();
+        l[j * n + j] = d;
+        for i in j + 1..n {
+            let mut s = a[i * n + j];
+            for k in 0..j {
+                s -= l[i * n + k] * l[j * n + k];
+            }
+            l[i * n + j] = s / d;
+        }
+    }
+    let mut x = b.to_vec();
+    for i in 0..n {
+        let mut s = x[i];
+        for k in 0..i {
+            s -= l[i * n + k] * x[k];
+        }
+        x[i] = s / l[i * n + i];
+    }
+    for i in (0..n).rev() {
+        let mut s = x[i];
+        for k in i + 1..n {
+            s -= l[k * n + i] * x[k];
+        }
+        x[i] = s / l[i * n + i];
+    }
+    Some(x)
+}
+
 /// The eigenvalues of a symmetric matrix (`n` by `n`, row by row), in decreasing order, with
 /// unit eigenvectors as rows in the same order. Each eigenvector's entry of largest magnitude
 /// (the first such entry, on ties) is positive, the convention of scikit-learn's PCA.

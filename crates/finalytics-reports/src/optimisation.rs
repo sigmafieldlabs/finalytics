@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use finalytics_core::{Date, Result};
-use finalytics_risk::{CovarianceMethod, Matrix};
+use finalytics_risk::{CovarianceMethod, Matrix, MeanMethod};
 
 use crate::backtest_html::{
     BENCHMARK, Frame, Line, SERIES, capitalise, frame, frequency, key, level, level_tick, lines,
@@ -19,8 +19,8 @@ use crate::backtests::RunReport;
 use crate::html::{card, esc, heat, legend, ticks, tiles};
 use crate::shapes::{Grid, Unit};
 use crate::text::{
-    L, NOISE, Page, R, WIDTH, bar, covariance_label, covariance_name, fit, num, pad_left, pct,
-    period_word, plural, share, spark, width, wrap,
+    L, NOISE, Page, R, WIDTH, bar, covariance_label, covariance_name, fit, mean_label, num,
+    pad_left, pct, period_word, plural, share, spark, width, wrap,
 };
 
 /// The weights an optimisation chose, with what they are expected to deliver, where their risk
@@ -88,14 +88,42 @@ pub struct OptimisationContext {
     pub periods_per_year: f64,
     /// The covariance estimator.
     pub covariance: CovarianceMethod,
-    /// Whether the expected returns are the historical means (`false` when some were given).
-    pub historical_means: bool,
+    /// The estimator of the expected returns: `None` when some were given.
+    pub mean_returns: Option<MeanMethod>,
     /// The limits on the weights, in words.
     pub limits: Vec<String>,
     /// The date the first return period ends on.
     pub start: Date,
     /// The date the last return period ends on.
     pub end: Date,
+    /// For resampled optimisation, how the weights were averaged.
+    #[serde(default)]
+    pub resampling: Option<ResamplingSummary>,
+}
+
+/// How resampled weights were found: the average of the optimal weights for histories simulated
+/// from the estimates (Michaud, 1998).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct ResamplingSummary {
+    /// The number of histories simulated.
+    pub samples: usize,
+    /// The number of periods in each, as many as the returns the estimates came from.
+    pub observations: usize,
+    /// The number of simulated problems solved and averaged.
+    pub solved: usize,
+}
+
+impl ResamplingSummary {
+    /// `samples` histories of `observations` periods, of which `solved` were solved.
+    pub fn new(samples: usize, observations: usize, solved: usize) -> ResamplingSummary {
+        ResamplingSummary {
+            samples,
+            observations,
+            solved,
+        }
+    }
 }
 
 /// What the weights are expected to deliver.
@@ -209,7 +237,7 @@ pub struct OptimisationInputs<'a> {
     pub labels: &'a [String],
     pub weights: Option<&'a BTreeMap<String, f64>>,
     pub expected_returns: &'a [f64],
-    pub historical_means: bool,
+    pub mean_returns: Option<MeanMethod>,
     pub covariance: &'a Matrix,
     pub risk_free_asset: Option<String>,
     pub risk_free_rate: f64,
@@ -225,6 +253,7 @@ pub struct OptimisationInputs<'a> {
     pub shortfall: Option<finalytics_risk::ShortfallDecomposition>,
     /// The groups with limits: name, assets, smallest and largest total weight.
     pub groups: Vec<(String, Vec<String>, f64, f64)>,
+    pub resampling: Option<ResamplingSummary>,
 }
 
 /// The optimisation report from what the `finalytics` crate assembles.
@@ -372,10 +401,11 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             risk_free_rate: inputs.risk_free_rate,
             periods_per_year: inputs.periods_per_year,
             covariance: inputs.covariance_method,
-            historical_means: inputs.historical_means,
+            mean_returns: inputs.mean_returns,
             limits: inputs.limits,
             start: inputs.start,
             end: inputs.end,
+            resampling: inputs.resampling,
         },
         summary,
         allocation,
@@ -501,10 +531,9 @@ fn group_rows(r: &OptimisationReport) -> Vec<Vec<String>> {
 fn estimates(c: &OptimisationContext) -> String {
     format!(
         "{} expected returns and {}, annualised by {}",
-        if c.historical_means {
-            "Historical mean"
-        } else {
-            "The given"
+        match &c.mean_returns {
+            Some(method) => format!("{} mean", capitalise(mean_label(method))),
+            None => "The given".to_owned(),
         },
         covariance_name(&c.covariance),
         num(Some(c.periods_per_year), 0)
@@ -539,10 +568,11 @@ impl OptimisationReport {
                     (
                         "Expected return".to_owned(),
                         format!("{} a year", percent(s.expected_return)),
-                        Some(if c.historical_means {
-                            "Historical mean returns".to_owned()
-                        } else {
-                            "Given expected returns".to_owned()
+                        Some(match &c.mean_returns {
+                            Some(method) => {
+                                format!("{} mean returns", capitalise(mean_label(method)))
+                            }
+                            None => "Given expected returns".to_owned(),
                         }),
                     ),
                     (
@@ -975,7 +1005,7 @@ impl OptimisationReport {
             .risk_free_asset
             .as_ref()
             .map_or_else(String::new, |a| format!("; {a} as the risk-free asset"));
-        vec![
+        let mut rows = vec![
             ("Method", format!("{}: {}", c.method, c.description)),
             (
                 "Data",
@@ -987,16 +1017,30 @@ impl OptimisationReport {
             ),
             ("Estimates", format!("{}.", estimates(c))),
             ("Limits", format!("{}.", capitalise(&limits(c)))),
-            (
-                "Solver",
+        ];
+        if let Some(r) = &c.resampling {
+            rows.push((
+                "Resampling",
                 format!(
-                    "{}, {} after {}.",
-                    capitalise(&c.solver.replace('_', " ")),
-                    c.status,
-                    plural(c.iterations as usize, "iteration")
+                    "The average of the optimal weights for {} histories of {} {} returns \
+                     simulated from the estimates (Michaud, 1998); {} of them solved.",
+                    r.samples,
+                    r.observations,
+                    frequency(c.periods_per_year),
+                    r.solved
                 ),
+            ));
+        }
+        rows.push((
+            "Solver",
+            format!(
+                "{}, {} after {}.",
+                capitalise(&c.solver.replace('_', " ")),
+                c.status,
+                plural(c.iterations as usize, "iteration")
             ),
-        ]
+        ));
+        rows
     }
 
     /// The frontier, the assets, equal weight and the weights, with the line from the risk-free

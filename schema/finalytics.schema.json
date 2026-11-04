@@ -803,6 +803,13 @@
           "$ref": "#/$defs/CovarianceMethod",
           "description": "The covariance estimator of the optimisations."
         },
+        "mean_returns": {
+          "$ref": "#/$defs/MeanMethod",
+          "description": "The estimator of the optimisations' mean returns.",
+          "default": {
+            "type": "historical"
+          }
+        },
         "limits": {
           "type": "array",
           "items": {
@@ -1761,6 +1768,24 @@
           ],
           "description": "Limits on the size and number of trades; they need the turnover's current weights.",
           "default": null
+        },
+        "min_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest expected return, net of trading costs, in the units of the expected\nreturns: a floor for the objectives that do not use expected returns, such as minimum\nCVaR.",
+          "default": null
+        },
+        "min_effective_assets": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest effective number of assets, `1 / sum w_i^2`, from 1 to the number of\nassets: the constraint `sum w_i^2 <= 1 / k` of DeMiguel, Garlappi, Nogales and Uppal\n(2009), which keeps the weights from concentrating in a few assets.",
+          "default": null
         }
       },
       "description": "The constraints on a portfolio. The default is fully invested and long-only."
@@ -1954,6 +1979,65 @@
             "type"
           ],
           "description": "The empirical covariance (divisor n) shrunk towards a multiple of the identity with the\noracle approximating shrinkage intensity of Chen, Wiesel, Eldar and Hero (2010)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "constant_correlation"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "The empirical covariance (divisor n) shrunk towards the matrix with the same variances\nand every correlation the average sample correlation, with the intensity of Ledoit and\nWolf (2004, \"Honey, I shrunk the sample covariance matrix\")."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "statistical"
+            },
+            "factors": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0,
+              "description": "The number of components, between 1 and the smaller of the number of assets and of\nreturns less one."
+            }
+          },
+          "required": [
+            "type",
+            "factors"
+          ],
+          "description": "A statistical factor model of the first `factors` principal components of the sample\ncovariance, with each asset's variance kept: the covariance the model implies."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "denoised"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "The sample correlation with the eigenvalues of noise replaced by their average: those\nbelow the Marchenko–Pastur edge `(1 + sqrt(n / t))^2` of a random correlation matrix\nof `n` assets and `t` returns. The variances are the sample's."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "nonlinear_shrinkage"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "The analytical nonlinear shrinkage of Ledoit and Wolf (2020): each eigenvalue of the\nsample covariance (divisor t - 1) shrunk by a kernel estimate of the spectral density,\nfor many assets against few returns."
         }
       ],
       "description": "How a covariance matrix is estimated from returns.\n\nIn JSON it is an object with a `type`, such as `{\"type\": \"ewma\", \"decay\": 0.97}`, or the\ntype's name alone, such as `\"ledoit_wolf\"`; an exponentially weighted covariance without a\ndecay has 0.94."
@@ -4488,6 +4572,56 @@
       ],
       "description": "A square matrix with labelled rows and columns, stored row by row; a covariance or\ncorrelation matrix."
     },
+    "MeanMethod": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "historical"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Each asset's average return."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "james_stein"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "The averages shrunk towards their grand mean, `(1 - c) m + c g`, with the intensity of\nEfron and Morris (1973), `c = (n - 3) / (t (m - g)' S^-1 (m - g))` between 0 and 1, for\n`n` assets, `t` returns and the sample covariance `S`. It needs more returns than assets,\nand at least four assets to shrink."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "ewma"
+            },
+            "decay": {
+              "type": "number",
+              "format": "double",
+              "description": "The decay factor, between 0 and 1: 0.94 by default.",
+              "default": 0.94
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "An exponentially weighted average: the return `k` periods before the latest has weight\nproportional to `decay^k`."
+        }
+      ],
+      "description": "How the assets' mean returns are estimated from their returns.\n\nIn JSON it is an object with a `type`, such as `{\"type\": \"ewma\", \"decay\": 0.97}`, or the\ntype's name alone, such as `\"james_stein\"`; an exponentially weighted mean without a decay\nhas 0.94."
+    },
     "Method": {
       "oneOf": [
         {
@@ -4529,6 +4663,16 @@
           "type": "string",
           "const": "minimum_cvar",
           "description": "The smallest conditional value at risk of the periods' returns, at `confidence`."
+        },
+        {
+          "type": "string",
+          "const": "minimum_semivariance",
+          "description": "The smallest semivariance of the periods' returns below zero."
+        },
+        {
+          "type": "string",
+          "const": "minimum_cdar",
+          "description": "The smallest conditional drawdown at risk of the cumulative returns, at `confidence`."
         },
         {
           "type": "string",
@@ -4787,6 +4931,38 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "minimum_semivariance"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "The smallest semivariance of the scenario returns below zero, `mean(min(r, 0)^2)` over\nevery scenario: the square of the downside deviation."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "minimum_cdar"
+            },
+            "confidence": {
+              "type": "number",
+              "format": "double",
+              "description": "The confidence level, for example 0.95."
+            }
+          },
+          "required": [
+            "type",
+            "confidence"
+          ],
+          "description": "The smallest conditional drawdown at risk of the scenario returns (Chekhlov, Uryasev and\nZabarankin, 2005): the Rockafellar–Uryasev tail mean of the drawdowns after each\nscenario, measured on the cumulative sum of the returns from a start of zero, as a\nlinear programme."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "equal_weight"
             }
           },
@@ -4933,9 +5109,16 @@
           "$ref": "#/$defs/CovarianceMethod",
           "description": "The covariance estimator."
         },
-        "historical_means": {
-          "type": "boolean",
-          "description": "Whether the expected returns are the historical means (`false` when some were given)."
+        "mean_returns": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeanMethod"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The estimator of the expected returns: `None` when some were given."
         },
         "limits": {
           "type": "array",
@@ -4951,6 +5134,18 @@
         "end": {
           "$ref": "#/$defs/Date",
           "description": "The date the last return period ends on."
+        },
+        "resampling": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResamplingSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For resampled optimisation, how the weights were averaged.",
+          "default": null
         }
       },
       "required": [
@@ -4965,7 +5160,6 @@
         "risk_free_rate",
         "periods_per_year",
         "covariance",
-        "historical_means",
         "limits",
         "start",
         "end"
@@ -5122,7 +5316,19 @@
         },
         "solution": {
           "$ref": "#/$defs/Solution",
-          "description": "The solver's solution, with the objective, its value and the work done."
+          "description": "The solver's solution, with the objective, its value and the work done. With\nresampling, it is the solution for the estimates themselves, and `weights` are the\naverage in `resampled`."
+        },
+        "resampled": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResampledSolution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For resampled optimisation, the average weights, how much each varied across the\nsimulated histories, and how many were solved.",
+          "default": null
         }
       },
       "required": [
@@ -5220,7 +5426,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The annual expected return (`target_return`) or volatility (`target_volatility`) to aim\nfor.",
+          "description": "The annual expected return (`target_return`) or volatility (`target_volatility`) to aim\nfor, or the smallest annual expected return for minimum CVaR, semivariance and CDaR.",
           "default": null
         },
         "risk_aversion": {
@@ -5250,7 +5456,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The confidence of the conditional value at risk: 0.95 by default.",
+          "description": "The confidence of the conditional value at risk or drawdown at risk: 0.95 by default.",
           "default": null
         },
         "budgets": {
@@ -5314,13 +5520,32 @@
           "description": "Limits on the total weight of groups of assets, by group name.",
           "default": {}
         },
+        "min_effective_assets": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest effective number of assets, `1 / sum w^2`, such as 5: the weights are\nspread over at least as many assets as 5 equal weights would be.",
+          "default": null
+        },
+        "resample": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "Resampled optimisation (Michaud, 1998): the weights are the average of the optimal\nweights for this many histories, such as 200, simulated from the estimates with as many\nreturns as the assets have, from random numbers with a fixed seed. For the methods that\nuse estimates, other than those measured on the periods' returns.",
+          "default": null
+        },
         "expected_returns": {
           "type": "object",
           "additionalProperties": {
             "type": "number",
             "format": "double"
           },
-          "description": "Annual expected returns by asset, in place of the historical means.",
+          "description": "Annual expected returns by asset, in place of the estimates.",
           "default": {}
         },
         "frontier": {
@@ -6249,7 +6474,9 @@
             "turnover": null,
             "tracking_error": null,
             "factor_exposures": [],
-            "trades": null
+            "trades": null,
+            "min_return": null,
+            "min_effective_assets": null
           }
         }
       },
@@ -6981,6 +7208,26 @@
             "type"
           ],
           "description": "Never: the portfolio buys its target weights once and holds them (buy and hold)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "every"
+            },
+            "periods": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0,
+              "description": "The number of periods between rebalances, at least 1."
+            }
+          },
+          "required": [
+            "type",
+            "periods"
+          ],
+          "description": "After every `periods` periods, counted from the first period of each run, such as 21\nfor daily returns traded about once a month."
         }
       ],
       "description": "When the portfolio trades back to its target weights. Between trades the weights drift with\nprices."
@@ -7545,6 +7792,15 @@
           "format": "uint64",
           "minimum": 0,
           "description": "The seed of the random numbers. The same seed gives the same result on every platform."
+        },
+        "periods_per_year": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "For estimates annualised from returns with this many periods in a year (12 for\nmonthly), the histories are simulated period by period, from the estimates divided by\nit, and their estimates annualised again, so that they are as uncertain as estimates\nfrom `observations` periods. Without it, each simulated period is in the estimates' own\nunits.",
+          "default": null
         }
       },
       "required": [
@@ -7553,6 +7809,35 @@
         "seed"
       ],
       "description": "How to resample a problem's estimates."
+    },
+    "ResamplingSummary": {
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of histories simulated."
+        },
+        "observations": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of periods in each, as many as the returns the estimates came from."
+        },
+        "solved": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of simulated problems solved and averaged."
+        }
+      },
+      "required": [
+        "samples",
+        "observations",
+        "solved"
+      ],
+      "description": "How resampled weights were found: the average of the optimal weights for histories simulated\nfrom the estimates (Michaud, 1998)."
     },
     "ReturnUncertainty": {
       "oneOf": [
@@ -8926,7 +9211,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The value of the objective at the weights: the variance for minimum variance and target\nreturn; the utility for mean–variance; the expected return for target volatility; the\nSharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,\nthe largest difference between an asset's share of risk and its budget. Absent for\nhierarchical risk parity, which optimises no objective."
+          "description": "The value of the objective at the weights: the variance for minimum variance and target\nreturn; the utility for mean–variance; the expected return for target volatility; the\nSharpe ratio; the diversification ratio; the CVaR, as a positive loss; the semivariance;\nthe CDaR, as a positive drawdown of the summed returns; for risk budgeting, the largest\ndifference between an asset's share of risk and its budget. Absent for hierarchical risk\nparity, which optimises no objective. The downside measures are per period of the\nscenarios."
         },
         "expected_return": {
           "type": [
@@ -9243,6 +9528,8 @@
                 "max_weight": null,
                 "asset_bounds": {},
                 "groups": {},
+                "min_effective_assets": null,
+                "resample": null,
                 "expected_returns": {}
               }
             }
@@ -10386,7 +10673,7 @@
           "required": [
             "type"
           ],
-          "description": "Weights refitted at each calendar rebalance on the window of history before it, and\nheld until the next: every return in the test comes after the weights were chosen. The\nwindow is given in years or in periods."
+          "description": "Weights refitted at each scheduled rebalance (monthly, quarterly, yearly or every so many\nperiods) on the window of history before it, and held until the next: every return in\nthe test comes after the weights were chosen. The window is given in years or in\nperiods."
         }
       ],
       "description": "How a strategy's weights are tested: on the history they were fitted to, or on later\nhistory they had not seen."

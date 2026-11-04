@@ -2,7 +2,9 @@
 
 An optimisation problem holds the assets' covariance matrix $\Sigma$ or a
 [factor model](factor-models.md), their expected returns $\mu$ (in the same units, for example
-both annualised), scenario returns for minimum CVaR, and constraints. Finalytics formulates each objective as a convex conic programme and solves it with
+both annualised), scenario returns for the downside objectives (minimum CVaR, semivariance and
+CDaR), and constraints. Finalytics formulates each objective as a convex conic programme and
+solves it with
 Clarabel, an interior-point solver, or, for risk budgeting and hierarchical risk parity, with
 methods of their own.
 
@@ -20,6 +22,17 @@ methods of their own.
 | Trade limits | Each $\lvert w_i - w^0_i \rvert$ either 0 or at least $m$; at most $K$ assets traded; a heuristic, below | none |
 | Tracking error | $\sqrt{(w - b)^\top \Sigma (w - b)} \le \text{TE}$ against benchmark weights $b$ | none |
 | Factor exposures | $m_k \le (B^\top w)_k \le M_k$, or on active exposures $(B^\top (w - b))_k$; needs a factor model | none |
+| Expected return | $\mu^\top w - c^\top \lvert w - w^0 \rvert \ge R^*$, a floor for objectives that do not use $\mu$, such as the downside ones (`min_return`) | none |
+| Effective number of assets | $1 / \sum_i w_i^2 \ge k$, as $\lVert w \rVert_2 \le 1/\sqrt{k}$ (`min_effective_assets`) | none |
+
+The effective number of assets, $1/\sum_i w_i^2$, is $n$ for equal weights and 1 for a single
+asset; holding it at or above $k$ is the norm constraint of DeMiguel, Garlappi, Nogales and Uppal
+(2009), which keeps an optimiser from concentrating on the assets whose estimates happen to look
+best. It is one second-order cone, and the same $k$ means the same spread for every objective,
+unlike a penalty $\gamma \lVert w \rVert^2$ whose effect depends on the scale of the objective.
+`Assets` checks before solving that the bounds leave room for $k$ effective assets: the most
+they allow is that of the weights nearest equal, $w_i = \min(u_i, \max(l_i, \theta))$ with
+$\theta$ such that the weights sum to one.
 
 Absolute values are linearised with auxiliary variables $d_i \ge \pm(w_i - w^0_i)$, and the
 tracking-error limit is a second-order cone on a factor $R$ of the covariance ($R^\top R =
@@ -40,6 +53,8 @@ $y = B^\top w$, and the cone is built from a factor of $F$ and the specific vola
 | `maximum_sharpe` | $\max (\mu^\top w - r_f) / \sqrt{w^\top \Sigma w}$ | Quadratic programme after the Charnes–Cooper transformation |
 | `maximum_diversification` | $\max \sigma^\top w / \sqrt{w^\top \Sigma w}$, with $\sigma_i = \sqrt{\Sigma_{ii}}$ | As maximum Sharpe |
 | `minimum_cvar` | $\min$ CVaR of the scenario returns | Linear programme |
+| `minimum_semivariance` | $\min \frac1S \sum_s \min(r_s^\top w, 0)^2$ | Quadratic programme |
+| `minimum_cdar` | $\min$ CDaR of the cumulative scenario returns | Linear programme |
 | `equal_weight` | $w_i = 1/n$ | Closed form |
 | `inverse_volatility` | $w_i \propto 1/\sigma_i$ | Closed form |
 | `risk_budgeting` | Each asset's share of risk, $w_i (\Sigma w)_i / w^\top \Sigma w$, equals its budget; equal shares by default, as the method `risk_parity` gives | Newton's method |
@@ -61,6 +76,27 @@ $$\min_{w,\,\zeta,\,u} \; \zeta + \frac{1}{\alpha S}\sum_s u_s \quad\text{subjec
 
 At the optimum $\zeta$ is the value at risk and the objective the CVaR (expected shortfall) of the
 portfolio's scenario losses. Several portfolios can share the minimum.
+
+### Minimum semivariance and CDaR
+
+The semivariance below zero is the mean square of the scenario returns that fall below zero, over
+every scenario, the square of the downside deviation that the
+[statistics](statistics.md) report (against a target of zero). With $d_s \ge \max(-r_s^\top w, 0)$
+it is the quadratic programme $\min \frac1S \sum_s d_s^2$.
+
+The conditional drawdown at risk of Chekhlov, Uryasev and Zabarankin (2005) is the
+Rockafellar–Uryasev tail mean of the drawdowns after each scenario, at confidence $1 - \alpha$.
+The drawdowns are of the cumulative sum of the returns, $c_s = \sum_{t \le s} r_t^\top w$, from a
+start of zero, which keeps the programme linear:
+
+$$\min \; \zeta + \frac{1}{\alpha S}\sum_s u_s \quad\text{subject to}\quad u_s \ge p_s - c_s - \zeta,\; u_s \ge 0,\; p_s \ge c_s,\; p_s \ge p_{s-1},\; p_1 \ge 0$$
+
+where $p_s$ is the running peak. The [statistics](statistics.md) measure drawdowns on the
+compounded value instead; for returns of a few percent a period the two are close, but not equal.
+
+With `target`, each of the three downside objectives keeps an annual expected return of at least
+`target`, as `target_return` does for variance. As with minimum CVaR, the linear programme of CDaR
+can have several optimal portfolios.
 
 ### Risk budgeting and risk parity
 
@@ -103,8 +139,8 @@ infeasible. A change in weight below $10^{-7}$ counts as no trade.
 ### Resampling and Black–Litterman
 
 `Problem.resampled` solves any of the covariance-based objectives above for estimates re-made from
-simulated histories and averages the weights; see
-[robust and resampled optimisation](robust-optimisation.md).
+simulated histories and averages the weights, and `Assets.optimise(resample=200)` does the same
+for the assets' own estimates; see [robust and resampled optimisation](robust-optimisation.md).
 [Black–Litterman](black-litterman.md) supplies expected returns and a covariance to optimise with.
 
 ### Efficient frontier
@@ -123,8 +159,12 @@ cannot all hold is not an error: its solution has the status `infeasible` and no
 objective's value and the expected return are before trading costs, linear or quadratic; the
 costs shape the weights but are not subtracted from the reported figures.
 
-Clarabel runs at its default tolerances ($10^{-8}$ on the duality gap and feasibility), so
-interior-point weights are accurate to about $10^{-5}$.
+Clarabel runs at tolerances of $10^{-10}$ on the duality gap and feasibility, tighter than its
+defaults of $10^{-8}$, so that a weight that belongs at a bound ends within about $10^{-6}$ of it.
+Where a constraint binds on the boundary of a second-order cone, as the limit on the effective
+number of assets can, the solver's iterates can lose feasibility before the gap closes to
+$10^{-10}$, and it stops short; such a solution is `optimal` when its gap is within $10^{-8}$ and
+its weights meet every constraint to $10^{-9}$, and `nearly_optimal` otherwise.
 
 ## Example
 
@@ -187,6 +227,16 @@ hierarchical risk parity weights to $10^{-13}$, in Rust, Python and JavaScript. 
 checked by its defining property, risk shares equal to the budgets to $10^{-12}$, and against
 the exponential-cone formulation.
 
+`scripts/reference/downside_objectives.py` formulates seven more problems on 6 assets and 400
+scenarios in CVXPY: minimum semivariance, with and without a floor on expected return, as the
+mean square of `cp.neg` of the returns; minimum CDaR at 95%, and at 90% with an asset bound and a
+floor, as the linear programme above, its value checked against the drawdowns computed
+directly; minimum CVaR with a floor; minimum variance with at least 4.5 effective assets, as
+`cp.norm(w, 2) <= 1 / sqrt(k)`; and the maximum Sharpe ratio with at least 4, found without the
+Charnes–Cooper transformation by golden-section search along the constrained frontier. The
+tolerances are those above, with the linear programmes compared by objective only, in Rust,
+Python and JavaScript.
+
 ## References
 
 - Markowitz, H., "Portfolio selection", *Journal of Finance* 7(1), 1952.
@@ -196,6 +246,11 @@ the exponential-cone formulation.
   Management* 35(1), 2008.
 - Rockafellar, R. T. and Uryasev, S., "Optimization of conditional value-at-risk", *Journal of
   Risk* 2(3), 2000.
+- Chekhlov, A., Uryasev, S. and Zabarankin, M., "Drawdown measure in portfolio optimization",
+  *International Journal of Theoretical and Applied Finance* 8(1), 2005.
+- DeMiguel, V., Garlappi, L., Nogales, F. J. and Uppal, R., "A generalized approach to portfolio
+  optimization: improving performance by constraining portfolio norms", *Management Science*
+  55(5), 2009.
 - Spinu, F., "An algorithm for computing risk parity weights", SSRN 2297383, 2013.
 - López de Prado, M., "Building diversified portfolios that outperform out of sample", *Journal
   of Portfolio Management* 42(4), 2016.

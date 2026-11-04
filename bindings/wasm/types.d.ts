@@ -361,6 +361,8 @@ export interface BacktestContext {
   periods_per_year: number;
   /** The covariance estimator of the optimisations. */
   covariance: CovarianceMethod;
+  /** The estimator of the optimisations' mean returns. */
+  mean_returns?: MeanMethod;
   /** The limits on the weights, in words. */
   limits: string[];
   /** How the backtest was run. */
@@ -698,6 +700,18 @@ export interface Constraints {
   factor_exposures?: FactorExposureLimit[];
   /** Limits on the size and number of trades; they need the turnover's current weights. */
   trades?: TradeLimits | null;
+  /**
+   * The smallest expected return, net of trading costs, in the units of the expected
+   * returns: a floor for the objectives that do not use expected returns, such as minimum
+   * CVaR.
+   */
+  min_return?: number | null;
+  /**
+   * The smallest effective number of assets, `1 / sum w_i^2`, from 1 to the number of
+   * assets: the constraint `sum w_i^2 <= 1 / k` of DeMiguel, Garlappi, Nogales and Uppal
+   * (2009), which keeps the weights from concentrating in a few assets.
+   */
+  min_effective_assets?: number | null;
 }
 
 /** What one holding added to the portfolio's return over a period. */
@@ -779,6 +793,23 @@ export type CovarianceMethod =
   }
   | {
     type: "oas";
+  }
+  | {
+    type: "constant_correlation";
+  }
+  | {
+    type: "statistical";
+    /**
+     * The number of components, between 1 and the smaller of the number of assets and of
+     * returns less one.
+     */
+    factors: number;
+  }
+  | {
+    type: "denoised";
+  }
+  | {
+    type: "nonlinear_shrinkage";
   };
 
 /** An ISO 4217 currency code, for example "USD". */
@@ -1750,10 +1781,30 @@ export interface Matrix {
 }
 
 /**
+ * How the assets' mean returns are estimated from their returns.
+ *
+ * In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the
+ * type's name alone, such as `"james_stein"`; an exponentially weighted mean without a decay
+ * has 0.94.
+ */
+export type MeanMethod =
+  | {
+    type: "historical";
+  }
+  | {
+    type: "james_stein";
+  }
+  | {
+    type: "ewma";
+    /** The decay factor, between 0 and 1: 0.94 by default. */
+    decay?: number;
+  };
+
+/**
  * An optimisation method, by name. The parameters some methods need are given beside it, in
  * `OptimiseOptions` or with the builder's methods.
  */
-export type Method = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "equal_weight" | "inverse_volatility" | "risk_parity" | "risk_budgeting" | "hierarchical_risk_parity";
+export type Method = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "minimum_semivariance" | "minimum_cdar" | "equal_weight" | "inverse_volatility" | "risk_parity" | "risk_budgeting" | "hierarchical_risk_parity";
 
 /**
  * An exact decimal amount in one currency.
@@ -1829,6 +1880,14 @@ export type Objective =
     confidence: number;
   }
   | {
+    type: "minimum_semivariance";
+  }
+  | {
+    type: "minimum_cdar";
+    /** The confidence level, for example 0.95. */
+    confidence: number;
+  }
+  | {
     type: "equal_weight";
   }
   | {
@@ -1895,14 +1954,16 @@ export interface OptimisationContext {
   periods_per_year: number;
   /** The covariance estimator. */
   covariance: CovarianceMethod;
-  /** Whether the expected returns are the historical means (`false` when some were given). */
-  historical_means: boolean;
+  /** The estimator of the expected returns: `None` when some were given. */
+  mean_returns?: MeanMethod | null;
   /** The limits on the weights, in words. */
   limits: string[];
   /** The date the first return period ends on. */
   start: Date;
   /** The date the last return period ends on. */
   end: Date;
+  /** For resampled optimisation, how the weights were averaged. */
+  resampling?: ResamplingSummary | null;
 }
 
 /** How the weights, and equal weight, would have done on the history they were fitted to. */
@@ -1971,8 +2032,17 @@ export interface OptimisationResult {
   sharpe_ratio?: number | null;
   /** The annual risk-free rate used. */
   risk_free_rate: number;
-  /** The solver's solution, with the objective, its value and the work done. */
+  /**
+   * The solver's solution, with the objective, its value and the work done. With
+   * resampling, it is the solution for the estimates themselves, and `weights` are the
+   * average in `resampled`.
+   */
   solution: Solution;
+  /**
+   * For resampled optimisation, the average weights, how much each varied across the
+   * simulated histories, and how many were solved.
+   */
+  resampled?: ResampledSolution | null;
 }
 
 /** What the weights are expected to deliver. */
@@ -2015,14 +2085,14 @@ export interface OptimiseOptions {
   risk_free_rate?: number | null;
   /**
    * The annual expected return (`target_return`) or volatility (`target_volatility`) to aim
-   * for.
+   * for, or the smallest annual expected return for minimum CVaR, semivariance and CDaR.
    */
   target?: number | null;
   /** The weight on variance, for mean–variance objectives. */
   risk_aversion?: number | null;
   /** The uncertainty of the expected returns, for robust mean–variance. */
   uncertainty?: ReturnUncertainty | null;
-  /** The confidence of the conditional value at risk: 0.95 by default. */
+  /** The confidence of the conditional value at risk or drawdown at risk: 0.95 by default. */
   confidence?: number | null;
   /** The risk budgets, by asset, for risk budgeting; equal without them. */
   budgets?: Record<string, number> | null;
@@ -2039,7 +2109,19 @@ export interface OptimiseOptions {
   asset_bounds?: Record<string, Bound>;
   /** Limits on the total weight of groups of assets, by group name. */
   groups?: Record<string, AssetGroup>;
-  /** Annual expected returns by asset, in place of the historical means. */
+  /**
+   * The smallest effective number of assets, `1 / sum w^2`, such as 5: the weights are
+   * spread over at least as many assets as 5 equal weights would be.
+   */
+  min_effective_assets?: number | null;
+  /**
+   * Resampled optimisation (Michaud, 1998): the weights are the average of the optimal
+   * weights for this many histories, such as 200, simulated from the estimates with as many
+   * returns as the assets have, from random numbers with a fixed seed. For the methods that
+   * use estimates, other than those measured on the periods' returns.
+   */
+  resample?: number | null;
+  /** Annual expected returns by asset, in place of the estimates. */
   expected_returns?: Record<string, number>;
   /**
    * Whether the optimisation report draws the efficient frontier under the same limits.
@@ -2676,6 +2758,11 @@ export type RebalanceSchedule =
   }
   | {
     type: "never";
+  }
+  | {
+    type: "every";
+    /** The number of periods between rebalances, at least 1. */
+    periods: number;
   };
 
 /**
@@ -2875,6 +2962,27 @@ export interface Resampling {
   observations: number;
   /** The seed of the random numbers. The same seed gives the same result on every platform. */
   seed: number;
+  /**
+   * For estimates annualised from returns with this many periods in a year (12 for
+   * monthly), the histories are simulated period by period, from the estimates divided by
+   * it, and their estimates annualised again, so that they are as uncertain as estimates
+   * from `observations` periods. Without it, each simulated period is in the estimates' own
+   * units.
+   */
+  periods_per_year?: number | null;
+}
+
+/**
+ * How resampled weights were found: the average of the optimal weights for histories simulated
+ * from the estimates (Michaud, 1998).
+ */
+export interface ResamplingSummary {
+  /** The number of histories simulated. */
+  samples: number;
+  /** The number of periods in each, as many as the returns the estimates came from. */
+  observations: number;
+  /** The number of simulated problems solved and averaged. */
+  solved: number;
 }
 
 /**
@@ -3398,9 +3506,11 @@ export interface Solution {
   /**
    * The value of the objective at the weights: the variance for minimum variance and target
    * return; the utility for mean–variance; the expected return for target volatility; the
-   * Sharpe ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting,
-   * the largest difference between an asset's share of risk and its budget. Absent for
-   * hierarchical risk parity, which optimises no objective.
+   * Sharpe ratio; the diversification ratio; the CVaR, as a positive loss; the semivariance;
+   * the CDaR, as a positive drawdown of the summed returns; for risk budgeting, the largest
+   * difference between an asset's share of risk and its budget. Absent for hierarchical risk
+   * parity, which optimises no objective. The downside measures are per period of the
+   * scenarios.
    */
   objective_value?: number | null;
   /** The expected return at the weights, when expected returns are given. */

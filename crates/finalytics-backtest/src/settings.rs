@@ -28,6 +28,12 @@ pub enum Rebalance {
     },
     /// Never: the portfolio buys its target weights once and holds them (buy and hold).
     Never,
+    /// After every `periods` periods, counted from the first period of each run, such as 21
+    /// for daily returns traded about once a month.
+    Every {
+        /// The number of periods between rebalances, at least 1.
+        periods: usize,
+    },
 }
 
 impl Rebalance {
@@ -35,6 +41,11 @@ impl Rebalance {
     /// percentage points.
     pub fn drift(band: f64) -> Rebalance {
         Rebalance::Drift { band }
+    }
+
+    /// After every `periods` periods, such as 21 for daily returns.
+    pub fn every(periods: usize) -> Rebalance {
+        Rebalance::Every { periods }
     }
 
     /// Whether the schedule follows the calendar: monthly, quarterly or yearly.
@@ -45,14 +56,22 @@ impl Rebalance {
         )
     }
 
-    /// Whether `date` is the last date of its month, quarter or year, given the date after it.
-    pub(crate) fn ends_period(&self, date: Date, next: Date) -> bool {
+    /// Whether the schedule sets the dates of its rebalances in advance: by the calendar, or
+    /// every so many periods. Walk-forward validation refits on these dates.
+    pub fn is_scheduled(&self) -> bool {
+        self.is_calendar() || matches!(self, Rebalance::Every { .. })
+    }
+
+    /// Whether a scheduled rebalance falls at the end of `date`, given the date after it and the
+    /// number of periods of the run up to and including `date`.
+    pub(crate) fn due(&self, date: Date, next: Date, elapsed: usize) -> bool {
         let (y0, m0, _) = date.ymd();
         let (y1, m1, _) = next.ymd();
         match self {
             Rebalance::Monthly => (y0, m0) != (y1, m1),
             Rebalance::Quarterly => (y0, (m0 - 1) / 3) != (y1, (m1 - 1) / 3),
             Rebalance::Yearly => y0 != y1,
+            Rebalance::Every { periods } => *periods > 0 && elapsed.is_multiple_of(*periods),
             Rebalance::Drift { .. } | Rebalance::Never => false,
         }
     }
@@ -75,9 +94,10 @@ pub enum Validation {
         /// The first date of the test.
         start: Date,
     },
-    /// Weights refitted at each calendar rebalance on the window of history before it, and
-    /// held until the next: every return in the test comes after the weights were chosen. The
-    /// window is given in years or in periods.
+    /// Weights refitted at each scheduled rebalance (monthly, quarterly, yearly or every so many
+    /// periods) on the window of history before it, and held until the next: every return in
+    /// the test comes after the weights were chosen. The window is given in years or in
+    /// periods.
     WalkForward {
         /// The years of history each refit uses, such as 5.
         #[serde(default)]

@@ -64,7 +64,7 @@ of them.
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
-Method = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "equal_weight", "inverse_volatility", "risk_parity", "risk_budgeting", "hierarchical_risk_parity"]
+Method = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "minimum_semivariance", "minimum_cdar", "equal_weight", "inverse_volatility", "risk_parity", "risk_budgeting", "hierarchical_risk_parity"]
 """An optimisation method, by name. The parameters some methods need are given beside it, in
 `OptimiseOptions` or with the builder's methods.
 """
@@ -559,6 +559,9 @@ class BacktestContext:
     covariance: CovarianceMethod
     """The covariance estimator of the optimisations."""
 
+    mean_returns: MeanMethod = field(default_factory=lambda: {'type': 'historical'})
+    """The estimator of the optimisations' mean returns."""
+
     limits: list[str]
     """The limits on the weights, in words."""
 
@@ -1048,6 +1051,17 @@ class Constraints:
     trades: TradeLimits | None = None
     """Limits on the size and number of trades; they need the turnover's current weights."""
 
+    min_return: float | None = None
+    """The smallest expected return, net of trading costs, in the units of the expected returns: a
+    floor for the objectives that do not use expected returns, such as minimum CVaR.
+    """
+
+    min_effective_assets: float | None = None
+    """The smallest effective number of assets, `1 / sum w_i^2`, from 1 to the number of assets: the
+    constraint `sum w_i^2 <= 1 / k` of DeMiguel, Garlappi, Nogales and Uppal (2009), which keeps
+    the weights from concentrating in a few assets.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class Contribution:
@@ -1166,7 +1180,55 @@ class Oas:
     """The value of the `type` tag that identifies this variant."""
 
 
-CovarianceMethod = Union[Sample, Ewma, LedoitWolf, Oas]
+@dataclass(frozen=True, kw_only=True)
+class ConstantCorrelation:
+    """The empirical covariance (divisor n) shrunk towards the matrix with the same variances and
+    every correlation the average sample correlation, with the intensity of Ledoit and Wolf
+    (2004, "Honey, I shrunk the sample covariance matrix").
+    """
+
+    TYPE: ClassVar[str] = "constant_correlation"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Statistical:
+    """A statistical factor model of the first `factors` principal components of the sample
+    covariance, with each asset's variance kept: the covariance the model implies.
+    """
+
+    TYPE: ClassVar[str] = "statistical"
+    """The value of the `type` tag that identifies this variant."""
+
+    factors: int
+    """The number of components, between 1 and the smaller of the number of assets and of returns
+    less one.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Denoised:
+    """The sample correlation with the eigenvalues of noise replaced by their average: those below
+    the Marchenko–Pastur edge `(1 + sqrt(n / t))^2` of a random correlation matrix of `n` assets
+    and `t` returns. The variances are the sample's.
+    """
+
+    TYPE: ClassVar[str] = "denoised"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class NonlinearShrinkage:
+    """The analytical nonlinear shrinkage of Ledoit and Wolf (2020): each eigenvalue of the sample
+    covariance (divisor t - 1) shrunk by a kernel estimate of the spectral density, for many
+    assets against few returns.
+    """
+
+    TYPE: ClassVar[str] = "nonlinear_shrinkage"
+    """The value of the `type` tag that identifies this variant."""
+
+
+CovarianceMethod = Union[Sample, Ewma, LedoitWolf, Oas, ConstantCorrelation, Statistical, Denoised, NonlinearShrinkage]
 """How a covariance matrix is estimated from returns.
 
 In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the type's
@@ -2397,6 +2459,47 @@ class Matrix:
 
 
 @dataclass(frozen=True, kw_only=True)
+class HistoricalMean:
+    """Each asset's average return."""
+
+    TYPE: ClassVar[str] = "historical"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class JamesSteinMean:
+    """The averages shrunk towards their grand mean, `(1 - c) m + c g`, with the intensity of Efron
+    and Morris (1973), `c = (n - 3) / (t (m - g)' S^-1 (m - g))` between 0 and 1, for `n` assets,
+    `t` returns and the sample covariance `S`. It needs more returns than assets, and at least
+    four assets to shrink.
+    """
+
+    TYPE: ClassVar[str] = "james_stein"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class EwmaMean:
+    """An exponentially weighted average: the return `k` periods before the latest has weight
+    proportional to `decay^k`.
+    """
+
+    TYPE: ClassVar[str] = "ewma"
+    """The value of the `type` tag that identifies this variant."""
+
+    decay: float = 0.94
+    """The decay factor, between 0 and 1: 0.94 by default."""
+
+
+MeanMethod = Union[HistoricalMean, JamesSteinMean, EwmaMean]
+"""How the assets' mean returns are estimated from their returns.
+
+In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the type's
+name alone, such as `"james_stein"`; an exponentially weighted mean without a decay has 0.94.
+"""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Money:
     """An exact decimal amount in one currency.
 
@@ -2533,6 +2636,30 @@ class MinimumCvar:
 
 
 @dataclass(frozen=True, kw_only=True)
+class MinimumSemivariance:
+    """The smallest semivariance of the scenario returns below zero, `mean(min(r, 0)^2)` over every
+    scenario: the square of the downside deviation.
+    """
+
+    TYPE: ClassVar[str] = "minimum_semivariance"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MinimumCdar:
+    """The smallest conditional drawdown at risk of the scenario returns (Chekhlov, Uryasev and
+    Zabarankin, 2005): the Rockafellar–Uryasev tail mean of the drawdowns after each scenario,
+    measured on the cumulative sum of the returns from a start of zero, as a linear programme.
+    """
+
+    TYPE: ClassVar[str] = "minimum_cdar"
+    """The value of the `type` tag that identifies this variant."""
+
+    confidence: float
+    """The confidence level, for example 0.95."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class EqualWeight:
     """Every asset with the same weight, `1 / n`: the naive portfolio that estimated ones must beat
     out of sample (DeMiguel, Garlappi and Uppal, 2009). Uses no estimates and no solver; only the
@@ -2582,7 +2709,7 @@ class HierarchicalRiskParity:
     """How clusters are joined."""
 
 
-Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetReturn, TargetVolatility, MaximumSharpe, MaximumDiversification, MinimumCvar, EqualWeight, InverseVolatility, RiskBudgeting, HierarchicalRiskParity]
+Objective = Union[MinimumVariance, MeanVariance, RobustMeanVariance, TargetReturn, TargetVolatility, MaximumSharpe, MaximumDiversification, MinimumCvar, MinimumSemivariance, MinimumCdar, EqualWeight, InverseVolatility, RiskBudgeting, HierarchicalRiskParity]
 """What an optimisation seeks."""
 
 
@@ -2648,8 +2775,8 @@ class OptimisationContext:
     covariance: CovarianceMethod
     """The covariance estimator."""
 
-    historical_means: bool
-    """Whether the expected returns are the historical means (`false` when some were given)."""
+    mean_returns: MeanMethod | None = None
+    """The estimator of the expected returns: `None` when some were given."""
 
     limits: list[str]
     """The limits on the weights, in words."""
@@ -2659,6 +2786,9 @@ class OptimisationContext:
 
     end: datetime.date
     """The date the last return period ends on."""
+
+    resampling: ResamplingSummary | None = None
+    """For resampled optimisation, how the weights were averaged."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2742,7 +2872,14 @@ class OptimisationResult(PrintedResults):
     """The annual risk-free rate used."""
 
     solution: Solution
-    """The solver's solution, with the objective, its value and the work done."""
+    """The solver's solution, with the objective, its value and the work done. With resampling, it
+    is the solution for the estimates themselves, and `weights` are the average in `resampled`.
+    """
+
+    resampled: ResampledSolution | None = None
+    """For resampled optimisation, the average weights, how much each varied across the simulated
+    histories, and how many were solved.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2793,7 +2930,8 @@ class OptimiseOptions:
     """The annual risk-free rate for the Sharpe ratio; by default the assets' own."""
 
     target: float | None = None
-    """The annual expected return (`target_return`) or volatility (`target_volatility`) to aim for.
+    """The annual expected return (`target_return`) or volatility (`target_volatility`) to aim for,
+    or the smallest annual expected return for minimum CVaR, semivariance and CDaR.
     """
 
     risk_aversion: float | None = None
@@ -2803,7 +2941,7 @@ class OptimiseOptions:
     """The uncertainty of the expected returns, for robust mean–variance."""
 
     confidence: float | None = None
-    """The confidence of the conditional value at risk: 0.95 by default."""
+    """The confidence of the conditional value at risk or drawdown at risk: 0.95 by default."""
 
     budgets: dict[str, float] | None = None
     """The risk budgets, by asset, for risk budgeting; equal without them."""
@@ -2823,8 +2961,20 @@ class OptimiseOptions:
     groups: dict[str, AssetGroup] = field(default_factory=dict)
     """Limits on the total weight of groups of assets, by group name."""
 
+    min_effective_assets: float | None = None
+    """The smallest effective number of assets, `1 / sum w^2`, such as 5: the weights are spread
+    over at least as many assets as 5 equal weights would be.
+    """
+
+    resample: int | None = None
+    """Resampled optimisation (Michaud, 1998): the weights are the average of the optimal weights
+    for this many histories, such as 200, simulated from the estimates with as many returns as
+    the assets have, from random numbers with a fixed seed. For the methods that use estimates,
+    other than those measured on the periods' returns.
+    """
+
     expected_returns: dict[str, float] = field(default_factory=dict)
-    """Annual expected returns by asset, in place of the historical means."""
+    """Annual expected returns by asset, in place of the estimates."""
 
     frontier: bool = False
     """Whether the optimisation report draws the efficient frontier under the same limits. Off by
@@ -3298,7 +3448,7 @@ class Problem:
     scenarios: ReturnsTable | None = None
     """Scenario returns, one column per asset, for minimum CVaR."""
 
-    constraints: Constraints = field(default_factory=lambda: Constraints(budget=1.0, bounds=Bound(min=0.0, max=1.0), asset_bounds=[], groups=[], leverage=None, turnover=None, tracking_error=None, factor_exposures=[], trades=None))
+    constraints: Constraints = field(default_factory=lambda: Constraints(budget=1.0, bounds=Bound(min=0.0, max=1.0), asset_bounds=[], groups=[], leverage=None, turnover=None, tracking_error=None, factor_exposures=[], trades=None, min_return=None, min_effective_assets=None))
     """The constraints."""
 
 
@@ -3699,7 +3849,20 @@ class Never:
     """The value of the `type` tag that identifies this variant."""
 
 
-RebalanceSchedule = Union[Monthly, Quarterly, Yearly, Drift, Never]
+@dataclass(frozen=True, kw_only=True)
+class Every:
+    """After every `periods` periods, counted from the first period of each run, such as 21 for
+    daily returns traded about once a month.
+    """
+
+    TYPE: ClassVar[str] = "every"
+    """The value of the `type` tag that identifies this variant."""
+
+    periods: int
+    """The number of periods between rebalances, at least 1."""
+
+
+RebalanceSchedule = Union[Monthly, Quarterly, Yearly, Drift, Never, Every]
 """When the portfolio trades back to its target weights. Between trades the weights drift with
 prices.
 """
@@ -3953,6 +4116,29 @@ class Resampling:
 
     seed: int
     """The seed of the random numbers. The same seed gives the same result on every platform."""
+
+    periods_per_year: float | None = None
+    """For estimates annualised from returns with this many periods in a year (12 for monthly), the
+    histories are simulated period by period, from the estimates divided by it, and their
+    estimates annualised again, so that they are as uncertain as estimates from `observations`
+    periods. Without it, each simulated period is in the estimates' own units.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResamplingSummary:
+    """How resampled weights were found: the average of the optimal weights for histories simulated
+    from the estimates (Michaud, 1998).
+    """
+
+    samples: int
+    """The number of histories simulated."""
+
+    observations: int
+    """The number of periods in each, as many as the returns the estimates came from."""
+
+    solved: int
+    """The number of simulated problems solved and averaged."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4663,9 +4849,10 @@ class Solution:
     objective_value: float | None = None
     """The value of the objective at the weights: the variance for minimum variance and target
     return; the utility for mean–variance; the expected return for target volatility; the Sharpe
-    ratio; the diversification ratio; the CVaR, as a positive loss; for risk budgeting, the
-    largest difference between an asset's share of risk and its budget. Absent for hierarchical
-    risk parity, which optimises no objective.
+    ratio; the diversification ratio; the CVaR, as a positive loss; the semivariance; the CDaR,
+    as a positive drawdown of the summed returns; for risk budgeting, the largest difference
+    between an asset's share of risk and its budget. Absent for hierarchical risk parity, which
+    optimises no objective. The downside measures are per period of the scenarios.
     """
 
     expected_return: float | None = None
@@ -4811,7 +4998,7 @@ class OptimisedStrategy:
     name: str | None = None
     """The name in the results; the method's own by default, such as `Maximum Sharpe`."""
 
-    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, expected_returns={}))
+    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}))
     """The method, its parameters and the limits on the weights."""
 
 
@@ -5471,9 +5658,9 @@ class Holdout:
 
 @dataclass(frozen=True, kw_only=True)
 class WalkForward:
-    """Weights refitted at each calendar rebalance on the window of history before it, and held
-    until the next: every return in the test comes after the weights were chosen. The window is
-    given in years or in periods.
+    """Weights refitted at each scheduled rebalance (monthly, quarterly, yearly or every so many
+    periods) on the window of history before it, and held until the next: every return in the
+    test comes after the weights were chosen. The window is given in years or in periods.
     """
 
     TYPE: ClassVar[str] = "walk_forward"
@@ -5649,12 +5836,13 @@ UNIONS = {
     "Allocation": ("type", {"exchange": ExchangeAllocation, "expense": Expense, "income": IncomeAllocation, "trade": TradeAllocation}),
     "Benchmark": ("type", {"prices": BenchmarkPrices, "weights": BenchmarkWeights}),
     "ColumnKind": ("type", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
-    "CovarianceMethod": ("type", {"ewma": Ewma, "ledoit_wolf": LedoitWolf, "oas": Oas, "sample": Sample}),
+    "CovarianceMethod": ("type", {"constant_correlation": ConstantCorrelation, "denoised": Denoised, "ewma": Ewma, "ledoit_wolf": LedoitWolf, "nonlinear_shrinkage": NonlinearShrinkage, "oas": Oas, "sample": Sample, "statistical": Statistical}),
     "Effect": ("type", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
-    "Objective": ("type", {"equal_weight": EqualWeight, "hierarchical_risk_parity": HierarchicalRiskParity, "inverse_volatility": InverseVolatility, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cvar": MinimumCvar, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
+    "MeanMethod": ("type", {"ewma": EwmaMean, "historical": HistoricalMean, "james_stein": JamesSteinMean}),
+    "Objective": ("type", {"equal_weight": EqualWeight, "hierarchical_risk_parity": HierarchicalRiskParity, "inverse_volatility": InverseVolatility, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cdar": MinimumCdar, "minimum_cvar": MinimumCvar, "minimum_semivariance": MinimumSemivariance, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
     "Period": ("type", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
     "Prior": ("type", {"market": MarketPrior, "returns": ReturnsPrior}),
-    "RebalanceSchedule": ("type", {"drift": Drift, "monthly": Monthly, "never": Never, "quarterly": Quarterly, "yearly": Yearly}),
+    "RebalanceSchedule": ("type", {"drift": Drift, "every": Every, "monthly": Monthly, "never": Never, "quarterly": Quarterly, "yearly": Yearly}),
     "ReturnUncertainty": ("type", {"box": Box, "ellipsoid": Ellipsoid}),
     "ScenarioDefinition": ("type", {"historical": HistoricalScenario, "shocks": ShockScenario}),
     "ShockSource": ("type", {"cash": CashSource, "factor": FactorSource, "group": GroupSource, "history": HistorySource, "instrument": InstrumentSource, "none": NoSource, "proxy": ProxySource}),
@@ -5720,6 +5908,7 @@ __all__ = [
     "ComparisonReport",
     "Concentration",
     "Confidence",
+    "ConstantCorrelation",
     "Constraints",
     "Contribution",
     "ConversionRow",
@@ -5735,6 +5924,7 @@ __all__ = [
     "CurrencyReturn",
     "CurrencySegment",
     "DateColumn",
+    "Denoised",
     "Deposit",
     "Dividend",
     "DocumentFxRates",
@@ -5745,7 +5935,9 @@ __all__ = [
     "Ellipsoid",
     "EqualWeight",
     "Event",
+    "Every",
     "Ewma",
+    "EwmaMean",
     "ExcessReturn",
     "ExchangeAllocation",
     "Expense",
@@ -5780,6 +5972,7 @@ __all__ = [
     "Headline",
     "HierarchicalRiskParity",
     "Histogram",
+    "HistoricalMean",
     "HistoricalScenario",
     "HistoricalWindow",
     "History",
@@ -5808,6 +6001,7 @@ __all__ = [
     "Interest",
     "InverseVolatility",
     "Issue",
+    "JamesSteinMean",
     "LedoitWolf",
     "LevelUnit",
     "Linkage",
@@ -5824,10 +6018,13 @@ __all__ = [
     "Matrix",
     "MaximumDiversification",
     "MaximumSharpe",
+    "MeanMethod",
     "MeanVariance",
     "Merger",
     "Method",
+    "MinimumCdar",
     "MinimumCvar",
+    "MinimumSemivariance",
     "MinimumVariance",
     "Money",
     "MoneyColumn",
@@ -5838,6 +6035,7 @@ __all__ = [
     "NamedScenario",
     "Never",
     "NoSource",
+    "NonlinearShrinkage",
     "NumberColumn",
     "Oas",
     "Objective",
@@ -5889,6 +6087,7 @@ __all__ = [
     "ReportTable",
     "ResampledSolution",
     "Resampling",
+    "ResamplingSummary",
     "ReturnOfCapital",
     "ReturnUncertainty",
     "ReturnsPrior",
@@ -5936,6 +6135,7 @@ __all__ = [
     "Source",
     "SpinOff",
     "Split",
+    "Statistical",
     "Statistics",
     "StatisticsOptions",
     "Strategy",
