@@ -32,6 +32,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The Rust report builder has a setter for every report option: `periods_per_year`,
   `covariance`, `confidences`, `rolling_window`, `histogram_bins`, `top`,
   `long_term_after_days`, `expected_return`, `frontier_points` and `benchmark_weight`.
+- `compare` takes fixed weights beside methods: `.weights("60/40", [..])` in Rust (repeatable),
+  `weights={"60/40": {..}}` in Python and `{ weights: { "60/40": {..} } }` in JavaScript. They
+  are held and rebalanced as the methods are and scored on the same periods, and described as
+  fixed weights; `methods` may be left out when weights are given.
+- `benchmark_name` names the benchmark of a comparison or backtest in every language:
+  `Benchmark` by default, or the column's name for an index's prices.
 - `Assets::frontier` returns `FrontierPortfolio`s, with their weights by asset (in the assets'
   order in JavaScript), rather than unlabelled lists.
 

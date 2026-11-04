@@ -568,6 +568,7 @@ struct Common {
     rebalance: Rebalance,
     trading_cost_bps: f64,
     benchmark: Option<Benchmark>,
+    benchmark_name: Option<String>,
 }
 
 impl Common {
@@ -601,12 +602,27 @@ impl Common {
                 weights => weights,
             })
             .collect();
+        let mut benchmark = self.benchmark.clone();
+        if let (
+            Some(Benchmark::Weights { name, .. } | Benchmark::Prices { name, .. }),
+            Some(given),
+        ) = (&mut benchmark, &self.benchmark_name)
+        {
+            *name = Some(given.clone());
+        } else if self.benchmark_name.is_some() {
+            let mut report = ValidationReport::new();
+            report.error(
+                "benchmark_name",
+                "names a benchmark: give the benchmark too",
+            );
+            return Err(Error::Validation(report));
+        }
         Ok(BacktestOptions {
             strategies,
             validation,
             rebalance: self.rebalance,
             trading_cost_bps: self.trading_cost_bps,
-            benchmark: self.benchmark.clone(),
+            benchmark,
         })
     }
 }
@@ -761,6 +777,13 @@ macro_rules! common_setters {
                 self.common.benchmark = Some(benchmark.into());
                 self
             }
+
+            /// The benchmark's name in the results and reports: `Benchmark` by default, or the
+            /// column's name for an index's prices.
+            pub fn benchmark_name(mut self, name: &str) -> Self {
+                self.common.benchmark_name = Some(name.to_owned());
+                self
+            }
         }
     };
 }
@@ -772,6 +795,7 @@ macro_rules! common_setters {
 pub struct Compare<'a> {
     assets: &'a Assets,
     methods: Vec<Method>,
+    weights: Vec<Strategy>,
     common: Common,
     title: Option<String>,
 }
@@ -796,9 +820,26 @@ impl Compare<'_> {
         self
     }
 
+    /// Fixed `weights` by asset, under `name`, compared with the methods and scored on the same
+    /// periods, such as `.weights("60/40", [("US Equity", 0.6), ("Bonds", 0.4)])`. Repeatable;
+    /// they come after the methods, in the order given.
+    pub fn weights<S: Into<String>>(
+        mut self,
+        name: &str,
+        weights: impl IntoIterator<Item = (S, f64)>,
+    ) -> Self {
+        self.weights.push(Strategy::weights(name, weights));
+        self
+    }
+
     /// The options of the comparison, as [`Assets::compare_with`] takes them.
     pub fn options(&self) -> Result<BacktestOptions> {
-        let strategies = self.methods.iter().map(|m| Strategy::from(*m)).collect();
+        let strategies = self
+            .methods
+            .iter()
+            .map(|m| Strategy::from(*m))
+            .chain(self.weights.iter().cloned())
+            .collect();
         self.common.options(strategies)
     }
 
@@ -841,6 +882,7 @@ impl Assets {
         Compare {
             assets: self,
             methods: methods.into_iter().collect(),
+            weights: Vec::new(),
             common: Common::default(),
             title: None,
         }

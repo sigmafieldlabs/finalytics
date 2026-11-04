@@ -240,3 +240,25 @@ test("a report lays itself out as text and HTML, and shows", async () => {
   }
   assert.deepEqual(paths(() => portfolio.report({ benchmrk: "BENCH" })), ["options.benchmrk"]);
 });
+
+test("fixed weights are compared with methods on the same periods", () => {
+  const result = assets.compare({
+    methods: ["minimum_variance"],
+    weights: { "60/40": { "US Equity": 0.6, Bonds: 0.4 } },
+    validation: { walk_forward: { years: 5 } },
+    benchmark: { "US Equity": 1 },
+    benchmark_name: "Stocks",
+  });
+  const { strategies, benchmark } = result.report;
+  assert.deepEqual(
+    strategies.map((s) => s.name),
+    ["Minimum variance", "60/40"],
+  );
+  assert.equal(strategies[1].fitted, false);
+  assert.equal(strategies[1].tested.start, strategies[0].tested.start);
+  assert.equal(benchmark.name, "Stocks");
+  assert.deepEqual(paths(() => assets.compare({ benchmark_name: "x", methods: ["equal_weight"] })), [
+    "options.benchmark_name",
+  ]);
+  assert.deepEqual(paths(() => assets.compare({})), ["options.methods"]);
+});

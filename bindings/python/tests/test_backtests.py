@@ -210,3 +210,24 @@ def test_a_report_shows_inline_in_a_notebook(monkeypatch):
     assert len(shown) == 2 and "Comparison report" in shown[1]
     assets.optimise(method="minimum_variance").show()
     assert len(shown) == 3 and "Optimisation report" in shown[2]
+
+
+def test_fixed_weights_are_compared_with_methods(assets):
+    result = assets.compare(
+        methods=["minimum_variance"],
+        weights={"60/40": {"US Equity": 0.6, "Bonds": 0.4}},
+        validation=fl.WalkForward(years=5),
+        benchmark={"US Equity": 1.0},
+        benchmark_name="Stocks",
+    )
+    report = result.report
+    assert [s.name for s in report.strategies] == ["Minimum variance", "60/40"]
+    fixed = report.strategies[1]
+    assert not fixed.fitted and fixed.in_sample is None
+    assert fixed.tested.start == report.strategies[0].tested.start
+    assert report.benchmark.name == "Stocks"
+    only = assets.compare(weights={"All bonds": {"Bonds": 1.0}, "60/40": {"US Equity": 0.6, "Bonds": 0.4}})
+    assert [s.name for s in only.report.strategies] == ["All bonds", "60/40"]
+    with pytest.raises(fl.ValidationError) as found:
+        assets.compare()
+    assert [i.path for i in found.value.issues] == ["methods"]

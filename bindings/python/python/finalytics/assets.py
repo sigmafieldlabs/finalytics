@@ -371,12 +371,14 @@ class Assets:
     def compare(
         self,
         *,
-        methods: Sequence[_types.Method],
+        methods: Sequence[_types.Method] = (),
+        weights: Mapping[str, Mapping[str, float]] | None = None,
         name: str | None = None,
         validation: _types.Validation | str = "in_sample",
         rebalance: _types.RebalanceSchedule | str = "quarterly",
         trading_cost_bps: float = 0.0,
         benchmark: Any = None,
+        benchmark_name: str | None = None,
         max_weight: float | None = None,
         bounds: BoundLike | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
@@ -396,6 +398,10 @@ class Assets:
         ``result.results``. ``print(result)`` prints the report and ``result.show()`` shows it,
         inline in a notebook or in a browser. `name` titles the report.
 
+        `weights` adds fixed weights by name, such as ``{"60/40": {"US Equity": 0.6, "Bonds":
+        0.4}}``, held and rebalanced as the methods are and scored on the same periods; they are
+        not fitted to any returns, so they have no run in sample.
+
         - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
           ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
           tests on the rest; or :class:`~finalytics.WalkForward`, such as
@@ -405,7 +411,8 @@ class Assets:
           ``"never"`` or :class:`~finalytics.Drift`, such as ``fl.Drift(band=0.05)``.
         - `trading_cost_bps`: the cost of trading in basis points of the value traded.
         - `benchmark`: weights by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}``, or an
-          index's prices, such as ``fl.datasets.sp500_index()``.
+          index's prices, such as ``fl.datasets.sp500_index()``; `benchmark_name` names it
+          (``"Benchmark"`` by default, or the prices' column name).
 
         The limits and parameters are those of :meth:`optimise`; they apply to every method
         that takes them.
@@ -429,7 +436,13 @@ class Assets:
         strategies: list[Any] = [
             _types.OptimisedStrategy(options=self._options(method, **limits)) for method in methods
         ]
-        options = _backtest_options(strategies, validation, rebalance, trading_cost_bps, benchmark)
+        strategies += [
+            _types.FixedWeights(name=label, weights={k: float(v) for k, v in held.items()})
+            for label, held in (weights or {}).items()
+        ]
+        if not strategies:
+            raise invalid(("methods", "give the methods to compare, or fixed weights"))
+        options = _backtest_options(strategies, validation, rebalance, trading_cost_bps, benchmark, benchmark_name)
         result = loads(_types.Comparison, call(self._native.compare, dumps(options, "options")))
         if name is not None:
             result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
@@ -445,6 +458,7 @@ class Assets:
         rebalance: _types.RebalanceSchedule | str = "quarterly",
         trading_cost_bps: float = 0.0,
         benchmark: Any = None,
+        benchmark_name: str | None = None,
         max_weight: float | None = None,
         bounds: BoundLike | None = None,
         asset_bounds: Mapping[str, BoundLike] | None = None,
@@ -491,7 +505,7 @@ class Assets:
         else:
             assert method is not None
             strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
-        options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark)
+        options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark, benchmark_name)
         return loads(_types.Backtest, call(self._native.backtest, dumps(options, "options")))
 
     def __repr__(self) -> str:
@@ -504,6 +518,7 @@ def _backtest_options(
     rebalance: _types.RebalanceSchedule | str,
     trading_cost_bps: float,
     benchmark: Any,
+    benchmark_name: str | None = None,
 ) -> _types.BacktestOptions:
     if isinstance(validation, str):
         validation = _named("validation", validation, {"in_sample": _types.InSample()})
@@ -515,6 +530,10 @@ def _backtest_options(
         benchmark, (_types.BenchmarkWeights, _types.BenchmarkPrices)
     ):
         benchmark = _types.BenchmarkPrices(prices=_price_table(benchmark))
+    if benchmark_name is not None:
+        if benchmark is None:
+            raise invalid(("benchmark_name", "names a benchmark: give the benchmark too"))
+        benchmark = dataclasses.replace(benchmark, name=benchmark_name)
     return _types.BacktestOptions(
         strategies=strategies,
         validation=validation,

@@ -233,12 +233,19 @@ export interface BacktestSettings {
    * `await datasets.sp500Index()`.
    */
   benchmark?: Record<string, number> | PriceTable | Benchmark;
+  /** The benchmark's name: `"Benchmark"` by default, or the prices' column name. */
+  benchmark_name?: string;
 }
 
 /** Choices for `Assets.compare`: the methods, with limits and settings applied to each. */
 export interface CompareChoices extends OptimiseLimits, BacktestSettings {
   /** The methods to compare, such as `["equal_weight", "minimum_variance"]`. */
-  methods: Method[];
+  methods?: Method[];
+  /**
+   * Fixed weights by name, such as `{ "60/40": { "US Equity": 0.6, Bonds: 0.4 } }`, held and
+   * rebalanced as the methods are and scored on the same periods; not fitted to any returns.
+   */
+  weights?: Record<string, Record<string, number>>;
   /** The report's title, such as `"S&P 500 stocks"`. */
   name?: string;
 }
@@ -1360,22 +1367,36 @@ impl Assets {
         &self,
         #[wasm_bindgen(unchecked_param_type = "CompareChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut allowed = fields::<finalytics::OptimiseOptions>(&["methods", "name"]);
+        let mut allowed = fields::<finalytics::OptimiseOptions>(&["methods", "weights", "name"]);
         allowed.retain(|name| name != "method");
         allowed.extend(SETTINGS.map(str::to_owned));
         let mut choices = object(options, &allowed)?;
-        let Some(methods) = choices.remove("methods") else {
-            return Err(invalid("options.methods", "is missing"));
+        let methods = choices.remove("methods");
+        let fixed = choices.remove("weights");
+        if methods.is_none() && fixed.is_none() {
+            return Err(invalid(
+                "options.methods",
+                "give the methods to compare, or fixed weights",
+            ));
+        }
+        let methods: Vec<finalytics::Method> = match methods {
+            Some(m) => {
+                finalytics::formats::from_json(&m.to_string(), "options.methods").map_err(error)?
+            }
+            None => Vec::new(),
         };
-        let methods: Vec<finalytics::Method> =
-            finalytics::formats::from_json(&methods.to_string(), "options.methods")
-                .map_err(error)?;
+        let fixed: BTreeMap<String, BTreeMap<String, f64>> = match fixed {
+            Some(w) => {
+                finalytics::formats::from_json(&w.to_string(), "options.weights").map_err(error)?
+            }
+            None => BTreeMap::new(),
+        };
         let name = match choices.remove("name") {
             Some(serde_json::Value::String(name)) => Some(name),
             Some(serde_json::Value::Null) | None => None,
             Some(_) => return Err(invalid("options.name", "must be a string")),
         };
-        let mut settings = settings(&mut choices);
+        let mut settings = settings(&mut choices)?;
         let limits = limits(choices)?;
         let strategies = methods
             .into_iter()
@@ -1384,6 +1405,9 @@ impl Assets {
                 options.insert("method".to_owned(), serde_json::json!(method));
                 serde_json::json!({ "type": "optimise", "options": options })
             })
+            .chain(fixed.into_iter().map(|(name, weights)| {
+                serde_json::json!({ "type": "weights", "name": name, "weights": weights })
+            }))
             .collect();
         settings.insert(
             "strategies".to_owned(),
@@ -1412,7 +1436,7 @@ impl Assets {
         let method = choices.remove("method");
         let weights = choices.remove("weights");
         let name = choices.remove("name").unwrap_or(serde_json::Value::Null);
-        let mut settings = settings(&mut choices);
+        let mut settings = settings(&mut choices)?;
         let strategy = match (method, weights) {
             (Some(method), None) => {
                 let mut options = limits(choices)?;
@@ -1430,10 +1454,13 @@ impl Assets {
                 report.into_result(()).map_err(error)?;
                 serde_json::json!({ "type": "weights", "name": name, "weights": weights })
             }
-            _ => {
+            (None, None) => {
+                return Err(invalid("options.method", "give a method, or fixed weights"));
+            }
+            (Some(_), Some(_)) => {
                 return Err(invalid(
-                    "options.method",
-                    "give a method or weights, not both",
+                    "options.weights",
+                    "give a method or fixed weights, not both",
                 ));
             }
         };
@@ -1503,7 +1530,13 @@ fn backtest_options(
 }
 
 /// How `Assets.compare` and `Assets.backtest` run.
-const SETTINGS: [&str; 4] = ["validation", "rebalance", "trading_cost_bps", "benchmark"];
+const SETTINGS: [&str; 5] = [
+    "validation",
+    "rebalance",
+    "trading_cost_bps",
+    "benchmark",
+    "benchmark_name",
+];
 
 /// The names of the fields of `T`, as JSON writes them, with `extra`.
 fn fields<T: Serialize + Default>(extra: &[&str]) -> Vec<String> {
@@ -1541,7 +1574,7 @@ fn object(
 /// a benchmark may be weights by asset or a price table.
 fn settings(
     choices: &mut serde_json::Map<String, serde_json::Value>,
-) -> serde_json::Map<String, serde_json::Value> {
+) -> Result<serde_json::Map<String, serde_json::Value>, JsValue> {
     let mut settings = serde_json::Map::new();
     for key in ["validation", "rebalance"] {
         if let Some(value) = choices.remove(key) {
@@ -1562,7 +1595,20 @@ fn settings(
         };
         settings.insert("benchmark".to_owned(), tagged);
     }
-    settings
+    if let Some(name) = choices.remove("benchmark_name") {
+        match settings.get_mut("benchmark") {
+            Some(serde_json::Value::Object(benchmark)) => {
+                benchmark.insert("name".to_owned(), name);
+            }
+            _ => {
+                return Err(invalid(
+                    "options.benchmark_name",
+                    "names a benchmark: give the benchmark too",
+                ));
+            }
+        }
+    }
+    Ok(settings)
 }
 
 /// `"name"` or `{ name: { fields } }` as `{ type: "name", fields }`; anything else as it is.

@@ -701,3 +701,43 @@ fn a_portfolio_bought_and_held_has_no_rebalances_to_describe() {
         assert!(!page.contains("at each rebalance they return"));
     }
 }
+
+#[test]
+fn fixed_weights_are_compared_with_methods_on_the_same_periods() {
+    let assets = assets();
+    let result = assets
+        .compare([Method::MinimumVariance])
+        .weights("60/40", [("US Equity", 0.6), ("Bonds", 0.4)])
+        .weights("Bonds", [("Bonds", 1.0)])
+        .walk_forward(Years(5))
+        .benchmark([("US Equity", 1.0)])
+        .benchmark_name("Stocks")
+        .build()
+        .unwrap();
+    let names: Vec<&str> = result
+        .report
+        .strategies
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect();
+    assert_eq!(names, ["Minimum variance", "60/40", "Bonds"]);
+    let tested = &result.report.strategies[0].tested;
+    for s in &result.report.strategies[1..] {
+        assert!(!s.fitted && s.in_sample.is_none());
+        assert_eq!((s.tested.start, s.tested.end), (tested.start, tested.end));
+    }
+    assert_eq!(result.report.benchmark.as_ref().unwrap().name, "Stocks");
+    let text = result.report.to_string();
+    let words = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        words.contains("Fixed weights, not fitted, are scored on the same periods."),
+        "{text}"
+    );
+    assert!(matches!(
+        assets
+            .compare([Method::MinimumVariance])
+            .benchmark_name("x")
+            .build(),
+        Err(Error::Validation(_))
+    ));
+}
