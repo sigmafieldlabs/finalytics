@@ -31,6 +31,9 @@ pub struct TailRow {
     pub value_at_risk: Amount,
     /// The expected shortfall over one valuation period, a loss.
     pub expected_shortfall: Amount,
+    /// Whether the expected shortfall was raised to the value at risk, as the Cornish–Fisher
+    /// expansion can need when the excess kurtosis is large.
+    pub shortfall_at_var: bool,
 }
 
 /// The current holdings' risk, from the covariance of their returns.
@@ -141,6 +144,7 @@ pub fn risk_report(
                         fraction: t.expected_shortfall,
                         value: t.expected_shortfall * value,
                     },
+                    shortfall_at_var: t.shortfall_at_var,
                 }),
                 Err(e) => warnings.warning("tail", format!("{method:?} at {confidence}: {e}")),
             }

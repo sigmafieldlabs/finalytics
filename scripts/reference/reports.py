@@ -146,7 +146,8 @@ def main():
 
     held = {i: value[i][-1] for i in instruments.index if abs(value[i][-1]) > 0}
     invested = sum(held.values())
-    shares = sorted((v / values[-1] for v in held.values()), reverse=True)
+    # Shares of the value invested in instruments, cash aside, as the Herfindahl index uses.
+    shares = sorted((v / invested for v in held.values()), reverse=True)
     herfindahl = sum((v / invested) ** 2 for v in held.values())
 
     counts, edges = np.histogram(np.array(daily), bins=30)
@@ -212,6 +213,7 @@ def main():
         "periods": periods,
         "flows": dict(sorted(flows_by_month.items())),
         "concentration": {
+            "largest": float(shares[0]),
             "top_five": float(sum(shares[:5])),
             "herfindahl": herfindahl,
             "effective_holdings": 1 / herfindahl,

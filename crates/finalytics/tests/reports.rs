@@ -374,6 +374,16 @@ fn scenarios_side_by_side() {
     let total: f64 = r.changes.values.iter().map(|row| row[0].unwrap()).sum();
     close(total, r.summary[0].change, "changes");
     every_table_is_rectangular(&r.tables());
+    // The stress is named beside the scenario it applies to.
+    let stressed = "Equities -20%: the risk after is with every volatility ×1.5 and every \
+                    correlation moved 50% of the way to one, as in a crisis.";
+    let text = r.to_string();
+    let words = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(words.contains(stressed), "{text}");
+    assert!(!words.contains("September: the risk after"));
+    let mut whole = portfolio_report(&books, &market, &source, &options).unwrap();
+    whole.scenarios = Some(r);
+    assert!(whole.to_html(None).contains(stressed));
 }
 
 #[test]

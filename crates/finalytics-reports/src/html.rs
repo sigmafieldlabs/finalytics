@@ -916,7 +916,10 @@ fn overview(o: &OverviewReport) -> String {
     if let (Some(frontier), Some(current)) = (&o.frontier, &o.current)
         && !frontier.is_empty()
     {
-        let method = o.risk.as_ref().map_or("", |r| covariance_name(&r.method));
+        let method = o.risk.as_ref().map_or_else(
+            || "the covariance".to_owned(),
+            |r| covariance_name(&r.method),
+        );
         let given = if o.holdings.iter().any(|x| x.expected_return_given) {
             "some expected returns are given and the others are historical means"
         } else {
@@ -927,7 +930,7 @@ fn overview(o: &OverviewReport) -> String {
             &frontier_chart(frontier, current, &o.holdings),
             Some(&format!(
                 "Long only and fully invested in the holdings other than base-currency cash; \
-                 {given}, covariance by {method}."
+                 {given}; {method}."
             )),
         ));
     }
@@ -1049,10 +1052,14 @@ fn holdings(h: &HoldingsReport) -> String {
         items.push((
             "Largest holding".to_owned(),
             format!("{} {}", top.name, share(top.weight)),
-            None,
+            Some("of the value invested, cash aside".to_owned()),
         ));
     }
-    items.push(("Top five".to_owned(), share(c.top_five), None));
+    items.push((
+        "Top five".to_owned(),
+        share(c.top_five),
+        Some("of the value invested".to_owned()),
+    ));
     items.push((
         "Effective holdings".to_owned(),
         num(c.effective_holdings, 1),
@@ -1492,7 +1499,11 @@ fn risk(r: &RiskReport) -> String {
                     money(x.value_at_risk.value),
                     pct(Some(x.value_at_risk.fraction), 2, false),
                     money(x.expected_shortfall.value),
-                    pct(Some(x.expected_shortfall.fraction), 2, false),
+                    format!(
+                        "{}{}",
+                        pct(Some(x.expected_shortfall.fraction), 2, false),
+                        if x.shortfall_at_var { "*" } else { "" }
+                    ),
                 ]
             })
             .collect();
@@ -1510,7 +1521,10 @@ fn risk(r: &RiskReport) -> String {
                 &rows,
                 &[2, 3, 4, 5],
             ),
-            None,
+            r.tail
+                .iter()
+                .any(|x| x.shortfall_at_var)
+                .then_some(crate::text::SHORTFALL_AT_VAR),
         ));
     }
     if let Some(hr) = &r.holdings {
@@ -1541,8 +1555,8 @@ fn risk(r: &RiskReport) -> String {
                 220.0,
             ),
             Some(&format!(
-                "Covariance by {} over {}, annualised; cash in the base currency is riskless.",
-                covariance_name(&hr.method),
+                "{} over {}, annualised; cash in the base currency is riskless.",
+                crate::backtest_html::capitalise(&covariance_name(&hr.method)),
                 plural(hr.observations, period)
             )),
         ));
@@ -1737,13 +1751,15 @@ fn scenarios(s: &ScenariosReport) -> String {
         })
         .collect();
     let failed: Vec<String> = s
-        .scenarios
+        .summary
         .iter()
-        .filter(|o| o.result.is_none())
-        .map(|o| match o.problems.first() {
-            Some(i) => format!("{} could not be run: {}", o.name, i.message),
-            None => format!("{} could not be run.", o.name),
-        })
+        .filter_map(crate::text::stress_note)
+        .chain(s.scenarios.iter().filter(|o| o.result.is_none()).map(
+            |o| match o.problems.first() {
+                Some(i) => format!("{} could not be run: {}", o.name, i.message),
+                None => format!("{} could not be run.", o.name),
+            },
+        ))
         .collect();
     body.push_str(&card(
         &format!("Effect on today's portfolio · {} {ccy}", money(s.value)),

@@ -994,16 +994,18 @@ class ComparisonReport(ReportPage):
 
 @dataclass(frozen=True, kw_only=True)
 class Concentration:
-    """How concentrated the portfolio's instruments are."""
+    """How concentrated the portfolio's instruments are. Every share is of the value invested in
+    instruments, cash aside, so that the figures agree with each other.
+    """
 
     largest: list[Slice]
-    """The largest instrument holdings, largest first, with their share of the portfolio."""
+    """The largest instrument holdings, largest first, with their share of the value invested."""
 
     top_five: float
-    """The share of the portfolio in its five largest instruments."""
+    """The share of the value invested in the five largest instruments."""
 
     top_ten: float
-    """The share of the portfolio in its ten largest instruments."""
+    """The share of the value invested in the ten largest instruments."""
 
     herfindahl: float | None = None
     """The Herfindahl–Hirschman index of the instruments' shares of the value invested in
@@ -4278,6 +4280,9 @@ class ScenarioSummary:
     worst_change: float | None = None
     """Its change in value."""
 
+    stress: CorrelationStress | None = None
+    """The stress of the covariance behind the risk after, if the scenario has one."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class ScenariosReport(PrintedReport):
@@ -4719,6 +4724,11 @@ class StrategyReport:
     name: str
     """The strategy's name."""
 
+    fitted: bool
+    """Whether a method fitted the weights to returns: false for fixed weights and for the
+    benchmark.
+    """
+
     tested: RunReport
     """The run the strategy is scored on: out of sample for a holdout or walk-forward validation, in
     sample otherwise.
@@ -4727,7 +4737,8 @@ class StrategyReport:
     in_sample: RunReport | None = None
     """For a holdout or walk-forward validation, the run in sample: on the history before the test
     for a holdout, and with weights fitted to the whole history over the same periods as the test
-    for walk-forward.
+    for walk-forward. Fixed weights have none, as they were not fitted; the benchmark has the
+    same periods as the strategies' run in sample, for reference.
     """
 
     weights: list[WeightsAt]
@@ -4754,8 +4765,15 @@ class StrategyResult:
     name: str
     """The strategy's name."""
 
+    fitted: bool
+    """Whether a method fitted the weights to returns: false for fixed weights and for the
+    benchmark, which were not fitted to any history.
+    """
+
     in_sample: Run
-    """The returns of weights tested on the history they were fitted to."""
+    """The returns of weights tested on the history they were fitted to; for fixed weights, the same
+    periods as a fitted strategy's.
+    """
 
     out_of_sample: Run | None = None
     """The returns of weights tested on history they had not seen."""
@@ -4790,6 +4808,12 @@ class TailRisk:
     """The expected loss when the value at risk is exceeded (also called conditional value at risk).
     """
 
+    shortfall_at_var: bool
+    """Whether the expected shortfall was raised to the value at risk. The Cornish–Fisher expansion
+    can put the mean of the tail above its quantile when the excess kurtosis is large; the
+    expected shortfall is never below the value at risk, so it is set to it.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class TailRow:
@@ -4806,6 +4830,11 @@ class TailRow:
 
     expected_shortfall: Amount
     """The expected shortfall over one valuation period, a loss."""
+
+    shortfall_at_var: bool
+    """Whether the expected shortfall was raised to the value at risk, as the Cornish–Fisher
+    expansion can need when the excess kurtosis is large.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -482,6 +482,14 @@ fn the_backtest_report_shows_the_whole_history_of_a_holdout() {
     close(first[0], out.start["US Equity"], "the weight bought");
     assert!((first[1] - first[0]).abs() > 1e-6, "weights drift");
     assert!(report.held.len() <= 9);
+    // 2016 runs across the split, so it is marked as both.
+    let mixed = "† 2016 is in sample to Oct 2016 and out of sample after.";
+    let text = report.to_string();
+    let words = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(words.contains("2016†") && words.contains(mixed), "{text}");
+    assert!(!words.contains("2017†"));
+    let html = report.to_html(None);
+    assert!(html.contains("2016†") && html.contains(mixed));
 }
 
 #[test]
@@ -608,4 +616,87 @@ fn cash_at_a_risk_free_rate_compounds_to_that_rate() {
         0.05,
         "risk-free rate",
     );
+}
+
+#[test]
+fn fixed_weights_are_described_as_fixed() {
+    let assets = assets();
+    let result = assets
+        .backtest([("US Equity", 0.6), ("Bonds", 0.4)])
+        .walk_forward(Years(5))
+        .build()
+        .unwrap();
+    let raw = &result.results.strategies[0];
+    assert!(!raw.fitted);
+    let s = &result.report.strategy;
+    assert!(!s.fitted && s.in_sample.is_none());
+    let text = result.report.to_string();
+    let html = result.report.to_html(None);
+    for page in [&text, &html] {
+        assert!(!page.contains("refit"), "{page}");
+        assert!(!page.contains("In sample"), "{page}");
+        assert!(page.contains("not fitted to these returns"));
+    }
+    let method = assets
+        .backtest(Method::MinimumVariance)
+        .walk_forward(Years(5))
+        .build()
+        .unwrap();
+    assert!(method.results.strategies[0].fitted);
+    assert!(method.report.strategy.in_sample.is_some());
+    assert!(
+        method
+            .report
+            .to_string()
+            .contains("Allocation at the last refit")
+    );
+}
+
+#[test]
+fn a_method_that_never_finds_weights_is_marked_as_holding_cash() {
+    let assets = assets();
+    // No mix of these assets reaches 50% a year.
+    let report = assets
+        .compare([Method::MinimumVariance, Method::TargetReturn])
+        .target(0.5)
+        .walk_forward(Years(5))
+        .build()
+        .unwrap()
+        .report;
+    let never = &report.strategies[1];
+    assert!(!never.failures.is_empty());
+    assert!(never.weights.iter().all(|w| w.weights.is_empty()));
+    let text = report.to_string();
+    assert!(text.contains("Target return (cash)"), "{text}");
+    let words = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        words.contains(
+            "Target return found no weights at 101 refits, from Oct 2001 to Sep 2026 \
+             (infeasible), nor in its fit to the whole history (infeasible); it never held \
+             anything but cash."
+        ),
+        "{text}"
+    );
+    let html = report.to_html(None);
+    assert!(html.contains("Target return (cash)"));
+    // The summary's best figures are of the method that invested.
+    assert!(!html.contains("Smallest drawdown</div><div class=\"v\">0.0%"));
+}
+
+#[test]
+fn a_portfolio_bought_and_held_has_no_rebalances_to_describe() {
+    let report = assets()
+        .backtest([("US Equity", 0.6), ("Bonds", 0.4)])
+        .rebalance(Rebalance::Never)
+        .build()
+        .unwrap()
+        .report;
+    assert_eq!(report.strategy.tested.rebalances, 0);
+    let text = report.to_string();
+    let html = report.to_html(None);
+    for page in [&text, &html] {
+        assert!(page.contains("Bought at the start and held"), "{page}");
+        assert!(!page.contains("Largest rebalance"));
+        assert!(!page.contains("at each rebalance they return"));
+    }
 }

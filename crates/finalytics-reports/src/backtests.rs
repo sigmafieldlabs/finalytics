@@ -173,12 +173,16 @@ pub struct WeightsAt {
 pub struct StrategyReport {
     /// The strategy's name.
     pub name: String,
+    /// Whether a method fitted the weights to returns: false for fixed weights and for the
+    /// benchmark.
+    pub fitted: bool,
     /// The run the strategy is scored on: out of sample for a holdout or walk-forward
     /// validation, in sample otherwise.
     pub tested: RunReport,
     /// For a holdout or walk-forward validation, the run in sample: on the history before the
     /// test for a holdout, and with weights fitted to the whole history over the same periods
-    /// as the test for walk-forward.
+    /// as the test for walk-forward. Fixed weights have none, as they were not fitted; the
+    /// benchmark has the same periods as the strategies' run in sample, for reference.
     pub in_sample: Option<RunReport>,
     /// The weights bought at the start of the test, then at each refit.
     pub weights: Vec<WeightsAt>,
@@ -258,7 +262,7 @@ pub fn comparison_report(
     let benchmark = backtest
         .benchmark
         .as_ref()
-        .map(|b| inputs.strategy(b, None))
+        .map(|b| inputs.benchmark(b))
         .transpose()?;
     let strategies = backtest
         .strategies
@@ -288,7 +292,7 @@ pub fn backtest_report(
     let benchmark = backtest
         .benchmark
         .as_ref()
-        .map(|b| inputs.strategy(b, None))
+        .map(|b| inputs.benchmark(b))
         .transpose()?;
     let history = match (&backtest.settings.validation, &first.out_of_sample) {
         (Validation::Holdout { .. }, Some(out)) => {
@@ -411,13 +415,28 @@ impl<'a> Inputs<'a> {
         &self.backtest.cash[i..(i + run.dates.len()).min(self.backtest.cash.len())]
     }
 
+    /// A strategy's report, against `benchmark`.
     fn strategy(
         &self,
         result: &StrategyResult,
         benchmark: Option<&StrategyResult>,
     ) -> Result<StrategyReport> {
+        self.summarise(result, benchmark, result.fitted)
+    }
+
+    /// The benchmark's report, with its run over the strategies' in-sample periods.
+    fn benchmark(&self, result: &StrategyResult) -> Result<StrategyReport> {
+        self.summarise(result, None, true)
+    }
+
+    fn summarise(
+        &self,
+        result: &StrategyResult,
+        benchmark: Option<&StrategyResult>,
+        in_sample: bool,
+    ) -> Result<StrategyReport> {
         let (tested, in_sample) = match &result.out_of_sample {
-            Some(out) => (out, Some(&result.in_sample)),
+            Some(out) => (out, in_sample.then_some(&result.in_sample)),
             None => (&result.in_sample, None),
         };
         let bench_tested = benchmark.map(|b| b.out_of_sample.as_ref().unwrap_or(&b.in_sample));
@@ -437,6 +456,7 @@ impl<'a> Inputs<'a> {
         }));
         Ok(StrategyReport {
             name: result.name.clone(),
+            fitted: result.fitted,
             tested: self.run(tested, bench_tested)?,
             in_sample: in_sample
                 .map(|r| self.run(r, bench_in.filter(|b| b.dates == r.dates)))

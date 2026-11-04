@@ -62,6 +62,54 @@ pub(crate) fn shown_difference(a: f64, b: f64, places: usize) -> f64 {
     round(b, places) - round(a, places)
 }
 
+/// What a scenario's stress of the covariance does, as a note, if it does anything.
+pub(crate) fn stress_note(s: &crate::scenarios::ScenarioSummary) -> Option<String> {
+    let stress = s.stress?;
+    let mut parts = Vec::new();
+    if stress.volatility_scale != 1.0 {
+        parts.push(format!(
+            "every volatility ×{}",
+            num(Some(stress.volatility_scale), 2)
+                .trim_end_matches('0')
+                .trim_end_matches('.')
+        ));
+    }
+    if stress.correlation_shift != 0.0 {
+        parts.push(format!(
+            "every correlation moved {} of the way to one",
+            pct(Some(stress.correlation_shift), 0, false)
+        ));
+    }
+    (!parts.is_empty()).then(|| {
+        format!(
+            "{}: the risk after is with {}, as in a crisis.",
+            s.name,
+            parts.join(" and ")
+        )
+    })
+}
+
+/// The note on an expected shortfall raised to the value at risk.
+pub(crate) const SHORTFALL_AT_VAR: &str = "* The Cornish–Fisher expansion put the tail's mean above \
+     its quantile, as it can when the excess kurtosis is large; the expected shortfall is shown \
+     at the value at risk, its least.";
+
+/// Weights smaller than this are an optimiser's rounding, not holdings.
+pub(crate) const NOISE: f64 = 1e-6;
+
+/// A weight as a percentage with `places` decimals: "–" when nothing is held, and "<0.1%" (with
+/// one decimal) when something is held but too little to show.
+pub(crate) fn weight_pct(v: f64, places: usize) -> String {
+    let smallest = 10f64.powi(-(places as i32));
+    if v.abs() < NOISE {
+        "–".to_owned()
+    } else if v > 0.0 && v * 100.0 < smallest / 2.0 {
+        format!("<{}%", money_places(smallest, places))
+    } else {
+        pct(Some(v), places, false)
+    }
+}
+
 /// A signed percentage with one decimal.
 pub(crate) fn signed(x: impl Into<Option<f64>>) -> String {
     pct(x.into(), 1, true)
@@ -240,13 +288,20 @@ pub(crate) fn plural(n: usize, word: &str) -> String {
     }
 }
 
-pub(crate) fn covariance_name(method: &CovarianceMethod) -> &'static str {
+/// The covariance estimator as a noun phrase, such as "the Ledoit–Wolf covariance".
+pub(crate) fn covariance_name(method: &CovarianceMethod) -> String {
+    format!("the {} covariance", covariance_label(method))
+}
+
+/// The covariance estimator as a label, such as "Ledoit–Wolf"; with "covariance" after it, it
+/// names the estimate.
+pub(crate) fn covariance_label(method: &CovarianceMethod) -> &'static str {
     match method {
-        CovarianceMethod::Sample => "the sample covariance",
-        CovarianceMethod::Ewma { .. } => "an exponentially weighted average",
+        CovarianceMethod::Sample => "sample",
+        CovarianceMethod::Ewma { .. } => "exponentially weighted",
         CovarianceMethod::LedoitWolf => "Ledoit–Wolf",
         CovarianceMethod::Oas => "oracle approximating shrinkage",
-        _ => "the chosen estimator",
+        _ => "estimated",
     }
 }
 
@@ -703,7 +758,7 @@ pub(crate) fn overview(page: &mut Page, o: &OverviewReport) {
                 "Expected returns are historical means"
             };
             page.note(&format!(
-                "{given}; covariance by {} over {}.",
+                "{given}; {} over {}.",
                 covariance_name(&risk.method),
                 plural(risk.observations, period)
             ));
@@ -831,6 +886,7 @@ pub(crate) fn holdings(page: &mut Page, h: &HoldingsReport) {
     ));
     items.push(("Herfindahl index".to_owned(), num(c.herfindahl, 3)));
     page.pairs(&items);
+    page.note("Shares of the value invested in instruments, cash aside.");
     let names: BTreeMap<String, String> = h
         .accounts
         .iter()
@@ -1223,7 +1279,11 @@ pub(crate) fn risk(page: &mut Page, r: &RiskReport) {
                     money(x.value_at_risk.value),
                     pct(Some(x.value_at_risk.fraction), 2, false),
                     money(x.expected_shortfall.value),
-                    pct(Some(x.expected_shortfall.fraction), 2, false),
+                    format!(
+                        "{}{}",
+                        pct(Some(x.expected_shortfall.fraction), 2, false),
+                        if x.shortfall_at_var { "*" } else { "" }
+                    ),
                 ]
             })
             .collect();
@@ -1239,6 +1299,9 @@ pub(crate) fn risk(page: &mut Page, r: &RiskReport) {
             &rows,
             Some(&[L, L, R, R, R, R]),
         );
+        if r.tail.iter().any(|x| x.shortfall_at_var) {
+            page.note(SHORTFALL_AT_VAR);
+        }
     }
     if !r.drawdown.values.is_empty() {
         page.section("Drawdowns");
@@ -1462,6 +1525,9 @@ pub(crate) fn scenarios(page: &mut Page, s: &ScenariosReport) {
         &rows,
         Some(&[L, R, R, L, R, R]),
     );
+    for note in s.summary.iter().filter_map(stress_note) {
+        page.note(&note);
+    }
     for outcome in s.scenarios.iter().filter(|o| o.result.is_none()) {
         let reason = outcome
             .problems
@@ -1592,6 +1658,13 @@ mod tests {
         assert_eq!(pct(Some(-0.129), 1, true), "−12.9%");
         assert_eq!(pct(None, 1, true), "–");
         assert_eq!(share(0.05), "5.0%");
+        assert_eq!(weight_pct(0.0, 1), "–");
+        assert_eq!(weight_pct(1e-9, 1), "–");
+        assert_eq!(weight_pct(0.0003, 1), "<0.1%");
+        assert_eq!(weight_pct(0.0003, 0), "<1%");
+        assert_eq!(weight_pct(0.004, 0), "<1%");
+        assert_eq!(weight_pct(0.0051, 0), "1%");
+        assert_eq!(weight_pct(0.0981, 1), "9.8%");
         // 12.36% and 10.04% are shown as 12.4% and 10.0%, so the difference is shown as 2.4%,
         // not 2.3%.
         assert_eq!(signed(shown_difference(0.1004, 0.1236, 3)), "+2.4%");

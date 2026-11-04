@@ -45,7 +45,8 @@
   }
  },
  "concentration": {
-  "top_five": 0.7825264721500537,
+  "largest": 0.48701171294248335,
+  "top_five": 1.0,
   "herfindahl": 0.38605166140253105,
   "effective_holdings": 2.5903268913983846
  },

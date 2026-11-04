@@ -612,7 +612,7 @@ impl RebalanceReport {
                 "Estimates",
                 format!(
                     "Volatility and expected return from the holdings' {} returns, {}, \
-                     annualised: the {} covariance and historical means. Cash is riskless and \
+                     annualised: {} and historical means. Cash is riskless and \
                      earns nothing here.",
                     crate::backtest_html::frequency(e.periods_per_year),
                     span(e.start, e.end),

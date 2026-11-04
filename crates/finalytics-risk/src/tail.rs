@@ -41,6 +41,10 @@ pub struct TailRisk {
     /// The expected loss when the value at risk is exceeded (also called conditional value at
     /// risk).
     pub expected_shortfall: f64,
+    /// Whether the expected shortfall was raised to the value at risk. The Cornish–Fisher
+    /// expansion can put the mean of the tail above its quantile when the excess kurtosis is
+    /// large; the expected shortfall is never below the value at risk, so it is set to it.
+    pub shortfall_at_var: bool,
 }
 
 /// Estimates value at risk and expected shortfall from at least two returns.
@@ -63,6 +67,7 @@ pub fn tail_risk(returns: &[f64], confidence: f64, method: TailMethod) -> Result
     }
     input::returns(returns, "returns", 2)?;
     let alpha = 1.0 - confidence;
+    let mut shortfall_at_var = false;
     let (value_at_risk, expected_shortfall) = match method {
         TailMethod::Historical => historical(returns, alpha),
         TailMethod::Parametric => {
@@ -77,8 +82,9 @@ pub fn tail_risk(returns: &[f64], confidence: f64, method: TailMethod) -> Result
             let s = m.skewness().unwrap_or(0.0);
             let k = m.excess_kurtosis().unwrap_or(0.0);
             let h = cornish_fisher_quantile(normal_quantile(alpha), s, k);
-            let tail_mean = edgeworth_tail_mean(h, s, k, alpha).min(h);
-            (-(m.mean + sd * h), -(m.mean + sd * tail_mean))
+            let edgeworth = edgeworth_tail_mean(h, s, k, alpha);
+            shortfall_at_var = edgeworth > h;
+            (-(m.mean + sd * h), -(m.mean + sd * edgeworth.min(h)))
         }
     };
     Ok(TailRisk {
@@ -86,6 +92,7 @@ pub fn tail_risk(returns: &[f64], confidence: f64, method: TailMethod) -> Result
         method,
         value_at_risk,
         expected_shortfall,
+        shortfall_at_var,
     })
 }
 
@@ -148,6 +155,25 @@ mod tests {
         let tail = tail_risk(&r, 0.9, TailMethod::Historical).unwrap();
         assert!((tail.value_at_risk - 0.042).abs() < 1e-15);
         assert!((tail.expected_shortfall - 0.05).abs() < 1e-15);
+    }
+
+    #[test]
+    fn a_cornish_fisher_shortfall_below_the_value_at_risk_is_raised_and_flagged() {
+        // Quiet periods and two extreme ones: an excess kurtosis far beyond the expansion's
+        // range.
+        let mut r = vec![0.001; 98];
+        r.extend([-0.2, 0.2]);
+        let tail = tail_risk(&r, 0.95, TailMethod::CornishFisher).unwrap();
+        assert!(tail.shortfall_at_var);
+        assert_eq!(tail.expected_shortfall, tail.value_at_risk);
+        let normal = [0.004, -0.011, 0.007, -0.002, 0.013, -0.019, 0.001, 0.006];
+        for method in [
+            TailMethod::Historical,
+            TailMethod::Parametric,
+            TailMethod::CornishFisher,
+        ] {
+            assert!(!tail_risk(&normal, 0.95, method).unwrap().shortfall_at_var);
+        }
     }
 
     #[test]

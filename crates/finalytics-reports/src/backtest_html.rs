@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use finalytics_backtest::{Rebalance, Validation};
+use finalytics_backtest::{Failure, Rebalance, Validation};
 use finalytics_core::Date;
 
 use crate::backtests::{
@@ -33,9 +33,6 @@ pub(crate) const BENCHMARK: &str = "var(--ink2)";
 
 /// The most assets a table of weights shows; the rest are shown together.
 const ASSETS: usize = 12;
-
-/// Weights smaller than this are shown as none.
-pub(crate) const TINY: f64 = 5e-4;
 
 pub(crate) fn colour(k: usize) -> &'static str {
     SERIES.get(k).copied().unwrap_or("var(--muted-fill)")
@@ -227,30 +224,130 @@ pub(crate) fn grouped_notes(strategies: &[&StrategyReport]) -> Vec<String> {
         .collect()
 }
 
-/// A sentence for each strategy whose refits found no weights.
-pub(crate) fn failure_notes(strategies: &[&StrategyReport]) -> Vec<String> {
+/// A sentence for each strategy whose fits found no weights, and what it held instead.
+pub(crate) fn failure_notes(c: &BacktestContext, strategies: &[&StrategyReport]) -> Vec<String> {
     strategies
         .iter()
         .filter(|s| !s.failures.is_empty())
         .map(|s| {
-            let mut reasons: Vec<&str> = s.failures.iter().map(|f| f.reason.as_str()).collect();
-            reasons.sort_unstable();
-            reasons.dedup();
-            let first = s.failures.iter().map(|f| f.date).min();
-            let last = s.failures.iter().map(|f| f.date).max();
-            let when = match (first, last) {
-                (Some(a), Some(b)) if a != b => format!(", from {} to {}", month(a), month(b)),
-                (Some(a), _) => format!(", in {}", month(a)),
-                _ => String::new(),
-            };
-            format!(
-                "{} found no weights at {}{when} ({}); it kept the weights it held.",
-                s.name,
-                plural(s.failures.len(), "refit"),
+            // Walk-forward also fits each method to the whole history, for the run in sample.
+            let (whole, fits): (Vec<&Failure>, Vec<&Failure>) = s
+                .failures
+                .iter()
+                .partition(|f| f.reason.starts_with(IN_SAMPLE_FIT));
+            let reasons = |failures: &[&Failure]| {
+                let mut reasons: Vec<&str> = failures
+                    .iter()
+                    .map(|f| f.reason.trim_start_matches(IN_SAMPLE_FIT))
+                    .collect();
+                reasons.sort_unstable();
+                reasons.dedup();
                 reasons.join(", ")
-            )
+            };
+            let mut found = if fits.is_empty() {
+                format!("{}'s fit to the whole history found no weights", s.name)
+            } else if matches!(c.settings.validation, Validation::WalkForward { .. }) {
+                let first = fits.iter().map(|f| f.date).min();
+                let last = fits.iter().map(|f| f.date).max();
+                let when = match (first, last) {
+                    (Some(a), Some(b)) if a != b => {
+                        format!(", from {} to {}", month(a), month(b))
+                    }
+                    (Some(a), _) => format!(", in {}", month(a)),
+                    _ => String::new(),
+                };
+                format!(
+                    "{} found no weights at {}{when} ({})",
+                    s.name,
+                    plural(fits.len(), "refit"),
+                    reasons(&fits)
+                )
+            } else {
+                format!("{} found no weights ({})", s.name, reasons(&fits))
+            };
+            if !whole.is_empty() {
+                let _ = write!(
+                    found,
+                    "{} ({})",
+                    if fits.is_empty() {
+                        ""
+                    } else {
+                        ", nor in its fit to the whole history"
+                    },
+                    reasons(&whole)
+                );
+            }
+            if fits.is_empty() {
+                return format!("{found}, so it has no run in sample.");
+            }
+            // Cash is held until a fit first finds weights.
+            match first_weights(s) {
+                None => format!("{found}; it never held anything but cash."),
+                Some(w) if w.date > s.weights[0].date => format!(
+                    "{found}; it held cash until its first weights, in {}, and kept the weights \
+                     it held after that.",
+                    month(w.date)
+                ),
+                Some(_) => format!("{found}; it kept the weights it held."),
+            }
         })
         .collect()
+}
+
+/// How the engine marks the failures of a method's fit to the whole history.
+const IN_SAMPLE_FIT: &str = "in-sample fit: ";
+
+/// The heading for the latest weights of `strategies`: at the last refit, when there were
+/// refits; otherwise what the weights were fitted to, or that they are fixed.
+pub(crate) fn weights_heading(c: &BacktestContext, strategies: &[&StrategyReport]) -> String {
+    let refitted = strategies
+        .iter()
+        .filter(|s| s.weights.len() > 1)
+        .filter_map(|s| s.latest())
+        .map(|w| w.date)
+        .max();
+    match (refitted, &c.settings.validation) {
+        (Some(date), _) => format!("Weights at the last refit, {}", month(date)),
+        _ if strategies.iter().all(|s| !s.fitted) => "Fixed weights".to_owned(),
+        (None, Validation::InSample) => "Weights, fitted to the whole history".to_owned(),
+        (None, _) => format!(
+            "Weights, fitted to the history to {}",
+            month(
+                strategies
+                    .iter()
+                    .find(|s| s.fitted)
+                    .and_then(|s| s.weights.first())
+                    .map_or(c.start, |w| w.date)
+            )
+        ),
+    }
+}
+
+/// The heading for a single strategy's allocation.
+pub(crate) fn allocation_heading(s: &StrategyReport) -> String {
+    match s.latest() {
+        _ if !s.fitted => "Allocation: fixed weights".to_owned(),
+        Some(w) if s.weights.len() > 1 => {
+            format!("Allocation at the last refit, {}", month(w.date))
+        }
+        _ => "Allocation".to_owned(),
+    }
+}
+
+/// The first weights a strategy invested in, if it ever did: its first fit that found weights.
+pub(crate) fn first_weights(s: &StrategyReport) -> Option<&WeightsAt> {
+    s.weights
+        .iter()
+        .find(|w| w.weights.values().sum::<f64>() > 1e-9)
+}
+
+/// The strategy's name in tables, marked when it never invested.
+pub(crate) fn table_name(s: &StrategyReport) -> String {
+    if first_weights(s).is_none() && !s.failures.is_empty() {
+        format!("{} (cash)", s.name)
+    } else {
+        s.name.clone()
+    }
 }
 
 /// The assets worth showing in tables of weights, largest first when there are many, with the
@@ -268,7 +365,7 @@ pub(crate) fn shown_assets(
     let held: Vec<String> = c
         .assets
         .iter()
-        .filter(|a| largest(a) >= TINY)
+        .filter(|a| largest(a) >= crate::text::NOISE)
         .cloned()
         .collect();
     if held.len() <= ASSETS {
@@ -851,7 +948,7 @@ fn stacked(series: &[(&Series, &str)]) -> String {
     legend(&keys) + &out
 }
 
-/// The style of a cell shaded by weight, darker for larger, up to `scale`.
+/// The style of a cell shaded by weight, stronger for larger, up to `scale`.
 pub(crate) fn weight_style(v: f64, scale: f64) -> String {
     let p = if scale > 0.0 {
         (v / scale * 100.0).clamp(0.0, 100.0)
@@ -903,8 +1000,8 @@ fn weight_strip(weights: &[WeightsAt], end: Date, rows: &[String], scale: f64) -
         let mut tip = month(wt.date);
         for (a, name) in rows.iter().enumerate() {
             let v = value(wt, a);
-            if v >= TINY {
-                let _ = write!(tip, "\n{name}: {}", pct(Some(v), 1, false));
+            if v >= crate::text::NOISE {
+                let _ = write!(tip, "\n{name}: {}", crate::text::weight_pct(v, 1));
             }
         }
         let _ = write!(
@@ -1031,6 +1128,11 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
 }
 
 /// The name of a calendar year, with the part of it covered when not all of it is.
+/// Whether calendar year `y` runs across a holdout that is out of sample from `split`.
+pub(crate) fn straddles(y: &CalendarReturn, split: Date) -> bool {
+    y.start < split && split <= y.end
+}
+
 fn year_label(y: &CalendarReturn) -> String {
     if y.complete {
         return y.year.to_string();
@@ -1054,23 +1156,25 @@ fn year_label(y: &CalendarReturn) -> String {
 /// in bold.
 fn bold_best(
     values: &[Option<f64>],
-    strategies: usize,
+    eligible: &[bool],
     higher: bool,
     format: &dyn Fn(f64) -> String,
 ) -> Vec<String> {
-    let best = values[..strategies.min(values.len())]
+    let best = values
         .iter()
-        .flatten()
-        .copied()
+        .zip(eligible)
+        .filter(|(_, e)| **e)
+        .filter_map(|(v, _)| *v)
         .filter(|v| v.is_finite())
         .reduce(|a, b| if (b > a) == higher { b } else { a });
+    let several = eligible.iter().filter(|e| **e).count() > 1;
     values
         .iter()
         .enumerate()
         .map(|(k, v)| match v {
             Some(v) if v.is_finite() => {
                 let text = esc(&format(*v));
-                if k < strategies && strategies > 1 && Some(*v) == best {
+                if several && eligible.get(k) == Some(&true) && Some(*v) == best {
                     format!("<b>{text}</b>")
                 } else {
                     text
@@ -1106,10 +1210,11 @@ fn ratio_tick(v: f64) -> String {
 }
 
 /// The notes on how a backtest was run: assets, validation, estimates, limits, rebalancing,
-/// costs and ratios.
+/// costs and ratios, for methods fitted to returns (`fitted`), fixed weights (`fixed`), or both.
 fn method_rows(
     c: &BacktestContext,
-    optimised: bool,
+    fitted: bool,
+    fixed: bool,
     in_sample: bool,
 ) -> Vec<(&'static str, String)> {
     let period = period_word(c.periods_per_year);
@@ -1129,7 +1234,11 @@ fn method_rows(
             span(c.start, c.end)
         ),
     )];
-    let validation = match &c.settings.validation {
+    let mut validation = match &c.settings.validation {
+        _ if !fitted => format!(
+            "Fixed weights, not fitted to these returns, scored on {}.",
+            span(c.test_start, c.test_end)
+        ),
         Validation::InSample => {
             "In sample: weights fitted once to the whole history and scored on it, \
              with knowledge of the very returns they are scored on."
@@ -1156,13 +1265,17 @@ fn method_rows(
         }
         _ => "As set.".to_owned(),
     };
+    if fitted && fixed {
+        validation
+            .push_str(" Fixed weights, not fitted to any returns, are scored on the same periods.");
+    }
     rows.push(("Validation", validation));
-    if optimised {
+    if fitted {
         rows.push((
             "Estimates",
             format!(
-                "{} covariance and historical mean returns, annualised by {}.",
-                capitalise(covariance_name(&c.covariance)),
+                "{} and historical mean returns, annualised by {}.",
+                capitalise(&covariance_name(&c.covariance)),
                 num(Some(c.periods_per_year), 0)
             ),
         ));
@@ -1234,12 +1347,21 @@ impl ComparisonReport {
             entries.push((b, BENCHMARK));
         }
         let strategies: Vec<&StrategyReport> = self.strategies.iter().collect();
-        let compared = !strategies.is_empty() && strategies.iter().all(|s| s.in_sample.is_some());
+        // In sample against out of sample, for the methods fitted to returns.
+        let fitted: Vec<&StrategyReport> =
+            strategies.iter().copied().filter(|s| s.fitted).collect();
+        let compared = !fitted.is_empty() && fitted.iter().all(|s| s.in_sample.is_some());
         let sharpe = |s: &StrategyReport| s.tested.statistics.sharpe_ratio.unwrap_or(f64::NAN);
 
-        // Summary.
+        // Summary: the best of the methods that invested, since one that only ever held cash
+        // would otherwise look the safest.
+        let invested: Vec<&StrategyReport> = strategies
+            .iter()
+            .copied()
+            .filter(|s| first_weights(s).is_some())
+            .collect();
         let mut items: Vec<(String, String, Option<String>)> = Vec::new();
-        let mut by_sharpe: Vec<&StrategyReport> = strategies.clone();
+        let mut by_sharpe: Vec<&StrategyReport> = invested.clone();
         by_sharpe.sort_by(|a, b| sharpe(b).total_cmp(&sharpe(a)));
         if let Some(top) = by_sharpe.first() {
             let sub = by_sharpe.get(1).map_or_else(
@@ -1259,7 +1381,7 @@ impl ComparisonReport {
                 Some(sub),
             ));
         }
-        if let Some(s) = strategies.iter().max_by(|a, b| {
+        if let Some(s) = invested.iter().max_by(|a, b| {
             a.tested
                 .statistics
                 .max_drawdown
@@ -1271,7 +1393,7 @@ impl ComparisonReport {
                 Some(s.name.clone()),
             ));
         }
-        if let Some(s) = strategies.iter().min_by(|a, b| {
+        if let Some(s) = invested.iter().min_by(|a, b| {
             a.tested
                 .turnover_per_year
                 .total_cmp(&b.tested.turnover_per_year)
@@ -1289,7 +1411,11 @@ impl ComparisonReport {
                     .and_then(|i| i.statistics.sharpe_ratio)
                     .map_or(f64::NAN, |i| i - sharpe(s))
             };
-            if let Some(s) = strategies.iter().max_by(|a, b| fall(a).total_cmp(&fall(b))) {
+            if let Some(s) = fitted
+                .iter()
+                .filter(|s| fall(s).is_finite())
+                .max_by(|a, b| fall(a).total_cmp(&fall(b)))
+            {
                 let before = s.in_sample.as_ref().and_then(|i| i.statistics.sharpe_ratio);
                 items.push((
                     format!("Largest fall {}", lower_first(tested)),
@@ -1297,7 +1423,7 @@ impl ComparisonReport {
                     Some(format!("{}, Sharpe ratio", s.name)),
                 ));
             }
-        } else if let Some(s) = strategies.iter().max_by(|a, b| {
+        } else if let Some(s) = invested.iter().max_by(|a, b| {
             a.tested
                 .statistics
                 .annualised_return
@@ -1312,42 +1438,61 @@ impl ComparisonReport {
         let column = |f: &dyn Fn(&RunReport) -> Option<f64>| -> Vec<Option<f64>> {
             entries.iter().map(|(s, _)| f(&s.tested)).collect()
         };
+        // The best in each column among the methods that invested; not the benchmark.
+        let eligible: Vec<bool> = entries
+            .iter()
+            .enumerate()
+            .map(|(k, (s, _))| k < n && first_weights(s).is_some())
+            .collect();
         let cols = [
             bold_best(
                 &column(&|r| Some(r.statistics.annualised_return)),
-                n,
+                &eligible,
                 true,
                 &percent,
             ),
             bold_best(
                 &column(&|r| Some(r.statistics.volatility)),
-                n,
+                &eligible,
                 false,
                 &percent,
             ),
-            bold_best(&column(&|r| r.statistics.sharpe_ratio), n, true, &ratio),
-            bold_best(&column(&|r| r.statistics.sortino_ratio), n, true, &ratio),
+            bold_best(
+                &column(&|r| r.statistics.sharpe_ratio),
+                &eligible,
+                true,
+                &ratio,
+            ),
+            bold_best(
+                &column(&|r| r.statistics.sortino_ratio),
+                &eligible,
+                true,
+                &ratio,
+            ),
             bold_best(
                 &column(&|r| Some(r.statistics.max_drawdown)),
-                n,
+                &eligible,
                 true,
                 &percent,
             ),
             bold_best(
                 &column(&|r| Some(-r.tail_risk.expected_shortfall)),
-                n,
+                &eligible,
                 true,
                 &|v| percent(-v),
             ),
-            bold_best(&column(&|r| Some(r.turnover_per_year)), n, false, &|v| {
-                pct(Some(v), 0, false)
-            }),
+            bold_best(
+                &column(&|r| Some(r.turnover_per_year)),
+                &eligible,
+                false,
+                &|v| pct(Some(v), 0, false),
+            ),
         ];
         let rows: Vec<Vec<String>> = entries
             .iter()
             .enumerate()
             .map(|(k, (s, col))| {
-                let mut row = vec![key(&s.name, col)];
+                let mut row = vec![key(&table_name(s), col)];
                 row.extend(cols.iter().map(|c| c[k].clone()));
                 row
             })
@@ -1368,7 +1513,7 @@ impl ComparisonReport {
         }
         for line in grouped_notes(&strategies)
             .into_iter()
-            .chain(failure_notes(&strategies))
+            .chain(failure_notes(c, &strategies))
         {
             let _ = write!(note, " {line}");
         }
@@ -1544,7 +1689,7 @@ impl ComparisonReport {
                     let i = s.in_sample.as_ref()?;
                     let o = &s.tested;
                     Some(vec![
-                        key(&s.name, col),
+                        key(&table_name(s), col),
                         esc(&num(i.statistics.sharpe_ratio, 2)),
                         esc(&num(o.statistics.sharpe_ratio, 2)),
                         esc(
@@ -1590,7 +1735,7 @@ impl ComparisonReport {
             .filter_map(|s| s.latest().map(|w| (*s, w)))
             .collect();
         let mut weights_html = String::new();
-        if let Some((_, first)) = latest.first() {
+        if !latest.is_empty() {
             let maps: Vec<&BTreeMap<String, f64>> = strategies
                 .iter()
                 .flat_map(|s| s.weights.iter().map(|w| &w.weights))
@@ -1659,11 +1804,7 @@ impl ComparisonReport {
                 }
             }
             grid.push_str("</tbody></table></div>");
-            let title = if latest.iter().all(|(s, _)| s.weights.len() == 1) {
-                format!("Weights, fitted to {}", month(first.date))
-            } else {
-                format!("Weights at the last refit, {}", month(first.date))
-            };
+            let title = weights_heading(c, &strategies);
             weights_html.push_str(&card(&title, &grid, None));
             let changing: Vec<&&StrategyReport> = strategies
                 .iter()
@@ -1684,7 +1825,7 @@ impl ComparisonReport {
                     strips.push_str(&weight_strip(&s.weights, s.tested.end, &assets, scale));
                 }
                 let mut note = format!(
-                    "Darker is a larger weight, up to {}.",
+                    "A stronger colour is a larger weight, up to {}.",
                     pct(Some(scale), 0, false)
                 );
                 if !rest.is_empty() {
@@ -1725,10 +1866,14 @@ impl ComparisonReport {
         }
 
         // Method.
-        let optimised = !strategies.is_empty();
         let method = card(
             "How the methods were tested",
-            &notes_table(&method_rows(c, optimised, compared)),
+            &notes_table(&method_rows(
+                c,
+                !fitted.is_empty(),
+                fitted.len() < strategies.len(),
+                compared,
+            )),
             None,
         );
 
@@ -1809,13 +1954,9 @@ impl ComparisonReport {
     }
 }
 
-/// A weight as shown in a table: none when tiny.
+/// A weight as shown in a table, as a whole percentage.
 pub(crate) fn weight_text(v: f64) -> String {
-    if v.abs() < TINY {
-        "–".to_owned()
-    } else {
-        pct(Some(v), 0, false)
-    }
+    crate::text::weight_pct(v, 0)
 }
 
 // ── The backtest report ──────────────────────────────────────────────────────────────────────
@@ -1892,9 +2033,10 @@ impl BacktestReport {
                     "var(--muted-fill)",
                 ));
             }
-            let fitted = s.weights.len() > 1 || s.in_sample.is_some() || !c.limits.is_empty();
             let how = match c.settings.validation {
-                _ if !fitted => format!("{}: fixed weights.", s.name),
+                _ if !s.fitted => {
+                    format!("{}: fixed weights, not fitted to these returns.", s.name)
+                }
                 Validation::InSample => format!(
                     "{}, fitted to the returns from {}.",
                     s.name,
@@ -1924,14 +2066,14 @@ impl BacktestReport {
                         w.weights
                             .iter()
                             .map(|(a, v)| (a, *v))
-                            .filter(|(_, v)| *v >= TINY)
+                            .filter(|(_, v)| *v >= crate::text::NOISE)
                             .collect()
                     })
                     .unwrap_or_default();
                 parts.sort_by(|x, y| y.1.total_cmp(&x.1));
                 let held: Vec<String> = parts
                     .iter()
-                    .map(|(a, v)| format!("{} {a}", pct(Some(*v), 0, false)))
+                    .map(|(a, v)| format!("{} {a}", crate::text::weight_pct(*v, 1)))
                     .collect();
                 if held.is_empty() {
                     let _ = write!(note, " Benchmark: {}.", b.name);
@@ -1939,15 +2081,13 @@ impl BacktestReport {
                     let _ = write!(note, " {}: {}, held the same way.", b.name, and_list(&held));
                 }
             }
-            for line in grouped_notes(&[s]).into_iter().chain(failure_notes(&[s])) {
+            for line in grouped_notes(&[s])
+                .into_iter()
+                .chain(failure_notes(c, &[s]))
+            {
                 let _ = write!(note, " {line}");
             }
-            let title = match c.settings.validation {
-                Validation::WalkForward { .. } => {
-                    format!("The allocation at the last refit, {}", month(w.date))
-                }
-                _ => "The allocation".to_owned(),
-            };
+            let title = format!("The {}", lower_first(&allocation_heading(s)));
             summary.push_str(&card(
                 &title,
                 &format!(
@@ -1961,7 +2101,8 @@ impl BacktestReport {
         let o = &s.tested;
         let i = s.in_sample.as_ref();
         let bo = bench.map(|b| &b.tested);
-        let bi = bench.and_then(|b| b.in_sample.as_ref());
+        // The benchmark in sample only beside the strategy's.
+        let bi = i.and(bench.and_then(|b| b.in_sample.as_ref()));
         let suffix = if split {
             format!(", {}", lower_first(tested))
         } else {
@@ -2094,6 +2235,10 @@ impl BacktestReport {
             .chain(runs.iter().map(|(n, _)| n.clone()))
             .collect();
         let note = match (&c.settings.validation, i) {
+            _ if !s.fitted => format!(
+                "Fixed weights, not fitted to these returns, scored on {}.",
+                span(o.start, o.end)
+            ),
             (Validation::Holdout { .. }, Some(i)) => format!(
                 "In sample: {}, the history the weights were fitted to. Out of sample: {}.",
                 span(i.start, i.end),
@@ -2211,42 +2356,56 @@ impl BacktestReport {
                 (series, if cash { "var(--muted-fill)" } else { colour(k) })
             })
             .collect();
+        let held = o.rebalances == 0;
         if !shown.is_empty() {
             weights_html.push_str(&card(
                 &format!("Weights held, {}", lower_first(tested)),
                 &stacked(&shown),
-                Some("Between rebalances the weights drift with prices; at each rebalance they return to the targets."),
+                Some(if held {
+                    "Bought at the start and held: the weights drift with prices."
+                } else {
+                    "Between rebalances the weights drift with prices; at each rebalance they \
+                     return to the targets."
+                }),
             ));
         }
-        weights_html.push_str(&tiles(&[
-            (
-                "Rebalances".to_owned(),
-                o.rebalances.to_string(),
-                Some(capitalise(&rebalancing(&c.settings.rebalance))),
-            ),
-            (
-                "Turnover".to_owned(),
-                format!("{} a year", pct(Some(o.turnover_per_year), 1, false)),
-                Some("One-way: the share of value bought, or sold".to_owned()),
-            ),
-            (
-                "Trading costs".to_owned(),
-                format!("{} a year", pct(Some(o.costs_per_year), 2, false)),
-                Some(if c.settings.trading_cost_bps > 0.0 {
-                    format!(
-                        "{} of the value traded",
-                        costs(c.settings.trading_cost_bps).trim_end_matches(" trading costs")
-                    )
-                } else {
-                    "None".to_owned()
-                }),
-            ),
-            (
-                "Largest rebalance".to_owned(),
-                pct(Some(o.largest_trade), 1, false),
-                Some("One-way turnover at one rebalance".to_owned()),
-            ),
-        ]));
+        if held {
+            weights_html.push_str(&tiles(&[(
+                "Trades".to_owned(),
+                "None".to_owned(),
+                Some("Bought at the start and held: no turnover or trading costs".to_owned()),
+            )]));
+        } else {
+            weights_html.push_str(&tiles(&[
+                (
+                    "Rebalances".to_owned(),
+                    o.rebalances.to_string(),
+                    Some(capitalise(&rebalancing(&c.settings.rebalance))),
+                ),
+                (
+                    "Turnover".to_owned(),
+                    format!("{} a year", pct(Some(o.turnover_per_year), 1, false)),
+                    Some("One-way: the share of value bought, or sold".to_owned()),
+                ),
+                (
+                    "Trading costs".to_owned(),
+                    format!("{} a year", pct(Some(o.costs_per_year), 2, false)),
+                    Some(if c.settings.trading_cost_bps > 0.0 {
+                        format!(
+                            "{} of the value traded",
+                            costs(c.settings.trading_cost_bps).trim_end_matches(" trading costs")
+                        )
+                    } else {
+                        "None".to_owned()
+                    }),
+                ),
+                (
+                    "Largest rebalance".to_owned(),
+                    pct(Some(o.largest_trade), 1, false),
+                    Some("One-way turnover at one rebalance".to_owned()),
+                ),
+            ]));
+        }
 
         // Returns.
         let years_of = match &self.history {
@@ -2257,7 +2416,18 @@ impl BacktestReport {
             Some(h) => h.benchmark.as_ref().map(|b| &b.years),
             None => bo.map(|b| &b.years),
         };
-        let categories: Vec<String> = years_of.iter().map(year_label).collect();
+        let split_date = self.history.as_ref().map(|h| h.split);
+        let categories: Vec<String> = years_of
+            .iter()
+            .map(|y| {
+                let label = year_label(y);
+                if split_date.is_some_and(|d| straddles(y, d)) {
+                    format!("{label}†")
+                } else {
+                    label
+                }
+            })
+            .collect();
         let mut cols = vec![(
             s.name.as_str(),
             colour(0),
@@ -2293,9 +2463,22 @@ impl BacktestReport {
                 240.0,
                 split_year.map(|k| (k, "In sample", "Out of sample")),
             ),
-            (!partial.is_empty())
-                .then(|| format!("Part years: {}.", partial.join(", ")))
-                .as_deref(),
+            {
+                let mut notes = Vec::new();
+                if !partial.is_empty() {
+                    notes.push(format!("Part years: {}.", partial.join(", ")));
+                }
+                if let Some(y) = split_date.and_then(|d| years_of.iter().find(|y| straddles(y, d)))
+                {
+                    notes.push(format!(
+                        "† {} is in sample to {} and out of sample after.",
+                        y.year,
+                        month(c.fit_end.unwrap_or(y.start))
+                    ));
+                }
+                (!notes.is_empty()).then(|| notes.join(" "))
+            }
+            .as_deref(),
         );
         let m = &o.months;
         let scale = m
@@ -2340,13 +2523,7 @@ impl BacktestReport {
 
         let method = card(
             "How the allocation was tested",
-            &notes_table(&method_rows(
-                c,
-                s.weights.len() > 1
-                    || c.settings.validation != Validation::InSample
-                    || !c.limits.is_empty(),
-                i.is_some(),
-            )),
+            &notes_table(&method_rows(c, s.fitted, !s.fitted, i.is_some())),
             None,
         );
 

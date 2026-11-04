@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `StrategyResult.fitted` and `StrategyReport.fitted` say whether a method fitted the weights to
+  returns. Fixed weights have no run in sample in the reports, and are described as fixed
+  weights, not fitted to the returns they are scored on.
+- `TailRisk.shortfall_at_var` flags a Cornish–Fisher expected shortfall raised to the value at
+  risk, as the expansion can need when the excess kurtosis is large; the risk report marks it.
+- `ScenarioSummary.stress`: the scenarios report names the stress of the covariance behind a
+  scenario's risk after.
+
 ### Changed
 
 - Turnover is one-way everywhere: half the sum of the absolute weight changes, the share of the
@@ -29,6 +39,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   several accounts, allow for the fees paid.
 - Differences shown beside rounded figures (excess returns, changes in the Sharpe ratio, the total
   of fees and tax) are the differences of the figures as shown, so that they add up.
+- A method that never found weights is marked as holding cash in the comparison tables, is left
+  out of the summary's best figures, and its note says that it held only cash, rather than that
+  it kept the weights it held. Failures of the fit to the whole history, for the run in sample,
+  are reported apart from the refits.
+- Concentration in the holdings report is measured on one basis: every share, like the
+  Herfindahl index, is of the value invested in instruments, cash aside.
+- A held weight too small to show is shown as "<0.1%" (or "<1%"), not as "–" or "not held".
+  The text optimisation report lists every held asset, the smaller ones together when there are
+  many, and no longer pads its table with assets not held.
+- The holdout year that runs across the split is marked in the backtest report's calendar
+  years; a portfolio bought and held is described without rebalances; the minimum-variance risk
+  note no longer contrasts a weight with an equal share of risk; the covariance estimator is
+  named once ("the sample covariance"), and the shading of weights is described without
+  reference to the colour scheme.
 
 ## [1.0.0-rc.1] - 2026-11-03
 

@@ -101,16 +101,17 @@ pub struct LotRow {
     pub long_term: bool,
 }
 
-/// How concentrated the portfolio's instruments are.
+/// How concentrated the portfolio's instruments are. Every share is of the value invested in
+/// instruments, cash aside, so that the figures agree with each other.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Concentration {
-    /// The largest instrument holdings, largest first, with their share of the portfolio.
+    /// The largest instrument holdings, largest first, with their share of the value invested.
     pub largest: Vec<Slice>,
-    /// The share of the portfolio in its five largest instruments.
+    /// The share of the value invested in the five largest instruments.
     pub top_five: f64,
-    /// The share of the portfolio in its ten largest instruments.
+    /// The share of the value invested in the ten largest instruments.
     pub top_ten: f64,
     /// The Herfindahl–Hirschman index of the instruments' shares of the value invested in
     /// instruments, from 1/n (equal) to 1 (one instrument).
@@ -395,11 +396,24 @@ pub fn holdings_report(
         .filter(|h| matches!(h.holding, HoldingKey::Instrument(_)))
         .collect();
     let invested: f64 = instruments.iter().map(|h| to_f64(h.value_base)).sum();
-    let share_of_top = |n: usize| instruments.iter().take(n).map(|h| h.weight).sum::<f64>();
+    let of_invested = |h: &HoldingRow| {
+        if invested > 0.0 {
+            to_f64(h.value_base) / invested
+        } else {
+            0.0
+        }
+    };
+    let share_of_top = |n: usize| {
+        instruments
+            .iter()
+            .take(n)
+            .map(|h| of_invested(h))
+            .sum::<f64>()
+    };
     let herfindahl = (invested > 0.0).then(|| {
         instruments
             .iter()
-            .map(|h| (to_f64(h.value_base) / invested).powi(2))
+            .map(|h| of_invested(h).powi(2))
             .sum::<f64>()
     });
     let concentration = Concentration {
@@ -409,7 +423,7 @@ pub fn holdings_report(
             .map(|h| Slice {
                 name: label(&h.holding),
                 value: to_f64(h.value_base),
-                weight: h.weight,
+                weight: of_invested(h),
             })
             .collect(),
         top_five: share_of_top(5),

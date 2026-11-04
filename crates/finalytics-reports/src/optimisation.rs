@@ -12,14 +12,15 @@ use finalytics_core::{Date, Result};
 use finalytics_risk::{CovarianceMethod, Matrix};
 
 use crate::backtest_html::{
-    BENCHMARK, Frame, Line, SERIES, TINY, capitalise, frame, frequency, key, level, level_tick,
-    lines, notes_table, percent, section, span, table,
+    BENCHMARK, Frame, Line, SERIES, capitalise, frame, frequency, key, level, level_tick, lines,
+    notes_table, percent, section, span, table,
 };
 use crate::backtests::RunReport;
 use crate::html::{card, esc, heat, legend, ticks, tiles};
 use crate::shapes::{Grid, Unit};
 use crate::text::{
-    L, Page, R, WIDTH, bar, covariance_name, fit, num, pad_left, pct, plural, spark, width, wrap,
+    L, NOISE, Page, R, WIDTH, bar, covariance_label, covariance_name, fit, num, pad_left, pct,
+    plural, share, spark, width, wrap,
 };
 
 /// The weights an optimisation chose, with what they are expected to deliver, where their risk
@@ -325,17 +326,16 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
 
 // ── Words ────────────────────────────────────────────────────────────────────────────────────
 
+/// The most held assets the text report lists one by one; the rest are shown together.
+const HELD_LISTED: usize = 20;
+
 fn weight(v: f64) -> String {
-    if v.abs() < TINY {
-        "–".to_owned()
-    } else {
-        pct(Some(v), 1, false)
-    }
+    crate::text::weight_pct(v, 1)
 }
 
 /// The assets held, the largest first.
 fn held(r: &OptimisationReport) -> Vec<&AllocationRow> {
-    r.allocation.iter().filter(|a| a.weight >= TINY).collect()
+    r.allocation.iter().filter(|a| a.weight >= NOISE).collect()
 }
 
 /// The assets not held, as a phrase, if any.
@@ -343,16 +343,17 @@ fn not_held(r: &OptimisationReport) -> Option<String> {
     let names: Vec<String> = r
         .allocation
         .iter()
-        .filter(|a| a.weight < TINY)
+        .filter(|a| a.weight < NOISE)
         .map(|a| a.asset.clone())
         .collect();
     match names.len() {
         0 => None,
         1 => Some(format!("{} is not held", names[0])),
-        _ => Some(format!(
+        2..=8 => Some(format!(
             "{} are not held",
             crate::backtest_html::and_list(&names)
         )),
+        n => Some(format!("{n} assets are not held")),
     }
 }
 
@@ -371,7 +372,7 @@ fn limits(c: &OptimisationContext) -> String {
 
 fn estimates(c: &OptimisationContext) -> String {
     format!(
-        "{} expected returns and the {} covariance, annualised by {}",
+        "{} expected returns and {}, annualised by {}",
         if c.historical_means {
             "Historical mean"
         } else {
@@ -419,10 +420,7 @@ impl OptimisationReport {
                     (
                         "Volatility".to_owned(),
                         percent(s.volatility),
-                        Some(format!(
-                            "{} covariance",
-                            capitalise(covariance_name(&c.covariance))
-                        )),
+                        Some(capitalise(&covariance_name(&c.covariance))),
                     ),
                     (
                         "Sharpe ratio".to_owned(),
@@ -472,7 +470,7 @@ impl OptimisationReport {
                     .iter()
                     .map(|a| {
                         vec![
-                            if a.weight >= TINY {
+                            if a.weight >= NOISE {
                                 key(&a.asset, colour(&a.asset))
                             } else {
                                 esc(&a.asset)
@@ -583,19 +581,29 @@ impl OptimisationReport {
             let least = held
                 .iter()
                 .min_by(|a, b| (a.risk_share - a.weight).total_cmp(&(b.risk_share - b.weight)));
-            if let (Some(m), Some(l)) = (most, least)
-                && m.asset != l.asset
-            {
-                let _ = write!(
-                    note,
-                    "{} is {} of the weight but {} of the risk; {} is {} of the weight and {} of the risk. ",
-                    m.asset,
-                    pct(Some(m.weight), 0, false),
-                    pct(Some(m.risk_share), 0, false),
-                    l.asset,
-                    pct(Some(l.weight), 0, false),
-                    pct(Some(l.risk_share), 0, false)
-                );
+            // At a minimum-variance optimum, every asset held off its bounds carries as much of
+            // the risk as of the weight, so there is no contrast to point out.
+            let gap = |a: &&&AllocationRow| a.risk_share - a.weight;
+            match (most, least) {
+                (Some(m), Some(l))
+                    if m.asset != l.asset && gap(&m).abs().max(gap(&l).abs()) >= 0.005 =>
+                {
+                    let _ = write!(
+                        note,
+                        "{} is {} of the weight but {} of the risk; {} is {} of the weight and {} of the risk. ",
+                        m.asset,
+                        share(m.weight),
+                        share(m.risk_share),
+                        l.asset,
+                        share(l.weight),
+                        share(l.risk_share)
+                    );
+                }
+                (Some(_), Some(_)) => note.push_str(
+                    "Each asset's share of the risk is its weight, to within half a percentage \
+                     point, as at a minimum-variance portfolio. ",
+                ),
+                _ => {}
             }
             note.push_str(
                 "An asset's share of risk is its weight times its covariance with the portfolio, \
@@ -771,7 +779,7 @@ impl OptimisationReport {
             esc(&plural(c.assets.len(), "asset")),
             frequency(c.periods_per_year),
             esc(&span(c.start, c.end)),
-            esc(&capitalise(covariance_name(&c.covariance))),
+            esc(&capitalise(covariance_label(&c.covariance))),
             c.risk_free_asset
                 .as_ref()
                 .map_or_else(String::new, |a| format!(" · risk-free {}", esc(a)))
@@ -927,7 +935,7 @@ impl OptimisationReport {
         let label_all = order.len() <= 12;
         for a in order {
             let (cx, cy) = (x(a.volatility), y(a.expected_return));
-            let fill = if a.weight >= TINY {
+            let fill = if a.weight >= NOISE {
                 colour(&a.asset)
             } else {
                 "var(--muted-fill)"
@@ -939,7 +947,7 @@ impl OptimisationReport {
                 esc(&percent(a.expected_return)),
                 esc(&percent(a.volatility))
             );
-            if label_all || a.weight >= TINY {
+            if label_all || a.weight >= NOISE {
                 let (lx, mut ly) = (cx + 9.0, cy + 4.0);
                 while placed
                     .iter()
@@ -1009,7 +1017,7 @@ impl OptimisationReport {
             "{} · {} · {} covariance{}",
             plural(c.assets.len(), "asset"),
             frequency(c.periods_per_year),
-            capitalise(covariance_name(&c.covariance)),
+            capitalise(covariance_label(&c.covariance)),
             c.risk_free_asset
                 .as_ref()
                 .map_or_else(String::new, |a| format!(" · {a} as cash"))
@@ -1024,10 +1032,17 @@ impl OptimisationReport {
                     .map(|a| a.weight)
                     .fold(0.0, f64::max)
                     .max(1e-12);
-                let rows: Vec<Vec<String>> = self
-                    .allocation
+                // The assets held, largest first; when there are many, the smaller ones
+                // together.
+                let held = held(self);
+                let listed = if held.len() > HELD_LISTED + 1 {
+                    HELD_LISTED
+                } else {
+                    held.len()
+                };
+                let mut rows: Vec<Vec<String>> = held
                     .iter()
-                    .take(15)
+                    .take(listed)
                     .map(|a| {
                         vec![
                             a.asset.clone(),
@@ -1039,6 +1054,20 @@ impl OptimisationReport {
                         ]
                     })
                     .collect();
+                if held.len() > listed {
+                    let rest = &held[listed..];
+                    let total =
+                        |f: fn(&AllocationRow) -> f64| rest.iter().map(|a| f(a)).sum::<f64>();
+                    let w = total(|a| a.weight);
+                    rows.push(vec![
+                        format!("{} more held", rest.len()),
+                        weight(w),
+                        bar(w / largest, 20).trim_end().to_owned(),
+                        String::new(),
+                        String::new(),
+                        weight(total(|a| a.risk_share)),
+                    ]);
+                }
                 page.table(
                     &["Asset", "Weight", "", "Return", "Volatility", "Risk"],
                     &rows,
@@ -1049,13 +1078,6 @@ impl OptimisationReport {
                     "Return and volatility a year; risk is the share of the portfolio's \
                      variance.",
                 );
-                if self.allocation.len() > 15 {
-                    let _ = write!(
-                        note,
-                        " The 15 largest weights are shown, of {}.",
-                        self.allocation.len()
-                    );
-                }
                 if let Some(n) = not_held(self) {
                     let _ = write!(note, " {n}.");
                 }

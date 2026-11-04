@@ -656,13 +656,16 @@ export interface ComparisonReport {
   name?: string | null;
 }
 
-/** How concentrated the portfolio's instruments are. */
+/**
+ * How concentrated the portfolio's instruments are. Every share is of the value invested in
+ * instruments, cash aside, so that the figures agree with each other.
+ */
 export interface Concentration {
-  /** The largest instrument holdings, largest first, with their share of the portfolio. */
+  /** The largest instrument holdings, largest first, with their share of the value invested. */
   largest: Slice[];
-  /** The share of the portfolio in its five largest instruments. */
+  /** The share of the value invested in the five largest instruments. */
   top_five: number;
-  /** The share of the portfolio in its ten largest instruments. */
+  /** The share of the value invested in the ten largest instruments. */
   top_ten: number;
   /**
    * The Herfindahl–Hirschman index of the instruments' shares of the value invested in
@@ -3103,6 +3106,8 @@ export interface ScenarioSummary {
   worst?: HoldingKey | null;
   /** Its change in value. */
   worst_change?: number | null;
+  /** The stress of the covariance behind the risk after, if the scenario has one. */
+  stress?: CorrelationStress | null;
 }
 
 /** The scenarios report. */
@@ -3433,6 +3438,11 @@ export interface StrategyReport {
   /** The strategy's name. */
   name: string;
   /**
+   * Whether a method fitted the weights to returns: false for fixed weights and for the
+   * benchmark.
+   */
+  fitted: boolean;
+  /**
    * The run the strategy is scored on: out of sample for a holdout or walk-forward
    * validation, in sample otherwise.
    */
@@ -3440,7 +3450,8 @@ export interface StrategyReport {
   /**
    * For a holdout or walk-forward validation, the run in sample: on the history before the
    * test for a holdout, and with weights fitted to the whole history over the same periods
-   * as the test for walk-forward.
+   * as the test for walk-forward. Fixed weights have none, as they were not fitted; the
+   * benchmark has the same periods as the strategies' run in sample, for reference.
    */
   in_sample?: RunReport | null;
   /** The weights bought at the start of the test, then at each refit. */
@@ -3463,7 +3474,15 @@ export interface StrategyReport {
 export interface StrategyResult {
   /** The strategy's name. */
   name: string;
-  /** The returns of weights tested on the history they were fitted to. */
+  /**
+   * Whether a method fitted the weights to returns: false for fixed weights and for the
+   * benchmark, which were not fitted to any history.
+   */
+  fitted: boolean;
+  /**
+   * The returns of weights tested on the history they were fitted to; for fixed weights,
+   * the same periods as a fitted strategy's.
+   */
   in_sample: Run;
   /** The returns of weights tested on history they had not seen. */
   out_of_sample?: Run | null;
@@ -3497,6 +3516,12 @@ export interface TailRisk {
    * risk).
    */
   expected_shortfall: number;
+  /**
+   * Whether the expected shortfall was raised to the value at risk. The Cornish–Fisher
+   * expansion can put the mean of the tail above its quantile when the excess kurtosis is
+   * large; the expected shortfall is never below the value at risk, so it is set to it.
+   */
+  shortfall_at_var: boolean;
 }
 
 /** Value at risk and expected shortfall by one method at one confidence. */
@@ -3509,6 +3534,11 @@ export interface TailRow {
   value_at_risk: Amount;
   /** The expected shortfall over one valuation period, a loss. */
   expected_shortfall: Amount;
+  /**
+   * Whether the expected shortfall was raised to the value at risk, as the Cornish–Fisher
+   * expansion can need when the excess kurtosis is large.
+   */
+  shortfall_at_var: boolean;
 }
 
 /**

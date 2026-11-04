@@ -45,7 +45,11 @@ pub struct BacktestResults {
 pub struct StrategyResult {
     /// The strategy's name.
     pub name: String,
-    /// The returns of weights tested on the history they were fitted to.
+    /// Whether a method fitted the weights to returns: false for fixed weights and for the
+    /// benchmark, which were not fitted to any history.
+    pub fitted: bool,
+    /// The returns of weights tested on the history they were fitted to; for fixed weights,
+    /// the same periods as a fitted strategy's.
     pub in_sample: Run,
     /// The returns of weights tested on history they had not seen.
     pub out_of_sample: Option<Run>,

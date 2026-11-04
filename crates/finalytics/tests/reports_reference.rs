@@ -113,6 +113,11 @@ fn concentration_and_the_return_distribution() {
     let f = fixture();
     let h = holdings_report(&books, &market, &source, &options()).unwrap();
     let c = &h.concentration;
+    close(
+        c.largest[0].weight,
+        &f["concentration"]["largest"],
+        "largest",
+    );
     close(c.top_five, &f["concentration"]["top_five"], "top five");
     close(
         c.herfindahl.unwrap(),

@@ -1639,17 +1639,17 @@
           "items": {
             "$ref": "#/$defs/Slice"
           },
-          "description": "The largest instrument holdings, largest first, with their share of the portfolio."
+          "description": "The largest instrument holdings, largest first, with their share of the value invested."
         },
         "top_five": {
           "type": "number",
           "format": "double",
-          "description": "The share of the portfolio in its five largest instruments."
+          "description": "The share of the value invested in the five largest instruments."
         },
         "top_ten": {
           "type": "number",
           "format": "double",
-          "description": "The share of the portfolio in its ten largest instruments."
+          "description": "The share of the value invested in the ten largest instruments."
         },
         "herfindahl": {
           "type": [
@@ -1673,7 +1673,7 @@
         "top_five",
         "top_ten"
       ],
-      "description": "How concentrated the portfolio's instruments are."
+      "description": "How concentrated the portfolio's instruments are. Every share is of the value invested in\ninstruments, cash aside, so that the figures agree with each other."
     },
     "Constraints": {
       "type": "object",
@@ -8189,6 +8189,17 @@
           ],
           "format": "double",
           "description": "Its change in value."
+        },
+        "stress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CorrelationStress"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The stress of the covariance behind the risk after, if the scenario has one."
         }
       },
       "required": [
@@ -9075,6 +9086,10 @@
           "type": "string",
           "description": "The strategy's name."
         },
+        "fitted": {
+          "type": "boolean",
+          "description": "Whether a method fitted the weights to returns: false for fixed weights and for the\nbenchmark."
+        },
         "tested": {
           "$ref": "#/$defs/RunReport",
           "description": "The run the strategy is scored on: out of sample for a holdout or walk-forward\nvalidation, in sample otherwise."
@@ -9088,7 +9103,7 @@
               "type": "null"
             }
           ],
-          "description": "For a holdout or walk-forward validation, the run in sample: on the history before the\ntest for a holdout, and with weights fitted to the whole history over the same periods\nas the test for walk-forward."
+          "description": "For a holdout or walk-forward validation, the run in sample: on the history before the\ntest for a holdout, and with weights fitted to the whole history over the same periods\nas the test for walk-forward. Fixed weights have none, as they were not fitted; the\nbenchmark has the same periods as the strategies' run in sample, for reference."
         },
         "weights": {
           "type": "array",
@@ -9114,6 +9129,7 @@
       },
       "required": [
         "name",
+        "fitted",
         "tested",
         "weights",
         "failures",
@@ -9128,9 +9144,13 @@
           "type": "string",
           "description": "The strategy's name."
         },
+        "fitted": {
+          "type": "boolean",
+          "description": "Whether a method fitted the weights to returns: false for fixed weights and for the\nbenchmark, which were not fitted to any history."
+        },
         "in_sample": {
           "$ref": "#/$defs/Run",
-          "description": "The returns of weights tested on the history they were fitted to."
+          "description": "The returns of weights tested on the history they were fitted to; for fixed weights,\nthe same periods as a fitted strategy's."
         },
         "out_of_sample": {
           "anyOf": [
@@ -9160,6 +9180,7 @@
       },
       "required": [
         "name",
+        "fitted",
         "in_sample",
         "failures",
         "notes"
@@ -9207,13 +9228,18 @@
           "type": "number",
           "format": "double",
           "description": "The expected loss when the value at risk is exceeded (also called conditional value at\nrisk)."
+        },
+        "shortfall_at_var": {
+          "type": "boolean",
+          "description": "Whether the expected shortfall was raised to the value at risk. The Cornish–Fisher\nexpansion can put the mean of the tail above its quantile when the excess kurtosis is\nlarge; the expected shortfall is never below the value at risk, so it is set to it."
         }
       },
       "required": [
         "confidence",
         "method",
         "value_at_risk",
-        "expected_shortfall"
+        "expected_shortfall",
+        "shortfall_at_var"
       ],
       "description": "Value at risk and expected shortfall over one period of the returns.\n\nBoth are losses, reported as positive returns: a value at risk of 0.021 at 95% confidence\nmeans that one period in twenty is expected to lose 2.1% or more."
     },
@@ -9236,13 +9262,18 @@
         "expected_shortfall": {
           "$ref": "#/$defs/Amount",
           "description": "The expected shortfall over one valuation period, a loss."
+        },
+        "shortfall_at_var": {
+          "type": "boolean",
+          "description": "Whether the expected shortfall was raised to the value at risk, as the Cornish–Fisher\nexpansion can need when the excess kurtosis is large."
         }
       },
       "required": [
         "confidence",
         "method",
         "value_at_risk",
-        "expected_shortfall"
+        "expected_shortfall",
+        "shortfall_at_var"
       ],
       "description": "Value at risk and expected shortfall by one method at one confidence."
     },

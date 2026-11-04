@@ -334,6 +334,7 @@ impl Simulation<'_, '_> {
         };
         Ok(StrategyResult {
             name: strategy.name.clone(),
+            fitted: matches!(strategy.plan, Plan::Fit(_)),
             in_sample,
             out_of_sample,
             failures,
@@ -371,6 +372,7 @@ impl Simulation<'_, '_> {
                 };
                 Ok(StrategyResult {
                     name,
+                    fitted: false,
                     in_sample,
                     out_of_sample,
                     failures: Vec::new(),

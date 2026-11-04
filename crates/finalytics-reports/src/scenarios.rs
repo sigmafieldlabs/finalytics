@@ -77,6 +77,8 @@ pub struct ScenarioSummary {
     pub worst: Option<HoldingKey>,
     /// Its change in value.
     pub worst_change: Option<f64>,
+    /// The stress of the covariance behind the risk after, if the scenario has one.
+    pub stress: Option<CorrelationStress>,
 }
 
 /// The scenarios report.
@@ -168,13 +170,18 @@ pub fn scenarios_report(
         });
     }
 
-    let ran: Vec<(&str, &ScenarioResult)> = outcomes
+    let ran: Vec<(&str, &ScenarioResult, Option<CorrelationStress>)> = outcomes
         .iter()
-        .filter_map(|o| o.result.as_ref().map(|r| (o.name.as_str(), r)))
+        .zip(&options.scenarios)
+        .filter_map(|(o, named)| {
+            o.result
+                .as_ref()
+                .map(|r| (o.name.as_str(), r, named.stress))
+        })
         .collect();
     let summary = ran
         .iter()
-        .map(|(name, r)| {
+        .map(|(name, r, stress)| {
             let worst = r
                 .holdings
                 .iter()
@@ -188,23 +195,24 @@ pub fn scenarios_report(
                 value_at_risk_after_base: r.risk_after.as_ref().map(|x| x.value_at_risk_base),
                 worst: worst.map(|h| h.holding.clone()),
                 worst_change: worst.map(|h| h.change),
+                stress: *stress,
             }
         })
         .collect();
     let holdings: Vec<HoldingKey> = ran
         .first()
-        .map(|(_, r)| r.holdings.iter().map(|h| h.holding.clone()).collect())
+        .map(|(_, r, _)| r.holdings.iter().map(|h| h.holding.clone()).collect())
         .unwrap_or_default();
     let grid = |name: &str, unit: Unit, pick: fn(&finalytics_risk::HoldingImpact) -> f64| Grid {
         name: name.to_owned(),
         unit,
         rows: holdings.iter().map(label).collect(),
-        columns: ran.iter().map(|(n, _)| (*n).to_owned()).collect(),
+        columns: ran.iter().map(|(n, _, _)| (*n).to_owned()).collect(),
         values: holdings
             .iter()
             .map(|key| {
                 ran.iter()
-                    .map(|(_, r)| r.holdings.iter().find(|h| &h.holding == key).map(pick))
+                    .map(|(_, r, _)| r.holdings.iter().find(|h| &h.holding == key).map(pick))
                     .collect()
             })
             .collect(),

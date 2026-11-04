@@ -6,8 +6,9 @@ use std::fmt;
 use finalytics_backtest::Validation;
 
 use crate::backtest_html::{
-    and_list, capitalise, costs, failure_notes, frequency, grouped_notes, month, rebalancing,
-    shown_assets, span, tested_label, validation,
+    allocation_heading, and_list, capitalise, costs, failure_notes, frequency, grouped_notes,
+    month, rebalancing, shown_assets, span, straddles, table_name, tested_label, validation,
+    weights_heading,
 };
 use crate::backtests::{
     BacktestContext, BacktestReport, ComparisonReport, RunReport, StrategyReport,
@@ -17,19 +18,12 @@ use crate::text::{
     shown_difference, spark, width, wrap,
 };
 
-/// Weights smaller than this are shown as none.
-const TINY: f64 = 5e-4;
-
 fn percent(v: f64) -> String {
     pct(Some(v), 1, false)
 }
 
 fn weight(v: f64) -> String {
-    if v.abs() < TINY {
-        "–".to_owned()
-    } else {
-        pct(Some(v), 0, false)
-    }
+    crate::text::weight_pct(v, 0)
 }
 
 /// The heading of a report: its kind and the periods scored, its title, and how it was run.
@@ -70,8 +64,9 @@ fn notes(page: &mut Page, rows: &[(&str, String)]) {
     }
 }
 
-/// The method notes, as in the HTML page, shortened.
-fn method(page: &mut Page, c: &BacktestContext, optimised: bool) {
+/// The method notes, as in the HTML page, shortened: for methods fitted to returns (`fitted`),
+/// fixed weights (`fixed`), or both.
+fn method(page: &mut Page, c: &BacktestContext, fitted: bool, fixed: bool) {
     let period = period_word(c.periods_per_year);
     let assets = if c.assets.len() <= 8 {
         and_list(&c.assets)
@@ -89,7 +84,11 @@ fn method(page: &mut Page, c: &BacktestContext, optimised: bool) {
             span(c.start, c.end)
         ),
     )];
-    let fitted = match &c.settings.validation {
+    let mut validation = match &c.settings.validation {
+        _ if !fitted => format!(
+            "Fixed weights, not fitted to these returns, scored on {}.",
+            span(c.test_start, c.test_end)
+        ),
         Validation::InSample => {
             "In sample: fitted to the whole history and scored on it.".to_owned()
         }
@@ -109,8 +108,11 @@ fn method(page: &mut Page, c: &BacktestContext, optimised: bool) {
         ),
         _ => "As set.".to_owned(),
     };
-    rows.push(("Validation", fitted));
-    if optimised {
+    if fitted && fixed {
+        validation.push_str(" Fixed weights, not fitted, are scored on the same periods.");
+    }
+    rows.push(("Validation", validation));
+    if fitted {
         rows.push((
             "Limits",
             if c.limits.is_empty() {
@@ -260,7 +262,7 @@ impl ComparisonReport {
             .map(|s| {
                 let r = &s.tested;
                 vec![
-                    s.name.clone(),
+                    table_name(s),
                     percent(r.statistics.annualised_return),
                     percent(r.statistics.volatility),
                     num(r.statistics.sharpe_ratio, 2),
@@ -291,13 +293,19 @@ impl ComparisonReport {
         );
         for line in grouped_notes(&strategies)
             .into_iter()
-            .chain(failure_notes(&strategies))
+            .chain(failure_notes(c, &strategies))
         {
             note.push(' ');
             note.push_str(&line);
         }
         page.note(&note);
-        if !strategies.is_empty() && strategies.iter().all(|s| s.in_sample.is_some()) {
+        // In sample against out of sample, for the methods fitted to returns.
+        if strategies.iter().any(|s| s.fitted)
+            && strategies
+                .iter()
+                .filter(|s| s.fitted)
+                .all(|s| s.in_sample.is_some())
+        {
             page.section("In sample and out of sample");
             let rows: Vec<Vec<String>> = strategies
                 .iter()
@@ -305,7 +313,7 @@ impl ComparisonReport {
                     let i = s.in_sample.as_ref()?;
                     let o = &s.tested;
                     Some(vec![
-                        s.name.clone(),
+                        table_name(s),
                         num(i.statistics.sharpe_ratio, 2),
                         num(o.statistics.sharpe_ratio, 2),
                         match (i.statistics.sharpe_ratio, o.statistics.sharpe_ratio) {
@@ -376,12 +384,17 @@ impl ComparisonReport {
             .iter()
             .filter_map(|s| s.latest().map(|w| (s.name.as_str(), &w.weights)))
             .collect();
-        if let Some(date) = strategies.first().and_then(|s| s.latest()).map(|w| w.date) {
-            page.section(&format!("Weights at the last refit, {}", month(date)));
+        if !latest.is_empty() {
+            page.section(&weights_heading(c, &strategies));
             weights_table(&mut page, c, &latest);
         }
         page.section("How the methods were tested");
-        method(&mut page, c, true);
+        method(
+            &mut page,
+            c,
+            strategies.iter().any(|s| s.fitted),
+            strategies.iter().any(|s| !s.fitted),
+        );
         footer(&mut page, c);
         page.finish()
     }
@@ -419,13 +432,7 @@ impl BacktestReport {
         meta.push(capitalise(&second.join(" · ")));
         header(&mut page, "BACKTEST", Some(title), &meta, c);
         if let Some(w) = s.latest() {
-            let heading = match c.settings.validation {
-                Validation::WalkForward { .. } => {
-                    format!("Allocation at the last refit, {}", month(w.date))
-                }
-                _ => "Allocation".to_owned(),
-            };
-            page.section(&heading);
+            page.section(&allocation_heading(s));
             let mut parts: Vec<(String, f64)> = w
                 .weights
                 .iter()
@@ -477,7 +484,8 @@ impl BacktestReport {
         }
         runs.push(&s.tested);
         if let Some(b) = &self.benchmark {
-            if let Some(i) = &b.in_sample {
+            // The benchmark in sample only beside the strategy's.
+            if let Some(i) = b.in_sample.as_ref().filter(|_| s.in_sample.is_some()) {
                 heads.push(format!("{} in", fit(&b.name, 14)));
                 runs.push(i);
                 heads.push(format!("{} out", fit(&b.name, 14)));
@@ -523,25 +531,32 @@ impl BacktestReport {
         page.table(&head, &rows, None);
         let o = &s.tested;
         page.section(&format!("Trading, {}", tested.to_lowercase()));
-        page.pairs(&[
-            ("Rebalances".to_owned(), o.rebalances.to_string()),
-            (
-                "Turnover a year".to_owned(),
-                pct(Some(o.turnover_per_year), 1, false),
-            ),
-            (
-                "Costs a year".to_owned(),
-                pct(Some(o.costs_per_year), 2, false),
-            ),
-            (
-                "Largest rebalance".to_owned(),
-                pct(Some(o.largest_trade), 1, false),
-            ),
-        ]);
-        page.note(
+        if o.rebalances == 0 {
+            page.note(
+                "Bought at the start and held: no trades after it, so no turnover or trading \
+                 costs.",
+            );
+        } else {
+            page.pairs(&[
+                ("Rebalances".to_owned(), o.rebalances.to_string()),
+                (
+                    "Turnover a year".to_owned(),
+                    pct(Some(o.turnover_per_year), 1, false),
+                ),
+                (
+                    "Costs a year".to_owned(),
+                    pct(Some(o.costs_per_year), 2, false),
+                ),
+                (
+                    "Largest rebalance".to_owned(),
+                    pct(Some(o.largest_trade), 1, false),
+                ),
+            ]);
+            page.note(
             "Turnover is one-way: the share of the portfolio's value bought (or, equally, sold). \
              Trading costs are charged on the value traded both ways.",
         );
+        }
         let (main, base) = match &self.history {
             Some(h) => (&h.strategy, h.benchmark.as_ref()),
             None => (o, self.benchmark.as_ref().map(|b| &b.tested)),
@@ -572,7 +587,9 @@ impl BacktestReport {
                 if !y.complete {
                     label.push('*');
                 }
-                if out && split.is_some_and(|d| y.start >= d) {
+                if split.is_some_and(|d| straddles(y, d)) {
+                    label.push('†');
+                } else if out {
                     label.push_str(" out");
                 }
                 let mut row = vec![label, pct(Some(y.value), 1, true)];
@@ -594,6 +611,13 @@ impl BacktestReport {
         }
         if let Some(d) = split {
             note.push_str(&format!("Out of sample from {}.", month(d)));
+            if let Some(y) = main.years.iter().find(|y| straddles(y, d)) {
+                note.push_str(&format!(
+                    " † {} is in sample to {} and out of sample after.",
+                    y.year,
+                    month(c.fit_end.unwrap_or(y.start))
+                ));
+            }
         }
         if !note.is_empty() {
             page.blank();
@@ -601,14 +625,14 @@ impl BacktestReport {
         }
         let lines: Vec<String> = grouped_notes(&[s])
             .into_iter()
-            .chain(failure_notes(&[s]))
+            .chain(failure_notes(c, &[s]))
             .collect();
         if !lines.is_empty() {
             page.blank();
             page.note(&lines.join(" "));
         }
         page.section("How the allocation was tested");
-        method(&mut page, c, !c.limits.is_empty());
+        method(&mut page, c, s.fitted, !s.fitted);
         footer(&mut page, c);
         page.finish()
     }
