@@ -600,6 +600,11 @@ impl Books {
         self.instruments.get(id)
     }
 
+    /// Every instrument, in the order of their identifiers.
+    pub fn instruments(&self) -> impl Iterator<Item = &Instrument> {
+        self.instruments.values()
+    }
+
     /// The applied transactions, in the order they were applied.
     pub fn events(&self) -> &[Event] {
         &self.events

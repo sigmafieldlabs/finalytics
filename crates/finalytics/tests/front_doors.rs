@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use finalytics::backtest::Years;
 use finalytics::opt::{Bound, RebalanceOptions};
 use finalytics::{
     Assets, Error, HoldingKey, Method, OptimiseOptions, Portfolio, PortfolioCsv, datasets,
@@ -106,7 +107,7 @@ fn every_method_can_be_named() {
     // Limits do not apply to the methods that take none.
     assert_eq!(
         paths(assets.optimise(Method::EqualWeight).max_weight(0.3).build()),
-        ["constraints"]
+        ["options.max_weight"]
     );
     assert_eq!(
         paths(
@@ -153,9 +154,108 @@ fn mistakes_in_the_options_are_located() {
     assert_eq!(
         paths(assets.optimise_with(&options)),
         [
-            "options.expected_returns.Stocks",
-            "options.asset_bounds.Crypto"
+            "options.asset_bounds.Crypto",
+            "options.expected_returns.Stocks"
         ]
+    );
+}
+
+#[test]
+fn every_problem_with_the_options_is_found_before_solving() {
+    let assets = asset_classes();
+    let issues = |optimise: finalytics::Optimise<'_>| match optimise.build() {
+        Err(Error::Validation(report)) => report
+            .issues()
+            .iter()
+            .map(|i| (i.path.clone(), i.message.clone()))
+            .collect::<Vec<_>>(),
+        other => panic!("expected a validation error, got {other:?}"),
+    };
+    // Six assets at most 10% each cannot be fully invested.
+    let found = issues(assets.optimise(Method::MinimumVariance).max_weight(0.1));
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].0, "options.max_weight");
+    assert!(found[0].1.contains("at least 0.1667"), "{}", found[0].1);
+    for max in [1.5, 0.0, f64::NAN] {
+        assert_eq!(
+            paths(
+                assets
+                    .optimise(Method::MinimumVariance)
+                    .max_weight(max)
+                    .build()
+            ),
+            ["options.max_weight"],
+            "{max}"
+        );
+    }
+    assert_eq!(
+        paths(
+            assets
+                .optimise(Method::MinimumVariance)
+                .bounds(-0.2, 0.5)
+                .build()
+        ),
+        ["options.bounds"]
+    );
+    // Every problem at once, at the options' names.
+    assert_eq!(
+        paths(
+            assets
+                .optimise(Method::MinimumCvar)
+                .confidence(1.5)
+                .group("Equity", &["US Equity", "Gold"], 0.6, 0.4)
+                .target(0.1)
+                .build()
+        ),
+        [
+            "options.groups.Equity",
+            "options.target",
+            "options.confidence"
+        ]
+    );
+    // A parameter the method does not use, when one method is asked for.
+    let found = issues(assets.optimise(Method::MaximumSharpe).confidence(0.9));
+    assert_eq!(
+        found,
+        [(
+            "options.confidence".to_owned(),
+            "maximum Sharpe does not use confidence".to_owned()
+        )]
+    );
+    assert_eq!(
+        paths(assets.backtest(Method::EqualWeight).max_weight(0.3).build()),
+        ["options.max_weight"]
+    );
+    // With the backtest's own settings.
+    assert_eq!(
+        paths(
+            assets
+                .compare([Method::MinimumVariance])
+                .max_weight(0.1)
+                .walk_forward(Years(50))
+                .build()
+        ),
+        ["options.max_weight", "validation.years"]
+    );
+    // A comparison applies each to the methods that take it, and notes the rest.
+    let compared = assets
+        .compare([Method::EqualWeight, Method::MinimumCvar])
+        .max_weight(0.3)
+        .confidence(0.9)
+        .build()
+        .unwrap();
+    assert!(!compared.report.strategies[0].notes.is_empty());
+    // Settings of the assets too.
+    let prices = datasets::asset_class_prices();
+    assert_eq!(
+        paths(
+            Assets::builder()
+                .prices(prices.clone())
+                .periods_per_year(0.0)
+                .risk_free_rate(f64::NAN)
+                .build()
+        ),
+        ["risk_free_rate", "periods_per_year"]
     );
 }
 
@@ -255,6 +355,15 @@ fn a_portfolio_hands_its_holdings_to_the_optimiser() {
         .build()
         .unwrap();
     assert_eq!(ira.results.accounts.len(), 1);
+    assert_eq!(
+        paths(
+            portfolio
+                .rebalance(&result)
+                .accounts(["ira", "isa"])
+                .build()
+        ),
+        ["accounts.isa"]
+    );
     let unknown = paths(portfolio.rebalance([("VTI", 0.5), ("XYZ", 0.5)]).build());
     assert!(
         unknown.iter().all(|p| p.starts_with("targets")),

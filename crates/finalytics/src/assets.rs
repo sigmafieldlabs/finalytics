@@ -187,6 +187,16 @@ impl Method {
         }
     }
 
+    /// The method's name within a sentence: "maximum Sharpe", "minimum CVaR".
+    pub(crate) fn in_sentence(self) -> String {
+        let label = self.label();
+        let mut chars = label.chars();
+        match chars.next() {
+            Some(first) => first.to_lowercase().chain(chars).collect(),
+            None => String::new(),
+        }
+    }
+
     /// Whether the method takes limits on the weights. Equal weight, inverse volatility, risk
     /// parity, risk budgeting and hierarchical risk parity give a fully invested, long-only
     /// portfolio and take none.
@@ -622,6 +632,7 @@ impl Assets {
     /// and the method and limits of `options`. The result holds the optimisation report and
     /// the raw results. [`Assets::optimise`] builds the same options step by step.
     pub fn optimise_with(&self, options: &OptimiseOptions) -> Result<Optimisation> {
+        self.check_options(options, true).into_result(())?;
         let results = self.solve(options)?;
         let report = self.optimisation_report(options, &results)?;
         Ok(Optimisation { report, results })
@@ -716,7 +727,9 @@ impl Assets {
         let rf = options.risk_free_rate.unwrap_or(self.risk_free_rate);
         let (problem, labels) = self.problem(options)?;
         let objective = objective(options, rf, &labels)?;
-        let solution = problem.solve(&objective)?;
+        let solution = problem
+            .solve(&objective)
+            .map_err(|e| user_paths(e, options))?;
         let weights = solution.weights.as_ref().map(|w| {
             labels
                 .iter()
@@ -746,26 +759,249 @@ impl Assets {
         self.problem(options)?.0.frontier(points)
     }
 
-    /// The problem `options` describe, over the risky assets, with their labels.
-    fn problem(&self, options: &OptimiseOptions) -> Result<(Problem, Vec<String>)> {
-        let returns = self.risky_returns()?;
-        let labels = returns.labels().to_vec();
+    /// Every problem with `options` on these assets, at the paths of the options
+    /// (`options.<name>`), gathered together: unknown assets, numbers out of range, limits no
+    /// fully invested portfolio can meet, and the parameters the method needs. With `single`,
+    /// when one method is asked for, a parameter the method does not use is a problem too; a
+    /// comparison applies each to the methods that take it.
+    pub(crate) fn check_options(
+        &self,
+        options: &OptimiseOptions,
+        single: bool,
+    ) -> ValidationReport {
         let mut report = ValidationReport::new();
+        let risky = self.risky_assets();
+        let n = risky.len();
+        let method = options.method;
+        let name = method.in_sentence();
         let unknown = |asset: &str| match self.risk_free_asset() {
             Some(rf) if rf == asset => {
                 format!("{asset} is the risk-free asset, which optimisation leaves out")
             }
             _ => format!("unknown asset {asset}"),
         };
+        let known = |asset: &str| risky.contains(&asset);
+        let finite = |report: &mut ValidationReport, value: Option<f64>, path: &str| match value {
+            Some(v) if !v.is_finite() => {
+                report.error(path, format!("must be a finite number, not {v}"));
+                false
+            }
+            _ => true,
+        };
+        // A weight's limits: from 0 to 1, the smaller first.
+        let share = |report: &mut ValidationReport, min: f64, max: f64, path: &str| {
+            if !(min.is_finite() && max.is_finite()) {
+                report.error(path, "the limits must be finite numbers");
+            } else if min > max {
+                report.error(
+                    path,
+                    format!("the smallest weight {min} is above the largest {max}"),
+                );
+            } else if min < 0.0 || max > 1.0 {
+                report.error(
+                    path,
+                    "weights are shares of a long-only portfolio, from 0 to 1; for short \
+                     positions or leverage, use finalytics.opt.Problem",
+                );
+            }
+        };
+
+        // Limits on weights.
+        if options.bounds.is_some() && options.max_weight.is_some() {
+            report.error("options.max_weight", "give bounds or max_weight, not both");
+        }
+        let (default, limit_path) = match (options.max_weight, options.bounds) {
+            (Some(max), _) => {
+                if !(max.is_finite() && max > 0.0 && max <= 1.0) {
+                    report.error(
+                        "options.max_weight",
+                        format!("must be a share above 0 and at most 1, such as 0.4, not {max}"),
+                    );
+                }
+                (Bound { min: 0.0, max }, "options.max_weight")
+            }
+            (None, Some(b)) => {
+                share(&mut report, b.min, b.max, "options.bounds");
+                (b, "options.bounds")
+            }
+            (None, None) => (Bound { min: 0.0, max: 1.0 }, "options.bounds"),
+        };
+        let mut lowest = 0.0;
+        let mut highest = 0.0;
+        for asset in &risky {
+            let b = options.asset_bounds.get(*asset).copied().unwrap_or(default);
+            lowest += b.min;
+            highest += b.max;
+        }
+        for (asset, b) in &options.asset_bounds {
+            let path = format!("options.asset_bounds.{asset}");
+            if known(asset) {
+                share(&mut report, b.min, b.max, &path);
+            } else {
+                report.error(path, unknown(asset));
+            }
+        }
+        if report.is_empty() && method.takes_limits() && n > 0 {
+            let path = if options.asset_bounds.is_empty() {
+                limit_path
+            } else {
+                "options.asset_bounds"
+            };
+            if highest < 1.0 - 1e-9 {
+                report.error(
+                    path,
+                    format!(
+                        "the {n} assets can hold at most {:.4} of the portfolio together, so it \
+                         cannot be fully invested; with {n} assets the largest weight must be at \
+                         least {:.4}",
+                        highest,
+                        1.0 / n as f64
+                    ),
+                );
+            } else if lowest > 1.0 + 1e-9 {
+                report.error(
+                    path,
+                    format!(
+                        "the {n} assets must hold at least {lowest:.4} of the portfolio together, \
+                         more than all of it"
+                    ),
+                );
+            }
+        }
+        for (group, g) in &options.groups {
+            let path = format!("options.groups.{group}");
+            share(&mut report, g.min, g.max, &path);
+            for asset in &g.assets {
+                if !known(asset) {
+                    report.error(&path, unknown(asset));
+                }
+            }
+        }
+        if single && !method.takes_limits() {
+            let limited = [
+                (options.max_weight.is_some(), "options.max_weight"),
+                (options.bounds.is_some(), "options.bounds"),
+                (!options.asset_bounds.is_empty(), "options.asset_bounds"),
+                (!options.groups.is_empty(), "options.groups"),
+            ];
+            for (_, path) in limited.iter().filter(|(given, _)| *given) {
+                report.error(
+                    *path,
+                    format!(
+                        "{name} is fully invested and long only, and takes no limits on weights"
+                    ),
+                );
+            }
+        }
+
+        // Numbers.
+        finite(
+            &mut report,
+            options.risk_free_rate,
+            "options.risk_free_rate",
+        );
+        for (asset, r) in &options.expected_returns {
+            let path = format!("options.expected_returns.{asset}");
+            if !known(asset) {
+                report.error(path, unknown(asset));
+            } else {
+                finite(&mut report, Some(*r), &path);
+            }
+        }
+
+        // The method's own parameters: those it needs, and, for one method, those it does not
+        // use.
+        let uses = |parameter: &str| match parameter {
+            "target" => matches!(method, Method::TargetReturn | Method::TargetVolatility),
+            "risk_aversion" => matches!(method, Method::MeanVariance | Method::RobustMeanVariance),
+            "uncertainty" => method == Method::RobustMeanVariance,
+            "confidence" => method == Method::MinimumCvar,
+            "budgets" => method == Method::RiskBudgeting,
+            "linkage" => method == Method::HierarchicalRiskParity,
+            _ => true,
+        };
+        let given = [
+            ("target", options.target.is_some()),
+            ("risk_aversion", options.risk_aversion.is_some()),
+            ("uncertainty", options.uncertainty.is_some()),
+            ("confidence", options.confidence.is_some()),
+            ("budgets", options.budgets.is_some()),
+            ("linkage", options.linkage.is_some()),
+        ];
+        for (parameter, is_given) in given {
+            let path = format!("options.{parameter}");
+            if is_given && !uses(parameter) {
+                if method == Method::RiskParity && parameter == "budgets" {
+                    report.error(
+                        path,
+                        "risk parity gives every asset the same budget; use risk budgeting for others",
+                    );
+                } else if single {
+                    report.error(path, format!("{name} does not use {parameter}"));
+                }
+            } else if !is_given
+                && uses(parameter)
+                && matches!(parameter, "target" | "risk_aversion" | "uncertainty")
+            {
+                report.error(path, format!("{name} needs {parameter}"));
+            }
+        }
+        if let Some(target) = options.target {
+            finite(&mut report, Some(target), "options.target");
+            if method == Method::TargetVolatility && target <= 0.0 {
+                report.error(
+                    "options.target",
+                    "a volatility to aim for must be above zero",
+                );
+            }
+        }
+        if let Some(a) = options.risk_aversion
+            && finite(&mut report, Some(a), "options.risk_aversion")
+            && a < 0.0
+        {
+            report.error(
+                "options.risk_aversion",
+                format!("must not be negative, not {a}"),
+            );
+        }
+        if let Some(c) = options.confidence
+            && !(c > 0.0 && c < 1.0)
+        {
+            report.error(
+                "options.confidence",
+                format!("must be between 0 and 1, such as 0.95, not {c}"),
+            );
+        }
+        if let Some(budgets) = options.budgets.as_ref().filter(|_| uses("budgets")) {
+            for (asset, b) in budgets {
+                let path = format!("options.budgets.{asset}");
+                if !known(asset) {
+                    report.error(path, unknown(asset));
+                } else if !(b.is_finite() && *b >= 0.0) {
+                    report.error(path, format!("must be a budget of zero or more, not {b}"));
+                }
+            }
+            for asset in risky.iter().filter(|a| !budgets.contains_key(**a)) {
+                report.error("options.budgets", format!("no budget for {asset}"));
+            }
+        }
+        report
+    }
+
+    /// The problem `options` describe, over the risky assets, with their labels. The options
+    /// are checked first, by [`Assets::check_options`].
+    fn problem(&self, options: &OptimiseOptions) -> Result<(Problem, Vec<String>)> {
+        self.check_options(options, false).into_result(())?;
+        let returns = self.risky_returns()?;
+        let labels = returns.labels().to_vec();
         let mut expected: Vec<f64> = returns
             .columns()
             .iter()
             .map(|c| c.iter().sum::<f64>() / c.len() as f64 * self.periods_per_year)
             .collect();
         for (asset, r) in &options.expected_returns {
-            match labels.iter().position(|l| l == asset) {
-                Some(i) => expected[i] = *r,
-                None => report.error(format!("options.expected_returns.{asset}"), unknown(asset)),
+            if let Some(i) = labels.iter().position(|l| l == asset) {
+                expected[i] = *r;
             }
         }
         let mut constraints = Constraints::default();
@@ -773,15 +1009,9 @@ impl Assets {
             constraints.bounds = bounds;
         }
         if let Some(max) = options.max_weight {
-            if options.bounds.is_some() {
-                report.error("options.max_weight", "give bounds or max_weight, not both");
-            }
             constraints.bounds = Bound { min: 0.0, max };
         }
         for (asset, bound) in &options.asset_bounds {
-            if !labels.contains(asset) {
-                report.error(format!("options.asset_bounds.{asset}"), unknown(asset));
-            }
             constraints.asset_bounds.push(AssetBound {
                 asset: asset.clone(),
                 min: bound.min,
@@ -789,11 +1019,6 @@ impl Assets {
             });
         }
         for (name, group) in &options.groups {
-            for asset in &group.assets {
-                if !labels.contains(asset) {
-                    report.error(format!("options.groups.{name}"), unknown(asset));
-                }
-            }
             constraints.groups.push(GroupLimit {
                 name: name.clone(),
                 assets: group.assets.clone(),
@@ -801,22 +1026,6 @@ impl Assets {
                 max: group.max,
             });
         }
-        if options.method == Method::RiskParity && options.budgets.is_some() {
-            report.error(
-                "options.budgets",
-                "risk parity gives every asset the same budget; use risk budgeting for others",
-            );
-        } else if let Some(budgets) = &options.budgets {
-            for asset in budgets.keys() {
-                if !labels.contains(asset) {
-                    report.error(format!("options.budgets.{asset}"), unknown(asset));
-                }
-            }
-            for asset in labels.iter().filter(|l| !budgets.contains_key(*l)) {
-                report.error("options.budgets", format!("no budget for {asset}"));
-            }
-        }
-        report.into_result(())?;
         let matrix = covariance(&returns, self.covariance_method)?
             .matrix
             .scaled(self.periods_per_year);
@@ -830,6 +1039,52 @@ impl Assets {
     }
 }
 
+/// `error` with the optimiser's paths (`constraints.bounds`, `objective.confidence`) turned into
+/// those of the options that set them (`options.max_weight`, `options.confidence`).
+fn user_paths(error: Error, options: &OptimiseOptions) -> Error {
+    let Error::Validation(report) = error else {
+        return error;
+    };
+    let nth = |keys: Vec<&String>, rest: &str| -> Option<String> {
+        let (k, _) = rest.strip_prefix('[')?.split_once(']')?;
+        keys.get(k.parse::<usize>().ok()?).map(|key| (*key).clone())
+    };
+    let mut mapped = ValidationReport::new();
+    for issue in report.issues() {
+        let path = &issue.path;
+        let user = if path == "constraints.bounds" {
+            if options.max_weight.is_some() {
+                "options.max_weight".to_owned()
+            } else {
+                "options.bounds".to_owned()
+            }
+        } else if let Some(rest) = path.strip_prefix("constraints.asset_bounds") {
+            nth(options.asset_bounds.keys().collect(), rest).map_or_else(
+                || "options.asset_bounds".to_owned(),
+                |a| format!("options.asset_bounds.{a}"),
+            )
+        } else if let Some(rest) = path.strip_prefix("constraints.groups") {
+            nth(options.groups.keys().collect(), rest).map_or_else(
+                || "options.groups".to_owned(),
+                |g| format!("options.groups.{g}"),
+            )
+        } else if let Some(rest) = path.strip_prefix("objective.") {
+            format!("options.{rest}")
+        } else if path == "constraints" || path == "objective" {
+            "options".to_owned()
+        } else {
+            path.clone()
+        };
+        let mut one = ValidationReport::new();
+        match issue.severity {
+            finalytics_core::Severity::Error => one.error(user, issue.message.clone()),
+            _ => one.warning(user, issue.message.clone()),
+        }
+        mapped.merge("", one);
+    }
+    Error::Validation(mapped)
+}
+
 /// The objective `options` name, with its parameters.
 fn objective(
     options: &OptimiseOptions,
@@ -841,7 +1096,7 @@ fn objective(
         value.unwrap_or_else(|| {
             report.error(
                 format!("options.{name}"),
-                format!("{} needs {name}", options.method.label().to_lowercase()),
+                format!("{} needs {name}", options.method.in_sentence()),
             );
             0.0
         })
@@ -1124,14 +1379,15 @@ impl AssetsBuilder {
         if given != 1 && report.is_empty() {
             report.error("prices", "give the assets' prices, or their returns, once");
         }
-        if self.risk_free_asset.is_some() && self.risk_free_rate.is_some() {
-            report.error(
-                "risk_free_rate",
-                "give a risk-free asset or a risk-free rate, not both",
-            );
-        }
+        let settings = AssetSettings {
+            risk_free_rate: self.risk_free_rate,
+            risk_free_asset: self.risk_free_asset,
+            periods_per_year: self.periods_per_year,
+            covariance: self.covariance,
+        };
+        settings.check(&mut report);
         report.into_result(())?;
-        let mut assets = if let Some(prices) = &self.prices {
+        let assets = if let Some(prices) = &self.prices {
             Assets::from_prices(prices)?
         } else if let Some(text) = self.csv.as_deref().or(file.as_deref()) {
             Assets::from_csv(text)?
@@ -1140,6 +1396,62 @@ impl AssetsBuilder {
         } else {
             unreachable!("one source of prices or returns was checked above")
         };
+        settings.apply(assets)
+    }
+}
+
+/// The settings of [`Assets`] as JSON gives them, with the names of the builder's methods: the
+/// Python and JavaScript packages use it; from Rust, use the builder.
+#[doc(hidden)]
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct AssetSettings {
+    pub risk_free_rate: Option<f64>,
+    pub risk_free_asset: Option<String>,
+    pub periods_per_year: Option<f64>,
+    pub covariance: Option<CovarianceMethod>,
+}
+
+impl AssetSettings {
+    /// Adds each problem with the settings to `report`.
+    pub fn check(&self, report: &mut ValidationReport) {
+        if self.risk_free_asset.is_some() && self.risk_free_rate.is_some() {
+            report.error(
+                "risk_free_rate",
+                "give a risk-free asset or a risk-free rate, not both",
+            );
+        }
+        if let Some(rate) = self.risk_free_rate
+            && !(rate.is_finite() && rate > -1.0)
+        {
+            report.error(
+                "risk_free_rate",
+                format!("must be an annual rate above -1, such as 0.04, not {rate}"),
+            );
+        }
+        if let Some(periods) = self.periods_per_year
+            && !(periods.is_finite() && periods > 0.0)
+        {
+            report.error(
+                "periods_per_year",
+                format!("must be greater than zero, such as 12 for monthly returns, not {periods}"),
+            );
+        }
+        if let Some(CovarianceMethod::Ewma { decay }) = self.covariance
+            && !(decay > 0.0 && decay < 1.0)
+        {
+            report.error(
+                "covariance.decay",
+                format!("must be between 0 and 1, such as 0.94, not {decay}"),
+            );
+        }
+    }
+
+    /// `assets` with these settings, every problem with them reported together.
+    pub fn apply(&self, mut assets: Assets) -> Result<Assets> {
+        let mut report = ValidationReport::new();
+        self.check(&mut report);
+        report.into_result(())?;
         if let Some(periods) = self.periods_per_year {
             assets = assets.with_periods_per_year(periods);
         }

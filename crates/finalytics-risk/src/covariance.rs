@@ -8,7 +8,11 @@ use crate::input::invalid;
 use crate::matrix::{Matrix, ReturnsTable};
 
 /// How a covariance matrix is estimated from returns.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+///
+/// In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the
+/// type's name alone, such as `"ledoit_wolf"`; an exponentially weighted covariance without a
+/// decay has 0.94.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
@@ -19,7 +23,8 @@ pub enum CovarianceMethod {
     /// weight proportional to `decay^k`, the weights sum to one, and deviations are taken from
     /// the weighted mean. A decay of 0.94 for daily returns follows RiskMetrics.
     Ewma {
-        /// The decay factor, between 0 and 1.
+        /// The decay factor, between 0 and 1: 0.94 by default.
+        #[serde(default = "default_decay")]
         decay: f64,
     },
     /// The empirical covariance (divisor n) shrunk towards a multiple of the identity with the
@@ -28,6 +33,77 @@ pub enum CovarianceMethod {
     /// The empirical covariance (divisor n) shrunk towards a multiple of the identity with the
     /// oracle approximating shrinkage intensity of Chen, Wiesel, Eldar and Hero (2010).
     Oas,
+}
+
+/// The RiskMetrics decay.
+fn default_decay() -> f64 {
+    0.94
+}
+
+/// The tagged form of [`CovarianceMethod`], as JSON gives it.
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+enum Tagged {
+    Sample,
+    Ewma {
+        #[serde(default = "default_decay")]
+        decay: f64,
+    },
+    LedoitWolf,
+    Oas,
+}
+
+impl From<Tagged> for CovarianceMethod {
+    fn from(tagged: Tagged) -> Self {
+        match tagged {
+            Tagged::Sample => CovarianceMethod::Sample,
+            Tagged::Ewma { decay } => CovarianceMethod::Ewma { decay },
+            Tagged::LedoitWolf => CovarianceMethod::LedoitWolf,
+            Tagged::Oas => CovarianceMethod::Oas,
+        }
+    }
+}
+
+/// Reads a covariance method by name or as a tagged object.
+struct MethodVisitor;
+
+impl<'de> serde::de::Visitor<'de> for MethodVisitor {
+    type Value = CovarianceMethod;
+
+    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            "a covariance method: sample, ewma, ledoit_wolf or oas, or an object with a type",
+        )
+    }
+
+    fn visit_str<E: serde::de::Error>(self, name: &str) -> std::result::Result<Self::Value, E> {
+        match name {
+            "sample" => Ok(CovarianceMethod::Sample),
+            "ewma" => Ok(CovarianceMethod::Ewma {
+                decay: default_decay(),
+            }),
+            "ledoit_wolf" => Ok(CovarianceMethod::LedoitWolf),
+            "oas" => Ok(CovarianceMethod::Oas),
+            _ => Err(E::custom(format!(
+                "unknown covariance method {name:?}: use sample, ewma, ledoit_wolf or oas"
+            ))),
+        }
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(
+        self,
+        map: A,
+    ) -> std::result::Result<Self::Value, A::Error> {
+        Tagged::deserialize(serde::de::value::MapAccessDeserializer::new(map)).map(Into::into)
+    }
+}
+
+impl<'de> Deserialize<'de> for CovarianceMethod {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        deserializer.deserialize_any(MethodVisitor)
+    }
 }
 
 /// An estimated covariance matrix, per period of the returns.
@@ -208,6 +284,42 @@ mod tests {
             vec![vec![0.01, -0.02, 0.03, 0.0], vec![0.02, 0.01, -0.01, 0.0]],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn methods_read_by_name_or_as_objects() {
+        let read = |text: &str| serde_json::from_str::<CovarianceMethod>(text);
+        assert_eq!(
+            read(r#""ledoit_wolf""#).unwrap(),
+            CovarianceMethod::LedoitWolf
+        );
+        assert_eq!(
+            read(r#""ewma""#).unwrap(),
+            CovarianceMethod::Ewma { decay: 0.94 }
+        );
+        assert_eq!(
+            read(r#"{"type": "ewma"}"#).unwrap(),
+            CovarianceMethod::Ewma { decay: 0.94 }
+        );
+        assert_eq!(
+            read(r#"{"type": "ewma", "decay": 0.97}"#).unwrap(),
+            CovarianceMethod::Ewma { decay: 0.97 }
+        );
+        assert_eq!(read(r#"{"type": "oas"}"#).unwrap(), CovarianceMethod::Oas);
+        let unknown = read(r#""ledoitwolf""#).unwrap_err().to_string();
+        assert!(
+            unknown.contains("use sample, ewma, ledoit_wolf or oas"),
+            "{unknown}"
+        );
+        assert!(read(r#"{"type": "ewma", "decy": 0.9}"#).is_err());
+        assert!(read(r#"{"type": "shrunk"}"#).is_err());
+        // Written as objects, as before.
+        let ewma = CovarianceMethod::Ewma { decay: 0.97 };
+        assert_eq!(
+            serde_json::to_string(&ewma).unwrap(),
+            r#"{"type":"ewma","decay":0.97}"#
+        );
+        assert_eq!(read(&serde_json::to_string(&ewma).unwrap()).unwrap(), ewma);
     }
 
     #[test]

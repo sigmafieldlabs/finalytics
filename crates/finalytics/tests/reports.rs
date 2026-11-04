@@ -70,6 +70,29 @@ fn every_table_is_rectangular(tables: &[ReportTable]) {
 }
 
 #[test]
+fn an_unknown_grouping_is_reported() {
+    let (portfolio, books, market) = setup();
+    let source = Source::of(&portfolio, &market);
+    let mut options = options();
+    options.group_by = vec!["asset_class".into(), "sector".into()];
+    let Err(finalytics::Error::Validation(report)) =
+        holdings_report(&books, &market, &source, &options)
+    else {
+        panic!("expected a validation error");
+    };
+    let issues = report.issues();
+    assert_eq!(issues.len(), 1);
+    assert_eq!(issues[0].path, "options.group_by[1]");
+    assert!(
+        issues[0]
+            .message
+            .contains("the schemes are asset_class, region"),
+        "{}",
+        issues[0].message
+    );
+}
+
+#[test]
 fn provenance_identifies_the_inputs() {
     let (portfolio, _, market) = setup();
     let source = Source::of(&portfolio, &market);

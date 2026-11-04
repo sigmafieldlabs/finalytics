@@ -15,7 +15,7 @@ import numpy as np
 from finalytics import _arrays, _finalytics, _types
 from finalytics._arrays import DateArray
 from finalytics._convert import dumps, loads
-from finalytics._errors import call
+from finalytics._errors import call, invalid
 
 __all__ = ["Assets"]
 
@@ -81,7 +81,9 @@ class Assets:
       instead: its mean return is the risk-free rate, and optimisation leaves it out.
     - `periods_per_year`: 252 for daily returns, 52 for weekly, 12 for monthly; detected from
       the dates by default.
-    - `covariance`: ``"ledoit_wolf"`` (the default), ``"sample"``, ``"oas"`` or ``"ewma"``.
+    - `covariance`: ``"ledoit_wolf"`` (the default), ``"sample"``, ``"oas"`` or ``"ewma"``
+      (with a decay of 0.94), or a :class:`~finalytics.types.CovarianceMethod` such as
+      ``Ewma(decay=0.97)``.
 
     ::
 
@@ -96,7 +98,7 @@ class Assets:
         self,
         prices: Any,
         *,
-        risk_free_rate: float = 0.0,
+        risk_free_rate: float | None = None,
         risk_free_asset: str | None = None,
         periods_per_year: float | None = None,
         covariance: str | _types.CovarianceMethod = "ledoit_wolf",
@@ -112,19 +114,18 @@ class Assets:
     @staticmethod
     def _configure(
         native: Any,
-        risk_free_rate: float,
+        risk_free_rate: float | None,
         risk_free_asset: str | None,
         periods_per_year: float | None,
         covariance: str | _types.CovarianceMethod,
     ) -> Any:
-        if periods_per_year is not None:
-            native = native.with_periods_per_year(float(periods_per_year))
-        native = call(native.with_covariance, _covariance(covariance))
-        if risk_free_asset is not None:
-            if risk_free_rate:
-                raise ValueError("give a risk_free_rate or a risk_free_asset, not both")
-            return call(native.with_risk_free_asset, risk_free_asset)
-        return native.with_risk_free_rate(float(risk_free_rate))
+        settings = {
+            "risk_free_rate": None if risk_free_rate is None else float(risk_free_rate),
+            "risk_free_asset": risk_free_asset,
+            "periods_per_year": None if periods_per_year is None else float(periods_per_year),
+            "covariance": json.loads(_covariance(covariance)),
+        }
+        return call(native.with_settings, dumps(settings))
 
     @classmethod
     def _wrap(cls, native: Any) -> Assets:
@@ -139,7 +140,7 @@ class Assets:
         *,
         dates: Any = None,
         labels: Sequence[str] | None = None,
-        risk_free_rate: float = 0.0,
+        risk_free_rate: float | None = None,
         risk_free_asset: str | None = None,
         periods_per_year: float | None = None,
         covariance: str | _types.CovarianceMethod = "ledoit_wolf",
@@ -152,9 +153,9 @@ class Assets:
             dates = returns.index if dates is None else dates
         array = np.asarray(returns, dtype=np.float64)
         if array.ndim != 2:
-            raise ValueError("returns must be two-dimensional: one row per period, one column per asset")
+            raise invalid(("returns", "must be two-dimensional: one row per period, one column per asset"))
         if dates is None or labels is None:
-            raise ValueError("give the dates and labels of the returns, or a DataFrame")
+            raise invalid(("dates", "give the dates and labels of the returns, or a DataFrame"))
         native = call(
             _finalytics.NativeAssets.from_returns,
             _arrays.dates_to_buffer(dates),
@@ -238,6 +239,20 @@ class Assets:
         groups: Mapping[str, GroupLike] | None = None,
         expected_returns: Mapping[str, float] | None = None,
     ) -> _types.OptimiseOptions:
+        # Numbers JSON cannot hold, named by keyword: a comparison or backtest repeats the
+        # options in each strategy.
+        numbers = {
+            "risk_free_rate": risk_free_rate,
+            "target": target,
+            "risk_aversion": risk_aversion,
+            "confidence": confidence,
+            "max_weight": max_weight,
+        }
+        numbers.update({f"budgets.{k}": v for k, v in (budgets or {}).items()})
+        numbers.update({f"expected_returns.{k}": v for k, v in (expected_returns or {}).items()})
+        bad = [(k, float(v)) for k, v in numbers.items() if v is not None and not math.isfinite(float(v))]
+        if bad:
+            raise invalid(*((f"options.{k}", f"must be a finite number, not {v}") for k, v in bad))
         return _types.OptimiseOptions(
             method=method,
             risk_free_rate=risk_free_rate,
@@ -318,7 +333,7 @@ class Assets:
             expected_returns=expected_returns,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
-        result = loads(_types.Optimisation, call(self._native.optimise, dumps(options)))
+        result = loads(_types.Optimisation, call(self._native.optimise, dumps(options, "options")))
         results = result.results
         if results.weights is not None:
             # In the order of the assets, rather than of their names.
@@ -350,7 +365,7 @@ class Assets:
             groups=groups,
             expected_returns=expected_returns,
         )
-        return loads(list[_types.FrontierPoint], call(self._native.frontier, int(points), dumps(options)))
+        return loads(list[_types.FrontierPoint], call(self._native.frontier, int(points), dumps(options, "options")))
 
     def compare(
         self,
@@ -406,11 +421,13 @@ class Assets:
             linkage=linkage,
             expected_returns=expected_returns,
         )
+        if isinstance(methods, str):
+            raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
         strategies: list[Any] = [
             _types.OptimisedStrategy(options=self._options(method, **limits)) for method in methods
         ]
         options = _backtest_options(strategies, validation, rebalance, trading_cost_bps, benchmark)
-        result = loads(_types.Comparison, call(self._native.compare, dumps(options)))
+        result = loads(_types.Comparison, call(self._native.compare, dumps(options, "options")))
         if name is not None:
             result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
         return result
@@ -443,8 +460,10 @@ class Assets:
         report in ``result.report``, and every return and trade in ``result.results``. `name`
         names the strategy and titles the report. The other keywords are as for
         :meth:`compare`; fixed weights take no limits or parameters."""
-        if (method is None) == (weights is None):
-            raise ValueError("give a method or weights, not both")
+        if method is None and weights is None:
+            raise invalid(("method", "give a method, or fixed weights"))
+        if method is not None and weights is not None:
+            raise invalid(("weights", "give a method or fixed weights, not both"))
         limits = dict(
             max_weight=max_weight,
             bounds=bounds,
@@ -462,13 +481,13 @@ class Assets:
         if weights is not None:
             given = [key for key, value in limits.items() if value is not None]
             if given:
-                raise ValueError(f"fixed weights take no limits or parameters: {', '.join(given)}")
+                raise invalid(*((f"options.{key}", "fixed weights take no limits or parameters") for key in given))
             strategy = _types.FixedWeights(name=name, weights={k: float(v) for k, v in weights.items()})
         else:
             assert method is not None
             strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
         options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark)
-        return loads(_types.Backtest, call(self._native.backtest, dumps(options)))
+        return loads(_types.Backtest, call(self._native.backtest, dumps(options, "options")))
 
     def __repr__(self) -> str:
         return f"Assets({len(self.labels)} assets, {len(self.dates)} periods, {self.periods_per_year:g} a year)"
@@ -512,5 +531,5 @@ def _named(option: str, name: str, choices: Mapping[str, Any]) -> Any:
     """The choice called `name` for `option`."""
     if name not in choices:
         known = ", ".join(repr(choice) for choice in choices)
-        raise ValueError(f"{option}: {name!r} is not one of {known}")
+        raise invalid((option, f"{name!r} is not one of {known}"))
     return choices[name]

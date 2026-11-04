@@ -29,6 +29,14 @@ class ValidationError(FinalyticsError, ValueError):
         """Every problem found."""
 
 
+def invalid(*problems: tuple[str, str]) -> ValidationError:
+    """A :class:`ValidationError` for problems found before calling the engine, each a path
+    (the keyword, such as ``returns``) and a message, worded as the engine words its own."""
+    issues = [Issue(path=path, message=message, severity="error") for path, message in problems]
+    lines = "".join(f"\n  error: {i.path}: {i.message}" for i in issues)
+    return ValidationError(f"validation found {len(issues)} error(s){lines}", issues)
+
+
 def call(function: Callable[..., T], *args) -> T:
     """Calls into the engine, raising this package's errors."""
     try:

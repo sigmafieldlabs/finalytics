@@ -130,7 +130,7 @@ export interface AssetsOptions {
   risk_free_asset?: string;
   /** 252 for daily returns, 52 for weekly, 12 for monthly; detected from the dates by default. */
   periods_per_year?: number;
-  /** `"ledoit_wolf"` (the default), `"sample"`, `"oas"` or `"ewma"`, or a `CovarianceMethod`. */
+  /** `"ledoit_wolf"` (the default), `"sample"`, `"oas"` or `"ewma"` (decay 0.94), or a `CovarianceMethod`. */
   covariance?: CovarianceMethod["type"] | CovarianceMethod;
 }
 
@@ -296,10 +296,46 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
     if value.is_undefined() {
         return Err(invalid(name, "is missing"));
     }
+    // JSON has no NaN or Infinity: written as JSON they would become null, read as absent.
+    // Prices are the exception, where a missing price may be given as NaN.
+    let mut found = Vec::new();
+    if !matches!(name, "prices" | "market") {
+        non_finite(&value, name, &mut found, 0);
+    }
+    if !found.is_empty() {
+        let mut report = ValidationReport::new();
+        for (path, x) in found {
+            report.error(path, format!("must be a finite number, not {x}"));
+        }
+        return Err(error(Error::Validation(report)));
+    }
     let text: String = js_sys::JSON::stringify(&value)
         .map_err(|_| invalid(name, "cannot be written as JSON"))?
         .into();
     finalytics::formats::from_json(&text, name).map_err(error)
+}
+
+/// The paths of the numbers in `value` that are not finite, with the numbers: at most 20, as
+/// one mistake tends to repeat.
+fn non_finite(value: &JsValue, path: &str, found: &mut Vec<(String, f64)>, depth: usize) {
+    if depth > 32 || found.len() >= 20 {
+        return;
+    }
+    if let Some(x) = value.as_f64() {
+        if !x.is_finite() {
+            found.push((path.to_owned(), x));
+        }
+    } else if js_sys::Array::is_array(value) {
+        for (i, item) in js_sys::Array::from(value).iter().enumerate() {
+            non_finite(&item, &format!("{path}[{i}]"), found, depth + 1);
+        }
+    } else if value.is_object() && !value.is_function() {
+        for entry in js_sys::Object::entries(value.unchecked_ref()).iter() {
+            let pair = js_sys::Array::from(&entry);
+            let key = pair.get(0).as_string().unwrap_or_default();
+            non_finite(&pair.get(1), &format!("{path}.{key}"), found, depth + 1);
+        }
+    }
 }
 
 fn optional<T: DeserializeOwned + Default>(value: JsValue, name: &str) -> Result<T, JsValue> {
@@ -1137,42 +1173,6 @@ impl Portfolio {
     }
 }
 
-/// The settings of `Assets`.
-#[derive(Default, serde::Deserialize)]
-#[serde(default, deny_unknown_fields)]
-struct AssetsOptions {
-    risk_free_rate: Option<f64>,
-    risk_free_asset: Option<String>,
-    periods_per_year: Option<f64>,
-    covariance: Option<serde_json::Value>,
-}
-
-impl AssetsOptions {
-    fn apply(self, mut assets: finalytics::Assets) -> Result<finalytics::Assets, JsValue> {
-        if let Some(periods) = self.periods_per_year {
-            assets = assets.with_periods_per_year(periods);
-        }
-        if let Some(method) = self.covariance {
-            let method = match method {
-                serde_json::Value::String(name) => serde_json::json!({ "type": name }),
-                other => other,
-            };
-            let method: CovarianceMethod =
-                finalytics::formats::from_json(&method.to_string(), "options.covariance")
-                    .map_err(error)?;
-            assets = assets.with_covariance(method);
-        }
-        match (self.risk_free_rate, self.risk_free_asset) {
-            (Some(_), Some(_)) => Err(invalid(
-                "options.risk_free_asset",
-                "give a risk_free_rate or a risk_free_asset, not both",
-            )),
-            (_, Some(asset)) => assets.with_risk_free_asset(&asset).map_err(error),
-            (rate, None) => Ok(assets.with_risk_free_rate(rate.unwrap_or(0.0))),
-        }
-    }
-}
-
 /// The prices or returns of several assets over the same periods, with the settings that turn
 /// them into annual figures, for statistics and optimisation.
 #[wasm_bindgen]
@@ -1191,9 +1191,9 @@ impl Assets {
     ) -> Result<Assets, JsValue> {
         let prices: finalytics::PriceTable = from_js(prices, "prices")?;
         let assets = finalytics::Assets::from_prices(&prices).map_err(error)?;
-        let options: AssetsOptions = optional(options, "options")?;
+        let options: finalytics::AssetSettings = optional(options, "options")?;
         Ok(Assets {
-            inner: options.apply(assets)?,
+            inner: options.apply(assets).map_err(error)?,
         })
     }
 
@@ -1204,9 +1204,9 @@ impl Assets {
         #[wasm_bindgen(unchecked_optional_param_type = "AssetsOptions")] options: JsValue,
     ) -> Result<Assets, JsValue> {
         let assets = finalytics::Assets::from_csv(text).map_err(error)?;
-        let options: AssetsOptions = optional(options, "options")?;
+        let options: finalytics::AssetSettings = optional(options, "options")?;
         Ok(Assets {
-            inner: options.apply(assets)?,
+            inner: options.apply(assets).map_err(error)?,
         })
     }
 
@@ -1223,9 +1223,9 @@ impl Assets {
         let table = ReturnsTable::new(labels, columns).map_err(error)?;
         let assets =
             finalytics::Assets::from_returns(parse_dates(dates, "dates")?, table).map_err(error)?;
-        let options: AssetsOptions = optional(options, "options")?;
+        let options: finalytics::AssetSettings = optional(options, "options")?;
         Ok(Assets {
-            inner: options.apply(assets)?,
+            inner: options.apply(assets).map_err(error)?,
         })
     }
 
@@ -1449,7 +1449,13 @@ impl Assets {
         #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
         options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let options: finalytics::OptimiseOptions = optional(options, "options")?;
+        // The same options as `optimise`, each checked by name.
+        let options = object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
+        let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(options).to_string(),
+            "options",
+        )
+        .map_err(error)?;
         to_js(
             &self
                 .inner

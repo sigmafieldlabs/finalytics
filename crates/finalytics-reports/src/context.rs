@@ -220,12 +220,31 @@ impl<'a> Context<'a> {
                 format!("{b} has no prices in the market data"),
             );
         }
+        let known: BTreeSet<&String> = books
+            .instruments()
+            .flat_map(|i| i.classifications.keys())
+            .collect();
         let mut schemes = BTreeSet::new();
         for (k, scheme) in options.group_by.iter().enumerate() {
             if !schemes.insert(scheme) {
                 report.error(
                     format!("options.group_by[{k}]"),
                     format!("{scheme} is listed twice"),
+                );
+            } else if !known.contains(scheme) {
+                let names: Vec<&str> = known.iter().map(|s| s.as_str()).collect();
+                report.error(
+                    format!("options.group_by[{k}]"),
+                    if names.is_empty() {
+                        format!(
+                            "no instrument is classified by {scheme}: give class.{scheme} columns"
+                        )
+                    } else {
+                        format!(
+                            "no instrument is classified by {scheme}; the schemes are {}",
+                            names.join(", ")
+                        )
+                    },
                 );
             }
         }

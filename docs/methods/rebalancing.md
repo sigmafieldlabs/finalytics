@@ -21,11 +21,12 @@ rates, plus cash):
    has, as when the targets leave no cash for the fees, the purchases are sized again on $V$ less
    the shortfall, and a shortfall that rounding leaves is taken from the largest purchase, so the
    trades fit the cash the account has.
-3. **Lots.** Each sale closes lots by the chosen method (first in, first out by default; highest
-   cost first defers gains), or with tax rates by the tax they cost (below), exactly as the
-   ledger would, and records the gain it would realise in the base currency after fees: the
-   proceeds are split across its lots and rounded as the books split them, so applying the
-   proposal realises exactly the gains it reports.
+3. **Lots.** Each sale closes lots by the chosen method (by default the account's own, first in,
+   first out unless the account says otherwise; highest cost first defers gains), or with tax
+   rates by the tax they cost (below), exactly as the ledger would, and records the gain it
+   would realise in the base currency after fees: the proceeds are split across its lots and
+   rounded as the books split them, so applying the proposal realises exactly the gains it
+   reports.
 4. **Cash.** Trades change the cash in each instrument's currency. Each foreign currency is then
    converted, through the base currency, to its target balance (zero when not listed), rounded to
    the currency's minor units. Cash in the base currency takes whatever weight the targets leave.

@@ -141,9 +141,33 @@ def to_json(value: Any) -> Any:
     raise TypeError(f"cannot write {type(value).__name__} as JSON")
 
 
-def dumps(value: Any) -> str:
-    """JSON text for `value`."""
-    return json.dumps(to_json(value), allow_nan=False)
+def dumps(value: Any, name: str = "") -> str:
+    """JSON text for `value`. JSON has no NaN or infinity, so a number that is not finite is a
+    :class:`~finalytics.ValidationError` at its path within `name`."""
+    data = to_json(value)
+    try:
+        return json.dumps(data, allow_nan=False)
+    except ValueError:
+        found: list[tuple[str, float]] = []
+        _non_finite(data, name, found)
+        if not found:
+            raise
+    from finalytics._errors import invalid
+
+    raise invalid(*((path, f"must be a finite number, not {number}") for path, number in found[:20]))
+
+
+def _non_finite(data: Any, path: str, found: list[tuple[str, float]]) -> None:
+    """Adds the path of each number in `data` that is not finite to `found`."""
+    if isinstance(data, float):
+        if data != data or data in (float("inf"), float("-inf")):
+            found.append((path, data))
+    elif isinstance(data, dict):
+        for key, item in data.items():
+            _non_finite(item, f"{path}.{key}" if path else str(key), found)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            _non_finite(item, f"{path}[{i}]", found)
 
 
 def loads(tp: Any, text: str) -> Any:

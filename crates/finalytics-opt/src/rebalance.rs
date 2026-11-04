@@ -18,9 +18,10 @@ use finalytics_ledger::{
 #[serde(default)]
 #[non_exhaustive]
 pub struct RebalanceOptions {
-    /// How sales choose lots; first in, first out by default. Highest cost first defers gains.
-    /// Ignored when `tax` is given.
-    pub lot_method: LotMethod,
+    /// How sales choose lots: by default, each account's own method (first in, first out
+    /// unless the account says otherwise). Highest cost first defers gains. Ignored when `tax`
+    /// is given.
+    pub lot_method: Option<LotMethod>,
     /// Trade whole units only, rounding each trade towards zero.
     pub whole_units: bool,
     /// Leave out trades worth less than this in the base currency.
@@ -35,7 +36,7 @@ pub struct RebalanceOptions {
 impl Default for RebalanceOptions {
     fn default() -> Self {
         RebalanceOptions {
-            lot_method: LotMethod::Fifo,
+            lot_method: None,
             whole_units: false,
             minimum_trade: Decimal::ZERO,
             fees: Fees::default(),
@@ -223,14 +224,45 @@ fn yes() -> bool {
     true
 }
 
+/// Checks the target weights as given, at `targets.<holding>`: each a known holding, listed
+/// once, with a weight of zero or more, and together no more than one.
+fn check_targets(books: &Books, targets: &[(HoldingKey, f64)], problems: &mut ValidationReport) {
+    let mut seen = std::collections::BTreeSet::new();
+    for (holding, weight) in targets {
+        let path = format!("targets.{holding}");
+        if !seen.insert(holding) {
+            problems.error(&path, "is listed a second time");
+        }
+        if !(weight.is_finite() && *weight >= 0.0) {
+            problems.error(
+                &path,
+                format!("must be a weight of zero or more, not {weight}"),
+            );
+        }
+        if let HoldingKey::Instrument(id) = holding
+            && books.instrument(id).is_none()
+        {
+            problems.error(&path, "is not an instrument of the portfolio");
+        }
+    }
+    let total: f64 = targets.iter().map(|(_, w)| w).sum();
+    if total > 1.0 + 1e-9 {
+        problems.error(
+            "targets",
+            format!("the weights add up to {total}, more than 1"),
+        );
+    }
+}
+
 /// Proposes the trades that move `account` to `targets`: a weight for each holding, as a share of
 /// the account's value at `date`. Instruments held but not listed are sold; cash in the base
 /// currency takes whatever weight the targets leave, and cash in other currencies is converted
 /// to its target (zero if not listed). Only long positions are proposed.
 ///
-/// Sales choose lots by [`RebalanceOptions::lot_method`], or, with tax rates, the lots that cost
-/// the least tax. [`Rebalance::transactions`] returns the trades as transactions that name those
-/// lots and carry their fees, ready to apply to the books.
+/// Sales choose lots by [`RebalanceOptions::lot_method`] (each account's own by default), or,
+/// with tax rates, the lots that cost the least tax. [`Rebalance::transactions`] returns the
+/// trades as transactions that name those lots and carry their fees, ready to apply to the
+/// books.
 pub fn rebalance(
     books: &Books,
     market: &MarketData,
@@ -242,27 +274,7 @@ pub fn rebalance(
     let base = books.base_currency();
     let mut problems = ValidationReport::new();
     let mut warnings = ValidationReport::new();
-    let total: f64 = targets.iter().map(|(_, w)| w).sum();
-    let mut seen = std::collections::BTreeSet::new();
-    for (k, (holding, weight)) in targets.iter().enumerate() {
-        if !seen.insert(holding) {
-            problems.error(format!("targets[{k}]"), "lists a holding a second time");
-        }
-        if !(weight.is_finite() && *weight >= 0.0) {
-            problems.error(format!("targets[{k}]"), "must be a weight of zero or more");
-        }
-        if let HoldingKey::Instrument(id) = holding
-            && books.instrument(id).is_none()
-        {
-            problems.error(format!("targets[{k}]"), format!("unknown instrument {id}"));
-        }
-    }
-    if total > 1.0 + 1e-9 {
-        problems.error(
-            "targets",
-            format!("the weights add up to {total}, more than 1"),
-        );
-    }
+    check_targets(books, targets, &mut problems);
     if options.minimum_trade < Decimal::ZERO {
         problems.error("options.minimum_trade", "must not be negative");
     }
@@ -395,11 +407,15 @@ pub fn rebalance(
     };
     let weights_before = weights(&quantities, &cash);
 
-    let taxable = books
-        .accounts()
-        .iter()
-        .find(|a| &a.id == account)
-        .is_none_or(|a| a.taxable);
+    let held_in = books.accounts().iter().find(|a| &a.id == account);
+    let taxable = held_in.is_none_or(|a| a.taxable);
+    // Without a method of its own, a sale takes the lots as the account's sales do; naming
+    // lots is for one sale, so an account set to name them sells first in, first out here.
+    let lot_method = options
+        .lot_method
+        .or_else(|| held_in.map(|a| a.lot_method))
+        .filter(|m| *m != LotMethod::SpecificId)
+        .unwrap_or_default();
     let taxed = options.tax.as_ref().filter(|_| taxable);
     // The trades with purchases sized on `investable`, the value the targets share. Sales are
     // sized on the account's value; when the fees would take the base-currency cash below
@@ -482,9 +498,7 @@ pub fn rebalance(
                             );
                             holdings.lots_for_picks(account, id, &picks)?
                         }
-                        None => {
-                            holdings.lots_for_sale(account, id, quantity, options.lot_method)?
-                        }
+                        None => holdings.lots_for_sale(account, id, quantity, lot_method)?,
                     };
                     // Proceeds after fees, split across the lots as the books split them.
                     let proceeds = quantity * unit.local - fees;
@@ -718,6 +732,9 @@ pub fn rebalance_accounts(
             report.error(format!("accounts[{k}]"), format!("{a} is listed twice"));
         }
     }
+    // The targets as given: spread across the accounts, they would be clipped to each one's
+    // share and their problems hidden.
+    check_targets(books, targets, &mut report);
     report.into_result(())?;
     if let [account] = accounts {
         let proposal = rebalance(books, market, date, account, targets, options)?;

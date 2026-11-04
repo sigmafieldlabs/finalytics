@@ -133,12 +133,35 @@ def test_an_index_as_the_benchmark():
 
 
 def test_mistakes_name_the_option(assets):
-    with pytest.raises(ValueError, match="a method or weights"):
+    with pytest.raises(fl.ValidationError) as found:
         assets.backtest(name="none")
-    with pytest.raises(ValueError, match="max_weight"):
+    assert [(i.path, i.message) for i in found.value.issues] == [("method", "give a method, or fixed weights")]
+    with pytest.raises(fl.ValidationError) as found:
+        assets.backtest(method="equal_weight", weights={"Bonds": 1.0})
+    assert [i.path for i in found.value.issues] == ["weights"]
+    with pytest.raises(fl.ValidationError) as found:
         assets.backtest(weights={"Bonds": 1.0}, max_weight=0.4)
-    with pytest.raises(ValueError, match="rebalance: 'weekly' is not one of 'monthly'"):
+    assert [i.path for i in found.value.issues] == ["options.max_weight"]
+    with pytest.raises(fl.ValidationError, match="'weekly' is not one of 'monthly'") as found:
         assets.compare(methods=["equal_weight"], rebalance="weekly")
+    assert [i.path for i in found.value.issues] == ["rebalance"]
+    with pytest.raises(fl.ValidationError) as found:
+        assets.compare(methods="minimum_variance")
+    assert [(i.path, i.message) for i in found.value.issues] == [
+        ("methods", "must be a list of methods, such as ['minimum_variance']")
+    ]
+    with pytest.raises(fl.ValidationError) as found:
+        assets.compare(methods=["minimum_variance"], validation=fl.WalkForward(years=50))
+    assert [(i.path, i.message) for i in found.value.issues] == [
+        ("validation.years", "the window is 600 periods, but the data has 360 periods: it must leave periods to test")
+    ]
+    # A number JSON cannot hold, where it is.
+    with pytest.raises(fl.ValidationError) as found:
+        assets.compare(methods=["minimum_variance"], max_weight=float("nan"))
+    assert [i.path for i in found.value.issues] == ["options.max_weight"]
+    with pytest.raises(fl.ValidationError) as found:
+        assets.optimise(method="minimum_variance", max_weight=float("inf"))
+    assert [i.path for i in found.value.issues] == ["options.max_weight"]
     with pytest.raises(TypeError):
         assets.compare(methods=["equal_weight"], objective="maximum_sharpe")
     with pytest.raises(fl.ValidationError) as found:

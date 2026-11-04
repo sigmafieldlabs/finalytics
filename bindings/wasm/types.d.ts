@@ -756,15 +756,21 @@ export interface CovarianceEstimate {
   observations: number;
 }
 
-/** How a covariance matrix is estimated from returns. */
+/**
+ * How a covariance matrix is estimated from returns.
+ *
+ * In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the
+ * type's name alone, such as `"ledoit_wolf"`; an exponentially weighted covariance without a
+ * decay has 0.94.
+ */
 export type CovarianceMethod =
   | {
     type: "sample";
   }
   | {
     type: "ewma";
-    /** The decay factor, between 0 and 1. */
-    decay: number;
+    /** The decay factor, between 0 and 1: 0.94 by default. */
+    decay?: number;
   }
   | {
     type: "ledoit_wolf";
@@ -2502,8 +2508,11 @@ export interface RebalanceContext {
   limits: string[];
   /** Whether trades are in whole units. */
   whole_units: boolean;
-  /** How sales choose lots when no tax rates are given. */
-  lot_method: LotMethod;
+  /**
+   * How sales choose lots when no tax rates are given: absent for each account's own
+   * method.
+   */
+  lot_method?: LotMethod | null;
   /** The smallest trade, in the base currency. */
   minimum_trade: number;
   /** The fees each trade pays. */
@@ -2532,10 +2541,11 @@ export interface RebalanceEstimates {
 /** Choices for `rebalance`. */
 export interface RebalanceOptions {
   /**
-   * How sales choose lots; first in, first out by default. Highest cost first defers gains.
-   * Ignored when `tax` is given.
+   * How sales choose lots: by default, each account's own method (first in, first out
+   * unless the account says otherwise). Highest cost first defers gains. Ignored when `tax`
+   * is given.
    */
-  lot_method?: LotMethod;
+  lot_method?: LotMethod | null;
   /** Trade whole units only, rounding each trade towards zero. */
   whole_units?: boolean;
   /** Leave out trades worth less than this in the base currency. */
@@ -3892,7 +3902,7 @@ export interface Valuation {
   cash: CashValue[];
   /** Positions and cash, in the base currency. */
   total_base: Decimal;
-  /** Prices and rates carried forward from earlier dates. */
+  /** Prices and rates carried forward from earlier dates, and cash balances below zero. */
   warnings: ValidationReport;
 }
 

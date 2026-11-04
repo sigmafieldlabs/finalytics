@@ -156,6 +156,21 @@ test("mistakes are reported where they were made", () => {
     ["validation.start"],
   );
   assert.deepEqual(paths(() => assets.optimise({ objective: "minimum_variance" })), ["options.objective"]);
+  assert.deepEqual(paths(() => assets.frontier(5, { max_wieght: 0.4 })), ["options.max_wieght"]);
+  // Numbers JSON cannot hold are reported, not dropped.
+  assert.deepEqual(paths(() => assets.optimise({ method: "minimum_variance", max_weight: NaN })), [
+    "options.max_weight",
+  ]);
+  assert.deepEqual(paths(() => assets.compare({ methods: ["minimum_cvar"], confidence: Infinity })), [
+    "options.confidence",
+  ]);
+  // Every problem with the limits, before solving.
+  assert.deepEqual(paths(() => assets.optimise({ method: "minimum_variance", max_weight: 0.1 })), [
+    "options.max_weight",
+  ]);
+  assert.deepEqual(paths(() => assets.optimise({ method: "maximum_sharpe", confidence: 0.9 })), [
+    "options.confidence",
+  ]);
 });
 
 test("a rebalance has a report and the raw results", () => {

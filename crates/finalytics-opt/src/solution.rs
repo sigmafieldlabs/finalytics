@@ -31,6 +31,21 @@ impl SolveStatus {
     pub fn has_solution(self) -> bool {
         matches!(self, SolveStatus::Optimal | SolveStatus::NearlyOptimal)
     }
+
+    /// Why an optimisation with this status found no weights, in words; empty when it found
+    /// them.
+    pub fn reason(self) -> &'static str {
+        match self {
+            SolveStatus::Optimal | SolveStatus::NearlyOptimal => "",
+            SolveStatus::Infeasible => "no portfolio meets every limit",
+            SolveStatus::Unbounded => "the objective has no limit; add bounds or a leverage limit",
+            SolveStatus::IterationLimit => "the solver stopped at its iteration limit",
+            SolveStatus::NumericalDifficulty => {
+                "the solver could not make progress, as when the inputs are badly scaled or \
+                 nearly degenerate"
+            }
+        }
+    }
 }
 
 /// The status in words, as it is written in JSON: `infeasible`, `iteration_limit`.

@@ -16,6 +16,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   risk, as the expansion can need when the excess kurtosis is large; the risk report marks it.
 - `ScenarioSummary.stress`: the scenarios report names the stress of the covariance behind a
   scenario's risk after.
+- A cash balance below zero is a warning in the valuation and the reports that use it
+  (`cash.<account>.<currency>`), as when a purchase is recorded without the deposit that paid for
+  it. It is not an error, so that margin and late deposits can still be recorded.
+- `CovarianceMethod` reads from its name alone (`"ledoit_wolf"`) as well as from an object, and an
+  exponentially weighted covariance without a decay has 0.94, in every option that takes one.
+- `SolveStatus::reason`: why an optimisation found no weights, in words.
 
 ### Changed
 
@@ -30,6 +36,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   statistics convert it, rather than `r / P`.
 - Money-weighted returns over periods shorter than a year (MTD, QTD, YTD) are shown over the
   period, as the time-weighted returns beside them are, rather than annualised.
+- Rebalancing sells lots by each account's own lot method by default, as documented, rather
+  than first in, first out; `RebalanceOptions.lot_method` is optional, and Python's
+  `lot_method` defaults to `None`.
+- Optimisation options are checked before solving, with every problem reported together at the
+  option's name: numbers that are not finite, weights outside 0 to 1, limits no fully invested
+  portfolio can meet (six assets at most 10% each), the parameters a method needs, unknown
+  assets, and, with the settings of a backtest, its validation and rebalancing. When one method
+  is asked for (`optimise`, `backtest`), a parameter it does not use, such as `confidence` with
+  maximum Sharpe, or limits with equal weight, is an error; `compare` applies each to the methods
+  that take it, as before. Paths name the options (`options.max_weight`), not the optimiser's
+  internals (`constraints.bounds`).
+- `Assets` settings are checked together: `periods_per_year` above zero, a finite
+  `risk_free_rate` above -1 (in Python, a rate of 0 with a risk-free asset is now an error too),
+  and an exponentially weighted decay between 0 and 1.
+- Portfolio documents reject unknown fields, such as a misspelt `quantty`, at their path.
+- A report grouped by a scheme no instrument is classified by is an error at
+  `options.group_by[i]`, naming the schemes there are, rather than a single "unclassified" group.
+- Errors raised in Python before the engine is called are `ValidationError`s with paths (still
+  `ValueError`s), and messages are clearer: a backtest without a method or weights, `methods`
+  given as one name, an account the portfolio does not have, a walk-forward window too long for
+  the data, and an optimisation that found no weights now say what is wrong.
 
 ### Fixed
 
@@ -37,6 +64,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   against the risk-free return over that window, not over the whole test.
 - The rebalance report's value after each trade, and the combined weights after a rebalance of
   several accounts, allow for the fees paid.
+- Rebalancing several accounts checks the target weights as given, at `targets.<holding>`; it
+  checked them only after spreading them across the accounts, which hid weights above one or
+  below zero.
+- JavaScript reports NaN and infinite numbers in options at their paths, where JSON had turned
+  them into absent options (a `max_weight` of `NaN` meant no limit); Python reports them at their
+  paths rather than as a JSON error. `frontier` checks its option names, as `optimise` does.
 - Differences shown beside rounded figures (excess returns, changes in the Sharpe ratio, the total
   of fees and tax) are the differences of the figures as shown, so that they add up.
 - A method that never found weights is marked as holding cash in the comparison tables, is left

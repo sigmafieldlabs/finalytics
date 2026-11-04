@@ -129,7 +129,7 @@ fn trades_reach_the_targets_when_applied() {
     let market = market();
     let books = Books::build(&portfolio, &market).unwrap();
     let mut options = RebalanceOptions::default();
-    options.lot_method = LotMethod::HighestCost;
+    options.lot_method = Some(LotMethod::HighestCost);
     let plan = rebalance(
         &books,
         &market,
@@ -317,7 +317,30 @@ fn invalid_targets_are_reported() {
         panic!("expected a validation error");
     };
     let paths: Vec<_> = report.issues().iter().map(|i| i.path.as_str()).collect();
-    assert_eq!(paths, ["targets[1]", "targets[2]", "targets"]);
+    assert_eq!(paths, ["targets.GOLD", "targets.SPY", "targets"]);
+}
+
+#[test]
+fn several_accounts_check_the_targets_as_given() {
+    let books = Books::build(&portfolio(), &market()).unwrap();
+    let accounts = [main_account(), AccountId::new("isa").unwrap()];
+    // Spread across the accounts, a weight of 1.5 would be clipped to each one's share.
+    let targets = vec![
+        (HoldingKey::Instrument(id("SPY")), 1.5),
+        (HoldingKey::Instrument(id("BOND")), -0.2),
+    ];
+    let Err(finalytics_core::Error::Validation(report)) = rebalance_accounts(
+        &books,
+        &market(),
+        d(DATE),
+        &accounts,
+        &targets,
+        &Default::default(),
+    ) else {
+        panic!("expected a validation error");
+    };
+    let paths: Vec<_> = report.issues().iter().map(|i| i.path.as_str()).collect();
+    assert_eq!(paths, ["targets.BOND", "targets"]);
 }
 
 /// One account holding three lots of SPY, now at 500: bought at 300 more than a year ago (a
@@ -531,7 +554,7 @@ fn fees_are_paid_and_recorded_as_the_books_record_them() {
     let market = market();
     let books = Books::build(&portfolio, &market).unwrap();
     let mut options = RebalanceOptions::default();
-    options.lot_method = LotMethod::HighestCost;
+    options.lot_method = Some(LotMethod::HighestCost);
     options.fees = {
         let mut fees = Fees::default();
         fees.rate = dec("0.001");
@@ -740,4 +763,29 @@ fn combined_weights_after_are_of_the_value_left_after_fees() {
             "{instrument}: {after} against {actual}"
         );
     }
+}
+
+#[test]
+fn sales_take_lots_by_the_account_s_own_method_unless_told_otherwise() {
+    let (mut portfolio, market) = lots_portfolio();
+    portfolio.accounts[0].lot_method = LotMethod::HighestCost;
+    let books = Books::build(&portfolio, &market).unwrap();
+    let targets = vec![
+        (HoldingKey::Instrument(id("SPY")), 75_000.0 / 173_000.0),
+        (HoldingKey::Instrument(id("BOND")), 0.5),
+    ];
+    let sale = |options: &RebalanceOptions| {
+        let plan = rebalance(&books, &market, d(DATE), &main_account(), &targets, options).unwrap();
+        plan.trades
+            .into_iter()
+            .find(|t| t.side == Side::Sell)
+            .unwrap()
+    };
+    // The 150 sold: the lot bought at 520 (a loss of 20 each), then 50 of the one at 450 (a
+    // gain of 50 each).
+    let own = sale(&RebalanceOptions::default());
+    assert_eq!(own.realised_gain_base, Some(dec("500")));
+    let mut options = RebalanceOptions::default();
+    options.lot_method = Some(LotMethod::Fifo);
+    assert_eq!(sale(&options).realised_gain_base, Some(dec("19000")));
 }

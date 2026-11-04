@@ -45,6 +45,6 @@ mod engine;
 mod results;
 mod settings;
 
-pub use engine::{Benchmark, Fit, Fitter, Market, Plan, Strategy, backtest};
+pub use engine::{Benchmark, Fit, Fitter, Market, Plan, Strategy, backtest, check_settings};
 pub use results::{BacktestResults, Failure, Run, StrategyResult, Trade};
 pub use settings::{Rebalance, Settings, Validation};

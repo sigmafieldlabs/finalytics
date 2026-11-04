@@ -51,14 +51,14 @@ test("the portfolio dataset, from report to trades", () => {
   for (const [holding, target] of Object.entries(result.results.weights)) {
     close(after[holding], target, 0.01, holding);
   }
-  const failed = assets.optimise({ method: "minimum_variance", max_weight: 0.1 });
+  const failed = assets.optimise({ method: "target_return", target: 0.9 });
   assert.equal(failed.results.weights, null);
   for (const targets of [failed, failed.results]) {
     assert.throws(() => portfolio.rebalance(targets), (e) => {
       assert.equal(e.name, "ValidationError");
       assert.deepEqual(
         e.issues.map((i) => [i.path, i.message]),
-        [["targets", "the optimisation ended infeasible and found no weights"]],
+        [["targets", "the optimisation found no weights: no portfolio meets every limit"]],
       );
       return true;
     });

@@ -104,7 +104,7 @@ fn results() -> Value {
         (instruments[1].clone(), 0.15),
     ];
     let mut options = RebalanceOptions::default();
-    options.lot_method = LotMethod::HighestCost;
+    options.lot_method = Some(LotMethod::HighestCost);
     let plan = rebalance(
         &books,
         &market,

@@ -65,8 +65,9 @@ pub struct RebalanceContext {
     pub limits: Vec<String>,
     /// Whether trades are in whole units.
     pub whole_units: bool,
-    /// How sales choose lots when no tax rates are given.
-    pub lot_method: LotMethod,
+    /// How sales choose lots when no tax rates are given: absent for each account's own
+    /// method.
+    pub lot_method: Option<LotMethod>,
     /// The smallest trade, in the base currency.
     pub minimum_trade: f64,
     /// The fees each trade pays.
@@ -578,7 +579,12 @@ impl RebalanceReport {
                  first."
                     .to_owned()
             } else {
-                format!("{}.", capitalise(&lot_words(c.lot_method)))
+                match c.lot_method {
+                    Some(m) => format!("{}.", capitalise(&lot_words(m))),
+                    None => "Each account's own lot method (first in, first out unless the \
+                             account says otherwise)."
+                        .to_owned(),
+                }
             },
         ));
         rows.push(("Fees", fee_words(&c.fees)));

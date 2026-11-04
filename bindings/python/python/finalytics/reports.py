@@ -102,7 +102,7 @@ def _options(options: ReportOptions | None, keywords: dict[str, Any]) -> ReportO
 
 
 def _report(portfolio, kind: str, cls, options: ReportOptions | None, keywords: dict[str, Any]):
-    text = call(portfolio._native.report, kind, dumps(_options(options, keywords)))
+    text = call(portfolio._native.report, kind, dumps(_options(options, keywords), "options"))
     return loads(cls, text)
 
 

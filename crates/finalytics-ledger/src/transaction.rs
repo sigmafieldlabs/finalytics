@@ -53,7 +53,9 @@ impl Transaction {
 /// What a transaction does. Amounts of instruments are in the instrument's currency.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+// Unknown fields are mistakes, such as a misspelt `quantity`: a transaction's own fields reach
+// its kind through `Transaction`'s flattening, so they are checked here.
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum TransactionKind {
     /// Buy `quantity` units at `price` per unit, paying `fees` on top.
@@ -217,6 +219,7 @@ pub enum TransactionKind {
 /// A lot named by a sale or transfer, for specific identification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 pub struct LotPick {
     /// The lot.
     pub lot: LotId,

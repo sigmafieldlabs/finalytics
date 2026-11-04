@@ -23,7 +23,7 @@ import numpy as np
 
 from finalytics import _arrays, _finalytics, _types
 from finalytics._convert import dumps, loads
-from finalytics._errors import call
+from finalytics._errors import call, invalid
 from finalytics._types import (
     AssetBound,
     BlackLitterman,
@@ -236,7 +236,7 @@ def _labelled(values: Any, labels: Sequence[str]) -> Any:
 def _scenarios(values: Any, labels: Sequence[str]) -> _types.ReturnsTable:
     array = np.asarray(values, dtype=np.float64)
     if array.ndim != 2 or array.shape[1] != len(labels):
-        raise ValueError("scenarios need one row per scenario and one column per asset")
+        raise invalid(("scenarios", "need one row per scenario and one column per asset"))
     return _types.ReturnsTable(labels=list(labels), columns=array.T.tolist())
 
 
@@ -246,7 +246,7 @@ def _aligned(values: Any, labels: Sequence[str], name: str) -> list[float]:
     if hasattr(values, "items"):
         missing = [label for label in labels if label not in values]
         if missing:
-            raise ValueError(f"{name} has no value for {', '.join(missing)}")
+            raise invalid(*((f"{name}.{label}", "is missing") for label in missing))
         return [float(values[label]) for label in labels]
     return np.asarray(values, dtype=np.float64).tolist()
 
@@ -281,7 +281,7 @@ def black_litterman(
         elif prior_returns is not None:
             prior = ReturnsPrior(returns=_aligned(prior_returns, matrix.labels, "prior_returns"))
         else:
-            raise ValueError("give market_weights, prior_returns or a prior")
+            raise invalid(("prior", "give market_weights, prior_returns or a prior"))
     model = BlackLitterman(covariance=matrix, prior=prior, views=list(views), tau=float(tau))
     return loads(BlackLittermanEstimate, call(_finalytics.black_litterman, dumps(model)))
 

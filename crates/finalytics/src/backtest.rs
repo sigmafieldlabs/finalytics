@@ -202,7 +202,10 @@ impl Assets {
     /// Optimisations use the assets' settings on each window of history: the periods per year,
     /// the covariance estimator, and the risk-free asset's mean return over the window (or the
     /// risk-free rate). Cash, held before a first fit succeeds, earns the risk-free return.
-    fn simulate(&self, options: &BacktestOptions) -> Result<BacktestResults> {
+    ///
+    /// With `single`, one strategy was asked for, so that a parameter its method does not use
+    /// is a problem; a comparison notes the limits a method does not take instead.
+    fn simulate(&self, options: &BacktestOptions, single: bool) -> Result<BacktestResults> {
         let returns = self.risky_returns()?;
         let labels = returns.labels().to_vec();
         let cash = self.cash_returns();
@@ -215,6 +218,18 @@ impl Assets {
                 Strategy::Optimise {
                     options: method, ..
                 } => {
+                    // The options the strategies share are checked once: their problems are
+                    // the same for each.
+                    let checked = if single {
+                        self.check_options(method, true)
+                    } else {
+                        self.check_options(&applicable(method).0, false)
+                    };
+                    for issue in checked.issues() {
+                        if !report.issues().contains(issue) {
+                            report.merge("", single_issue(issue));
+                        }
+                    }
                     let (method, notes) = applicable(method);
                     strategies.push(engine::Strategy {
                         name,
@@ -227,7 +242,9 @@ impl Assets {
                                         .map(|a| weights.get(*a).copied().unwrap_or(0.0))
                                         .collect(),
                                 ),
-                                None => Fit::NoSolution(result.status.to_string()),
+                                None => {
+                                    Fit::NoSolution(result.status.to_string().replace('_', " "))
+                                }
                             })
                         })),
                         notes,
@@ -257,11 +274,15 @@ impl Assets {
                 ))
             }
         };
-        report.into_result(())?;
         let settings = Settings::new(options.validation.clone())
             .with_rebalance(options.rebalance)
             .with_trading_cost_bps(options.trading_cost_bps);
         let market = Market::new(self.dates(), &returns, &cash, self.periods_per_year());
+        // The settings' problems with the strategies', all together.
+        if report.has_errors() {
+            report.merge("", engine::check_settings(&market, &settings));
+        }
+        report.into_result(())?;
         let mut backtest = engine::backtest(&market, strategies, benchmark, &settings)?;
         backtest.assets = labels;
         Ok(backtest)
@@ -276,7 +297,7 @@ impl Assets {
     /// a first fit succeeds, earns the risk-free return. [`Assets::compare`] builds the same
     /// options step by step.
     pub fn compare_with(&self, options: &BacktestOptions) -> Result<Comparison> {
-        let results = self.simulate(options)?;
+        let results = self.simulate(options, false)?;
         let report = finalytics_reports::comparison_report(
             &results,
             &self.risky_returns()?,
@@ -289,7 +310,7 @@ impl Assets {
     /// report, with every return and trade in the results. [`Assets::backtest`] builds the same
     /// options step by step.
     pub fn backtest_with(&self, options: &BacktestOptions) -> Result<Backtest> {
-        let results = self.simulate(options)?;
+        let results = self.simulate(options, true)?;
         let report = finalytics_reports::backtest_report(
             &results,
             &self.risky_returns()?,
@@ -413,6 +434,16 @@ pub(crate) fn limits(options: &OptimiseOptions) -> Vec<String> {
         ));
     }
     out
+}
+
+/// A report of one issue.
+fn single_issue(issue: &finalytics_core::Issue) -> ValidationReport {
+    let mut one = ValidationReport::new();
+    match issue.severity {
+        finalytics_core::Severity::Error => one.error(issue.path.clone(), issue.message.clone()),
+        _ => one.warning(issue.path.clone(), issue.message.clone()),
+    }
+    one
 }
 
 /// The options a method takes, and notes on any limits it does not.

@@ -535,7 +535,7 @@ impl Targets {
         if let Some(status) = self.unsolved {
             report.error(
                 "targets",
-                format!("the optimisation ended {status} and found no weights"),
+                format!("the optimisation found no weights: {}", status.reason()),
             );
         }
         let mut targets = BTreeMap::new();
@@ -810,7 +810,7 @@ impl RebalanceBuilder<'_> {
 
     /// How sales choose the lots they close: each account's own method by default.
     pub fn lot_method(mut self, method: LotMethod) -> Self {
-        self.options.lot_method = method;
+        self.options.lot_method = Some(method);
         self
     }
 
@@ -886,13 +886,21 @@ impl RebalanceBuilder<'_> {
             },
             None => None,
         };
+        let known = &self.portfolio.data.accounts;
         let accounts: Vec<AccountId> = match &self.accounts {
             Some(ids) => ids
                 .iter()
                 .filter_map(|id| match id.parse::<AccountId>() {
-                    Ok(id) => Some(id),
-                    Err(_) => {
-                        report.error(format!("accounts.{id}"), "is not an account identifier");
+                    Ok(account) if known.iter().any(|a| a.id == account) => Some(account),
+                    _ => {
+                        let names: Vec<&str> = known.iter().map(|a| a.id.as_str()).collect();
+                        report.error(
+                            format!("accounts.{id}"),
+                            format!(
+                                "is not an account of the portfolio; its accounts are {}",
+                                names.join(", ")
+                            ),
+                        );
                         None
                     }
                 })

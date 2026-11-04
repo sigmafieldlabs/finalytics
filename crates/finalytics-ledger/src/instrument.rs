@@ -35,6 +35,7 @@ pub enum InstrumentKind {
 /// Something a portfolio can hold, other than cash.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Instrument {
     /// The caller's identifier.
@@ -122,6 +123,7 @@ pub enum LotMethod {
 /// An account in a portfolio, such as a brokerage or custody account.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Account {
     /// The caller's identifier.

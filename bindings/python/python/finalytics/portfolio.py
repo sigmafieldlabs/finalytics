@@ -17,7 +17,7 @@ import numpy as np
 from finalytics import _arrays, _finalytics, _types
 from finalytics._arrays import DateArray, DateLike
 from finalytics._convert import dumps, from_json, loads, to_json
-from finalytics._errors import call
+from finalytics._errors import call, invalid
 
 if TYPE_CHECKING:
     from finalytics.assets import Assets
@@ -118,7 +118,7 @@ def _decimal_text(value: Any) -> str:
         return str(value)
     number = float(value)
     if not math.isfinite(number):
-        raise ValueError(f"prices and rates must be finite numbers, found {number}")
+        raise invalid(("prices", f"prices and rates must be finite numbers, not {number}"))
     return repr(number)
 
 
@@ -466,7 +466,7 @@ class Portfolio:
         the accounts' contributions add up to that return."""
         dates = self.dates() if dates is None else dates
         options = _types.HouseholdOptions(group_by=list(group_by), timing=timing)
-        text = call(self._native.household, _arrays.dates_to_buffer(dates), dumps(options))
+        text = call(self._native.household, _arrays.dates_to_buffer(dates), dumps(options, "options"))
         return loads(_types.Household, text)
 
     def realised_gains(self) -> list[_types.RealisedGain]:
@@ -515,7 +515,7 @@ class Portfolio:
         *,
         accounts: Sequence[str] | None = None,
         date: DateLike | None = None,
-        lot_method: _types.LotMethod = "fifo",
+        lot_method: _types.LotMethod | None = None,
         whole_units: bool = False,
         minimum_trade: float = 0,
         fee_bps: float = 0,
@@ -538,8 +538,9 @@ class Portfolio:
         targets leave, and other currencies are converted to their targets (zero if not
         listed). A holding above its target is sold from the accounts that hold it in
         proportion to their holdings, and one below is bought in proportion to the value each
-        account has free; trades do not move cash between accounts. Trades worth less than
-        `minimum_trade` in the base currency are left out.
+        account has free; trades do not move cash between accounts. Sales take lots by
+        `lot_method`, by default each account's own. Trades worth less than `minimum_trade` in
+        the base currency are left out.
 
         Each trade pays a fee of `fee_bps` basis points of its value plus `fee_per_trade`, and
         at least `minimum_fee`, in the instrument's currency; purchases leave room for the fees.
@@ -568,7 +569,7 @@ class Portfolio:
             text = dumps(targets)
         else:
             text = dumps({k: float(w) for k, w in targets.items()})
-        result = call(self._native.rebalance_accounts, text, json.dumps(choices))
+        result = call(self._native.rebalance_accounts, text, dumps(choices, "choices"))
         return loads(_types.Rebalancing, result)
 
     def shock_scenario(
@@ -603,7 +604,7 @@ class Portfolio:
         factor_shocks = None
         if factors:
             if factor_model is None:
-                raise ValueError("factor shocks need a factor_model")
+                raise invalid(("factor_model", "factor shocks need a factor model"))
             model = factor_model.model if isinstance(factor_model, _types.FactorModelEstimate) else factor_model
             factor_shocks = _types.FactorShocks(
                 model=model, shocks={k: float(v) for k, v in factors.items()}, propagate=propagate
@@ -669,7 +670,7 @@ class Portfolio:
         if date is None:
             date = self.as_of
             if date is None:
-                raise ValueError("give a date: the portfolio has no prices")
+                raise invalid(("date", "give a date: the portfolio has no prices"))
         return _arrays.date(date)
 
     def report(
@@ -690,7 +691,7 @@ class Portfolio:
         ``report.save_html(path)`` saves it as one page."""
         from finalytics.reports import _options
 
-        text = call(self._native.report_all, dumps(_options(options, keywords)))
+        text = call(self._native.report_all, dumps(_options(options, keywords), "options"))
         report = loads(_types.PortfolioReport, text)
         return report if name is None else dataclasses.replace(report, name=name)
 

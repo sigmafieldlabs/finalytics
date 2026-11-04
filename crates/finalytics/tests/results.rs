@@ -179,11 +179,12 @@ fn the_frontier_is_drawn_when_asked_for() {
 #[test]
 fn an_optimisation_without_weights_is_not_a_target() {
     let portfolio = datasets::portfolio();
+    // No mix of the holdings returns 90% a year.
     let failed = portfolio
         .assets()
         .unwrap()
-        .optimise(Method::MinimumVariance)
-        .max_weight(0.1)
+        .optimise(Method::TargetReturn)
+        .target(0.9)
         .build()
         .unwrap();
     assert!(failed.results.weights.is_none());
@@ -199,7 +200,7 @@ fn an_optimisation_without_weights_is_not_a_target() {
         issues,
         [(
             "targets",
-            "the optimisation ended infeasible and found no weights"
+            "the optimisation found no weights: no portfolio meets every limit"
         )]
     );
     // The same through JSON, as the other languages give it.

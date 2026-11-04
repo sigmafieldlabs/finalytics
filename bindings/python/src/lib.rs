@@ -654,32 +654,11 @@ impl NativeAssets {
         })
     }
 
-    fn with_risk_free_rate(&self, rate: f64) -> NativeAssets {
-        NativeAssets {
-            inner: self.inner.clone().with_risk_free_rate(rate),
-        }
-    }
-
-    fn with_risk_free_asset(&self, asset: &str) -> PyResult<NativeAssets> {
+    /// The same assets with `settings` (JSON), every problem with them reported together.
+    fn with_settings(&self, settings: &str) -> PyResult<NativeAssets> {
+        let settings: finalytics::AssetSettings = from_json(settings, "settings")?;
         Ok(NativeAssets {
-            inner: self
-                .inner
-                .clone()
-                .with_risk_free_asset(asset)
-                .map_err(engine)?,
-        })
-    }
-
-    fn with_periods_per_year(&self, periods: f64) -> NativeAssets {
-        NativeAssets {
-            inner: self.inner.clone().with_periods_per_year(periods),
-        }
-    }
-
-    fn with_covariance(&self, method: &str) -> PyResult<NativeAssets> {
-        let method: CovarianceMethod = from_json(method, "covariance")?;
-        Ok(NativeAssets {
-            inner: self.inner.clone().with_covariance(method),
+            inner: settings.apply(self.inner.clone()).map_err(engine)?,
         })
     }
 

@@ -72,7 +72,7 @@ pub struct Valuation {
     pub cash: Vec<CashValue>,
     /// Positions and cash, in the base currency.
     pub total_base: Decimal,
-    /// Prices and rates carried forward from earlier dates.
+    /// Prices and rates carried forward from earlier dates, and cash balances below zero.
     pub warnings: ValidationReport,
 }
 
@@ -238,13 +238,25 @@ impl Books {
     /// The holdings at the end of `date`, valued with `market`.
     ///
     /// Every price and rate that is missing (beyond the carry-forward limit) is reported at once,
-    /// as a validation error; carried values are listed in [`Valuation::warnings`].
+    /// as a validation error; carried values, and cash balances below zero, are listed in
+    /// [`Valuation::warnings`]. A balance below zero is allowed, as on margin or when a deposit
+    /// is recorded late, but is more often a purchase or withdrawal recorded without the cash
+    /// for it.
     pub fn value_on(&self, date: Date, market: &MarketData) -> Result<Valuation> {
         let mut problems = ValidationReport::new();
         let mut valuation =
             self.value_holdings(&self.holdings_on(date), date, market, &mut problems);
         if problems.has_errors() {
             return Err(Error::Validation(problems));
+        }
+        for c in valuation.cash.iter().filter(|c| c.amount < Decimal::ZERO) {
+            problems.warning(
+                format!("cash.{}.{}", c.account, c.currency),
+                format!(
+                    "is {} {} below zero on {date}: more was spent than the account held",
+                    -c.amount, c.currency
+                ),
+            );
         }
         valuation.warnings = problems;
         Ok(valuation)

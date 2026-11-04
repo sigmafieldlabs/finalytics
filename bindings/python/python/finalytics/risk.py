@@ -23,7 +23,7 @@ import numpy as np
 from finalytics import _arrays, _finalytics, _types
 from finalytics._arrays import FloatArray
 from finalytics._convert import dumps, loads
-from finalytics._errors import call
+from finalytics._errors import call, invalid
 from finalytics._types import (
     AssetFit,
     CorrelationStress,
@@ -143,7 +143,7 @@ def _options(periods_per_year: float, risk_free_rate: float, target_return: floa
 def _returns(values: Any) -> bytes:
     array = np.asarray(values, dtype=np.float64)
     if array.ndim != 1:
-        raise ValueError("returns must be one-dimensional")
+        raise invalid(("returns", "must be one-dimensional"))
     return _arrays.floats_to_buffer(array)
 
 
@@ -242,7 +242,7 @@ def _method(method: str | CovarianceMethod, decay: float) -> CovarianceMethod:
         return method
     named = {"sample": Sample(), "ledoit_wolf": LedoitWolf(), "oas": Oas(), "ewma": Ewma(decay=decay)}
     if method not in named:
-        raise ValueError(f"unknown covariance method {method!r}: use sample, ewma, ledoit_wolf or oas")
+        raise invalid(("method", f"unknown covariance method {method!r}: use sample, ewma, ledoit_wolf or oas"))
     return named[method]
 
 
@@ -272,7 +272,7 @@ def _table(values: Any, labels: Sequence[str] | None, prefix: str = "asset", nam
         labels = [str(c) for c in values.columns]
     array = np.asarray(values, dtype=np.float64)
     if array.ndim != 2:
-        raise ValueError(f"{name} must be two-dimensional: one row per period, one column per series")
+        raise invalid((name, "must be two-dimensional: one row per period, one column per series"))
     if labels is None:
         labels = [f"{prefix} {i}" for i in range(array.shape[1])]
     return _arrays.floats_to_buffer(array.T.copy()), json.dumps(list(labels))
@@ -319,7 +319,7 @@ def fundamental_model(
         factors = [str(c) for c in exposures.columns]
     array = np.asarray(exposures, dtype=np.float64)
     if array.ndim != 2:
-        raise ValueError("exposures must be two-dimensional: one row per asset, one column per factor")
+        raise invalid(("exposures", "must be two-dimensional: one row per asset, one column per factor"))
     if factors is None:
         factors = [f"factor {i}" for i in range(array.shape[1])]
     text = call(_finalytics.fundamental_model, columns, names, json.dumps(list(factors)), json.dumps(array.tolist()))
@@ -343,7 +343,7 @@ def factor_model(
         factors = [str(c) for c in exposures.columns] if factors is None else factors
     array = np.asarray(exposures, dtype=np.float64)
     if array.ndim != 2:
-        raise ValueError("exposures must be two-dimensional: one row per asset, one column per factor")
+        raise invalid(("exposures", "must be two-dimensional: one row per asset, one column per factor"))
     if assets is None:
         assets = [f"asset {i}" for i in range(array.shape[0])]
     if factors is None:
@@ -395,7 +395,7 @@ def matrix(values: Any, labels: Sequence[str] | None = None) -> Matrix:
         labels = [str(c) for c in values.columns]
     array = np.asarray(values, dtype=np.float64)
     if array.ndim != 2 or array.shape[0] != array.shape[1]:
-        raise ValueError("a matrix must be square")
+        raise invalid(("matrix", "must be square"))
     if labels is None:
         labels = [f"asset {i}" for i in range(array.shape[0])]
     return Matrix(labels=list(labels), values=array.ravel().tolist())

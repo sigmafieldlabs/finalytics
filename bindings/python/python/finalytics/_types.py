@@ -1141,8 +1141,8 @@ class Ewma:
     TYPE: ClassVar[str] = "ewma"
     """The value of the `type` tag that identifies this variant."""
 
-    decay: float
-    """The decay factor, between 0 and 1."""
+    decay: float = 0.94
+    """The decay factor, between 0 and 1: 0.94 by default."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1166,7 +1166,12 @@ class Oas:
 
 
 CovarianceMethod = Union[Sample, Ewma, LedoitWolf, Oas]
-"""How a covariance matrix is estimated from returns."""
+"""How a covariance matrix is estimated from returns.
+
+In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the type's
+name alone, such as `"ledoit_wolf"`; an exponentially weighted covariance without a decay has
+0.94.
+"""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3477,8 +3482,8 @@ class RebalanceContext:
     whole_units: bool
     """Whether trades are in whole units."""
 
-    lot_method: LotMethod
-    """How sales choose lots when no tax rates are given."""
+    lot_method: LotMethod | None = None
+    """How sales choose lots when no tax rates are given: absent for each account's own method."""
 
     minimum_trade: float
     """The smallest trade, in the base currency."""
@@ -3516,9 +3521,9 @@ class RebalanceEstimates:
 class RebalanceOptions:
     """Choices for `rebalance`."""
 
-    lot_method: LotMethod = "fifo"
-    """How sales choose lots; first in, first out by default. Highest cost first defers gains.
-    Ignored when `tax` is given.
+    lot_method: LotMethod | None = None
+    """How sales choose lots: by default, each account's own method (first in, first out unless the
+    account says otherwise). Highest cost first defers gains. Ignored when `tax` is given.
     """
 
     whole_units: bool = False
@@ -5408,7 +5413,7 @@ class Valuation:
     """Positions and cash, in the base currency."""
 
     warnings: ValidationReport
-    """Prices and rates carried forward from earlier dates."""
+    """Prices and rates carried forward from earlier dates, and cash balances below zero."""
 
 
 @dataclass(frozen=True, kw_only=True)

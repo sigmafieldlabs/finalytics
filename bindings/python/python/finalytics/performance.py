@@ -13,7 +13,7 @@ import numpy as np
 from finalytics import _arrays, _finalytics, _types
 from finalytics._arrays import DateArray, DateLike, FloatArray
 from finalytics._convert import dumps, loads
-from finalytics._errors import call
+from finalytics._errors import call, invalid
 
 __all__ = [
     "Performance",
@@ -101,7 +101,7 @@ class Performance:
     def _range(self, start: DateLike | None, end: DateLike | None) -> tuple[str, str]:
         dates = self.dates
         if len(dates) == 0:
-            raise ValueError("the performance has no dates")
+            raise invalid(("dates", "the performance has none"))
         return (
             _arrays.date(dates[0] if start is None else start),
             _arrays.date(dates[-1] if end is None else end),
@@ -207,7 +207,7 @@ def attribution_period(start: DateLike, end: DateLike, segments: Any) -> _types.
     if hasattr(segments, "columns"):
         missing = [c for c in _SEGMENT_FIELDS if c not in segments.columns]
         if missing:
-            raise ValueError(f"segments needs the columns {', '.join(missing)}")
+            raise invalid(*((f"segments.{c}", "is a column the segments need") for c in missing))
         segments = [
             _types.Segment(name=str(name), **{c: float(row[c]) for c in _SEGMENT_FIELDS})
             for name, row in segments.iterrows()

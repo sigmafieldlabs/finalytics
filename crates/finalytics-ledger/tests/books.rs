@@ -190,6 +190,26 @@ fn valuation_marks_to_market() {
 }
 
 #[test]
+fn cash_below_zero_is_a_warning() {
+    let mut pf = single_currency();
+    // A purchase of 75,000 with 10,000 deposited.
+    pf.transactions
+        .push(tx(9, "2026-06-01", buy("AAPL", "500", "150", "0")));
+    let books = Books::build(&pf, &MarketData::new()).unwrap();
+    let market = MarketData::new().with_prices(iid("AAPL"), series(&[("2026-06-30", "120")]));
+    let valuation = books.value_on(d("2026-06-30"), &market).unwrap();
+    let issues = valuation.warnings.issues();
+    assert_eq!(issues.len(), 1);
+    assert_eq!(issues[0].path, "cash.main.USD");
+    assert!(
+        issues[0].message.contains("below zero"),
+        "{}",
+        issues[0].message
+    );
+    assert!(!valuation.warnings.has_errors());
+}
+
+#[test]
 fn foreign_holdings_keep_cost_and_gains_in_both_currencies() {
     let mut pf = portfolio(vec![equity("SAP", Currency::EUR)], vec![]);
     pf.transactions = vec![

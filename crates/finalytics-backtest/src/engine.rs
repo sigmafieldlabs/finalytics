@@ -135,6 +135,15 @@ pub fn backtest(
 }
 
 /// Checks the inputs, and finds the periods the validation splits them into.
+/// The problems with `settings` on `market`: its trading cost, rebalancing and validation. A
+/// caller that checks its own inputs first adds these, so that every problem is reported
+/// together.
+pub fn check_settings(market: &Market<'_>, settings: &Settings) -> ValidationReport {
+    let mut report = ValidationReport::new();
+    settings_split(market, settings, &mut report);
+    report
+}
+
 fn check(
     market: &Market<'_>,
     strategies: &[Strategy<'_>],
@@ -161,6 +170,48 @@ fn check(
     if market.periods_per_year.is_nan() || market.periods_per_year <= 0.0 {
         report.error("periods_per_year", "must be greater than zero");
     }
+    let split = settings_split(market, settings, &mut report);
+    if strategies.is_empty() {
+        report.error("strategies", "there are none to test");
+    }
+    for (i, strategy) in strategies.iter().enumerate() {
+        if strategies[..i].iter().any(|s| s.name == strategy.name) {
+            report.error(
+                format!("strategies[{i}].name"),
+                format!("{} is the name of an earlier strategy", strategy.name),
+            );
+        }
+        if let Plan::Weights(weights) = &strategy.plan {
+            check_weights(weights, k, &format!("strategies[{i}].weights"), &mut report);
+        }
+    }
+    match benchmark {
+        Some((_, Benchmark::Weights(weights))) => {
+            check_weights(weights, k, "benchmark.weights", &mut report);
+        }
+        Some((_, Benchmark::Returns(returns))) => {
+            if returns.len() != n {
+                report.error(
+                    "benchmark.returns",
+                    format!("{} returns for {n} periods", returns.len()),
+                );
+            } else if let Some(t) = returns.iter().position(|r| !r.is_finite()) {
+                report.error(format!("benchmark.returns[{t}]"), "must be a finite number");
+            }
+        }
+        None => {}
+    }
+    report.into_result(split)
+}
+
+/// The split of the periods the validation of `settings` asks for, with its problems and those
+/// of the trading cost and rebalancing in `report`.
+fn settings_split(
+    market: &Market<'_>,
+    settings: &Settings,
+    report: &mut ValidationReport,
+) -> Split {
+    let n = market.periods();
     if !(settings.trading_cost_bps >= 0.0 && settings.trading_cost_bps.is_finite()) {
         report.error(
             "trading_cost_bps",
@@ -175,7 +226,7 @@ fn check(
             "must be between 0 and 1, such as 0.05 for five percentage points",
         );
     }
-    let split = match &settings.validation {
+    match &settings.validation {
         Validation::InSample => Split::InSample,
         Validation::Holdout { start } => {
             let h = market.dates.partition_point(|d| d < start);
@@ -210,12 +261,25 @@ fn check(
                     (0, "")
                 }
             };
-            if !field.is_empty() && (w < 2 || w >= n) {
+            let periods = |k: usize| {
+                if k == 1 {
+                    "1 period".to_owned()
+                } else {
+                    format!("{k} periods")
+                }
+            };
+            if !field.is_empty() && w < 2 {
+                report.error(
+                    format!("validation.{field}"),
+                    format!("the window is {}: a fit needs at least 2", periods(w)),
+                );
+            } else if !field.is_empty() && w >= n {
                 report.error(
                     format!("validation.{field}"),
                     format!(
-                        "a window of {w} periods must be at least 2 and leave periods to test: \
-                         the data has {n}"
+                        "the window is {}, but the data has {}: it must leave periods to test",
+                        periods(w),
+                        periods(n)
                     ),
                 );
             }
@@ -231,38 +295,7 @@ fn check(
                 expanding: *expanding,
             }
         }
-    };
-    if strategies.is_empty() {
-        report.error("strategies", "there are none to test");
     }
-    for (i, strategy) in strategies.iter().enumerate() {
-        if strategies[..i].iter().any(|s| s.name == strategy.name) {
-            report.error(
-                format!("strategies[{i}].name"),
-                format!("{} is the name of an earlier strategy", strategy.name),
-            );
-        }
-        if let Plan::Weights(weights) = &strategy.plan {
-            check_weights(weights, k, &format!("strategies[{i}].weights"), &mut report);
-        }
-    }
-    match benchmark {
-        Some((_, Benchmark::Weights(weights))) => {
-            check_weights(weights, k, "benchmark.weights", &mut report);
-        }
-        Some((_, Benchmark::Returns(returns))) => {
-            if returns.len() != n {
-                report.error(
-                    "benchmark.returns",
-                    format!("{} returns for {n} periods", returns.len()),
-                );
-            } else if let Some(t) = returns.iter().position(|r| !r.is_finite()) {
-                report.error(format!("benchmark.returns[{t}]"), "must be a finite number");
-            }
-        }
-        None => {}
-    }
-    report.into_result(split)
 }
 
 fn check_weights(weights: &[f64], assets: usize, path: &str, report: &mut ValidationReport) {

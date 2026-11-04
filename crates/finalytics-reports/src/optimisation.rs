@@ -357,6 +357,14 @@ fn not_held(r: &OptimisationReport) -> Option<String> {
     }
 }
 
+/// Why an optimisation with `status` (as JSON writes it, such as `infeasible`) found no weights.
+fn no_weights(status: &str) -> String {
+    serde_json::from_value::<finalytics_opt::SolveStatus>(serde_json::Value::String(
+        status.to_owned(),
+    ))
+    .map_or_else(|_| format!("it ended {status}"), |s| s.reason().to_owned())
+}
+
 fn limits(c: &OptimisationContext) -> String {
     if c.limits.is_empty() {
         "fully invested and long only".to_owned()
@@ -515,8 +523,8 @@ impl OptimisationReport {
             None => summary.push_str(&card(
                 "No weights",
                 &format!(
-                    "<p>The optimisation ended {} and found no weights within the limits: {}.</p>",
-                    esc(&c.status),
+                    "<p>The optimisation found no weights: {}. The limits: {}.</p>",
+                    esc(&no_weights(&c.status)),
                     esc(&limits(c))
                 ),
                 None,
@@ -1108,8 +1116,8 @@ impl OptimisationReport {
             None => {
                 page.section("No weights");
                 page.note(&format!(
-                    "The optimisation ended {} and found no weights within the limits: {}.",
-                    c.status,
+                    "The optimisation found no weights: {}. The limits: {}.",
+                    no_weights(&c.status),
                     limits(c)
                 ));
             }

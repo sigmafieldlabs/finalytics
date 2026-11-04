@@ -36,6 +36,7 @@ pub struct PortfolioDocument {
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 struct DocumentRepr {
     /// Always `"finalytics.portfolio"`.
     #[cfg_attr(feature = "schema", schemars(extend("const" = FORMAT)))]
@@ -53,6 +54,7 @@ struct DocumentRepr {
 #[derive(Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "schema", schemars(rename = "DocumentMarketData"))]
+#[serde(deny_unknown_fields)]
 /// Market data stored in a portfolio document.
 struct MarketRepr {
     /// The currency through which FX rates are crossed; USD by default.
@@ -72,6 +74,7 @@ struct MarketRepr {
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "schema", schemars(rename = "DocumentFxRates"))]
+#[serde(deny_unknown_fields)]
 /// The rates for one currency pair in a portfolio document.
 struct FxRepr {
     /// The currency priced.

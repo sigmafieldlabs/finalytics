@@ -347,4 +347,32 @@ fn malformed_documents_say_where() {
         paths(&self::report(PortfolioDocument::from_json(unknown))),
         ["portfolio.transactions[0].account: unknown account main"]
     );
+
+    // A misspelt field is reported, not ignored.
+    let misspelt = r#"{"format":"finalytics.portfolio","format_version":1,"portfolio":{"base_currency":"USD","accounts":[{"id":"main"}],
+        "instruments":[{"id":"AAPL","kind":"equity","currency":"USD"}],
+        "transactions":[{"id":"t1","account":"main","trade_date":"2026-01-02","type":"buy","instrument":"AAPL","quantty":"10","price":"1"}]}}"#;
+    let found = paths(&self::report(PortfolioDocument::from_json(misspelt)));
+    assert_eq!(found.len(), 1);
+    assert!(
+        found[0].starts_with("portfolio.transactions[0]") && found[0].contains("quantty"),
+        "{found:?}"
+    );
+    for (field, path) in [
+        (
+            r#""accounts":[{"id":"main","nmae":"x"}]"#,
+            "portfolio.accounts[0]",
+        ),
+        (
+            r#""instruments":[{"id":"AAPL","kind":"equity","currency":"USD","sector":"Tech"}]"#,
+            "portfolio.instruments[0]",
+        ),
+        (r#""benchmark":"SPY""#, "portfolio"),
+    ] {
+        let text = format!(
+            r#"{{"format":"finalytics.portfolio","format_version":1,"portfolio":{{"base_currency":"USD",{field}}}}}"#
+        );
+        let found = paths(&self::report(PortfolioDocument::from_json(&text)));
+        assert!(found[0].starts_with(path), "{field}: {found:?}");
+    }
 }

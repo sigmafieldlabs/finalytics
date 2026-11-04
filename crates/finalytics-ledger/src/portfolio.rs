@@ -13,6 +13,7 @@ use crate::{
 /// data, they are everything Finalytics needs to keep the portfolio's books.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct PortfolioData {
     /// The currency results are reported in.

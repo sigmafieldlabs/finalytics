@@ -1,5 +1,6 @@
 {
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "format": {
       "type": "string",
@@ -40,6 +41,7 @@
   "$defs": {
     "Account": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "id": {
           "$ref": "#/$defs/AccountId",
@@ -99,6 +101,7 @@
     },
     "DocumentFxRates": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "base": {
           "$ref": "#/$defs/Currency",
@@ -122,6 +125,7 @@
     },
     "DocumentMarketData": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "pivot": {
           "anyOf": [
@@ -162,6 +166,7 @@
     },
     "Instrument": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "id": {
           "$ref": "#/$defs/InstrumentId",
@@ -294,6 +299,7 @@
     },
     "LotPick": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "lot": {
           "$ref": "#/$defs/LotId",
@@ -328,6 +334,7 @@
     },
     "PortfolioData": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "base_currency": {
           "$ref": "#/$defs/Currency",
@@ -427,6 +434,7 @@
       "oneOf": [
         {
           "type": "object",
+          "description": "Buy `quantity` units at `price` per unit, paying `fees` on top.",
           "properties": {
             "type": {
               "type": "string",
@@ -455,11 +463,11 @@
             "instrument",
             "quantity",
             "price"
-          ],
-          "description": "Buy `quantity` units at `price` per unit, paying `fees` on top."
+          ]
         },
         {
           "type": "object",
+          "description": "Sell `quantity` units at `price` per unit, with `fees` deducted from the proceeds.",
           "properties": {
             "type": {
               "type": "string",
@@ -506,11 +514,11 @@
             "instrument",
             "quantity",
             "price"
-          ],
-          "description": "Sell `quantity` units at `price` per unit, with `fees` deducted from the proceeds."
+          ]
         },
         {
           "type": "object",
+          "description": "Cash paid into the account from outside the portfolio.",
           "properties": {
             "type": {
               "type": "string",
@@ -524,11 +532,11 @@
           "required": [
             "type",
             "amount"
-          ],
-          "description": "Cash paid into the account from outside the portfolio."
+          ]
         },
         {
           "type": "object",
+          "description": "Cash taken out of the portfolio.",
           "properties": {
             "type": {
               "type": "string",
@@ -542,11 +550,11 @@
           "required": [
             "type",
             "amount"
-          ],
-          "description": "Cash taken out of the portfolio."
+          ]
         },
         {
           "type": "object",
+          "description": "Units received from outside the portfolio.",
           "properties": {
             "type": {
               "type": "string",
@@ -587,11 +595,11 @@
             "type",
             "instrument",
             "quantity"
-          ],
-          "description": "Units received from outside the portfolio."
+          ]
         },
         {
           "type": "object",
+          "description": "Units sent out of the portfolio. No gain is realised.",
           "properties": {
             "type": {
               "type": "string",
@@ -628,11 +636,11 @@
             "type",
             "instrument",
             "quantity"
-          ],
-          "description": "Units sent out of the portfolio. No gain is realised."
+          ]
         },
         {
           "type": "object",
+          "description": "A dividend received in cash.",
           "properties": {
             "type": {
               "type": "string",
@@ -656,11 +664,11 @@
             "type",
             "instrument",
             "amount"
-          ],
-          "description": "A dividend received in cash."
+          ]
         },
         {
           "type": "object",
+          "description": "Interest received in cash, from an instrument or on the cash balance.",
           "properties": {
             "type": {
               "type": "string",
@@ -690,11 +698,11 @@
           "required": [
             "type",
             "amount"
-          ],
-          "description": "Interest received in cash, from an instrument or on the cash balance."
+          ]
         },
         {
           "type": "object",
+          "description": "A fee not tied to a trade, such as a custody or management fee.",
           "properties": {
             "type": {
               "type": "string",
@@ -708,11 +716,11 @@
           "required": [
             "type",
             "amount"
-          ],
-          "description": "A fee not tied to a trade, such as a custody or management fee."
+          ]
         },
         {
           "type": "object",
+          "description": "A tax not tied to a trade.",
           "properties": {
             "type": {
               "type": "string",
@@ -726,11 +734,11 @@
           "required": [
             "type",
             "amount"
-          ],
-          "description": "A tax not tied to a trade."
+          ]
         },
         {
           "type": "object",
+          "description": "Cash converted from one currency to another.",
           "properties": {
             "type": {
               "type": "string",
@@ -749,11 +757,11 @@
             "type",
             "sell",
             "buy"
-          ],
-          "description": "Cash converted from one currency to another."
+          ]
         },
         {
           "type": "object",
+          "description": "A share split: every `from` units become `to` units, with cost basis unchanged. A reverse\nsplit has `to` below `from`.",
           "properties": {
             "type": {
               "type": "string",
@@ -777,11 +785,11 @@
             "instrument",
             "from",
             "to"
-          ],
-          "description": "A share split: every `from` units become `to` units, with cost basis unchanged. A reverse\nsplit has `to` below `from`."
+          ]
         },
         {
           "type": "object",
+          "description": "A spin-off: holders receive `ratio` units of a new instrument per unit held, and a share\n`cost_allocation` (between 0 and 1) of the cost basis moves to the new units.",
           "properties": {
             "type": {
               "type": "string",
@@ -810,11 +818,11 @@
             "new_instrument",
             "ratio",
             "cost_allocation"
-          ],
-          "description": "A spin-off: holders receive `ratio` units of a new instrument per unit held, and a share\n`cost_allocation` (between 0 and 1) of the cost basis moves to the new units."
+          ]
         },
         {
           "type": "object",
+          "description": "A merger or acquisition: each unit held becomes `ratio` units of `new_instrument`, plus\n`cash_per_unit` in cash, which reduces the cost basis (gains beyond the basis are\nrealised).",
           "properties": {
             "type": {
               "type": "string",
@@ -843,11 +851,11 @@
             "instrument",
             "new_instrument",
             "ratio"
-          ],
-          "description": "A merger or acquisition: each unit held becomes `ratio` units of `new_instrument`, plus\n`cash_per_unit` in cash, which reduces the cost basis (gains beyond the basis are\nrealised)."
+          ]
         },
         {
           "type": "object",
+          "description": "The instrument's identifier changes; lots carry over unchanged.",
           "properties": {
             "type": {
               "type": "string",
@@ -866,11 +874,11 @@
             "type",
             "instrument",
             "new_instrument"
-          ],
-          "description": "The instrument's identifier changes; lots carry over unchanged."
+          ]
         },
         {
           "type": "object",
+          "description": "A return of capital paid in cash, which reduces the cost basis (amounts beyond the basis\nare realised as gains).",
           "properties": {
             "type": {
               "type": "string",
@@ -889,8 +897,7 @@
             "type",
             "instrument",
             "amount"
-          ],
-          "description": "A return of capital paid in cash, which reduces the cost basis (amounts beyond the basis\nare realised as gains)."
+          ]
         }
       ],
       "description": "One event in the life of a portfolio.\n\nTransactions are applied in trade-date order; transactions on the same date are applied in the\norder given. Positions are booked on the trade date; the settlement date is recorded for cash\nreporting."

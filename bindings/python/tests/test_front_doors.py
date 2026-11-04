@@ -80,8 +80,18 @@ def test_mistakes_name_the_option(prices):
     with pytest.raises(fl.ValidationError) as caught:
         assets.optimise(asset_bounds={"Crypto": (0, 0.1)})
     assert [i.path for i in caught.value.issues] == ["options.asset_bounds.Crypto"]
-    with pytest.raises(ValueError):
-        fl.Assets(prices, risk_free_rate=0.02, risk_free_asset="T-Bills")
+    for rate in (0.02, 0.0):
+        with pytest.raises(fl.ValidationError) as caught:
+            fl.Assets(prices, risk_free_rate=rate, risk_free_asset="T-Bills")
+        assert [i.path for i in caught.value.issues] == ["risk_free_rate"]
+    with pytest.raises(fl.ValidationError) as caught:
+        fl.Assets(prices, periods_per_year=0, risk_free_rate=float("nan"))
+    assert [i.path for i in caught.value.issues] == ["risk_free_rate"]
+    with pytest.raises(fl.ValidationError) as caught:
+        fl.Assets(prices, periods_per_year=0)
+    assert [i.path for i in caught.value.issues] == ["periods_per_year"]
+    ewma = fl.Assets(prices, covariance="ewma")
+    assert ewma.covariance().method == fl.types.Ewma(decay=0.94)
 
 
 def test_the_portfolio_dataset():
@@ -106,13 +116,13 @@ def test_from_holdings_to_trades():
     assert after == portfolio.with_rebalance(proposal.results).weights()
     for holding, target in result.results.weights.items():
         assert after[holding] == pytest.approx(target, abs=0.01)
-    failed = assets.optimise(method="minimum_variance", max_weight=0.1)
+    failed = assets.optimise(method="target_return", target=0.9)
     assert failed.results.weights is None
     for targets in (failed, failed.results):
         with pytest.raises(fl.ValidationError) as caught:
             portfolio.rebalance(targets)
         assert [(i.path, i.message) for i in caught.value.issues] == [
-            ("targets", "the optimisation ended infeasible and found no weights")
+            ("targets", "the optimisation found no weights: no portfolio meets every limit")
         ]
 
 
