@@ -82,6 +82,14 @@ pub struct Statistics {
     /// The largest fall from a peak, as a negative return (-0.25 for a fall of 25%), measured
     /// from a starting value before the first return.
     pub max_drawdown: f64,
+    /// The conditional drawdown at risk at 95%: the mean of the worst 5% of the drawdowns after
+    /// each return, as a negative return like `max_drawdown` (Chekhlov, Uryasev and Zabarankin,
+    /// 2005). It is the Rockafellar–Uryasev tail mean, as the expected shortfall of minimum CVaR
+    /// is, of the drawdowns measured on the compounded value.
+    pub conditional_drawdown_at_risk: f64,
+    /// The Ulcer index: the root mean square of the drawdowns after each return, as a positive
+    /// fraction (Martin, 1987). It weighs how deep and how long the falls are.
+    pub ulcer_index: f64,
     /// The annualised return over the size of the maximum drawdown; absent without a drawdown.
     pub calmar_ratio: Option<f64>,
     /// The skewness of the returns (population moments).
@@ -115,6 +123,16 @@ pub struct RelativeStatistics {
     pub alpha: Option<f64>,
     /// The correlation of the returns with the benchmark's.
     pub correlation: Option<f64>,
+    /// The beta over the periods the benchmark fell: the slope of the returns on the
+    /// benchmark's in those periods alone. Absent with fewer than two such periods.
+    pub downside_beta: Option<f64>,
+    /// The beta over the periods the benchmark rose.
+    pub upside_beta: Option<f64>,
+    /// The compound annual return over the periods the benchmark fell, over the benchmark's in
+    /// those periods: below 1, the portfolio lost less than the benchmark when it fell.
+    pub downside_capture: Option<f64>,
+    /// The same over the periods the benchmark rose: above 1, the portfolio gained more.
+    pub upside_capture: Option<f64>,
 }
 
 /// Computes the statistics of a returns series of at least two periods.
@@ -155,6 +173,10 @@ pub fn statistics(returns: &[f64], options: &StatisticsOptions) -> Result<Statis
 
     let max_drawdown = max_drawdown(returns);
     let calmar_ratio = (max_drawdown < 0.0).then(|| annualised_return / -max_drawdown);
+    let falls = drawdowns_after(returns);
+    let depths: Vec<f64> = falls.iter().map(|d| -d).collect();
+    let conditional_drawdown_at_risk = -tail_mean(&depths, 0.05);
+    let ulcer_index = (falls.iter().map(|d| d * d).sum::<f64>() / falls.len() as f64).sqrt();
 
     Ok(Statistics {
         observations: returns.len(),
@@ -165,6 +187,8 @@ pub fn statistics(returns: &[f64], options: &StatisticsOptions) -> Result<Statis
         sharpe_ratio,
         sortino_ratio,
         max_drawdown,
+        conditional_drawdown_at_risk: conditional_drawdown_at_risk + 0.0,
+        ulcer_index,
         calmar_ratio,
         skewness: moments.skewness(),
         excess_kurtosis: moments.excess_kurtosis(),
@@ -213,6 +237,8 @@ pub fn relative_statistics(
 
     let active_return =
         annualise(total_return(returns), n, p) - annualise(total_return(benchmark), n, p);
+    let (downside_beta, downside_capture) = conditional(returns, benchmark, p, |b| b < 0.0);
+    let (upside_beta, upside_capture) = conditional(returns, benchmark, p, |b| b > 0.0);
     Ok(RelativeStatistics {
         observations: n,
         active_return,
@@ -221,7 +247,43 @@ pub fn relative_statistics(
         beta,
         alpha,
         correlation,
+        downside_beta,
+        upside_beta,
+        downside_capture,
+        upside_capture,
     })
+}
+
+/// The beta and the capture ratio over the periods whose benchmark return passes `keep`.
+fn conditional(
+    returns: &[f64],
+    benchmark: &[f64],
+    periods_per_year: f64,
+    keep: impl Fn(f64) -> bool,
+) -> (Option<f64>, Option<f64>) {
+    let (r, b): (Vec<f64>, Vec<f64>) = returns
+        .iter()
+        .zip(benchmark)
+        .filter(|(_, b)| keep(**b))
+        .map(|(r, b)| (*r, *b))
+        .unzip();
+    if r.is_empty() {
+        return (None, None);
+    }
+    let (rm, bm) = (Moments::of(&r), Moments::of(&b));
+    let beta = (r.len() >= 2 && !bm.is_constant()).then(|| {
+        let covariance = r
+            .iter()
+            .zip(&b)
+            .map(|(x, y)| (x - rm.mean) * (y - bm.mean))
+            .sum::<f64>()
+            / r.len() as f64;
+        covariance / bm.m2
+    });
+    let annual = |x: &[f64]| annualise(total_return(x), x.len(), periods_per_year);
+    let base = annual(&b);
+    let capture = (base != 0.0).then(|| annual(&r) / base);
+    (beta, capture)
 }
 
 /// The compounded return of a series of returns.
@@ -241,6 +303,40 @@ pub fn max_drawdown(returns: &[f64]) -> f64 {
         worst = worst.min(level / peak - 1.0);
     }
     worst
+}
+
+/// The drawdown after each return: the compounded value over its highest so far, less one,
+/// from a starting value before the first return.
+pub(crate) fn drawdowns_after(returns: &[f64]) -> Vec<f64> {
+    let mut level = 1.0;
+    let mut peak: f64 = 1.0;
+    returns
+        .iter()
+        .map(|r| {
+            level *= 1.0 + r;
+            peak = peak.max(level);
+            level / peak - 1.0
+        })
+        .collect()
+}
+
+/// The Rockafellar–Uryasev mean of the largest share `alpha` of `losses`: the minimum over `z`
+/// of `z + mean(max(loss - z, 0)) / alpha`, attained at one of the losses.
+pub(crate) fn tail_mean(losses: &[f64], alpha: f64) -> f64 {
+    let mut sorted = losses.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    let t = sorted.len();
+    // With z at the k-th smallest loss, the losses above it exceed it by
+    // (sum of the larger losses) - (their number) * z.
+    let mut above = 0.0;
+    let mut best = f64::INFINITY;
+    for k in (0..t).rev() {
+        let z = sorted[k];
+        let excess = above - (t - 1 - k) as f64 * z;
+        best = best.min(z + excess / (alpha * t as f64));
+        above += z;
+    }
+    best
 }
 
 fn annualise(total: f64, observations: usize, periods_per_year: f64) -> f64 {

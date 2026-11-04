@@ -9,6 +9,7 @@ from conftest import FIXTURES
 
 STATISTICS = json.loads((FIXTURES / "finalytics-risk/tests/fixtures/statistics.json").read_text())
 COVARIANCE = json.loads((FIXTURES / "finalytics-risk/tests/fixtures/covariance.json").read_text())
+DOWNSIDE = json.loads((FIXTURES / "finalytics-risk/tests/fixtures/downside.json").read_text())
 
 
 @pytest.mark.parametrize("case", STATISTICS["cases"], ids=lambda c: c["name"])
@@ -68,3 +69,24 @@ def test_rolling_windows():
     assert len(rolled) == len(r) - 11
     assert rolled[-1] == fl.risk.statistics(r[-12:], periods_per_year=12)
     assert len(fl.risk.rolling_tail_risk(r, 24, 0.9)) == len(r) - 23
+
+
+@pytest.mark.parametrize("pair", list(zip(STATISTICS["cases"], DOWNSIDE["cases"])), ids=lambda p: p[0]["name"])
+def test_downside_measures_match_the_reference(pair):
+    case, expected = pair
+    options = case["options"]
+    stats = fl.risk.statistics(case["returns"], **options)
+    assert stats.conditional_drawdown_at_risk == pytest.approx(expected["conditional_drawdown_at_risk"], rel=1e-10)
+    assert stats.ulcer_index == pytest.approx(expected["ulcer_index"], rel=1e-12)
+    relative = fl.risk.relative_statistics(case["returns"], case["benchmark"], **options)
+    for field, value in expected["relative"].items():
+        assert getattr(relative, field) == pytest.approx(value, rel=1e-10), field
+
+
+def test_shortfall_contributions_add_up():
+    case = DOWNSIDE["shortfall"]
+    scenarios = np.array(case["scenarios"]).T
+    found = fl.risk.shortfall_decomposition(case["weights"], scenarios, case["labels"])
+    assert found.expected_shortfall == pytest.approx(case["expected_shortfall"], rel=1e-12)
+    assert [c.component for c in found.contributions] == pytest.approx(case["contributions"], rel=1e-8)
+    assert [c.label for c in found.contributions] == case["labels"]

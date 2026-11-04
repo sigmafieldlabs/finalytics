@@ -6,6 +6,7 @@ import { close, engine, json } from "./setup.mjs";
 const fl = await engine();
 const statisticsFixture = await json("crates/finalytics-risk/tests/fixtures/statistics.json");
 const covarianceFixture = await json("crates/finalytics-risk/tests/fixtures/covariance.json");
+const downsideFixture = await json("crates/finalytics-risk/tests/fixtures/downside.json");
 const optimisationFixture = await json("crates/finalytics-opt/tests/fixtures/optimisation.json");
 
 test("statistics match the reference", () => {
@@ -93,4 +94,21 @@ test("normal distribution and drawdowns", () => {
   assert.equal(found.length, 1);
   assert.equal(found[0].recovery, null);
   close(found[0].depth, -0.1, 1e-15, "depth");
+});
+
+test("downside measures match the reference", () => {
+  statisticsFixture.cases.forEach((c, k) => {
+    const expected = downsideFixture.cases[k];
+    const stats = fl.statistics(c.returns, c.options);
+    close(stats.conditional_drawdown_at_risk, expected.conditional_drawdown_at_risk, 1e-10, `${c.name} CDaR`);
+    close(stats.ulcer_index, expected.ulcer_index, 1e-12, `${c.name} Ulcer index`);
+    const relative = fl.relativeStatistics(c.returns, c.benchmark, c.options);
+    for (const [field, value] of Object.entries(expected.relative)) {
+      close(relative[field], value, 1e-10, `${c.name} ${field}`);
+    }
+  });
+  const s = downsideFixture.shortfall;
+  const found = fl.shortfallDecomposition(s.weights, { labels: s.labels, columns: s.scenarios });
+  close(found.expected_shortfall, s.expected_shortfall, 1e-12, "expected shortfall");
+  found.contributions.forEach((c, i) => close(c.component, s.contributions[i], 1e-8, c.label));
 });

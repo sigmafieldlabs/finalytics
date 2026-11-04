@@ -30,8 +30,8 @@ mod tail;
 
 pub use covariance::{CovarianceEstimate, CovarianceMethod, covariance};
 pub use decomposition::{
-    GroupRisk, RiskContribution, RiskDecomposition, group_risk, risk_decomposition,
-    tracking_error_decomposition,
+    GroupRisk, RiskContribution, RiskDecomposition, ShortfallDecomposition, group_contributions,
+    group_risk, risk_decomposition, shortfall_decomposition, tracking_error_decomposition,
 };
 pub use distribution::{normal_cdf, normal_pdf, normal_quantile};
 pub use drawdown::{Drawdown, drawdown_series, drawdowns};

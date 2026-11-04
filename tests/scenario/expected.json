@@ -97,6 +97,7 @@
     "annualised_return": -0.24843556267452993,
     "best": 0.013597938363071549,
     "calmar_ratio": -3.8253106609460903,
+    "conditional_drawdown_at_risk": -0.06393744432764971,
     "downside_deviation": 0.09384721423968435,
     "excess_kurtosis": 0.3988323810704797,
     "max_drawdown": -0.06494519914706376,
@@ -105,6 +106,7 @@
     "skewness": -0.45490172455755995,
     "sortino_ratio": -2.973283426491193,
     "total_return": -0.0475646498286183,
+    "ulcer_index": 0.04677131109680766,
     "volatility": 0.11430452427638005,
     "worst": -0.01824499191983242
   },

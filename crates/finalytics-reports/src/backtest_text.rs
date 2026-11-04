@@ -508,6 +508,10 @@ impl BacktestReport {
             statistics_row("Maximum drawdown", &runs, &|r| {
                 percent(r.statistics.max_drawdown)
             }),
+            statistics_row("CDaR 95%", &runs, &|r| {
+                percent(r.statistics.conditional_drawdown_at_risk)
+            }),
+            statistics_row("Ulcer index", &runs, &|r| percent(r.statistics.ulcer_index)),
             statistics_row(&format!("Worst {period}"), &runs, &|r| {
                 pct(Some(r.statistics.worst), 1, true)
             }),
@@ -525,6 +529,16 @@ impl BacktestReport {
                 r.relative
                     .as_ref()
                     .map_or_else(String::new, |x| num(x.information_ratio, 2))
+            }));
+            rows.push(statistics_row("Downside capture", &runs, &|r| {
+                r.relative
+                    .as_ref()
+                    .map_or_else(String::new, |x| num(x.downside_capture, 2))
+            }));
+            rows.push(statistics_row("Upside capture", &runs, &|r| {
+                r.relative
+                    .as_ref()
+                    .map_or_else(String::new, |x| num(x.upside_capture, 2))
             }));
         }
         let head: Vec<&str> = heads.iter().map(String::as_str).collect();

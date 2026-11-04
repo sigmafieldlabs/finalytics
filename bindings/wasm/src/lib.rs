@@ -2103,6 +2103,22 @@ pub fn risk_decomposition(
     to_js(&risk::risk_decomposition(weights, &matrix).map_err(error)?)
 }
 
+/// Splits the expected shortfall at `confidence` (0.95 by default) of a portfolio with
+/// `weights` of the assets of `scenarios` into each asset's contribution: its weight times its
+/// mean loss in the worst scenarios. The contributions add up to the expected shortfall.
+#[wasm_bindgen(js_name = shortfallDecomposition, unchecked_return_type = "ShortfallDecomposition")]
+pub fn shortfall_decomposition(
+    #[wasm_bindgen(unchecked_param_type = "Float64Array | number[]")] weights: &[f64],
+    #[wasm_bindgen(unchecked_param_type = "ReturnsTable")] scenarios: JsValue,
+    confidence: Option<f64>,
+) -> Result<JsValue, JsValue> {
+    let table: ReturnsTable = from_js(scenarios, "scenarios")?;
+    to_js(
+        &risk::shortfall_decomposition(weights, &table, confidence.unwrap_or(0.95))
+            .map_err(error)?,
+    )
+}
+
 /// The ex-ante tracking error against `benchmark` weights, split into each asset's contribution.
 #[wasm_bindgen(js_name = trackingErrorDecomposition, unchecked_return_type = "RiskDecomposition")]
 pub fn tracking_error_decomposition(

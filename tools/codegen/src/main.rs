@@ -85,6 +85,7 @@ fn api() -> Value {
     add::<risk::CovarianceMethod>(&mut g);
     add::<risk::CovarianceEstimate>(&mut g);
     add::<risk::RiskDecomposition>(&mut g);
+    add::<risk::ShortfallDecomposition>(&mut g);
     add::<risk::GroupRisk>(&mut g);
     add::<risk::HoldingReturns>(&mut g);
     add::<risk::FactorModel>(&mut g);

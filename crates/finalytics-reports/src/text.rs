@@ -1239,6 +1239,11 @@ pub(crate) fn risk(page: &mut Page, r: &RiskReport) {
         ("Sortino ratio".to_owned(), num(s.sortino_ratio, 2)),
         ("Calmar ratio".to_owned(), num(s.calmar_ratio, 2)),
         ("Maximum drawdown".to_owned(), signed(s.max_drawdown)),
+        (
+            "CDaR 95%".to_owned(),
+            signed(s.conditional_drawdown_at_risk),
+        ),
+        ("Ulcer index".to_owned(), share(s.ulcer_index)),
         (format!("Best {period}"), pct(Some(s.best), 2, true)),
         (format!("Worst {period}"), pct(Some(s.worst), 2, true)),
         ("Skewness".to_owned(), num(s.skewness, 2)),
@@ -1263,6 +1268,22 @@ pub(crate) fn risk(page: &mut Page, r: &RiskReport) {
             ("Beta".to_owned(), num(rel.beta, 2)),
             ("Alpha".to_owned(), signed(rel.alpha)),
             ("Correlation".to_owned(), num(rel.correlation, 2)),
+            (
+                "Downside beta, capture".to_owned(),
+                format!(
+                    "{}, {}",
+                    num(rel.downside_beta, 2),
+                    num(rel.downside_capture, 2)
+                ),
+            ),
+            (
+                "Upside beta, capture".to_owned(),
+                format!(
+                    "{}, {}",
+                    num(rel.upside_beta, 2),
+                    num(rel.upside_capture, 2)
+                ),
+            ),
         ]);
     }
     if !r.tail.is_empty() {

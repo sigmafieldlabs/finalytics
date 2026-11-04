@@ -741,3 +741,52 @@ fn fixed_weights_are_compared_with_methods_on_the_same_periods() {
         Err(Error::Validation(_))
     ));
 }
+
+#[test]
+fn the_minimum_cvar_report_shows_its_shortfall_and_its_groups() {
+    let assets = assets();
+    let result = assets
+        .optimise(Method::MinimumCvar)
+        .confidence(0.9)
+        .group("Equity", &["US Equity", "Intl Equity"], 0.3, 0.6)
+        .build()
+        .unwrap();
+    let (report, raw) = (&result.report, &result.results);
+    let es = report.summary.as_ref().unwrap().expected_shortfall.unwrap();
+    assert_eq!(es.confidence, 0.9);
+    close(
+        es.value,
+        raw.solution.objective_value.unwrap(),
+        "the optimal CVaR",
+    );
+    // The shares of risk are of the expected shortfall, and add up to one.
+    let shares: f64 = report.allocation.iter().map(|a| a.risk_share).sum();
+    assert!((shares - 1.0).abs() < 1e-9, "{shares}");
+    let [group] = &report.groups[..] else {
+        panic!("{:?}", report.groups)
+    };
+    let weights = raw.weights.as_ref().unwrap();
+    close(
+        group.weight,
+        weights["US Equity"] + weights["Intl Equity"],
+        "group weight",
+    );
+    assert!(group.weight >= 0.3 - 1e-6 && group.weight <= 0.6 + 1e-6);
+    let text = report.to_string();
+    assert!(
+        text.contains("CVaR 90%") && text.contains("Groups"),
+        "{text}"
+    );
+    let html = report.to_html(None);
+    assert!(html.contains("CVaR 90%") && html.contains("expected shortfall at 90%"));
+    // Other methods keep the variance's shares, with no shortfall.
+    let variance = assets.optimise(Method::MinimumVariance).build().unwrap();
+    assert!(
+        variance
+            .report
+            .summary
+            .unwrap()
+            .expected_shortfall
+            .is_none()
+    );
+}

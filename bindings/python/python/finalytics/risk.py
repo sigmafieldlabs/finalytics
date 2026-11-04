@@ -47,6 +47,7 @@ from finalytics._types import (
     Oas,
     RelativeStatistics,
     RiskDecomposition,
+    ShortfallDecomposition,
     Sample,
     ScenarioOptions,
     ScenarioPath,
@@ -117,6 +118,7 @@ __all__ = [
     "regression_model",
     "relative_statistics",
     "risk_decomposition",
+    "shortfall_decomposition",
     "rolling_relative_statistics",
     "rolling_statistics",
     "rolling_tail_risk",
@@ -446,6 +448,18 @@ def risk_decomposition(weights: Any, covariance: Matrix | CovarianceEstimate | A
     component risk; the components add up to the volatility."""
     text = call(_finalytics.risk_decomposition, _returns(weights), dumps(_matrix(covariance)))
     return loads(RiskDecomposition, text)
+
+
+def shortfall_decomposition(
+    weights: Any, scenarios: Any, labels: Sequence[str] | None = None, *, confidence: float = 0.95
+) -> ShortfallDecomposition:
+    """Splits the expected shortfall at `confidence` of a portfolio with `weights` into each
+    asset's contribution: its weight times its mean loss in the worst scenarios. `scenarios` are
+    returns, one row per period and one column per asset, as an array or a pandas DataFrame;
+    the contributions add up to the expected shortfall, a positive loss over one period."""
+    columns, names = _table(scenarios, labels, name="scenarios")
+    text = call(_finalytics.shortfall_decomposition, _returns(weights), columns, names, float(confidence))
+    return loads(ShortfallDecomposition, text)
 
 
 def tracking_error_decomposition(

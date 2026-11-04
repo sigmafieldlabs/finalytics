@@ -458,7 +458,7 @@
         "risk_share": {
           "type": "number",
           "format": "double",
-          "description": "Its share of the portfolio's variance: its weight times its covariance with the\nportfolio, over the portfolio's variance."
+          "description": "Its share of the portfolio's risk: of its variance (its weight times its covariance with\nthe portfolio, over the portfolio's variance), or for minimum CVaR of its expected\nshortfall (its weight times its mean loss in the worst periods, over the expected\nshortfall)."
         }
       },
       "required": [
@@ -3180,7 +3180,7 @@
             "null"
           ],
           "format": "double",
-          "description": "The sum of its assets' shares, absent when the portfolio has no volatility."
+          "description": "The sum of its assets' shares, absent when the portfolio has no risk."
         }
       },
       "required": [
@@ -3189,6 +3189,51 @@
         "component"
       ],
       "description": "A group's share of a portfolio's volatility."
+    },
+    "GroupRow": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The group's name, such as \"Energy\"."
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its assets."
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "The total weight of its assets."
+        },
+        "min": {
+          "type": "number",
+          "format": "double",
+          "description": "The smallest total weight allowed."
+        },
+        "max": {
+          "type": "number",
+          "format": "double",
+          "description": "The largest total weight allowed."
+        },
+        "risk_share": {
+          "type": "number",
+          "format": "double",
+          "description": "The sum of its assets' shares of the risk."
+        }
+      },
+      "required": [
+        "name",
+        "assets",
+        "weight",
+        "min",
+        "max",
+        "risk_share"
+      ],
+      "description": "A group of assets with limits on its total weight."
     },
     "GroupShock": {
       "type": "object",
@@ -4970,6 +5015,14 @@
           },
           "description": "Each asset's weight, expected return, volatility and share of the risk, the largest\nweight first."
         },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GroupRow"
+          },
+          "description": "Each group of assets with limits on its total weight, with that weight and its share of\nthe risk, in name order.",
+          "default": []
+        },
         "correlation": {
           "$ref": "#/$defs/Grid",
           "description": "The correlation of the assets' returns, from the covariance the optimisation used."
@@ -5121,6 +5174,18 @@
           "type": "number",
           "format": "double",
           "description": "Its weight."
+        },
+        "expected_shortfall": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ShortfallFigure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For minimum CVaR, the expected shortfall the weights reach, which the method minimises;\nthe shares of risk are then of it.",
+          "default": null
         }
       },
       "required": [
@@ -7102,6 +7167,38 @@
           ],
           "format": "double",
           "description": "The correlation of the returns with the benchmark's."
+        },
+        "downside_beta": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The beta over the periods the benchmark fell: the slope of the returns on the\nbenchmark's in those periods alone. Absent with fewer than two such periods."
+        },
+        "upside_beta": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The beta over the periods the benchmark rose."
+        },
+        "downside_capture": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The compound annual return over the periods the benchmark fell, over the benchmark's in\nthose periods: below 1, the portfolio lost less than the benchmark when it fell."
+        },
+        "upside_capture": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The same over the periods the benchmark rose: above 1, the portfolio gained more."
         }
       },
       "required": [
@@ -7559,12 +7656,12 @@
             "null"
           ],
           "format": "double",
-          "description": "The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`.\nAbsent when the portfolio has no volatility."
+          "description": "The change in the portfolio's risk per unit of weight: for volatility,\n`(C w)_i / volatility`; for expected shortfall, the asset's mean loss in the tail\nscenarios. Absent when the portfolio has no volatility."
         },
         "component": {
           "type": "number",
           "format": "double",
-          "description": "`weight * marginal`. The components add up to the portfolio's volatility."
+          "description": "`weight * marginal`. The components add up to the portfolio's risk."
         },
         "share": {
           "type": [
@@ -7572,7 +7669,7 @@
             "null"
           ],
           "format": "double",
-          "description": "`component / volatility`. The shares add up to one. Absent when the portfolio has no\nvolatility."
+          "description": "`component` over the portfolio's risk. The shares add up to one. Absent when the\nportfolio has no risk."
         }
       },
       "required": [
@@ -7580,7 +7677,7 @@
         "weight",
         "component"
       ],
-      "description": "One asset's share of a portfolio's volatility."
+      "description": "One asset's share of a portfolio's risk: its volatility, or its expected shortfall."
     },
     "RiskDecomposition": {
       "type": "object",
@@ -8706,6 +8803,54 @@
       },
       "description": "The shocks of a scenario. An instrument's return in its own currency comes from its own\nshock, or else from the one group shock that matches it, or else from the factor shocks; an\ninstrument none of them reaches returns zero and is listed as not shocked. A currency shock\ncompounds with the instrument's return, and applies to cash in that currency."
     },
+    "ShortfallDecomposition": {
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "description": "The confidence, for example 0.95."
+        },
+        "expected_shortfall": {
+          "type": "number",
+          "format": "double",
+          "description": "The portfolio's expected shortfall over one period of the scenarios, as a positive loss:\nthe mean loss in the worst `1 - confidence` of them (the Rockafellar–Uryasev tail mean,\nwhich minimum CVaR minimises)."
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RiskContribution"
+          },
+          "description": "Each asset's contribution: its weight times its mean loss in those scenarios, in the\norder of the scenarios' columns. The components add up to the expected shortfall."
+        }
+      },
+      "required": [
+        "confidence",
+        "expected_shortfall",
+        "contributions"
+      ],
+      "description": "A portfolio's expected shortfall split into each asset's contribution (historical Euler\nallocation)."
+    },
+    "ShortfallFigure": {
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "description": "The confidence, such as 0.95."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "The mean loss in the worst `1 - confidence` of the periods, as a positive return."
+        }
+      },
+      "required": [
+        "confidence",
+        "value"
+      ],
+      "description": "An expected shortfall over one period of the returns."
+    },
     "Side": {
       "oneOf": [
         {
@@ -8982,6 +9127,16 @@
           "format": "double",
           "description": "The largest fall from a peak, as a negative return (-0.25 for a fall of 25%), measured\nfrom a starting value before the first return."
         },
+        "conditional_drawdown_at_risk": {
+          "type": "number",
+          "format": "double",
+          "description": "The conditional drawdown at risk at 95%: the mean of the worst 5% of the drawdowns after\neach return, as a negative return like `max_drawdown` (Chekhlov, Uryasev and Zabarankin,\n2005). It is the Rockafellar–Uryasev tail mean, as the expected shortfall of minimum CVaR\nis, of the drawdowns measured on the compounded value."
+        },
+        "ulcer_index": {
+          "type": "number",
+          "format": "double",
+          "description": "The Ulcer index: the root mean square of the drawdowns after each return, as a positive\nfraction (Martin, 1987). It weighs how deep and how long the falls are."
+        },
         "calmar_ratio": {
           "type": [
             "number",
@@ -9024,6 +9179,8 @@
         "volatility",
         "downside_deviation",
         "max_drawdown",
+        "conditional_drawdown_at_risk",
+        "ulcer_index",
         "best",
         "worst"
       ],

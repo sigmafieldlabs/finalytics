@@ -1,7 +1,7 @@
 # Risk decomposition
 
-Risk decomposition splits a portfolio's volatility into the part each asset contributes, so that
-the parts add up to the whole: the Euler allocation of volatility.
+Risk decomposition splits a portfolio's volatility, or its expected shortfall, into the part each
+asset contributes, so that the parts add up to the whole: the Euler allocation.
 
 ## Definitions
 
@@ -20,8 +20,18 @@ An asset with a negative share reduces the portfolio's risk: it hedges the other
 **Ex-ante tracking error** against benchmark weights $b$ is the volatility of the active weights,
 $\sqrt{(w - b)^\top \Sigma (w - b)}$, and decomposes the same way with $w - b$ in place of $w$.
 
+**Expected shortfall** at confidence $c$, over historical scenarios $r_{it}$, is the mean loss in
+the worst share $\alpha = 1 - c$ of them. With the scenarios sorted by the portfolio's loss
+$L_t = -\sum_i w_i r_{it}$, the worst $\lfloor \alpha T \rfloor$ have weight $p_t = 1/(\alpha T)$ and
+the next the rest, $p_t = (\alpha T - \lfloor \alpha T \rfloor)/(\alpha T)$, so that
+$\text{ES} = \sum_t p_t L_t$, the Rockafellar–Uryasev tail mean that minimum CVaR minimises. It is
+also homogeneous of degree one, and each asset's component is $w_i \sum_t p_t (-r_{it})$: its
+weight times its mean loss in the tail. `shortfall_decomposition` returns them; they add up to
+the expected shortfall exactly. The minimum-CVaR optimisation report gives each asset's share of
+the expected shortfall, rather than of the variance.
+
 Components and shares add up by any grouping, such as asset class, region or currency, with
-`group_risk`.
+`group_risk`, or `group_contributions` for either decomposition.
 
 ### From a portfolio
 
@@ -73,6 +83,16 @@ bonds -0.026561 -0.005312 -0.059189
 Half the portfolio is in equity but equity carries 87% of its risk; the bonds, negatively
 correlated with the rest in these returns, take risk away.
 
+Each asset's part of the expected shortfall, at 75%, over four scenarios:
+
+```python
+>>> scenarios = [[-0.08, 0.01], [0.02, 0.0], [0.03, 0.005], [-0.01, -0.004]]
+>>> es = fl.risk.shortfall_decomposition([0.6, 0.4], scenarios, ["equity", "bonds"], confidence=0.75)
+>>> round(es.expected_shortfall, 6), [round(c.component, 6) for c in es.contributions]
+(0.044, [0.048, -0.004])
+
+```
+
 ## Validation
 
 `crates/finalytics-risk/src/decomposition.rs` checks the components and shares against
@@ -80,7 +100,11 @@ hand-computed values and their sums against the volatility to $10^{-15}$;
 `crates/finalytics-risk/tests/holdings.rs` decomposes a multi-currency portfolio built from its
 books, checking that the weights add up across accounts, that the returns of foreign holdings
 and cash are in the base currency, and that the decomposition by asset class adds up. The Python
-and JavaScript tests repeat the check on the shared scenario.
+and JavaScript tests repeat the check on the shared scenario. The contributions to expected
+shortfall are checked by the Euler property itself: `scripts/reference/downside.py` finds each
+asset's weight times the derivative of the expected shortfall, by central differences of its
+linear programme solved with SciPy, and `crates/finalytics-risk/tests/downside.rs` requires
+agreement to $10^{-8}$.
 
 ## References
 

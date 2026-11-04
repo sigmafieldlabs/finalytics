@@ -1178,6 +1178,20 @@ fn risk_decomposition(weights: &[u8], matrix: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
+fn shortfall_decomposition(
+    weights: &[u8],
+    columns: &[u8],
+    labels: &str,
+    confidence: f64,
+) -> PyResult<String> {
+    let table = table(columns, labels, "scenarios")?;
+    to_json(
+        &risk::shortfall_decomposition(&floats(weights, "weights")?, &table, confidence)
+            .map_err(engine)?,
+    )
+}
+
+#[pyfunction]
 fn tracking_error_decomposition(
     weights: &[u8],
     benchmark: &[u8],
@@ -1310,6 +1324,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(factor_tracking_error, m)?)?;
     m.add_function(wrap_pyfunction!(correlation, m)?)?;
     m.add_function(wrap_pyfunction!(risk_decomposition, m)?)?;
+    m.add_function(wrap_pyfunction!(shortfall_decomposition, m)?)?;
     m.add_function(wrap_pyfunction!(tracking_error_decomposition, m)?)?;
     m.add_function(wrap_pyfunction!(normal_cdf, m)?)?;
     m.add_function(wrap_pyfunction!(normal_pdf, m)?)?;

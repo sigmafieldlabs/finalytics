@@ -193,8 +193,10 @@ export interface AllocationRow {
   /** Its annual volatility. */
   volatility: number;
   /**
-   * Its share of the portfolio's variance: its weight times its covariance with the
-   * portfolio, over the portfolio's variance.
+   * Its share of the portfolio's risk: of its variance (its weight times its covariance with
+   * the portfolio, over the portfolio's variance), or for minimum CVaR of its expected
+   * shortfall (its weight times its mean loss in the worst periods, over the expected
+   * shortfall).
    */
   risk_share: number;
 }
@@ -1249,8 +1251,24 @@ export interface GroupRisk {
   weight: number;
   /** The sum of its assets' components. */
   component: number;
-  /** The sum of its assets' shares, absent when the portfolio has no volatility. */
+  /** The sum of its assets' shares, absent when the portfolio has no risk. */
   share?: number | null;
+}
+
+/** A group of assets with limits on its total weight. */
+export interface GroupRow {
+  /** The group's name, such as "Energy". */
+  name: string;
+  /** Its assets. */
+  assets: string[];
+  /** The total weight of its assets. */
+  weight: number;
+  /** The smallest total weight allowed. */
+  min: number;
+  /** The largest total weight allowed. */
+  max: number;
+  /** The sum of its assets' shares of the risk. */
+  risk_share: number;
 }
 
 /** A return for every instrument with a classification, such as all equities. */
@@ -1910,6 +1928,11 @@ export interface OptimisationReport {
    * weight first.
    */
   allocation: AllocationRow[];
+  /**
+   * Each group of assets with limits on its total weight, with that weight and its share of
+   * the risk, in name order.
+   */
+  groups?: GroupRow[];
   /** The correlation of the assets' returns, from the covariance the optimisation used. */
   correlation: Grid;
   /**
@@ -1974,6 +1997,11 @@ export interface OptimisationSummary {
   largest_asset: string;
   /** Its weight. */
   largest_weight: number;
+  /**
+   * For minimum CVaR, the expected shortfall the weights reach, which the method minimises;
+   * the shares of risk are then of it.
+   */
+  expected_shortfall?: ShortfallFigure | null;
 }
 
 /**
@@ -2719,6 +2747,20 @@ export interface RelativeStatistics {
   alpha?: number | null;
   /** The correlation of the returns with the benchmark's. */
   correlation?: number | null;
+  /**
+   * The beta over the periods the benchmark fell: the slope of the returns on the
+   * benchmark's in those periods alone. Absent with fewer than two such periods.
+   */
+  downside_beta?: number | null;
+  /** The beta over the periods the benchmark rose. */
+  upside_beta?: number | null;
+  /**
+   * The compound annual return over the periods the benchmark fell, over the benchmark's in
+   * those periods: below 1, the portfolio lost less than the benchmark when it fell.
+   */
+  downside_capture?: number | null;
+  /** The same over the periods the benchmark rose: above 1, the portfolio gained more. */
+  upside_capture?: number | null;
 }
 
 /** Which report a report is. */
@@ -2862,22 +2904,23 @@ export interface ReturnsTable {
   columns: number[][];
 }
 
-/** One asset's share of a portfolio's volatility. */
+/** One asset's share of a portfolio's risk: its volatility, or its expected shortfall. */
 export interface RiskContribution {
   /** The asset, as labelled in the covariance matrix. */
   label: string;
   /** Its weight. */
   weight: number;
   /**
-   * The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`.
-   * Absent when the portfolio has no volatility.
+   * The change in the portfolio's risk per unit of weight: for volatility,
+   * `(C w)_i / volatility`; for expected shortfall, the asset's mean loss in the tail
+   * scenarios. Absent when the portfolio has no volatility.
    */
   marginal?: number | null;
-  /** `weight * marginal`. The components add up to the portfolio's volatility. */
+  /** `weight * marginal`. The components add up to the portfolio's risk. */
   component: number;
   /**
-   * `component / volatility`. The shares add up to one. Absent when the portfolio has no
-   * volatility.
+   * `component` over the portfolio's risk. The shares add up to one. Absent when the
+   * portfolio has no risk.
    */
   share?: number | null;
 }
@@ -3295,6 +3338,34 @@ export interface Shocks {
   factors?: FactorShocks | null;
 }
 
+/**
+ * A portfolio's expected shortfall split into each asset's contribution (historical Euler
+ * allocation).
+ */
+export interface ShortfallDecomposition {
+  /** The confidence, for example 0.95. */
+  confidence: number;
+  /**
+   * The portfolio's expected shortfall over one period of the scenarios, as a positive loss:
+   * the mean loss in the worst `1 - confidence` of them (the Rockafellar–Uryasev tail mean,
+   * which minimum CVaR minimises).
+   */
+  expected_shortfall: number;
+  /**
+   * Each asset's contribution: its weight times its mean loss in those scenarios, in the
+   * order of the scenarios' columns. The components add up to the expected shortfall.
+   */
+  contributions: RiskContribution[];
+}
+
+/** An expected shortfall over one period of the returns. */
+export interface ShortfallFigure {
+  /** The confidence, such as 0.95. */
+  confidence: number;
+  /** The mean loss in the worst `1 - confidence` of the periods, as a positive return. */
+  value: number;
+}
+
 /** Buy or sell. */
 export type Side = "buy" | "sell";
 
@@ -3405,6 +3476,18 @@ export interface Statistics {
    * from a starting value before the first return.
    */
   max_drawdown: number;
+  /**
+   * The conditional drawdown at risk at 95%: the mean of the worst 5% of the drawdowns after
+   * each return, as a negative return like `max_drawdown` (Chekhlov, Uryasev and Zabarankin,
+   * 2005). It is the Rockafellar–Uryasev tail mean, as the expected shortfall of minimum CVaR
+   * is, of the drawdowns measured on the compounded value.
+   */
+  conditional_drawdown_at_risk: number;
+  /**
+   * The Ulcer index: the root mean square of the drawdowns after each return, as a positive
+   * fraction (Martin, 1987). It weighs how deep and how long the falls are.
+   */
+  ulcer_index: number;
   /** The annualised return over the size of the maximum drawdown; absent without a drawdown. */
   calmar_ratio?: number | null;
   /** The skewness of the returns (population moments). */

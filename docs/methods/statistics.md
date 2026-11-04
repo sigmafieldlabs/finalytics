@@ -20,6 +20,8 @@ deviation (divisor $n - 1$) and $m_k = \frac1n \sum (r_t - \bar r)^k$ the centra
 | Sharpe ratio | $\dfrac{\bar r - r_f}{s} \sqrt{P}$ |
 | Sortino ratio | $\dfrac{(\bar r - \tau)\,P}{\text{downside deviation}}$ |
 | Maximum drawdown | The largest fall from a running peak of the growth $\prod (1 + r_t)$, starting from 1 before the first return, as a negative return |
+| Conditional drawdown at risk | The mean of the worst 5% of the drawdowns $d_t$ after each return (the growth over its running peak, less one), as a negative return: $-\min_z \big(z + \frac{1}{0.05\,n} \sum_t \max(-d_t - z, 0)\big)$, the Rockafellar–Uryasev tail mean |
+| Ulcer index | $\sqrt{\frac1n \sum_t d_t^2}$, the root mean square of the drawdowns |
 | Calmar ratio | Annualised return over the size of the maximum drawdown |
 | Skewness | $m_3 / m_2^{3/2}$ |
 | Excess kurtosis | $m_4 / m_2^2 - 3$ |
@@ -39,6 +41,14 @@ With benchmark returns $b_t$ over the same periods and active returns $a_t = r_t
 | Beta | $\operatorname{cov}(r, b) / \operatorname{var}(b)$ |
 | Alpha | $\big(1 + \overline{(r - r_f) - \beta (b - r_f)}\big)^P - 1$ |
 | Correlation | $\operatorname{cov}(r, b) / (\sigma_r \sigma_b)$ |
+| Downside beta | The beta over the periods with $b_t < 0$ alone, with their own means |
+| Upside beta | The same over the periods with $b_t > 0$ |
+| Downside capture | The annualised return over the periods with $b_t < 0$ (compounded, $P$ a year) over the benchmark's in those periods |
+| Upside capture | The same over the periods with $b_t > 0$ |
+
+A downside capture below one means the portfolio lost less than the benchmark when the benchmark
+fell; an upside capture above one, that it gained more when it rose. The conditional betas and
+captures are None without such periods (or, for a beta, with fewer than two).
 
 ### Drawdowns
 
@@ -107,7 +117,10 @@ moments) on three series: 756 daily returns with fat tails, 60 skewed monthly re
 non-zero risk-free and target rates, and 300 daily returns with a crash. The Rust tests
 (`crates/finalytics-risk/tests/reference.rs`) require agreement to $10^{-11}$, relative, and the
 Python and JavaScript tests check the same fixture. Drawdowns are checked against hand-worked series, including an open
-drawdown and a series that never falls.
+drawdown and a series that never falls. `scripts/reference/downside.py` checks the conditional
+drawdown at risk against its linear programme (SciPy), the Ulcer index against pandas, the
+conditional betas against least squares and the capture ratios against empyrical's definition,
+on the same series (`crates/finalytics-risk/tests/downside.rs`).
 
 ## References
 
@@ -115,6 +128,12 @@ drawdown and a series that never falls.
 - Sortino, F. A. and van der Meer, R., "Downside risk", *Journal of Portfolio Management* 17(4),
   1991.
 - Young, T. W., "Calmar ratio: a smoother tool", *Futures* 20(1), 1991.
+- Chekhlov, A., Uryasev, S. and Zabarankin, M., "Drawdown measure in portfolio optimization",
+  *International Journal of Theoretical and Applied Finance* 8(1), 2005.
+- Martin, P. G. and McCann, B. B., *The Investor's Guide to Fidelity Funds*, Wiley, 1989 (the
+  Ulcer index).
+- Bawa, V. S. and Lindenberg, E. B., "Capital market equilibrium in a mean-lower partial moment
+  framework", *Journal of Financial Economics* 5(2), 1977.
 - Jensen, M. C., "The performance of mutual funds in the period 1945–1964", *Journal of Finance*
   23(2), 1968.
 - Quantopian, *empyrical* (maintained as empyrical-reloaded), the reference implementation.

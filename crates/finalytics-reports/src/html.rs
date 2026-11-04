@@ -1417,7 +1417,12 @@ fn risk(r: &RiskReport) -> String {
         (
             "Maximum drawdown".to_owned(),
             signed(s.max_drawdown),
-            Some(format!("Calmar {}", num(s.calmar_ratio, 2))),
+            Some(format!(
+                "Calmar {}; CDaR 95% {}; Ulcer {}",
+                num(s.calmar_ratio, 2),
+                signed(s.conditional_drawdown_at_risk),
+                share(s.ulcer_index)
+            )),
         ),
     ];
     if let Some(rel) = &r.relative {
@@ -1432,7 +1437,20 @@ fn risk(r: &RiskReport) -> String {
         items.push((
             "Beta".to_owned(),
             num(rel.beta, 2),
-            Some(format!("correlation {}", num(rel.correlation, 2))),
+            Some(format!(
+                "correlation {}; down {}, up {}",
+                num(rel.correlation, 2),
+                num(rel.downside_beta, 2),
+                num(rel.upside_beta, 2)
+            )),
+        ));
+        items.push((
+            "Capture".to_owned(),
+            format!("{} down", num(rel.downside_capture, 2)),
+            Some(format!(
+                "{} up: the share of the benchmark's falls and rises",
+                num(rel.upside_capture, 2)
+            )),
         ));
     }
     items.push((

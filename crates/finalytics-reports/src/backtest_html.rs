@@ -2200,6 +2200,10 @@ impl BacktestReport {
             row("Sharpe ratio", &|r| num(r.statistics.sharpe_ratio, 2)),
             row("Sortino ratio", &|r| num(r.statistics.sortino_ratio, 2)),
             row("Maximum drawdown", &|r| percent(r.statistics.max_drawdown)),
+            row("Conditional drawdown at risk, 95%", &|r| {
+                percent(r.statistics.conditional_drawdown_at_risk)
+            }),
+            row("Ulcer index", &|r| percent(r.statistics.ulcer_index)),
             row("Calmar ratio", &|r| num(r.statistics.calmar_ratio, 2)),
             row(&format!("Best {period}"), &|r| {
                 pct(Some(r.statistics.best), 1, true)
@@ -2229,6 +2233,20 @@ impl BacktestReport {
                 r.relative
                     .as_ref()
                     .map_or_else(String::new, |x| num(x.beta, 2))
+            }));
+            rows.push(row("Downside beta and capture", &|r| {
+                r.relative.as_ref().map_or_else(String::new, |x| {
+                    format!(
+                        "{} · {}",
+                        num(x.downside_beta, 2),
+                        num(x.downside_capture, 2)
+                    )
+                })
+            }));
+            rows.push(row("Upside beta and capture", &|r| {
+                r.relative.as_ref().map_or_else(String::new, |x| {
+                    format!("{} · {}", num(x.upside_beta, 2), num(x.upside_capture, 2))
+                })
             }));
         }
         let head: Vec<String> = std::iter::once(String::new())

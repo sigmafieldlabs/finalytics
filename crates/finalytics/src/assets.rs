@@ -709,6 +709,23 @@ impl Assets {
             let report = self.backtest_with(&history).ok()?.report;
             Some((report.strategy.tested, report.benchmark?.tested))
         });
+        // For minimum CVaR, the share of risk is of the expected shortfall the method minimised,
+        // on the same returns.
+        let shortfall = match (&results.weights, options.method) {
+            (Some(weights), Method::MinimumCvar) => {
+                let returns = self.risky_returns()?;
+                let w: Vec<f64> = labels
+                    .iter()
+                    .map(|l| weights.get(l).copied().unwrap_or(0.0))
+                    .collect();
+                Some(finalytics_risk::shortfall_decomposition(
+                    &w,
+                    &returns,
+                    options.confidence.unwrap_or(0.95),
+                )?)
+            }
+            _ => None,
+        };
         let solver = serde_json::to_value(results.solution.method)
             .ok()
             .and_then(|v| v.as_str().map(str::to_owned))
@@ -733,6 +750,12 @@ impl Assets {
             end,
             frontier,
             history,
+            shortfall,
+            groups: options
+                .groups
+                .iter()
+                .map(|(name, g)| (name.clone(), g.assets.clone(), g.min, g.max))
+                .collect(),
         })
     }
 

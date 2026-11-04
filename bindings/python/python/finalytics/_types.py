@@ -351,8 +351,9 @@ class AllocationRow:
     """Its annual volatility."""
 
     risk_share: float
-    """Its share of the portfolio's variance: its weight times its covariance with the portfolio,
-    over the portfolio's variance.
+    """Its share of the portfolio's risk: of its variance (its weight times its covariance with the
+    portfolio, over the portfolio's variance), or for minimum CVaR of its expected shortfall (its
+    weight times its mean loss in the worst periods, over the expected shortfall).
     """
 
 
@@ -1781,7 +1782,30 @@ class GroupRisk:
     """The sum of its assets' components."""
 
     share: float | None = None
-    """The sum of its assets' shares, absent when the portfolio has no volatility."""
+    """The sum of its assets' shares, absent when the portfolio has no risk."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class GroupRow:
+    """A group of assets with limits on its total weight."""
+
+    name: str
+    """The group's name, such as "Energy"."""
+
+    assets: list[str]
+    """Its assets."""
+
+    weight: float
+    """The total weight of its assets."""
+
+    min: float
+    """The smallest total weight allowed."""
+
+    max: float
+    """The largest total weight allowed."""
+
+    risk_share: float
+    """The sum of its assets' shares of the risk."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2666,6 +2690,11 @@ class OptimisationReport(ReportPage):
     first.
     """
 
+    groups: list[GroupRow] = field(default_factory=list)
+    """Each group of assets with limits on its total weight, with that weight and its share of the
+    risk, in name order.
+    """
+
     correlation: Grid
     """The correlation of the assets' returns, from the covariance the optimisation used."""
 
@@ -2744,6 +2773,11 @@ class OptimisationSummary:
 
     largest_weight: float
     """Its weight."""
+
+    expected_shortfall: ShortfallFigure | None = None
+    """For minimum CVaR, the expected shortfall the weights reach, which the method minimises; the
+    shares of risk are then of it.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3763,6 +3797,22 @@ class RelativeStatistics:
     correlation: float | None = None
     """The correlation of the returns with the benchmark's."""
 
+    downside_beta: float | None = None
+    """The beta over the periods the benchmark fell: the slope of the returns on the benchmark's in
+    those periods alone. Absent with fewer than two such periods.
+    """
+
+    upside_beta: float | None = None
+    """The beta over the periods the benchmark rose."""
+
+    downside_capture: float | None = None
+    """The compound annual return over the periods the benchmark fell, over the benchmark's in those
+    periods: below 1, the portfolio lost less than the benchmark when it fell.
+    """
+
+    upside_capture: float | None = None
+    """The same over the periods the benchmark rose: above 1, the portfolio gained more."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class ReportOptions:
@@ -3955,7 +4005,7 @@ class ReturnsTable:
 
 @dataclass(frozen=True, kw_only=True)
 class RiskContribution:
-    """One asset's share of a portfolio's volatility."""
+    """One asset's share of a portfolio's risk: its volatility, or its expected shortfall."""
 
     label: str
     """The asset, as labelled in the covariance matrix."""
@@ -3964,16 +4014,17 @@ class RiskContribution:
     """Its weight."""
 
     marginal: float | None = None
-    """The change in the portfolio's volatility per unit of weight: `(C w)_i / volatility`. Absent
-    when the portfolio has no volatility.
+    """The change in the portfolio's risk per unit of weight: for volatility, `(C w)_i /
+    volatility`; for expected shortfall, the asset's mean loss in the tail scenarios. Absent when
+    the portfolio has no volatility.
     """
 
     component: float
-    """`weight * marginal`. The components add up to the portfolio's volatility."""
+    """`weight * marginal`. The components add up to the portfolio's risk."""
 
     share: float | None = None
-    """`component / volatility`. The shares add up to one. Absent when the portfolio has no
-    volatility.
+    """`component` over the portfolio's risk. The shares add up to one. Absent when the portfolio
+    has no risk.
     """
 
 
@@ -4543,6 +4594,38 @@ class Shocks:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ShortfallDecomposition:
+    """A portfolio's expected shortfall split into each asset's contribution (historical Euler
+    allocation).
+    """
+
+    confidence: float
+    """The confidence, for example 0.95."""
+
+    expected_shortfall: float
+    """The portfolio's expected shortfall over one period of the scenarios, as a positive loss: the
+    mean loss in the worst `1 - confidence` of them (the Rockafellar–Uryasev tail mean, which
+    minimum CVaR minimises).
+    """
+
+    contributions: list[RiskContribution]
+    """Each asset's contribution: its weight times its mean loss in those scenarios, in the order of
+    the scenarios' columns. The components add up to the expected shortfall.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShortfallFigure:
+    """An expected shortfall over one period of the returns."""
+
+    confidence: float
+    """The confidence, such as 0.95."""
+
+    value: float
+    """The mean loss in the worst `1 - confidence` of the periods, as a positive return."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Slice:
     """One part of a whole, for a pie, bar or treemap chart."""
 
@@ -4664,6 +4747,18 @@ class Statistics:
     max_drawdown: float
     """The largest fall from a peak, as a negative return (-0.25 for a fall of 25%), measured from a
     starting value before the first return.
+    """
+
+    conditional_drawdown_at_risk: float
+    """The conditional drawdown at risk at 95%: the mean of the worst 5% of the drawdowns after each
+    return, as a negative return like `max_drawdown` (Chekhlov, Uryasev and Zabarankin, 2005). It
+    is the Rockafellar–Uryasev tail mean, as the expected shortfall of minimum CVaR is, of the
+    drawdowns measured on the compounded value.
+    """
+
+    ulcer_index: float
+    """The Ulcer index: the root mean square of the drawdowns after each return, as a positive
+    fraction (Martin, 1987). It weighs how deep and how long the falls are.
     """
 
     calmar_ratio: float | None = None
@@ -5679,6 +5774,7 @@ __all__ = [
     "GroupImpact",
     "GroupLimit",
     "GroupRisk",
+    "GroupRow",
     "GroupShock",
     "GroupSource",
     "Headline",
@@ -5828,6 +5924,8 @@ __all__ = [
     "ShockScenario",
     "ShockSource",
     "Shocks",
+    "ShortfallDecomposition",
+    "ShortfallFigure",
     "Side",
     "Since",
     "SinceInception",

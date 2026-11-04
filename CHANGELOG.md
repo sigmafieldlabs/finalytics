@@ -9,6 +9,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Statistics` adds the conditional drawdown at risk at 95% (the mean of the worst 5% of the
+  drawdowns, as a negative return like the maximum drawdown) and the Ulcer index (the root mean
+  square of the drawdowns). `RelativeStatistics` adds downside and upside betas and capture
+  ratios. The reports show them, and `scripts/reference/downside.py` checks them against a
+  linear programme, pandas, least squares and empyrical's definitions.
+- `shortfall_decomposition` (`fl.risk.shortfall_decomposition`, `shortfallDecomposition`)
+  splits a portfolio's historical expected shortfall into each asset's contribution, adding up
+  to it exactly, with `group_contributions` for groups. The minimum-CVaR optimisation report
+  shows the expected shortfall the weights reach, at its confidence, and gives each asset's
+  share of it rather than of the variance.
+- With limits on groups of assets, the optimisation report shows each group's weight against
+  its limits and its share of the risk (`OptimisationReport.groups`).
 - `StrategyResult.fitted` and `StrategyReport.fitted` say whether a method fitted the weights to
   returns. Fixed weights have no run in sample in the reports, and are described as fixed
   weights, not fitted to the returns they are scored on.

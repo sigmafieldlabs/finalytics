@@ -20,7 +20,7 @@ use crate::html::{card, esc, heat, legend, ticks, tiles};
 use crate::shapes::{Grid, Unit};
 use crate::text::{
     L, NOISE, Page, R, WIDTH, bar, covariance_label, covariance_name, fit, num, pad_left, pct,
-    plural, share, spark, width, wrap,
+    period_word, plural, share, spark, width, wrap,
 };
 
 /// The weights an optimisation chose, with what they are expected to deliver, where their risk
@@ -37,6 +37,10 @@ pub struct OptimisationReport {
     /// Each asset's weight, expected return, volatility and share of the risk, the largest
     /// weight first.
     pub allocation: Vec<AllocationRow>,
+    /// Each group of assets with limits on its total weight, with that weight and its share of
+    /// the risk, in name order.
+    #[serde(default)]
+    pub groups: Vec<GroupRow>,
     /// The correlation of the assets' returns, from the covariance the optimisation used.
     pub correlation: Grid,
     /// The efficient frontier under the same limits, from the least volatile portfolio to the
@@ -115,6 +119,40 @@ pub struct OptimisationSummary {
     pub largest_asset: String,
     /// Its weight.
     pub largest_weight: f64,
+    /// For minimum CVaR, the expected shortfall the weights reach, which the method minimises;
+    /// the shares of risk are then of it.
+    #[serde(default)]
+    pub expected_shortfall: Option<ShortfallFigure>,
+}
+
+/// An expected shortfall over one period of the returns.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct ShortfallFigure {
+    /// The confidence, such as 0.95.
+    pub confidence: f64,
+    /// The mean loss in the worst `1 - confidence` of the periods, as a positive return.
+    pub value: f64,
+}
+
+/// A group of assets with limits on its total weight.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct GroupRow {
+    /// The group's name, such as "Energy".
+    pub name: String,
+    /// Its assets.
+    pub assets: Vec<String>,
+    /// The total weight of its assets.
+    pub weight: f64,
+    /// The smallest total weight allowed.
+    pub min: f64,
+    /// The largest total weight allowed.
+    pub max: f64,
+    /// The sum of its assets' shares of the risk.
+    pub risk_share: f64,
 }
 
 /// One asset in the weights.
@@ -130,8 +168,10 @@ pub struct AllocationRow {
     pub expected_return: f64,
     /// Its annual volatility.
     pub volatility: f64,
-    /// Its share of the portfolio's variance: its weight times its covariance with the
-    /// portfolio, over the portfolio's variance.
+    /// Its share of the portfolio's risk: of its variance (its weight times its covariance with
+    /// the portfolio, over the portfolio's variance), or for minimum CVaR of its expected
+    /// shortfall (its weight times its mean loss in the worst periods, over the expected
+    /// shortfall).
     pub risk_share: f64,
 }
 
@@ -180,6 +220,11 @@ pub struct OptimisationInputs<'a> {
     pub end: Date,
     pub frontier: Vec<(f64, f64)>,
     pub history: Option<(RunReport, RunReport)>,
+    /// For minimum CVaR, the weights' expected shortfall split by asset, in the order of
+    /// `labels`.
+    pub shortfall: Option<finalytics_risk::ShortfallDecomposition>,
+    /// The groups with limits: name, assets, smallest and largest total weight.
+    pub groups: Vec<(String, Vec<String>, f64, f64)>,
 }
 
 /// The optimisation report from what the `finalytics` crate assembles.
@@ -202,20 +247,25 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
     };
     let mut allocation = Vec::with_capacity(n);
     let mut summary = None;
+    let shortfall = inputs
+        .shortfall
+        .as_ref()
+        .filter(|s| s.contributions.len() == n);
     if let Some(w) = &weights {
         let var = variance(w);
         for i in 0..n {
             let marginal: f64 = (0..n).map(|j| cov(i, j) * w[j]).sum();
+            let risk_share = match shortfall {
+                Some(s) => s.contributions[i].share.unwrap_or(0.0),
+                None if var > 0.0 => w[i] * marginal / var,
+                None => 0.0,
+            };
             allocation.push(AllocationRow {
                 asset: inputs.labels[i].clone(),
                 weight: w[i],
                 expected_return: inputs.expected_returns[i],
                 volatility: vol[i],
-                risk_share: if var > 0.0 {
-                    w[i] * marginal / var
-                } else {
-                    0.0
-                },
+                risk_share,
             });
         }
         allocation.sort_by(|a, b| b.weight.total_cmp(&a.weight));
@@ -232,6 +282,10 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             effective_assets: 1.0 / w.iter().map(|x| x * x).sum::<f64>().max(f64::MIN_POSITIVE),
             largest_asset: largest.map(|r| r.asset.clone()).unwrap_or_default(),
             largest_weight: largest.map_or(0.0, |r| r.weight),
+            expected_shortfall: shortfall.map(|s| ShortfallFigure {
+                confidence: s.confidence,
+                value: s.expected_shortfall,
+            }),
         });
     } else {
         for ((asset, expected), volatility) in
@@ -246,6 +300,27 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             });
         }
     }
+    let groups = inputs
+        .groups
+        .iter()
+        .map(|(name, assets, min, max)| {
+            let of = |pick: fn(&AllocationRow) -> f64| -> f64 {
+                allocation
+                    .iter()
+                    .filter(|a| assets.contains(&a.asset))
+                    .map(pick)
+                    .sum()
+            };
+            GroupRow {
+                name: name.clone(),
+                assets: assets.clone(),
+                weight: of(|a| a.weight),
+                min: *min,
+                max: *max,
+                risk_share: of(|a| a.risk_share),
+            }
+        })
+        .collect();
     let correlation = Grid {
         name: "Correlation".to_owned(),
         unit: Unit::Ratio,
@@ -304,6 +379,7 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
         },
         summary,
         allocation,
+        groups,
         correlation,
         frontier: inputs
             .frontier
@@ -378,6 +454,50 @@ fn limits(c: &OptimisationContext) -> String {
     }
 }
 
+/// What the shares of risk are of: the variance, or for minimum CVaR the expected shortfall.
+fn risk_basis(r: &OptimisationReport) -> String {
+    match r.summary.as_ref().and_then(|s| s.expected_shortfall) {
+        Some(es) => format!(
+            "the expected shortfall at {}: an asset's weight times its mean loss in the worst \
+             {} of {}s, over the portfolio's",
+            pct(Some(es.confidence), 0, false),
+            pct(Some(1.0 - es.confidence), 0, false),
+            period_word(r.context.periods_per_year)
+        ),
+        None => "the variance: an asset's weight times its covariance with the portfolio, over \
+                 the portfolio's variance"
+            .to_owned(),
+    }
+}
+
+/// The optimal expected shortfall as a label and a value, such as ("CVaR 95%", "2.3% a month").
+fn shortfall_figure(r: &OptimisationReport) -> Option<(String, String)> {
+    let es = r.summary.as_ref()?.expected_shortfall?;
+    Some((
+        format!("CVaR {}", pct(Some(es.confidence), 0, false)),
+        format!(
+            "{} a {}",
+            pct(Some(es.value), 2, false),
+            period_word(r.context.periods_per_year)
+        ),
+    ))
+}
+
+/// The groups as table rows: name, weight, limits and share of risk.
+fn group_rows(r: &OptimisationReport) -> Vec<Vec<String>> {
+    r.groups
+        .iter()
+        .map(|g| {
+            vec![
+                g.name.clone(),
+                share(g.weight),
+                format!("{} to {}", share(g.min), share(g.max)),
+                weight(g.risk_share),
+            ]
+        })
+        .collect()
+}
+
 fn estimates(c: &OptimisationContext) -> String {
     format!(
         "{} expected returns and {}, annualised by {}",
@@ -415,7 +535,7 @@ impl OptimisationReport {
         let mut summary = String::new();
         match &self.summary {
             Some(s) => {
-                summary.push_str(&tiles(&[
+                let mut items = vec![
                     (
                         "Expected return".to_owned(),
                         format!("{} a year", percent(s.expected_return)),
@@ -430,6 +550,21 @@ impl OptimisationReport {
                         percent(s.volatility),
                         Some(capitalise(&covariance_name(&c.covariance))),
                     ),
+                ];
+                if let (Some((label, value)), Some(es)) =
+                    (shortfall_figure(self), s.expected_shortfall)
+                {
+                    items.push((
+                        label,
+                        value,
+                        Some(format!(
+                            "The least mean loss in the worst {} of {}s",
+                            pct(Some(1.0 - es.confidence), 0, false),
+                            period_word(c.periods_per_year)
+                        )),
+                    ));
+                }
+                items.extend([
                     (
                         "Sharpe ratio".to_owned(),
                         num(s.sharpe_ratio, 2),
@@ -451,7 +586,8 @@ impl OptimisationReport {
                         percent(s.largest_weight),
                         Some(s.largest_asset.clone()),
                     ),
-                ]));
+                ]);
+                summary.push_str(&tiles(&items));
                 let mut segs = String::new();
                 let mut keys: Vec<(String, &str)> = Vec::new();
                 for a in &held {
@@ -491,9 +627,10 @@ impl OptimisationReport {
                     })
                     .collect();
                 let mut note = format!(
-                    "{}. {}; the volatilities and shares of risk come from the covariance.",
+                    "{}. {}. Shares of risk are of {}.",
                     capitalise(&limits(c)),
-                    estimates(c)
+                    estimates(c),
+                    risk_basis(self)
                 );
                 if let Some(n) = not_held(self) {
                     let _ = write!(note, " {n}.");
@@ -519,6 +656,22 @@ impl OptimisationReport {
                     ),
                     Some(&note),
                 ));
+                if !self.groups.is_empty() {
+                    let rows: Vec<Vec<String>> = group_rows(self)
+                        .into_iter()
+                        .map(|row| row.iter().map(|cell| esc(cell)).collect())
+                        .collect();
+                    summary.push_str(&card(
+                        "Groups",
+                        &table(
+                            &["Group", "Weight", "Limits", "Share of risk"].map(str::to_owned),
+                            &rows,
+                            1,
+                            "",
+                        ),
+                        Some("Each group's total weight against its limits, and its share of the risk."),
+                    ));
+                }
             }
             None => summary.push_str(&card(
                 "No weights",
@@ -609,14 +762,11 @@ impl OptimisationReport {
                 }
                 (Some(_), Some(_)) => note.push_str(
                     "Each asset's share of the risk is its weight, to within half a percentage \
-                     point, as at a minimum-variance portfolio. ",
+                     point. ",
                 ),
                 _ => {}
             }
-            note.push_str(
-                "An asset's share of risk is its weight times its covariance with the portfolio, \
-                 over the portfolio's variance.",
-            );
+            let _ = write!(note, "Shares of risk are of {}.", risk_basis(self));
             if let Some(n) = not_held(self) {
                 let _ = write!(note, " {n}.");
             }
@@ -1082,18 +1232,35 @@ impl OptimisationReport {
                     Some(&[L, R, L, R, R, R]),
                 );
                 page.blank();
-                let mut note = String::from(
-                    "Return and volatility a year; risk is the share of the portfolio's \
-                     variance.",
+                let mut note = format!(
+                    "Return and volatility a year; risk is the share of {}.",
+                    match s.expected_shortfall {
+                        Some(es) => format!(
+                            "the expected shortfall at {}",
+                            pct(Some(es.confidence), 0, false)
+                        ),
+                        None => "the portfolio's variance".to_owned(),
+                    }
                 );
                 if let Some(n) = not_held(self) {
                     let _ = write!(note, " {n}.");
                 }
                 page.note(&note);
+                if !self.groups.is_empty() {
+                    page.section("Groups");
+                    page.table(
+                        &["Group", "Weight", "Limits", "Risk"],
+                        &group_rows(self),
+                        Some(&[L, R, R, R]),
+                    );
+                }
                 page.section("Expected");
-                page.pairs(&[
+                let mut pairs = vec![
                     ("Expected return".to_owned(), percent(s.expected_return)),
                     ("Volatility".to_owned(), percent(s.volatility)),
+                ];
+                pairs.extend(shortfall_figure(self));
+                pairs.extend([
                     ("Sharpe ratio".to_owned(), num(s.sharpe_ratio, 2)),
                     (
                         "Diversification ratio".to_owned(),
@@ -1112,6 +1279,7 @@ impl OptimisationReport {
                         ),
                     ),
                 ]);
+                page.pairs(&pairs);
             }
             None => {
                 page.section("No weights");

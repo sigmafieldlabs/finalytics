@@ -48,8 +48,8 @@ pub use holdings::{
     RealisedSummary, holdings_report,
 };
 pub use optimisation::{
-    AllocationRow, OptimisationContext, OptimisationHistory, OptimisationReport,
-    OptimisationSummary, RiskReturn,
+    AllocationRow, GroupRow, OptimisationContext, OptimisationHistory, OptimisationReport,
+    OptimisationSummary, RiskReturn, ShortfallFigure,
 };
 #[doc(hidden)]
 pub use optimisation::{OptimisationInputs, optimisation_report, weights_text};
