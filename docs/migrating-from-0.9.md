@@ -9,15 +9,18 @@ what replaces each part of 0.9, and works one 0.9 example through in 1.0.
 ## What changed
 
 - **You supply the data.** 0.9 downloaded prices, financial statements, options and news from
-  Yahoo Finance and other websites. 1.0 performs no input or output: you pass in prices, and FX
-  rates for other currencies, from any source you are entitled to use, as CSV, JSON, mappings, a
-  pandas DataFrame or Series, NumPy arrays or JavaScript arrays. This was the "custom data" path
-  of 0.9 (`KLINE`); in 1.0 it is the only one. One price per instrument and date is enough, such
-  as the close or the adjusted close.
-- **Results, not charts.** 0.9 drew charts and HTML reports (`report(...).show()`). 1.0 returns
-  data: the reports in `finalytics.reports` (Rust: `finalytics::reports`) carry the series,
-  breakdowns, grids and tables a screen draws, and you draw them with the plotting library you
-  prefer.
+  Yahoo Finance and other websites. 1.0 downloads nothing: you pass in prices, and FX rates for
+  other currencies, from any source you are entitled to use, as CSV text or files, JSON,
+  mappings, a pandas DataFrame or Series, NumPy arrays or JavaScript arrays. This was the "custom
+  data" path of 0.9 (`KLINE`); in 1.0 it is the only one. One price per instrument and date is
+  enough, such as the close or the adjusted close. The files it touches are the ones you name: it
+  reads CSV and portfolio files you point it to, and `save_html` and `show` write a report's page.
+- **A report and the numbers behind it.** 0.9 drew charts and HTML reports
+  (`report(...).show()`). In 1.0 every optimisation, comparison, backtest, rebalance and
+  portfolio report prints as text, 80 columns wide, and lays out as one self-contained HTML page
+  with its charts: `print(result)`, `result.show()`, `result.save_html(path)`. The report is also
+  data, in `result.report`, with the series, breakdowns, grids and tables a screen draws, and the
+  raw results are in `result.results`, for charts of your own.
 - **Two front doors.** `Assets` takes the prices or returns of things one might hold, for
   statistics and optimisation, much as 0.9's `Portfolio` did. A 1.0 `Portfolio` is kept from
   transactions, as books with tax lots and several currencies, and measures performance, risk and
@@ -50,9 +53,10 @@ what replaces each part of 0.9, and works one 0.9 example through in 1.0.
 | `"max_return"`, `"max_sortino"`, `"min_drawdown"` | No direct equivalent. `method="target_volatility"` gives the largest expected return within a volatility limit, and `"mean_variance"` trades return against variance |
 | `asset_constraints`: (lower, upper) per symbol, in order | `bounds=(min, max)` for every asset, `asset_bounds={"SPY": (min, max)}` for particular ones |
 | `categorical_constraints`: a category per symbol and limits per category | `groups={"Defensive": (["AGG", "GLD"], min, max)}`: one entry per category |
-| `weights`, `rebalance_strategy`, `scheduled_cash_flows` (a simulated allocation with rebalancing and regular contributions) | Transactions (deposits, purchases, sales) in a `Portfolio`. `portfolio.rebalance(...)` proposes the trades back to target weights, with fees and tax-aware lot selection. 1.0 does not simulate a schedule: generate the transactions for the schedule you want |
-| `update_dates(...)` for out-of-sample evaluation | Compute the portfolio's returns over the later period from its weights and the assets' returns, then `risk.statistics` |
-| `report("optimization")`, `report("performance")` | `portfolio.report()`: overview, holdings, performance, risk, attribution and scenarios, as data |
+| `weights`, `rebalance_strategy` (an allocation held and rebalanced over the prices' history) | `assets.backtest(weights={...}, rebalance="quarterly")`, or `fl.Drift(band=0.05)`, `fl.Every(periods=21)` or `"never"`, with `trading_cost_bps`; `assets.compare(...)` sets several side by side. See [backtests](methods/backtests.md) |
+| `scheduled_cash_flows` (regular contributions) | Deposits and purchases as transactions in a `Portfolio`, whose returns are time- and money-weighted so that the flows do not count as return. `portfolio.rebalance(...)` proposes the trades back to target weights, with fees and tax-aware lot selection |
+| `update_dates(...)` for out-of-sample evaluation | `assets.backtest(method=..., validation=fl.Holdout(start="2026-01-01"))` fits on the history before the date and tests on the rest; `fl.WalkForward(years=5)` refits at each rebalance |
+| `report("optimization")`, `report("performance")` | `result.show()` on an optimisation or backtest; `portfolio.report()`: overview, holdings, performance, risk, attribution and scenarios, as text, as a page and as data |
 
 The methods pages in [docs/methods](methods) define each calculation and its conventions.
 
@@ -130,9 +134,10 @@ it, more goes to SPY:
 
 ```
 
-The same steps work in Rust and JavaScript, as "From prices to a portfolio" in the READMEs of the
-[Rust crate](https://github.com/sigmafieldlabs/finalytics#from-prices-to-a-portfolio) and the
-[npm package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#from-prices-to-a-portfolio)
+`print(result)` prints the optimisation report and `result.show()` shows it as a page. The same
+steps work in Rust and JavaScript, as "Portfolio optimisation" in the READMEs of the
+[Rust crate](https://github.com/sigmafieldlabs/finalytics#portfolio-optimisation) and the
+[npm package](https://github.com/sigmafieldlabs/finalytics/tree/main/bindings/wasm#portfolio-optimisation)
 shows.
 
 ## Staying on 0.9

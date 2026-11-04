@@ -3,6 +3,10 @@ name: Sample reports
 # Builds the sample reports that the READMEs show and link to, from the bundled datasets, with
 # their screenshots, and publishes them to GitHub Pages: on each version tag, and by hand from
 # the Actions tab. Pages must be set to deploy from GitHub Actions in the repository's settings.
+# The github-pages environment accepts deployments from the default branch only, unless its
+# deployment rules (Settings, Environments, github-pages) also allow tags matching v*; without
+# that rule the deployment on a tag is refused, and running this workflow by hand on main
+# publishes the same reports.
 
 on:
   push:

@@ -21,6 +21,7 @@ outputs are the engine's own.
 | [Portfolio optimisation](optimisation.md) | Each objective and constraint, its formulation, and how solutions are reported |
 | [Black–Litterman](black-litterman.md) | Equilibrium returns, views and their uncertainty, the posterior returns and covariance |
 | [Robust and resampled optimisation](robust-optimisation.md) | Worst-case mean–variance over ellipsoids and boxes; Michaud resampling |
+| [Backtests and comparisons](backtests.md) | Weights held and rebalanced on a schedule, trading costs and cash; in-sample, holdout and walk-forward validation; the comparison and backtest reports |
 | [Rebalancing](rebalancing.md) | Trades from current holdings to target weights, with lot selection |
 | [Scenarios](scenarios.md) | Shocks to instruments, groups, currencies and factors; historical replay; the effect on value and on risk, with stressed correlations |
 | [Reports](reports.md) | The holdings, overview, performance, risk, attribution and scenario reports; provenance; shapes for charts; tables for export |

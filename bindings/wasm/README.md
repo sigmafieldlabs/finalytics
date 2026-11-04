@@ -19,9 +19,10 @@ npm install finalytics
 ```
 
 Until 1.0.0 is released, `npm install finalytics` gives 0.2; install a 1.0
-pre-release with `npm install finalytics@next`. The
+pre-release with `npm install finalytics@next`. 1.0 is a redesign of 0.2, as of
+the Rust and Python 0.9 it bound: the
 [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) explains what
-replaces each part of 0.2. In Node.js the engine is ready on import; in a
+replaces each part of 0.9. In Node.js the engine is ready on import; in a
 browser, import the default export too and `await init()` once before the first
 call.
 
@@ -243,7 +244,9 @@ is a `Float64Array`.
 ## Off the main thread
 
 `finalytics/client.js` runs the engine in a worker and gives the same calls,
-returning promises:
+returning promises. What comes back from the worker is data, without the methods
+added on the main thread: a report has no `show` or `toText`, so lay it out with
+`reportHtml` and `reportText`, as below:
 
 ```ts
 import { createEngine } from "finalytics/client.js";
@@ -256,6 +259,7 @@ const engine = createEngine(
 const portfolio = await engine.portfolioFromCsv({ transactions, prices });
 const report = await portfolio.call("report", { benchmark: "BENCH" });
 const html = await engine.call("reportHtml", report);
+const text = await engine.call("reportText", report);
 ```
 
 ## Documentation

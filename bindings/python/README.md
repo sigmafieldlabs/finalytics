@@ -16,9 +16,12 @@ they have not seen, and keeps the books of a real portfolio to report its
 performance, risk and attribution.
 
 ```sh
-pip install finalytics            # with NumPy
-pip install "finalytics[pandas]"  # with pandas
+pip install "finalytics[pandas]"  # with pandas, as the examples below use
+pip install finalytics            # with NumPy only
 ```
+
+Without pandas, the datasets come as price tables, which `Assets` takes as well:
+`fl.Assets(fl.datasets.asset_class_table(), risk_free_asset="T-Bills")`.
 
 Until 1.0.0 is released, `pip install finalytics` gives 0.9; install a 1.0
 pre-release with `pip install --pre finalytics`. The

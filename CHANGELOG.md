@@ -52,6 +52,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Benchmark` by default, or the column's name for an index's prices.
 - `Assets::frontier` returns `FrontierPortfolio`s, with their weights by asset (in the assets'
   order in JavaScript), rather than unlabelled lists.
+- A methods page for backtests and comparisons (`docs/methods/backtests.md`): how weights are
+  held, rebalanced and charged for, the three kinds of validation, and what the reports show.
 - Four covariance estimators: shrinkage towards constant correlation (`constant_correlation`),
   a statistical factor model of the first principal components (`{"type": "statistical",
   "factors": 3}`), the sample correlation denoised by the Marchenko–Pastur edge (`denoised`),
@@ -151,6 +153,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does, and say what the HTML says about the in-sample history (rebalanced quarterly, without
   trading costs) and what in sample covers in a comparison.
 - `Resampling` no longer implements `Eq`, as it holds a number of periods a year.
+- The migration guide describes 1.0 as it is: reports print and show as pages, files are read and
+  written where asked, and backtests simulate schedules and holdouts. CONTRIBUTING lists every
+  check CI runs and the Python test dependencies, and the Python package is classified as beta.
 - Portfolio documents reject unknown fields, such as a misspelt `quantty`, at their path.
 - A report grouped by a scheme no instrument is classified by is an error at
   `options.group_by[i]`, naming the schemes there are, rather than a single "unclassified" group.
@@ -204,7 +209,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   points of the value traded. Strategies are validated in sample, on a holdout from a date, or
   walk-forward, refitting at each calendar rebalance on a rolling or expanding window of years or
   periods; for walk-forward validation the in-sample results use the same periods, so the two
-  compare directly. A refit that finds no weights keeps the weights held and is recorded, and cash,
+  compare directly. In Python the choices are `fl.InSample()`, `fl.Holdout(start=...)`,
+  `fl.WalkForward(years=...)` and `fl.Drift(band=...)`, or names such as `"quarterly"`. A refit that finds no weights keeps the weights held and is recorded, and cash,
   held before a first fit, earns the risk-free return. A benchmark is fixed weights held alike or an
   index's prices. The limits on weights apply to the methods that take them, and the results note
   where they did not. Every return, trade, turnover and cost is checked against an independent

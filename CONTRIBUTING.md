@@ -11,32 +11,53 @@ Thank you for your interest in improving Finalytics. This guide explains how to 
 
 ## Development setup
 
-You need a recent stable Rust toolchain, Python 3.10 or later, and Node.js 20 or later.
+You need a recent stable Rust toolchain, Python 3.10 or later (3.11 or later for
+`scripts/test.sh` and `scripts/check-consistency.py`), and Node.js 22 or later.
 
 ```sh
 rustup target add wasm32-unknown-unknown
-cargo install wasm-bindgen-cli --version <the version in Cargo.lock>
-pip install maturin pytest
+cargo install wasm-bindgen-cli --version <the version in Cargo.lock> --locked
+pip install maturin pytest pandas jsonschema
 ```
+
+The Python tests use pandas and jsonschema as well as pytest.
 
 ## Checks
 
-Run these before opening a pull request. CI runs the same checks.
+Run these before opening a pull request. `scripts/test.sh` runs them in four stages, `lint`,
+`rust`, `python` and `js`, and prints a summary; name stages to run only those, as in
+`scripts/test.sh rust python`. The Python stage installs the package into a virtual environment
+in `.venv`.
 
 ```sh
+# Lint
 cargo fmt --all --check
 cargo clippy --workspace --lib --bins --tests --benches -- -D warnings
 cargo clippy --workspace --examples -- -D warnings -A clippy::print_stdout
-cargo test --workspace --exclude finalytics-py
+python3 scripts/check-consistency.py --run-examples
+cargo run -p finalytics-codegen -- --check
+python3 scripts/generate-types.py --check
 
-# WebAssembly
-cargo build --workspace --exclude finalytics-py --target wasm32-unknown-unknown
-CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
-  cargo test -p finalytics-wasm --target wasm32-unknown-unknown
+# Rust
+cargo test --workspace --exclude finalytics-py
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --exclude finalytics-py
 
 # Python
-cd bindings/python && maturin build --release -o dist && pip install dist/*.whl && pytest
+cd bindings/python && maturin develop --release && cd ../.. && pytest bindings/python/tests
+
+# JavaScript
+CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
+  cargo test -p finalytics-wasm --target wasm32-unknown-unknown
+bindings/wasm/build.sh
+node --test bindings/wasm/test/*.test.mjs
+npx -p typescript@5.9.3 tsc -p bindings/wasm/test
 ```
+
+CI runs the same checks, and also: the Rust tests on Linux, macOS and Windows; `cargo check`
+with the minimum supported Rust version, 1.88; the Python tests on Python 3.10 and 3.13; the
+size of the WebAssembly engine, at most 2 MiB gzipped (the `js` stage checks it too); the
+performance budgets (below); and the dependencies' licences and advisories with
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`cargo deny check`).
 
 ## Reference values
 
