@@ -7,6 +7,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Turnover is one-way everywhere: half the sum of the absolute weight changes, the share of the
+  portfolio bought (or, equally, sold). Backtests already measured it so; the turnover limit of an
+  optimisation (`Turnover.limit`) and the turnover of a rebalance proposal now do too, so a limit of
+  0.2 allows 20% of the portfolio to be bought, where it allowed 10% before, and a proposal's
+  turnover is half what rc.1 reported. The reports say which convention they use.
+- The Sortino ratio is measured against the risk-free rate, as the Sharpe ratio is, in the
+  portfolio, comparison and backtest reports, which state the rate. It was measured against zero.
+- Cash at a risk-free rate earns the rate compounded to each period, `(1 + r)^(1 / P) - 1`, as the
+  statistics convert it, rather than `r / P`.
+- Money-weighted returns over periods shorter than a year (MTD, QTD, YTD) are shown over the
+  period, as the time-weighted returns beside them are, rather than annualised.
+
+### Fixed
+
+- The Sharpe ratio over three years in the comparison and backtest reports measures each window
+  against the risk-free return over that window, not over the whole test.
+- The rebalance report's value after each trade, and the combined weights after a rebalance of
+  several accounts, allow for the fees paid.
+- Differences shown beside rounded figures (excess returns, changes in the Sharpe ratio, the total
+  of fees and tax) are the differences of the figures as shown, so that they add up.
+
 ## [1.0.0-rc.1] - 2026-11-03
 
 ### Added

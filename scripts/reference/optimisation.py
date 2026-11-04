@@ -353,7 +353,7 @@ def main():
     case(
         "target volatility with a turnover limit",
         {"type": "target_volatility", "target": 0.17},
-        {"turnover": {"current": equal.tolist(), "limit": 0.5}},
+        {"turnover": {"current": equal.tolist(), "limit": 0.25}},  # one-way: norm1 / 2
         w.value,
         mu @ w.value,
     )

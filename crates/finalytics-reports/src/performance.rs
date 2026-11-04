@@ -35,7 +35,8 @@ pub struct PeriodRow {
     pub cumulative: Option<f64>,
     /// The annualised time-weighted return, for periods of a year or more.
     pub annualised: Option<f64>,
-    /// The money-weighted return (annualised internal rate of return).
+    /// The money-weighted return: the internal rate of return, annualised for periods of a year
+    /// or more and over the period itself for shorter ones, as the time-weighted return is.
     pub money_weighted: Option<f64>,
     /// The Modified Dietz return.
     pub modified_dietz: Option<f64>,
@@ -215,9 +216,17 @@ pub fn performance_report(
             end: found.as_ref().map(|p| p.end),
             cumulative: found.as_ref().map(|p| p.cumulative),
             annualised: found.as_ref().and_then(|p| p.annualised),
-            money_weighted: found
-                .as_ref()
-                .and_then(|p| performance.money_weighted(p.start, p.end)),
+            // Annualised for a year or more, as the time-weighted return is; over the period
+            // itself for shorter ones, so that the two stand side by side.
+            money_weighted: found.as_ref().and_then(|p| {
+                let rate = performance.money_weighted(p.start, p.end)?;
+                if p.annualised.is_some() {
+                    Some(rate)
+                } else {
+                    let years = f64::from(p.start.days_until(p.end)) / 365.0;
+                    Some((1.0 + rate).powf(years) - 1.0)
+                }
+            }),
             modified_dietz: found
                 .as_ref()
                 .and_then(|p| performance.modified_dietz(p.start, p.end)),

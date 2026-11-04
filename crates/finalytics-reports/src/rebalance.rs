@@ -279,6 +279,8 @@ pub fn rebalance_report(inputs: RebalanceInputs<'_>) -> Result<RebalanceReport> 
             .then(a.cmp(b))
     });
     let value = dec(r.value_base);
+    // The weights after trading are of the value left once the fees are paid.
+    let value_after = value - dec(r.fees_base);
     let holdings: Vec<HoldingMove> = keys
         .iter()
         .map(|k| {
@@ -288,7 +290,7 @@ pub fn rebalance_report(inputs: RebalanceInputs<'_>) -> Result<RebalanceReport> 
                 before: r.weights_before.get(k).copied().unwrap_or(0.0),
                 target: target_of(k),
                 after,
-                value_after_base: after * value,
+                value_after_base: after * value_after,
             }
         })
         .collect();
@@ -692,7 +694,7 @@ impl RebalanceReport {
                 "Turnover".to_owned(),
                 percent(s.turnover),
                 Some(format!(
-                    "{} of {}",
+                    "One-way: half the {} traded, of {}",
                     self.money(s.traded_base),
                     self.money(s.value_base)
                 )),
@@ -721,7 +723,8 @@ impl RebalanceReport {
         items.push(match s.tax_base {
             Some(tax) => (
                 "Fees and tax".to_owned(),
-                self.money(s.fees_base + tax),
+                // The total of the two amounts as shown, so that they add up.
+                self.money(crate::text::round(s.fees_base, 0) + crate::text::round(tax, 0)),
                 Some(format!(
                     "Fees {}, tax {}",
                     self.money(s.fees_base),
@@ -1148,7 +1151,7 @@ impl RebalanceReport {
             page.line(line);
         }
         page.line(format!(
-            "{} · {} · {} · turnover {}",
+            "{} · {} · {} · one-way turnover {}",
             plural(self.accounts.len(), "account"),
             self.money(s.value_base),
             plural(s.trades, "trade"),
@@ -1251,7 +1254,7 @@ impl RebalanceReport {
                 page.blank();
             }
             page.line(format!(
-                "  {} · {} · turnover {}",
+                "  {} · {} · one-way turnover {}",
                 a.name,
                 self.money(a.value_base),
                 percent(a.turnover)

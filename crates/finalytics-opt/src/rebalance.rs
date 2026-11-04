@@ -201,7 +201,8 @@ pub struct Rebalance {
     pub weights_before: BTreeMap<HoldingKey, f64>,
     /// Each holding's weight after the trades.
     pub weights_after: BTreeMap<HoldingKey, f64>,
-    /// The value traded, sales and purchases, as a share of the account's value.
+    /// The one-way turnover: half the value traded, sales and purchases, as a share of the
+    /// account's value.
     pub turnover: f64,
     /// The gain the sales would realise in the base currency, after fees.
     pub realised_gain_base: Decimal,
@@ -642,7 +643,7 @@ pub fn rebalance(
         conversions,
         weights_before,
         weights_after,
-        turnover: to_f64(traded) / to_f64(value_base),
+        turnover: to_f64(traded) / to_f64(value_base) / 2.0,
         realised_gain_base,
         fees_base,
         tax_base,
@@ -677,7 +678,8 @@ pub struct RebalanceResults {
     pub weights_before: BTreeMap<HoldingKey, f64>,
     /// Each holding's weight in the combined value after the trades.
     pub weights_after: BTreeMap<HoldingKey, f64>,
-    /// The value traded in all the accounts, as a share of their combined value.
+    /// The one-way turnover of all the accounts: half the value traded, as a share of their
+    /// combined value.
     pub turnover: f64,
     /// The gain the sales would realise in the base currency, after fees.
     pub realised_gain_base: Decimal,
@@ -834,11 +836,14 @@ fn combine(
     options: &RebalanceOptions,
 ) -> RebalanceResults {
     let value_base: Decimal = proposals.iter().map(|p| p.value_base).sum();
-    let combine = |pick: fn(&Rebalance) -> &BTreeMap<HoldingKey, f64>| {
+    // Each account's weights are of its own value, before the trades or after them (less the
+    // fees), so they are combined in proportion to those values.
+    let combine = |pick: fn(&Rebalance) -> &BTreeMap<HoldingKey, f64>,
+                   value: fn(&Rebalance) -> Decimal| {
         let mut out: BTreeMap<HoldingKey, f64> = BTreeMap::new();
-        let total = to_f64(value_base);
+        let total: f64 = proposals.iter().map(|p| to_f64(value(p))).sum();
         for p in &proposals {
-            let scale = to_f64(p.value_base) / total;
+            let scale = to_f64(value(p)) / total;
             for (k, w) in pick(p) {
                 *out.entry(k.clone()).or_default() += w * scale;
             }
@@ -850,8 +855,8 @@ fn combine(
         .map(|p| p.turnover * to_f64(p.value_base))
         .sum();
     RebalanceResults {
-        weights_before: combine(|p| &p.weights_before),
-        weights_after: combine(|p| &p.weights_after),
+        weights_before: combine(|p| &p.weights_before, |p| p.value_base),
+        weights_after: combine(|p| &p.weights_after, |p| p.value_base - p.fees_base),
         turnover: traded / to_f64(value_base),
         realised_gain_base: proposals.iter().map(|p| p.realised_gain_base).sum(),
         fees_base: proposals.iter().map(|p| p.fees_base).sum(),

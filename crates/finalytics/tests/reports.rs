@@ -164,6 +164,23 @@ fn performance_agrees_with_the_engine() {
     let itd = r.periods.iter().find(|x| x.label == "ITD").unwrap();
     let twr = p.time_weighted(dates[0], *dates.last().unwrap()).unwrap();
     close(itd.cumulative.unwrap(), twr, "since inception");
+    // Money-weighted returns are annual rates for a year or more, as time-weighted ones are,
+    // and over the period itself for shorter ones.
+    let mut shorter = 0;
+    for row in &r.periods {
+        let (Some(start), Some(end), Some(shown)) = (row.start, row.end, row.money_weighted) else {
+            continue;
+        };
+        let rate = p.money_weighted(start, end).unwrap();
+        if row.annualised.is_some() {
+            close(shown, rate, &row.label);
+        } else {
+            shorter += 1;
+            let years = f64::from(start.days_until(end)) / 365.0;
+            close(shown, (1.0 + rate).powf(years) - 1.0, &row.label);
+        }
+    }
+    assert!(shorter > 0);
     // The months compound to the whole period.
     let months: f64 = r.monthly.values[0][..12]
         .iter()

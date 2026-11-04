@@ -1201,7 +1201,11 @@ fn performance(r: &PerformanceReport, names: &BTreeMap<String, String>) -> Strin
             ];
             if benchmark {
                 row.push(signed(x.benchmark));
-                row.push(signed(x.excess_arithmetic));
+                row.push(signed(
+                    x.cumulative
+                        .zip(x.benchmark)
+                        .map(|(p, b)| crate::text::shown_difference(b, p, 3)),
+                ));
             }
             row
         })
@@ -1215,10 +1219,12 @@ fn performance(r: &PerformanceReport, names: &BTreeMap<String, String>) -> Strin
         "Returns by period",
         &table(&headings, &rows, &numbers(headings.len())),
         Some(if short {
-            "Time-weighted unless noted; money-weighted returns are annual rates. Periods longer \
-             than the history are left out."
+            "Time-weighted unless noted; money-weighted returns, like the others, are annual \
+             rates for a year or more and over the period for shorter ones. Periods longer than \
+             the history are left out."
         } else {
-            "Time-weighted unless noted; money-weighted returns are annual rates."
+            "Time-weighted unless noted; money-weighted returns, like the others, are annual \
+             rates for a year or more and over the period for shorter ones."
         }),
     ));
     let m = &r.monthly;
@@ -1395,7 +1401,11 @@ fn risk(r: &RiskReport) -> String {
         (
             "Sharpe ratio".to_owned(),
             num(s.sharpe_ratio, 2),
-            Some(format!("Sortino {}", num(s.sortino_ratio, 2))),
+            Some(format!(
+                "Sortino {}; both against {} a year",
+                num(s.sortino_ratio, 2),
+                share(p.options.risk_free_rate)
+            )),
         ),
         (
             "Maximum drawdown".to_owned(),

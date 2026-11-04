@@ -14,7 +14,7 @@ methods of their own.
 | Bounds | $l_i \le w_i \le u_i$, for every asset or per asset | $0 \le w_i \le 1$ (long-only) |
 | Groups | $l_g \le \sum_{i \in g} w_i \le u_g$ | none |
 | Leverage | $\sum_i \lvert w_i \rvert \le L$ | none |
-| Turnover | $\sum_i \lvert w_i - w^0_i \rvert \le T$ from current weights $w^0$ | none |
+| Turnover | $\tfrac12 \sum_i \lvert w_i - w^0_i \rvert \le T$ (one-way: the share bought, or sold) from current weights $w^0$ | none |
 | Trading costs | $c^\top \lvert w - w^0 \rvert$ subtracted from the expected return | none |
 | Quadratic costs | $\sum_i k_i (w_i - w^0_i)^2$, such as market impact, subtracted from the expected return of mean–variance, robust mean–variance and target volatility | none |
 | Trade limits | Each $\lvert w_i - w^0_i \rvert$ either 0 or at least $m$; at most $K$ assets traded; a heuristic, below | none |

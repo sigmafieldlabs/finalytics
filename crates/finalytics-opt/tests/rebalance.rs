@@ -288,10 +288,11 @@ fn selling_everything_not_in_the_targets() {
         .map(|t| (t.instrument.as_str(), t.quantity))
         .collect();
     assert_eq!(sold, [("SAP", dec("40")), ("SPY", dec("150"))]);
-    // Sales of 75,000 and 9,240 dollars, and a purchase of the whole 112,940.
+    // Sales of 75,000 and 9,240 dollars, and a purchase of the whole 112,940; turnover is
+    // one-way, half the value traded.
     let traded = 75_000.0 + 9_240.0 + 112_940.0;
     assert!(
-        (plan.turnover - traded / 112_940.0).abs() < 1e-12,
+        (plan.turnover - traded / 112_940.0 / 2.0).abs() < 1e-12,
         "{}",
         plan.turnover
     );
@@ -694,5 +695,49 @@ fn several_accounts_reach_combined_targets() {
             .sum();
         let actual = f64::try_from(value / total).unwrap();
         assert!((actual - target).abs() < 1e-6, "{instrument}: {actual}");
+    }
+}
+
+#[test]
+fn combined_weights_after_are_of_the_value_left_after_fees() {
+    let portfolio = portfolio();
+    let market = market();
+    let books = Books::build(&portfolio, &market).unwrap();
+    let accounts = [main_account(), AccountId::new("isa").unwrap()];
+    let mut options = RebalanceOptions::default();
+    options.fees = {
+        let mut fees = Fees::default();
+        fees.rate = dec("0.002");
+        fees.minimum = dec("5");
+        fees
+    };
+    let plan =
+        rebalance_accounts(&books, &market, d(DATE), &accounts, &targets(), &options).unwrap();
+    assert!(plan.fees_base > Decimal::ZERO);
+    let mut after = portfolio.clone();
+    for (k, p) in plan.accounts.iter().enumerate() {
+        after
+            .transactions
+            .extend(p.transactions(&format!("rebalance-{k}-")).unwrap());
+    }
+    let rebuilt = Books::build(&after, &market).unwrap();
+    let valuation = rebuilt.value_on(d(DATE), &market).unwrap();
+    let total = valuation.total_base;
+    for (key, _) in targets() {
+        let HoldingKey::Instrument(instrument) = &key else {
+            continue;
+        };
+        let value: Decimal = valuation
+            .positions
+            .iter()
+            .filter(|p| &p.instrument == instrument)
+            .map(|p| p.market_value_base)
+            .sum();
+        let actual = f64::try_from(value / total).unwrap();
+        let after = weight(&plan.weights_after, &key);
+        assert!(
+            (after - actual).abs() < 1e-9,
+            "{instrument}: {after} against {actual}"
+        );
     }
 }

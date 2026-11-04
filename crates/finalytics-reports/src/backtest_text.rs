@@ -13,8 +13,8 @@ use crate::backtests::{
     BacktestContext, BacktestReport, ComparisonReport, RunReport, StrategyReport,
 };
 use crate::text::{
-    L, Page, R, WIDTH, bar, fit, num, pad_left, pad_right, pct, period_word, plural, spark, width,
-    wrap,
+    L, Page, R, WIDTH, bar, fit, num, pad_left, pad_right, pct, period_word, plural,
+    shown_difference, spark, width, wrap,
 };
 
 /// Weights smaller than this are shown as none.
@@ -285,8 +285,9 @@ impl ComparisonReport {
         );
         page.blank();
         let mut note = String::from(
-            "Return, volatility and turnover a year; drawdown the largest fall; CVaR the average \
-             loss in the worst 5% of periods.",
+            "Return, volatility and turnover a year, turnover one-way (the share of value bought, \
+             or sold); drawdown the largest fall; CVaR the average loss in the worst 5% of \
+             periods.",
         );
         for line in grouped_notes(&strategies)
             .into_iter()
@@ -308,7 +309,7 @@ impl ComparisonReport {
                         num(i.statistics.sharpe_ratio, 2),
                         num(o.statistics.sharpe_ratio, 2),
                         match (i.statistics.sharpe_ratio, o.statistics.sharpe_ratio) {
-                            (Some(a), Some(b)) => num(Some(b - a), 2),
+                            (Some(a), Some(b)) => num(Some(shown_difference(a, b, 2)), 2),
                             _ => "–".to_owned(),
                         },
                         percent(i.statistics.annualised_return),
@@ -537,6 +538,10 @@ impl BacktestReport {
                 pct(Some(o.largest_trade), 1, false),
             ),
         ]);
+        page.note(
+            "Turnover is one-way: the share of the portfolio's value bought (or, equally, sold). \
+             Trading costs are charged on the value traded both ways.",
+        );
         let (main, base) = match &self.history {
             Some(h) => (&h.strategy, h.benchmark.as_ref()),
             None => (o, self.benchmark.as_ref().map(|b| &b.tested)),
@@ -576,7 +581,7 @@ impl BacktestReport {
                         .and_then(|ys| ys.iter().find(|z| z.year == y.year))
                         .map(|z| z.value);
                     row.push(pct(b, 1, true));
-                    row.push(pct(b.map(|b| y.value - b), 1, true));
+                    row.push(pct(b.map(|b| shown_difference(b, y.value, 3)), 1, true));
                 }
                 row
             })

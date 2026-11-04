@@ -2145,7 +2145,10 @@ export interface PeriodRow {
   cumulative?: number | null;
   /** The annualised time-weighted return, for periods of a year or more. */
   annualised?: number | null;
-  /** The money-weighted return (annualised internal rate of return). */
+  /**
+   * The money-weighted return: the internal rate of return, annualised for periods of a year
+   * or more and over the period itself for shorter ones, as the time-weighted return is.
+   */
   money_weighted?: number | null;
   /** The Modified Dietz return. */
   modified_dietz?: number | null;
@@ -2457,7 +2460,10 @@ export interface Rebalance {
   weights_before: Record<string, number>;
   /** Each holding's weight after the trades. */
   weights_after: Record<string, number>;
-  /** The value traded, sales and purchases, as a share of the account's value. */
+  /**
+   * The one-way turnover: half the value traded, sales and purchases, as a share of the
+   * account's value.
+   */
   turnover: number;
   /** The gain the sales would realise in the base currency, after fees. */
   realised_gain_base: Decimal;
@@ -2579,7 +2585,10 @@ export interface RebalanceResults {
   weights_before: Record<string, number>;
   /** Each holding's weight in the combined value after the trades. */
   weights_after: Record<string, number>;
-  /** The value traded in all the accounts, as a share of their combined value. */
+  /**
+   * The one-way turnover of all the accounts: half the value traded, as a share of their
+   * combined value.
+   */
   turnover: number;
   /** The gain the sales would realise in the base currency, after fees. */
   realised_gain_base: Decimal;
@@ -3767,8 +3776,8 @@ export interface Turnover {
   /** The current weights, one per asset. */
   current: number[];
   /**
-   * The largest total of absolute weight changes, `sum |w - current|`; 0.2 allows 20% of the
-   * portfolio to be bought and sold in total.
+   * The largest one-way turnover, half the absolute weight changes, `sum |w - current| / 2`:
+   * 0.2 allows 20% of the portfolio to be bought (and, equally, sold).
    */
   limit?: number | null;
   /**

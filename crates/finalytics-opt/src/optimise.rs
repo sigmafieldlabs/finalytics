@@ -558,7 +558,8 @@ fn add_constraints(program: &mut Program, layout: &Layout, prepared: &Prepared<'
             program.at_most(layout.row(vec![(w + i, -1.0), (d + i, -1.0)], -now));
         }
         if let Some(limit) = limit {
-            program.at_most(layout.row((0..n).map(|i| (d + i, 1.0)).collect(), *limit));
+            // One-way turnover: the share bought (or sold) is half the absolute changes.
+            program.at_most(layout.row((0..n).map(|i| (d + i, 0.5)).collect(), *limit));
         }
     }
     if let Some(te) = &c.tracking_error {

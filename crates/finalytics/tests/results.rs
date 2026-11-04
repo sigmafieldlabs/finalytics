@@ -361,6 +361,7 @@ fn the_comparison_report_scores_each_method_on_its_test() {
         let mut options = StatisticsOptions::default();
         options.periods_per_year = 12.0;
         options.risk_free_rate = rf;
+        options.target_return = rf;
         let expected = statistics(&out.returns, &options).unwrap();
         assert_eq!(s.tested.statistics, expected, "{}", s.name);
         close(
@@ -403,7 +404,31 @@ fn the_comparison_report_scores_each_method_on_its_test() {
             1 + out.trades.iter().filter(|t| t.refit).count()
         );
         assert_eq!(s.weights[0].date, assets.dates()[59]);
-        assert!(s.tested.rolling_sharpe.as_ref().unwrap().dates.len() > 200);
+        // Each rolling window against the risk-free return over that window.
+        let rolling = s.tested.rolling_sharpe.as_ref().unwrap();
+        assert!(rolling.dates.len() > 200);
+        assert_eq!(out.returns.len(), cash.len());
+        let last = out
+            .dates
+            .iter()
+            .position(|d| *d == rolling.dates[0])
+            .unwrap();
+        let window = last + 1 - 36..=last;
+        let mut options = StatisticsOptions::default();
+        options.periods_per_year = 12.0;
+        options.risk_free_rate = cash[window.clone()]
+            .iter()
+            .map(|r| 1.0 + r)
+            .product::<f64>()
+            .powf(12.0 / 36.0)
+            - 1.0;
+        options.target_return = options.risk_free_rate;
+        let expected = statistics(&out.returns[window], &options).unwrap();
+        close(
+            rolling.values[0],
+            expected.sharpe_ratio.unwrap(),
+            "rolling Sharpe ratio",
+        );
     }
     let note = &report.strategies[2].notes;
     assert_eq!(
@@ -557,4 +582,30 @@ fn daily_returns_are_charted_by_month() {
     assert_eq!(report.held.len(), 8);
     assert_eq!(report.held[7].name, "48 others");
     assert!(report.strategy.tested.relative.is_some());
+}
+
+#[test]
+fn cash_at_a_risk_free_rate_compounds_to_that_rate() {
+    let assets = Assets::builder()
+        .prices(datasets::asset_class_prices())
+        .risk_free_rate(0.05)
+        .build()
+        .unwrap();
+    let result = assets
+        .backtest([("US Equity", 0.6), ("Bonds", 0.4)])
+        .build()
+        .unwrap();
+    let per_month = 1.05f64.powf(1.0 / 12.0) - 1.0;
+    assert!(
+        result
+            .results
+            .cash
+            .iter()
+            .all(|c| (c - per_month).abs() < 1e-15)
+    );
+    close(
+        result.report.strategy.tested.risk_free_rate,
+        0.05,
+        "risk-free rate",
+    );
 }

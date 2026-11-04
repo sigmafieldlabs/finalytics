@@ -506,12 +506,17 @@ impl Assets {
         )
     }
 
-    /// The return of cash in each period: the risk-free asset's, or the risk-free rate spread
-    /// evenly over the periods of a year.
+    /// The return of cash in each period: the risk-free asset's, or the annual risk-free rate
+    /// converted to a rate per period by compounding, `(1 + rate)^(1 / periods) - 1`, as the
+    /// statistics convert it.
     pub(crate) fn cash_returns(&self) -> Vec<f64> {
         match self.risk_free_asset {
             Some(i) => self.returns.columns()[i].clone(),
-            None => vec![self.risk_free_rate / self.periods_per_year; self.dates.len()],
+            None => {
+                let per_period =
+                    (1.0 + self.risk_free_rate).powf(1.0 / self.periods_per_year) - 1.0;
+                vec![per_period; self.dates.len()]
+            }
         }
     }
 
@@ -553,6 +558,7 @@ impl Assets {
         let mut options = StatisticsOptions::default();
         options.periods_per_year = self.periods_per_year;
         options.risk_free_rate = self.risk_free_rate;
+        options.target_return = self.risk_free_rate;
         self.labels()
             .iter()
             .zip(self.returns.columns())

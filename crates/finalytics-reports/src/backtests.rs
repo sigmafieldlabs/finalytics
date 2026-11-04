@@ -452,10 +452,13 @@ impl<'a> Inputs<'a> {
         let (Some(&start), Some(&end)) = (run.dates.first(), run.dates.last()) else {
             return Err(invalid("strategies", "a run has no periods"));
         };
-        let risk_free_rate = annual(self.cash(run), ppy);
+        let cash = self.cash(run);
+        let risk_free_rate = annual(cash, ppy);
+        // Sharpe and Sortino ratios are both measured against the risk-free return.
         let mut options = StatisticsOptions::default();
         options.periods_per_year = ppy;
         options.risk_free_rate = risk_free_rate;
+        options.target_return = risk_free_rate;
         let stats = statistics(&run.returns, &options)?;
         let tail = tail_risk(&run.returns, CONFIDENCE, TailMethod::Historical)?;
         let relative = match benchmark {
@@ -482,7 +485,14 @@ impl<'a> Inputs<'a> {
             let mut dates = Vec::new();
             let mut values = Vec::new();
             for (i, _) in points.iter().filter(|(i, _)| *i + 1 >= window) {
-                let rolled = statistics(&run.returns[i + 1 - window..=*i], &options)?;
+                // Each window against the risk-free return over that window.
+                let span = i + 1 - window..=*i;
+                let mut rolling = options;
+                rolling.risk_free_rate = cash
+                    .get(span.clone())
+                    .map_or(risk_free_rate, |c| annual(c, ppy));
+                rolling.target_return = rolling.risk_free_rate;
+                let rolled = statistics(&run.returns[span], &rolling)?;
                 if let Some(sharpe) = rolled.sharpe_ratio {
                     dates.push(run.dates[*i]);
                     values.push(sharpe);

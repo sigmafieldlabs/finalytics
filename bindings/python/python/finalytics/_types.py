@@ -2999,7 +2999,9 @@ class PeriodRow:
     """The annualised time-weighted return, for periods of a year or more."""
 
     money_weighted: float | None = None
-    """The money-weighted return (annualised internal rate of return)."""
+    """The money-weighted return: the internal rate of return, annualised for periods of a year or
+    more and over the period itself for shorter ones, as the time-weighted return is.
+    """
 
     modified_dietz: float | None = None
     """The Modified Dietz return."""
@@ -3424,7 +3426,9 @@ class Rebalance:
     """Each holding's weight after the trades."""
 
     turnover: float
-    """The value traded, sales and purchases, as a share of the account's value."""
+    """The one-way turnover: half the value traded, sales and purchases, as a share of the account's
+    value.
+    """
 
     realised_gain_base: decimal.Decimal
     """The gain the sales would realise in the base currency, after fees."""
@@ -3579,7 +3583,9 @@ class RebalanceResults(PrintedResults):
     """Each holding's weight in the combined value after the trades."""
 
     turnover: float
-    """The value traded in all the accounts, as a share of their combined value."""
+    """The one-way turnover of all the accounts: half the value traded, as a share of their combined
+    value.
+    """
 
     realised_gain_base: decimal.Decimal
     """The gain the sales would realise in the base currency, after fees."""
@@ -5228,8 +5234,8 @@ class Turnover:
     """The current weights, one per asset."""
 
     limit: float | None = None
-    """The largest total of absolute weight changes, `sum |w - current|`; 0.2 allows 20% of the
-    portfolio to be bought and sold in total.
+    """The largest one-way turnover, half the absolute weight changes, `sum |w - current| / 2`: 0.2
+    allows 20% of the portfolio to be bought (and, equally, sold).
     """
 
     costs: list[float] | None = None

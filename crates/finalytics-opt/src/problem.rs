@@ -53,8 +53,8 @@ pub struct GroupLimit {
 pub struct Turnover {
     /// The current weights, one per asset.
     pub current: Vec<f64>,
-    /// The largest total of absolute weight changes, `sum |w - current|`; 0.2 allows 20% of the
-    /// portfolio to be bought and sold in total.
+    /// The largest one-way turnover, half the absolute weight changes, `sum |w - current| / 2`:
+    /// 0.2 allows 20% of the portfolio to be bought (and, equally, sold).
     #[serde(default)]
     pub limit: Option<f64>,
     /// Costs per unit of weight traded, one per asset, in the units of the expected returns.
@@ -843,12 +843,14 @@ impl Prepared<'_> {
             ..
         }) = &c.turnover
         {
-            let traded: f64 = weights
+            // One-way turnover, as the limit is stated.
+            let turnover: f64 = weights
                 .iter()
                 .zip(current)
                 .map(|(w, c)| (w - c).abs())
-                .sum();
-            worst = worst.max(traded - limit);
+                .sum::<f64>()
+                / 2.0;
+            worst = worst.max(turnover - limit);
         }
         if let (
             Some(TradeLimits {

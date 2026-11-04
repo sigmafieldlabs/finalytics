@@ -1354,8 +1354,9 @@ impl ComparisonReport {
             .collect();
         let period = period_word(c.periods_per_year);
         let mut note = format!(
-            "Return, volatility and turnover are a year; drawdown is the largest fall; CVaR is the \
-             average loss in the worst 5% of {period}s.{}",
+            "Return, volatility and turnover are a year, turnover one-way (the share of value \
+             bought, or sold); drawdown is the largest fall; CVaR is the average loss in the worst \
+             5% of {period}s.{}",
             if n > 1 {
                 " Bold marks the best in each column."
             } else {
@@ -1548,7 +1549,9 @@ impl ComparisonReport {
                         esc(&num(o.statistics.sharpe_ratio, 2)),
                         esc(
                             &match (i.statistics.sharpe_ratio, o.statistics.sharpe_ratio) {
-                                (Some(a), Some(b)) => num(Some(b - a), 2),
+                                (Some(a), Some(b)) => {
+                                    num(Some(crate::text::shown_difference(a, b, 2)), 2)
+                                }
                                 _ => "–".to_owned(),
                             },
                         ),
@@ -2224,7 +2227,7 @@ impl BacktestReport {
             (
                 "Turnover".to_owned(),
                 format!("{} a year", pct(Some(o.turnover_per_year), 1, false)),
-                None,
+                Some("One-way: the share of value bought, or sold".to_owned()),
             ),
             (
                 "Trading costs".to_owned(),
@@ -2241,7 +2244,7 @@ impl BacktestReport {
             (
                 "Largest rebalance".to_owned(),
                 pct(Some(o.largest_trade), 1, false),
-                Some("Of the portfolio's value".to_owned()),
+                Some("One-way turnover at one rebalance".to_owned()),
             ),
         ]));
 

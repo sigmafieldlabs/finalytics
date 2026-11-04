@@ -55,6 +55,13 @@ pub(crate) fn round(v: f64, places: usize) -> f64 {
     (v * scale).round() / scale + 0.0
 }
 
+/// `b - a` as the reader sees it: the difference of the two values rounded to `places`
+/// decimals, as they are shown, so that a column of differences agrees with the columns beside
+/// it. Percentages shown with one decimal have three decimals as fractions.
+pub(crate) fn shown_difference(a: f64, b: f64, places: usize) -> f64 {
+    round(b, places) - round(a, places)
+}
+
 /// A signed percentage with one decimal.
 pub(crate) fn signed(x: impl Into<Option<f64>>) -> String {
     pct(x.into(), 1, true)
@@ -970,7 +977,11 @@ pub(crate) fn performance(
             ];
             if benchmark {
                 row.push(signed(x.benchmark));
-                row.push(signed(x.excess_arithmetic));
+                row.push(signed(
+                    x.cumulative
+                        .zip(x.benchmark)
+                        .map(|(p, b)| shown_difference(b, p, 3)),
+                ));
             }
             row
         })
@@ -981,8 +992,8 @@ pub(crate) fn performance(
     }
     page.table(&headings, &rows, None);
     page.note(
-        "Time-weighted unless noted; money-weighted returns are annual rates; – where the \
-         history is too short.",
+        "Time-weighted unless noted; money-weighted returns are annual rates for a year or \
+         more and over the period for shorter ones; – where the history is too short.",
     );
     if !r.monthly.rows.is_empty() {
         page.section("Monthly returns (%)");
@@ -1024,7 +1035,9 @@ pub(crate) fn performance(
                 ];
                 if benchmark {
                     row.push(signed(y.benchmark));
-                    row.push(signed(y.excess));
+                    row.push(signed(
+                        y.benchmark.map(|b| shown_difference(b, y.portfolio, 3)),
+                    ));
                 }
                 row
             })
@@ -1175,6 +1188,13 @@ pub(crate) fn risk(page: &mut Page, r: &RiskReport) {
         ("Skewness".to_owned(), num(s.skewness, 2)),
         ("Excess kurtosis".to_owned(), num(s.excess_kurtosis, 2)),
     ]);
+    page.note(&format!(
+        "Sharpe and Sortino ratios against a risk-free rate of {} a year; the downside \
+         deviation is below it. Annual figures here count {} {period}s a year; the \
+         performance section's annualised returns count calendar days.",
+        share(p.options.risk_free_rate),
+        num(Some(p.options.periods_per_year), 0)
+    ));
     if let Some(rel) = &r.relative {
         page.section("Against the benchmark");
         page.pairs(&[
@@ -1572,6 +1592,10 @@ mod tests {
         assert_eq!(pct(Some(-0.129), 1, true), "−12.9%");
         assert_eq!(pct(None, 1, true), "–");
         assert_eq!(share(0.05), "5.0%");
+        // 12.36% and 10.04% are shown as 12.4% and 10.0%, so the difference is shown as 2.4%,
+        // not 2.3%.
+        assert_eq!(signed(shown_difference(0.1004, 0.1236, 3)), "+2.4%");
+        assert_eq!(num(Some(shown_difference(0.514, 0.826, 2)), 2), "0.32");
         assert_eq!(
             date("2026-10-30".parse().unwrap_or_else(|e| panic!("{e}"))),
             "30 Oct 2026"

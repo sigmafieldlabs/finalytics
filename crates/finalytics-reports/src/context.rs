@@ -297,7 +297,8 @@ impl<'a> Context<'a> {
         let mut options = StatisticsOptions::default();
         options.periods_per_year = self.options.periods_per_year;
         options.risk_free_rate = self.options.risk_free_rate;
-        options.target_return = 0.0;
+        // Sharpe and Sortino ratios are both measured against the risk-free rate.
+        options.target_return = self.options.risk_free_rate;
         options
     }
 
