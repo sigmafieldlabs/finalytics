@@ -26,7 +26,7 @@ def results(market, books):
     assets = books.holding_returns(["BOND", "SAP", "SPY"], dates)
     covariance = fl.risk.covariance(np.array(assets.table.columns).T, assets.table.labels, method="sample")
     problem = fl.opt.Problem.from_covariance(fl.risk.scaled(covariance.matrix, 252))
-    proposal = books.rebalance({"SPY": 0.4, "BOND": 0.4, "SAP": 0.15}, accounts=["main"], date=last, lot_method="highest_cost")
+    proposal = books.rebalance({"SPY": 0.4, "BOND": 0.4, "SAP": 0.15}, accounts=["main"], as_of=last, lot_method="highest_cost")
     [plan] = proposal.results.accounts
     return {
         "valuation_total_base": str(books.valuation(last).total_base),

@@ -22,6 +22,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `CovarianceMethod` reads from its name alone (`"ledoit_wolf"`) as well as from an object, and an
   exponentially weighted covariance without a decay has 0.94, in every option that takes one.
 - `SolveStatus::reason`: why an optimisation found no weights, in words.
+- The Rust comparison and backtest builders take every option `optimise` takes:
+  `uncertainty`, `budget`, `linkage`, `expected_return` and `risk_free_rate`; Python's
+  `compare` and `backtest` take `risk_free_rate`.
+- `name` on `optimise` in Rust (`.name(..)`) and JavaScript (`{ name }`), as in Python.
+- `saveHtml(path, name?)` on reports and results in Node.js, as `save_html` in Python;
+  JavaScript results' `toText` and `toHtml` take the report's name, and TypeScript declares
+  them.
+- The Rust report builder has a setter for every report option: `periods_per_year`,
+  `covariance`, `confidences`, `rolling_window`, `histogram_bins`, `top`,
+  `long_term_after_days`, `expected_return`, `frontier_points` and `benchmark_weight`.
+- `Assets::frontier` returns `FrontierPortfolio`s, with their weights by asset (in the assets'
+  order in JavaScript), rather than unlabelled lists.
 
 ### Changed
 
@@ -36,6 +48,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   statistics convert it, rather than `r / P`.
 - Money-weighted returns over periods shorter than a year (MTD, QTD, YTD) are shown over the
   period, as the time-weighted returns beside them are, rather than annualised.
+- The date of a rebalance is `as_of` in Python and JavaScript, as in Rust and every report
+  (`portfolio.rebalance(targets, as_of="2026-06-30")`); it was `date`.
+- Python's `datasets.price_table()` is `datasets.asset_class_table()`, beside `sp500_table()`.
+- Rust takes plain inputs throughout: `PortfolioCsv::base_currency("USD")` takes the code, and
+  `Portfolio::valuation()` and `weights()` value the portfolio on the last price date, with
+  `valuation_on("2026-06-30")` and `weights_on(..)` for another, in place of `Option<Date>`.
+- Python's `show()` returns the path of the page it opens outside a notebook, as Rust and
+  JavaScript do, and shows the page in a notebook as raw HTML, without IPython's warning about
+  frames. `Holdout(start="2016-11-01")` passes type checking, and holds a date.
+- The JavaScript types refer to TypeScript's `esnext.disposable` library themselves, so that
+  they check without it in a project's settings. JavaScript `meanReturns` lists the assets in
+  their order.
 - Rebalancing sells lots by each account's own lot method by default, as documented, rather
   than first in, first out; `RebalanceOptions.lot_method` is optional, and Python's
   `lot_method` defaults to `None`.

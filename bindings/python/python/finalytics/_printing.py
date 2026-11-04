@@ -57,14 +57,16 @@ class ReportPage(PrintedReport):
         target.write_text(self.to_html(name), encoding="utf-8")
         return target
 
-    def show(self) -> None:
+    def show(self) -> pathlib.Path | None:
         """Shows the report: inline in a Jupyter notebook, and otherwise in the default
-        browser, or with the command in the ``BROWSER`` environment variable if it is set."""
+        browser, or with the command in the ``BROWSER`` environment variable if it is set,
+        returning the path of the page it opens, as Rust and JavaScript do."""
         if _notebook():
-            from IPython.display import HTML, display
+            from IPython.display import display
 
-            display(HTML(self._repr_html_()))
-            return
+            # As raw HTML, which IPython shows as it is, without its advice on frames.
+            display({"text/html": self._repr_html_()}, raw=True)
+            return None
         if sys.platform == "emscripten":
             raise RuntimeError("cannot open a browser here; use to_html() for the page")
         with tempfile.NamedTemporaryFile(
@@ -74,6 +76,7 @@ class ReportPage(PrintedReport):
         path = pathlib.Path(file.name)
         if not webbrowser.open(path.as_uri()):
             raise RuntimeError(f"cannot open a browser; the report is at {path}")
+        return path
 
     def _repr_html_(self) -> str:
         # The page keeps its own styles inside a frame, apart from the notebook's, and the frame
@@ -132,10 +135,11 @@ class Result:
         """Writes the report's page to `path`, and returns the path."""
         return self.report.save_html(path, name)  # type: ignore[attr-defined]
 
-    def show(self) -> None:
+    def show(self) -> pathlib.Path | None:
         """Shows the report: inline in a Jupyter notebook, and otherwise in the default
-        browser, or with the command in the ``BROWSER`` environment variable if it is set."""
-        self.report.show()  # type: ignore[attr-defined]
+        browser, or with the command in the ``BROWSER`` environment variable if it is set,
+        returning the path of the page it opens."""
+        return self.report.show()  # type: ignore[attr-defined]
 
     def _repr_html_(self) -> str:
         return self.report._repr_html_()  # type: ignore[attr-defined]

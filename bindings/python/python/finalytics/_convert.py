@@ -57,6 +57,8 @@ def from_json(tp: Any, value: Any) -> Any:
             return from_json(options[0], value)
         if all(o in (float, int, bool, str) for o in options):
             return value
+        if datetime.date in options and isinstance(value, str):
+            return datetime.date.fromisoformat(value)
         variants = [a for a in options if a in _TAGS]
         if variants and isinstance(value, dict):
             for cls in variants:

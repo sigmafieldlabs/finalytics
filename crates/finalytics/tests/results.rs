@@ -316,11 +316,11 @@ fn a_rebalance_has_a_report_and_raw_results() {
     // The trades apply to the portfolio, from the result or its raw results.
     let traded = portfolio.with_rebalance(&result).unwrap();
     assert_eq!(
-        traded.weights(None).unwrap(),
+        traded.weights().unwrap(),
         portfolio
             .with_rebalance(&result.results)
             .unwrap()
-            .weights(None)
+            .weights()
             .unwrap()
     );
 }

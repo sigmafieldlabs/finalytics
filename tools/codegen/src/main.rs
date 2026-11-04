@@ -107,6 +107,7 @@ fn api() -> Value {
     add::<finalytics::AssetStatistics>(&mut g);
     add::<finalytics::OptimiseOptions>(&mut g);
     add::<finalytics::OptimisationResult>(&mut g);
+    add::<finalytics::FrontierPortfolio>(&mut g);
     add::<finalytics::PortfolioReport>(&mut g);
     add::<finalytics::datasets::Company>(&mut g);
     // Backtests.

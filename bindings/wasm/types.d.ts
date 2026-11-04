@@ -1168,6 +1168,19 @@ export interface FrontierPoint {
   weights: number[];
 }
 
+/**
+ * A portfolio on the efficient frontier of `Assets`: its annual expected return and
+ * volatility, and its weights by asset.
+ */
+export interface FrontierPortfolio {
+  /** The annual expected return. */
+  expected_return: number;
+  /** The annual volatility. */
+  volatility: number;
+  /** The weights, by asset. */
+  weights: Record<string, number>;
+}
+
 /** A table of numbers with labelled rows and columns, for a heatmap. */
 export interface Grid {
   /** What the grid is, such as "Monthly returns". */

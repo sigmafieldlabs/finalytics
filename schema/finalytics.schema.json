@@ -2970,6 +2970,35 @@
       ],
       "description": "A portfolio on the efficient frontier."
     },
+    "FrontierPortfolio": {
+      "type": "object",
+      "properties": {
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual expected return."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual volatility."
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights, by asset."
+        }
+      },
+      "required": [
+        "expected_return",
+        "volatility",
+        "weights"
+      ],
+      "description": "A portfolio on the efficient frontier of `Assets`: its annual expected return and\nvolatility, and its weights by asset."
+    },
     "Grid": {
       "type": "object",
       "properties": {

@@ -514,7 +514,7 @@ class Portfolio:
         targets: Mapping[_types.HoldingKey, float] | _types.Optimisation | _types.OptimisationResult,
         *,
         accounts: Sequence[str] | None = None,
-        date: DateLike | None = None,
+        as_of: DateLike | None = None,
         lot_method: _types.LotMethod | None = None,
         whole_units: bool = False,
         minimum_trade: float = 0,
@@ -527,7 +527,7 @@ class Portfolio:
     ) -> _types.Rebalancing:
         """The trades that move `accounts` (by default every account) together to `targets`:
         weights by holding (an instrument's identifier, or ``"USD cash"`` and the like), as
-        shares of their combined value on `date` (by default the last price date), or an
+        shares of their combined value on `as_of` (by default the last price date), or an
         optimisation of the portfolio's assets, whose weights are its targets (one that found
         no weights is a :class:`ValidationError`). The rebalance report is in
         ``result.report``, which ``print(result)`` prints and ``result.show()`` shows, and each
@@ -551,7 +551,7 @@ class Portfolio:
         """
         choices = {
             "accounts": [a.id for a in self.data.accounts] if accounts is None else list(accounts),
-            "date": self._date_or_last_price(date),
+            "as_of": self._date_or_last_price(as_of),
             "name": name,
             "lot_method": lot_method,
             "whole_units": whole_units,

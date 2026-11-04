@@ -62,7 +62,7 @@ export async function example(worker: Worker): Promise<void> {
   const returns: Float64Array = performance.returns;
   const dates: string[] = performance.dates;
   const threeYears = performance.period("3Y");
-  const plan = books.rebalance({ SPY: 1 }, { accounts: ["main"], lot_method: "highest_cost", name: "Main" });
+  const plan = books.rebalance({ SPY: 1 }, { accounts: ["main"], lot_method: "highest_cost", name: "Main", as_of: "2026-06-30" });
   const planReport: RebalanceReport = plan.report;
   const planResults: RebalanceResults = plan.results;
   const planText: string = `${plan}` + plan.results.toText() + plan.toHtml();
@@ -78,7 +78,9 @@ export async function example(worker: Worker): Promise<void> {
   const optimisation: OptimisationReport = result.report;
   const solved: OptimisationResult = result.results;
   const weights: Record<string, number> | null | undefined = result.results.weights;
-  const optimisationText: string = `${result}` + result.results.toText();
+  const optimisationText: string = `${result}` + result.results.toText() + result.toText("Named");
+  const saved: string = assets.optimise({ method: "minimum_variance", name: "Defensive" }).saveHtml("page.html");
+  const frontierWeights: Record<string, number> = assets.frontier(5)[0].weights;
   const rebalanced = books.rebalance(result);
   // @ts-expect-error: an unknown method is rejected.
   assets.optimise({ method: "maximum_profit" });

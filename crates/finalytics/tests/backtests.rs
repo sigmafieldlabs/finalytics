@@ -170,6 +170,7 @@ fn mistakes_in_the_options_are_reported_together() {
             "strategies[0].weights.Crypto",
             "strategies[0].weights",
             "benchmark.prices",
+            "rebalance",
         ]
     );
     options.strategies.remove(0);

@@ -163,7 +163,9 @@ accounts, holding five funds in dollars and euros for three years.
 of them, and `datasets::portfolio()` loads the same portfolio without them.
 `BENCH` is a column of `prices.csv`, the benchmark's levels; `asset_class` and
 `region` are columns of `instruments.csv` that classify each holding. The sample
-report adds the attribution and scenarios of `datasets::report_options()`.
+report adds the attribution and scenarios of `datasets::report_options()`. A
+portfolio's report is its own result: every figure in it is the portfolio's, so
+`report()` returns the report, with no `results` beside it.
 
 <details>
 <summary>The start of the dataset's files</summary>

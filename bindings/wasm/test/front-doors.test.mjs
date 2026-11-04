@@ -21,7 +21,10 @@ test("assets from the asset-class dataset", () => {
   const weights = Object.values(result.results.weights);
   close(weights.reduce((a, b) => a + b, 0), 1, 1e-6, "weights");
   assert.deepEqual(Object.keys(result.results.weights), ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]);
-  assert.equal(assets.frontier(5, { bounds: { min: 0, max: 0.5 } }).length, 5);
+  const frontier = assets.frontier(5, { bounds: { min: 0, max: 0.5 } });
+  assert.equal(frontier.length, 5);
+  assert.deepEqual(Object.keys(frontier[0].weights), Object.keys(result.results.weights));
+  assert.deepEqual(Object.keys(assets.meanReturns()), assets.labels);
   assert.throws(() => assets.optimise({ method: "target_return" }), (e) => {
     assert.equal(e.name, "ValidationError");
     assert.deepEqual(e.issues.map((i) => i.path), ["options.target"]);

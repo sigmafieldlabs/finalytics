@@ -180,8 +180,8 @@ def test_a_report_shows_in_a_browser_or_a_notebook(monkeypatch):
     assert report.to_text().count("Morgan family portfolio") == 6
     opened = []
     monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url) or True)
-    assert report.show() is None
-    path = page_path(opened[0])
+    path = report.show()
+    assert path == page_path(opened[0])
     assert path.read_text(encoding="utf-8").startswith("<!doctype html>")
     path.unlink()
     frame = report._repr_html_()
@@ -197,13 +197,13 @@ def test_a_report_shows_inline_in_a_notebook(monkeypatch):
     ipython = types.ModuleType("IPython")
     ipython.get_ipython = ZMQInteractiveShell
     display = types.ModuleType("IPython.display")
-    display.HTML = lambda html: html
-    display.display = shown.append
+    # Raw HTML, so that IPython adds no advice about frames.
+    display.display = lambda shown_object, raw=False: shown.append(raw and shown_object["text/html"])
     monkeypatch.setitem(sys.modules, "IPython", ipython)
     monkeypatch.setitem(sys.modules, "IPython.display", display)
     monkeypatch.setattr("webbrowser.open", lambda url: pytest.fail("opened a browser"))
     report = fl.datasets.portfolio().report()
-    report.show()
+    assert report.show() is None
     assert len(shown) == 1 and shown[0].startswith("<iframe srcdoc=")
     assets = fl.Assets(prices=fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
     assets.compare(methods=["equal_weight", "minimum_variance"]).show()

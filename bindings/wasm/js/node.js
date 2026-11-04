@@ -14,17 +14,23 @@ import { install as installReports } from "./reports.js";
 initSync({ module: readFileSync(new URL("./finalytics_bg.wasm", import.meta.url)) });
 installDatasets((url) => readFile(url, "utf8"));
 
-installReports((html) => {
-  const path = join(tmpdir(), `finalytics-report-${Date.now()}.html`);
-  writeFileSync(path, html);
-  const [command, ...args] = opener(path, process.env.BROWSER);
-  const child = spawn(command, args, { detached: true, stdio: "ignore" });
-  child.on("error", (error) => {
-    process.emitWarning(`cannot open a browser (${error.message}); the report is at ${path}`);
-  });
-  child.unref();
-  return path;
-});
+installReports(
+  (html) => {
+    const path = join(tmpdir(), `finalytics-report-${Date.now()}.html`);
+    writeFileSync(path, html);
+    const [command, ...args] = opener(path, process.env.BROWSER);
+    const child = spawn(command, args, { detached: true, stdio: "ignore" });
+    child.on("error", (error) => {
+      process.emitWarning(`cannot open a browser (${error.message}); the report is at ${path}`);
+    });
+    child.unref();
+    return path;
+  },
+  (path, html) => {
+    writeFileSync(path, html);
+    return path;
+  },
+);
 
 /**
  * The command that opens `path`: the first of the commands in `browser` (the `BROWSER`

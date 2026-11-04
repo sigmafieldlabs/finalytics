@@ -46,6 +46,10 @@ SCALARS = {
     ),
 }
 
+# Date fields that people give by hand, as in `fl.Holdout(start="2016-11-01")`: they take a date or
+# its ISO text, and hold a date.
+DATE_TEXT = {("Holdout", "start")}
+
 # Python class names for the variants of tagged unions, where the tag alone would be unclear or
 # would clash with another name. Other variants take the tag in PascalCase.
 VARIANT_NAMES = {
@@ -358,6 +362,8 @@ class Python:
                 continue
             annotation = self.annotation(prop)
             default = None if key in required else self.default(prop, annotation)
+            if (name, key) in DATE_TEXT:
+                annotation = "datetime.date | str"
             fields.append((key, annotation, default, doc(prop.get("description"))))
         if extra:
             fields.append(extra)
@@ -372,6 +378,14 @@ class Python:
             lines.append(f"    {attr(key)}: {annotation}" + (f" = {default}" if default else ""))
             if text:
                 lines.append(docstring(text, 4))
+        texts = [attr(key) for key, *_ in fields if (name, key) in DATE_TEXT]
+        if texts:
+            lines += ["", "    def __post_init__(self) -> None:"]
+            for field_name in texts:
+                lines += [
+                    f"        if isinstance(self.{field_name}, str):",
+                    f'            object.__setattr__(self, "{field_name}", datetime.date.fromisoformat(self.{field_name}))',
+                ]
         self.blocks.append("\n".join(lines))
         self.classes[name] = name
 

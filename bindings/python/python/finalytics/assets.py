@@ -296,7 +296,8 @@ class Assets:
         - ``"maximum_sharpe"`` (the default), ``"minimum_variance"``,
           ``"maximum_diversification"`` and ``"hierarchical_risk_parity"`` (with `linkage`);
         - ``"mean_variance"`` and ``"robust_mean_variance"``, with `risk_aversion` (and
-          `uncertainty`, a :class:`~finalytics.types.ReturnUncertainty`);
+          `uncertainty`, an :class:`~finalytics.types.Ellipsoid` or a
+          :class:`~finalytics.types.Box`);
         - ``"target_return"`` and ``"target_volatility"``, with an annual `target`;
         - ``"minimum_cvar"``, at `confidence` (0.95 by default);
         - ``"risk_parity"``, every asset with the same share of the risk, and
@@ -353,7 +354,7 @@ class Assets:
         asset_bounds: Mapping[str, BoundLike] | None = None,
         groups: Mapping[str, GroupLike] | None = None,
         expected_returns: Mapping[str, float] | None = None,
-    ) -> list[_types.FrontierPoint]:
+    ) -> list[_types.FrontierPortfolio]:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
         the least variance to the one with the largest expected return, under the limits given
         as for :meth:`optimise`."""
@@ -365,7 +366,7 @@ class Assets:
             groups=groups,
             expected_returns=expected_returns,
         )
-        return loads(list[_types.FrontierPoint], call(self._native.frontier, int(points), dumps(options, "options")))
+        return loads(list[_types.FrontierPortfolio], call(self._native.frontier, int(points), dumps(options, "options")))
 
     def compare(
         self,
@@ -387,6 +388,7 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
+        risk_free_rate: float | None = None,
     ) -> _types.Comparison:
         """The comparison of `methods`, each backtested on these assets with the same limits,
         rebalancing, validation and trading costs and scored on the periods it was tested on:
@@ -420,6 +422,7 @@ class Assets:
             budgets=budgets,
             linkage=linkage,
             expected_returns=expected_returns,
+            risk_free_rate=risk_free_rate,
         )
         if isinstance(methods, str):
             raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
@@ -453,6 +456,7 @@ class Assets:
         budgets: Mapping[str, float] | None = None,
         linkage: _types.Linkage | None = None,
         expected_returns: Mapping[str, float] | None = None,
+        risk_free_rate: float | None = None,
     ) -> _types.Backtest:
         """The backtest of one strategy: a `method`, fitted as `validation` says, or fixed
         `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the
@@ -476,6 +480,7 @@ class Assets:
             budgets=budgets,
             linkage=linkage,
             expected_returns=expected_returns,
+            risk_free_rate=risk_free_rate,
         )
         strategy: Any
         if weights is not None:

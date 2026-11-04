@@ -303,7 +303,7 @@ impl NativePortfolio {
             files = files.fx(text);
         }
         if let Some(code) = base_currency {
-            files = files.base_currency(currency(code)?);
+            files = files.base_currency(code);
         }
         Ok(Portfolio::from_csv(&files).map_err(engine)?.into())
     }

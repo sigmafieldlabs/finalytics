@@ -8,7 +8,8 @@ use finalytics_core::{Currency, Date, Decimal, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, PortfolioDocument, market_from_csv, portfolio_from_csv};
 use finalytics_ledger::LotMethod;
 use finalytics_ledger::{
-    AccountId, Books, HoldingKey, MarketData, PortfolioData, Transaction, Valuation, ValueSeries,
+    AccountId, Books, HoldingKey, InstrumentId, MarketData, PortfolioData, Transaction, Valuation,
+    ValueSeries,
 };
 use finalytics_opt::{
     RebalanceOptions, RebalanceResults, SolveStatus, TaxRates, rebalance_accounts,
@@ -20,7 +21,7 @@ use finalytics_reports::{
     ScenariosReport, Source, attribution_report, holdings_report, overview_report,
     performance_report, portfolio_report, risk_report, scenarios_report,
 };
-use finalytics_risk::{holding_returns, holding_weights};
+use finalytics_risk::{CovarianceMethod, holding_returns, holding_weights};
 
 use crate::{Assets, OptimisationResult};
 
@@ -40,7 +41,7 @@ use crate::{Assets, OptimisationResult};
 /// ";
 /// let prices = "date,VOO\n2026-01-02,500\n2026-01-05,510\n";
 /// let portfolio = Portfolio::from_csv(&PortfolioCsv::new(transactions).prices(prices))?;
-/// assert_eq!(portfolio.valuation(None)?.total_base.to_string(), "10100");
+/// assert_eq!(portfolio.valuation()?.total_base.to_string(), "10100");
 /// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Debug, Clone)]
@@ -62,7 +63,7 @@ pub struct PortfolioCsv<'a> {
     accounts: Option<&'a str>,
     prices: Option<&'a str>,
     fx: Option<&'a str>,
-    base_currency: Option<Currency>,
+    base_currency: Option<&'a str>,
     options: CsvOptions,
 }
 
@@ -107,8 +108,9 @@ impl<'a> PortfolioCsv<'a> {
         self
     }
 
-    /// The currency results are reported in. Without it, the currency of the first deposit.
-    pub fn base_currency(mut self, currency: Currency) -> Self {
+    /// The currency results are reported in, such as `"USD"`. Without it, the currency of the
+    /// first deposit.
+    pub fn base_currency(mut self, currency: &'a str) -> Self {
         self.base_currency = Some(currency);
         self
     }
@@ -118,6 +120,15 @@ impl<'a> PortfolioCsv<'a> {
         self.options.delimiter = delimiter;
         self
     }
+}
+
+/// `text` as a date, or a problem at `path`.
+fn plain_date(text: &str, path: &str) -> Result<Date> {
+    text.parse::<Date>().map_err(|_| {
+        let mut report = ValidationReport::new();
+        report.error(path, format!("{text:?} is not a date in YYYY-MM-DD form"));
+        Error::Validation(report)
+    })
 }
 
 impl Portfolio {
@@ -136,8 +147,23 @@ impl Portfolio {
     /// A portfolio from CSV files. Problems in every file are reported together, with paths
     /// under `transactions`, `instruments`, `accounts`, `prices` and `fx`.
     pub fn from_csv(files: &PortfolioCsv<'_>) -> Result<Portfolio> {
+        let currency = match files.base_currency.map(str::parse::<Currency>) {
+            Some(Ok(c)) => Some(c),
+            Some(Err(_)) => {
+                let mut report = ValidationReport::new();
+                report.error(
+                    "base_currency",
+                    format!(
+                        "{:?} is not a currency code, such as USD",
+                        files.base_currency.unwrap_or_default()
+                    ),
+                );
+                return Err(Error::Validation(report));
+            }
+            None => None,
+        };
         let data = portfolio_from_csv(
-            files.base_currency,
+            currency,
             files.instruments,
             files.transactions,
             files.accounts,
@@ -281,15 +307,25 @@ impl Portfolio {
         })
     }
 
-    /// The holdings valued at the end of `date`, or of the last price date.
-    pub fn valuation(&self, date: Option<Date>) -> Result<Valuation> {
-        self.books.value_on(self.date_or_last(date)?, &self.market)
+    /// The holdings valued at the end of the last price date.
+    pub fn valuation(&self) -> Result<Valuation> {
+        self.books.value_on(self.date_or_last(None)?, &self.market)
     }
 
-    /// Each holding's share of the portfolio's value at the end of `date`, or of the last price
-    /// date.
-    pub fn weights(&self, date: Option<Date>) -> Result<BTreeMap<HoldingKey, f64>> {
-        holding_weights(&self.valuation(date)?)
+    /// The holdings valued at the end of `date`, such as `"2026-06-30"`.
+    pub fn valuation_on(&self, date: &str) -> Result<Valuation> {
+        self.books.value_on(plain_date(date, "date")?, &self.market)
+    }
+
+    /// Each holding's share of the portfolio's value at the end of the last price date.
+    pub fn weights(&self) -> Result<BTreeMap<HoldingKey, f64>> {
+        holding_weights(&self.valuation()?)
+    }
+
+    /// Each holding's share of the portfolio's value at the end of `date`, such as
+    /// `"2026-06-30"`.
+    pub fn weights_on(&self, date: &str) -> Result<BTreeMap<HoldingKey, f64>> {
+        holding_weights(&self.valuation_on(date)?)
     }
 
     /// The portfolio's value and external flows on each of its [dates](Portfolio::dates).
@@ -467,6 +503,8 @@ impl Portfolio {
             as_of: None,
             start: None,
             name: None,
+            expected_returns: Vec::new(),
+            benchmark_weights: Vec::new(),
         }
     }
 
@@ -688,7 +726,7 @@ pub struct RebalanceBuilder<'a> {
 #[serde(default, deny_unknown_fields)]
 pub struct RebalanceChoices {
     pub accounts: Option<Vec<String>>,
-    pub date: Option<String>,
+    pub as_of: Option<String>,
     pub name: Option<String>,
     pub lot_method: Option<LotMethod>,
     pub whole_units: bool,
@@ -706,7 +744,7 @@ impl RebalanceChoices {
         if let Some(accounts) = self.accounts {
             builder = builder.accounts(accounts);
         }
-        if let Some(date) = &self.date {
+        if let Some(date) = &self.as_of {
             builder = builder.as_of(date);
         }
         if let Some(name) = &self.name {
@@ -937,6 +975,8 @@ pub struct ReportBuilder<'a> {
     as_of: Option<String>,
     start: Option<String>,
     name: Option<String>,
+    expected_returns: Vec<(String, f64)>,
+    benchmark_weights: Vec<(String, f64)>,
 }
 
 impl ReportBuilder<'_> {
@@ -997,6 +1037,70 @@ impl ReportBuilder<'_> {
         self
     }
 
+    /// The valuation periods in a year, for annualising: 252 (trading days) by default.
+    pub fn periods_per_year(mut self, periods: f64) -> Self {
+        self.options.periods_per_year = periods;
+        self
+    }
+
+    /// How the covariance of the holdings' returns is estimated: Ledoit–Wolf by default.
+    pub fn covariance(mut self, method: CovarianceMethod) -> Self {
+        self.options.covariance = method;
+        self
+    }
+
+    /// The confidences of value at risk and expected shortfall, such as `[0.95, 0.99]` (the
+    /// default).
+    pub fn confidences(mut self, confidences: &[f64]) -> Self {
+        self.options.confidences = confidences.to_vec();
+        self
+    }
+
+    /// The window of rolling statistics, in valuation periods: 63 by default.
+    pub fn rolling_window(mut self, periods: usize) -> Self {
+        self.options.rolling_window = periods;
+        self
+    }
+
+    /// The number of bins of return histograms: 30 by default.
+    pub fn histogram_bins(mut self, bins: usize) -> Self {
+        self.options.histogram_bins = bins;
+        self
+    }
+
+    /// How many holdings the lists of the largest, the top contributors and the like show: 10
+    /// by default.
+    pub fn top(mut self, n: usize) -> Self {
+        self.options.top = n;
+        self
+    }
+
+    /// The holding period, in days, after which a lot or a gain is long-term: 365 by default.
+    pub fn long_term_after_days(mut self, days: u32) -> Self {
+        self.options.long_term_after_days = i32::try_from(days).unwrap_or(i32::MAX);
+        self
+    }
+
+    /// An instrument's annual expected return for the efficient frontier, in place of its
+    /// historical mean.
+    pub fn expected_return(mut self, instrument: &str, value: f64) -> Self {
+        self.expected_returns.push((instrument.to_owned(), value));
+        self
+    }
+
+    /// The number of portfolios on the efficient frontier: 25 by default.
+    pub fn frontier_points(mut self, points: usize) -> Self {
+        self.options.frontier_points = points;
+        self
+    }
+
+    /// A holding's benchmark weight, such as `("VTI", 0.6)` or `("USD cash", 0.05)`, for the
+    /// ex-ante tracking error.
+    pub fn benchmark_weight(mut self, holding: &str, weight: f64) -> Self {
+        self.benchmark_weights.push((holding.to_owned(), weight));
+        self
+    }
+
     /// Makes the reports.
     pub fn build(&self) -> Result<PortfolioReport> {
         let mut report = ValidationReport::new();
@@ -1022,6 +1126,29 @@ impl ReportBuilder<'_> {
                         format!("{text:?} is not a date: write it as 2026-06-30"),
                     ),
                 }
+            }
+        }
+        for (id, value) in &self.expected_returns {
+            match id.parse::<InstrumentId>() {
+                Ok(id) => {
+                    options.expected_returns.insert(id, *value);
+                }
+                Err(_) => report.error(
+                    format!("expected_returns.{id}"),
+                    "is not an instrument identifier",
+                ),
+            }
+        }
+        for (holding, weight) in &self.benchmark_weights {
+            match holding.parse::<HoldingKey>() {
+                Ok(key) => {
+                    options.benchmark_weights.insert(key, *weight);
+                }
+                Err(_) => report.error(
+                    format!("benchmark_weights.{holding}"),
+                    "is not a holding: an instrument's identifier, or a currency's cash such as \
+                     USD cash",
+                ),
             }
         }
         report.into_result(())?;
@@ -1105,13 +1232,15 @@ impl PortfolioBuilder {
         if self.files[0].is_none() {
             report.error("transactions", "give the transactions file");
         }
-        let currency = self.base_currency.as_ref().and_then(|c| match c.parse() {
-            Ok(c) => Some(c),
-            Err(_) => {
-                report.error("base_currency", format!("{c:?} is not a currency code"));
-                None
-            }
-        });
+        // Checked here too, so that it is reported with the files' problems.
+        if let Some(c) = &self.base_currency
+            && c.parse::<Currency>().is_err()
+        {
+            report.error(
+                "base_currency",
+                format!("{c:?} is not a currency code, such as USD"),
+            );
+        }
         report.into_result(())?;
         let mut csv = PortfolioCsv::new(texts[0].as_deref().unwrap_or_default());
         if let Some(t) = &texts[1] {
@@ -1126,7 +1255,7 @@ impl PortfolioBuilder {
         if let Some(t) = &texts[4] {
             csv = csv.fx(t);
         }
-        if let Some(c) = currency {
+        if let Some(c) = &self.base_currency {
             csv = csv.base_currency(c);
         }
         Portfolio::from_csv(&csv)

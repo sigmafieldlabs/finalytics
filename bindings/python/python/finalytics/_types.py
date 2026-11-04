@@ -1673,6 +1673,22 @@ class FrontierPoint:
 
 
 @dataclass(frozen=True, kw_only=True)
+class FrontierPortfolio:
+    """A portfolio on the efficient frontier of `Assets`: its annual expected return and volatility,
+    and its weights by asset.
+    """
+
+    expected_return: float
+    """The annual expected return."""
+
+    volatility: float
+    """The annual volatility."""
+
+    weights: dict[str, float]
+    """The weights, by asset."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Grid:
     """A table of numbers with labelled rows and columns, for a heatmap."""
 
@@ -5350,8 +5366,12 @@ class Holdout:
     TYPE: ClassVar[str] = "holdout"
     """The value of the `type` tag that identifies this variant."""
 
-    start: datetime.date
+    start: datetime.date | str
     """The first date of the test."""
+
+    def __post_init__(self) -> None:
+        if isinstance(self.start, str):
+            object.__setattr__(self, "start", datetime.date.fromisoformat(self.start))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -5652,6 +5672,7 @@ __all__ = [
     "FractionColumn",
     "FractionUnit",
     "FrontierPoint",
+    "FrontierPortfolio",
     "FxConversion",
     "Grid",
     "GroupContribution",

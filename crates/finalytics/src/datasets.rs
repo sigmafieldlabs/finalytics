@@ -30,7 +30,7 @@
 //! # Ok::<(), finalytics::Error>(())
 //! ```
 
-use finalytics_core::{Currency, Date, Result};
+use finalytics_core::{Date, Result};
 use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_reports::ReportOptions;
 use finalytics_risk::PriceTable;
@@ -179,7 +179,7 @@ pub fn portfolio() -> Portfolio {
         .accounts(ACCOUNTS)
         .prices(PRICES)
         .fx(FX)
-        .base_currency(Currency::USD);
+        .base_currency("USD");
     Portfolio::from_csv(&files).expect("the portfolio dataset is valid")
 }
 

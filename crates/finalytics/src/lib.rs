@@ -146,8 +146,8 @@ pub mod prelude {
 }
 
 pub use assets::{
-    AssetGroup, AssetSettings, AssetStatistics, Assets, AssetsBuilder, Method, Optimisation,
-    OptimisationResult, Optimise, OptimiseOptions,
+    AssetGroup, AssetSettings, AssetStatistics, Assets, AssetsBuilder, FrontierPortfolio, Method,
+    Optimisation, OptimisationResult, Optimise, OptimiseOptions,
 };
 pub use backtest::{Backtest, BacktestResults, Comparison};
 pub use finalytics_reports::{

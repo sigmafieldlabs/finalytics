@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import json
 import typing
 
@@ -38,3 +39,10 @@ def test_every_public_module_exports_what_it_lists():
         missing = [name for name in module.__all__ if not hasattr(module, name)]
         assert not missing, (module.__name__, missing)
     assert "performance" in fl.__all__
+
+
+def test_a_holdout_takes_its_date_as_text():
+    holdout = fl.Holdout(start="2016-11-01")
+    assert holdout.start == datetime.date(2016, 11, 1)
+    assert holdout == fl.Holdout(start=datetime.date(2016, 11, 1))
+    assert fl._convert.from_json(types.Validation, fl._convert.to_json(holdout)) == holdout

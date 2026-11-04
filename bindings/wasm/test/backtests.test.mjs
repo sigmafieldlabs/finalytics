@@ -2,6 +2,8 @@
 // gives them: each result has a report and the raw results, prints as text and shows as a page.
 import assert from "node:assert/strict";
 import { readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import { Assets, datasets } from "../pkg/node.js";
@@ -33,13 +35,14 @@ test("every result has a report and the raw results", () => {
     assert.ok(text.includes(title));
     assert.ok(text.split("\n").every((line) => [...line].length <= 80));
     assert.equal(result.toHtml(), result.report.toHtml());
+    assert.equal(result.toText("Named"), result.report.toText("Named"));
     const printed = `${result.results}`;
     assert.ok(printed.startsWith(raw), printed);
     assert.ok(printed.split("\n").every((line) => [...line].length <= 80));
   }
 });
 
-test("the optimisation report explains the weights", () => {
+test("the optimisation report explains the weights", async () => {
   const result = assets.optimise({ method: "maximum_sharpe", max_weight: 0.4 });
   const { report, results } = result;
   close(report.summary.volatility, results.volatility, 1e-12, "volatility");
@@ -49,6 +52,13 @@ test("the optimisation report explains the weights", () => {
   assert.equal(report.history.weights.statistics.observations, assets.dates.length);
   assert.deepEqual(Object.keys(results.weights), ["US Equity", "Intl Equity", "Bonds", "Gold", "Real Estate"]);
   assert.ok(result.toHtml("Six asset classes").includes("<title>Six asset classes</title>"));
+  const named = assets.optimise({ method: "maximum_sharpe", max_weight: 0.4, name: "Six asset classes" });
+  assert.equal(named.report.name, "Six asset classes");
+  // A page saved to a file, as in Python and Rust.
+  const file = join(tmpdir(), `finalytics-saved-${process.pid}.html`);
+  assert.equal(result.saveHtml(file, "Saved"), file);
+  assert.ok((await readFile(file, "utf8")).includes("<title>Saved</title>"));
+  await rm(file);
   // The frontier only when asked for: it changes the report, not the weights.
   assert.deepEqual(report.frontier, []);
   assert.ok(result.toHtml().includes("frontier: true in JavaScript"));

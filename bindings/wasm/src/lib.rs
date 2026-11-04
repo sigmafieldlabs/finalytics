@@ -63,10 +63,10 @@ export interface RebalanceChoices {
   /** The accounts to rebalance together; every account by default. */
   accounts?: string[];
   /** The date of the prices used; the last price date by default. */
-  date?: Date;
+  as_of?: Date;
   /** The report's title, such as `"Morgan family portfolio"`. */
   name?: string;
-  /** How sales choose lots without tax rates: first in, first out by default. */
+  /** How sales choose lots without tax rates: each account's own method by default. */
   lot_method?: LotMethod;
   /** Trade whole units only, rounding each trade towards zero. */
   whole_units?: boolean;
@@ -149,6 +149,8 @@ export interface ReportMethods {
    * styles and SVG charts, no scripts, in light and dark themes, ready to print.
    */
   toHtml(name?: string): string;
+  /** In Node.js, writes `toHtml(name)` to `path`, and returns the path. */
+  saveHtml(path: string, name?: string): string;
   /**
    * Shows the report. In a browser, in a frame inside `element`, or else in a new window. In
    * Node.js, in the default browser, or with the command in the `BROWSER` environment variable if
@@ -173,10 +175,12 @@ export interface Result<R, D> {
   report: R & ReportMethods;
   /** The raw results. */
   results: D & ResultsMethods;
-  /** The report as text for printing, 80 columns wide. */
-  toText(): string;
-  /** The report as one self-contained HTML page. */
-  toHtml(): string;
+  /** The report as text for printing, 80 columns wide, with `name`, if given, under the title. */
+  toText(name?: string): string;
+  /** The report as one self-contained HTML page, with `name`, if given, as its title. */
+  toHtml(name?: string): string;
+  /** In Node.js, writes the report's page to `path`, and returns the path. */
+  saveHtml(path: string, name?: string): string;
   /** Shows the report, as `report.show` does. */
   show(element?: Element): string | undefined;
   toString(): string;
@@ -184,6 +188,12 @@ export interface Result<R, D> {
 
 /** The limits on the weights and the methods' parameters, as for `Assets.optimise`. */
 export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method" | "frontier">;
+
+/** The options of `Assets.optimise`: those of `OptimiseOptions`, with the report's title. */
+export interface OptimiseChoices extends Partial<OptimiseOptions> {
+  /** The report's title, such as `"Defensive equity"`: the method's name by default. */
+  name?: string;
+}
 
 /**
  * How strategies are validated: `"in_sample"` (the default); `{ holdout: { start: "2016-11-01" } }`,
@@ -650,7 +660,7 @@ impl Portfolio {
             csv = csv.accounts(text);
         }
         if let Some(code) = &files.base_currency {
-            csv = csv.base_currency(currency(code)?);
+            csv = csv.base_currency(code);
         }
         csv = csv.delimiter(csv_options(files.delimiter)?.delimiter);
         Ok(finalytics::Portfolio::from_csv(&csv).map_err(error)?.into())
@@ -924,7 +934,7 @@ impl Portfolio {
         to_js(
             &self
                 .inner
-                .valuation(Some(self.date_or_last(date)?))
+                .valuation_on(&self.date_or_last(date)?.to_string())
                 .map_err(error)?,
         )
     }
@@ -1037,7 +1047,7 @@ impl Portfolio {
         to_js(
             &self
                 .inner
-                .weights(Some(self.date_or_last(date)?))
+                .weights_on(&self.date_or_last(date)?.to_string())
                 .map_err(error)?,
         )
     }
@@ -1298,14 +1308,14 @@ impl Assets {
     /// Each asset's historical mean return, annualised.
     #[wasm_bindgen(js_name = meanReturns, unchecked_return_type = "Record<string, number>")]
     pub fn mean_returns(&self) -> Result<JsValue, JsValue> {
-        let means: BTreeMap<&str, f64> = self
+        let means: BTreeMap<String, f64> = self
             .inner
             .labels()
             .iter()
-            .map(String::as_str)
+            .cloned()
             .zip(self.inner.mean_returns())
             .collect();
-        to_js(&means)
+        self.in_asset_order(&means)
     }
 
     /// The optimisation of the risky assets by the method of `options` (the largest Sharpe
@@ -1315,30 +1325,29 @@ impl Assets {
     #[wasm_bindgen(unchecked_return_type = "Result<OptimisationReport, OptimisationResult>")]
     pub fn optimise(
         &self,
-        #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
-        options: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "OptimiseChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let options = object(
+        let mut options = object(
             options,
-            &fields::<finalytics::OptimiseOptions>(&["frontier"]),
+            &fields::<finalytics::OptimiseOptions>(&["frontier", "name"]),
         )?;
+        let name = match options.remove("name") {
+            Some(serde_json::Value::String(name)) => Some(name),
+            Some(serde_json::Value::Null) | None => None,
+            Some(_) => return Err(invalid("options.name", "must be a string")),
+        };
         let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
             &serde_json::Value::Object(options).to_string(),
             "options",
         )
         .map_err(error)?;
-        let result = self.inner.optimise_with(&options).map_err(error)?;
+        let mut result = self.inner.optimise_with(&options).map_err(error)?;
+        result.report.name = name;
         let value = to_js(&result)?;
         if let Some(weights) = &result.results.weights {
             // In the order of the assets, rather than of their names.
-            let ordered = js_sys::Object::new();
-            for asset in self.inner.risky_assets() {
-                if let Some(weight) = weights.get(asset) {
-                    js_sys::Reflect::set(&ordered, &asset.into(), &(*weight).into())?;
-                }
-            }
             let results = js_sys::Reflect::get(&value, &"results".into())?;
-            js_sys::Reflect::set(&results, &"weights".into(), &ordered)?;
+            js_sys::Reflect::set(&results, &"weights".into(), &self.in_asset_order(weights)?)?;
         }
         Ok(value)
     }
@@ -1442,7 +1451,7 @@ impl Assets {
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
     /// the limits of `options`.
-    #[wasm_bindgen(unchecked_return_type = "FrontierPoint[]")]
+    #[wasm_bindgen(unchecked_return_type = "FrontierPortfolio[]")]
     pub fn frontier(
         &self,
         points: Option<usize>,
@@ -1456,12 +1465,32 @@ impl Assets {
             "options",
         )
         .map_err(error)?;
-        to_js(
-            &self
-                .inner
-                .frontier(points.unwrap_or(20), &options)
-                .map_err(error)?,
-        )
+        let points = self
+            .inner
+            .frontier(points.unwrap_or(20), &options)
+            .map_err(error)?;
+        let value = to_js(&points)?;
+        // Each portfolio's weights in the order of the assets, rather than of their names.
+        let array = js_sys::Array::from(&value);
+        for (k, point) in points.iter().enumerate() {
+            js_sys::Reflect::set(
+                &array.get(k as u32),
+                &"weights".into(),
+                &self.in_asset_order(&point.weights)?,
+            )?;
+        }
+        Ok(value)
+    }
+
+    /// `values` by asset as an object whose keys are in the order of the assets.
+    fn in_asset_order(&self, values: &BTreeMap<String, f64>) -> Result<JsValue, JsValue> {
+        let ordered = js_sys::Object::new();
+        for asset in self.inner.labels() {
+            if let Some(v) = values.get(asset) {
+                js_sys::Reflect::set(&ordered, &asset.into(), &(*v).into())?;
+            }
+        }
+        Ok(ordered.into())
     }
 }
 

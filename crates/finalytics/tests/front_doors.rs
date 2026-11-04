@@ -301,6 +301,12 @@ fn the_frontier_rises_with_risk() {
         assert!(pair[1].expected_return >= pair[0].expected_return - 1e-9);
         assert!(pair[1].volatility >= pair[0].volatility - 1e-9);
     }
+    // Weights by asset, each within the limit, adding up to one.
+    for p in &points {
+        assert_eq!(p.weights.len(), assets.labels().len());
+        assert!(p.weights.values().all(|w| *w <= 0.5 + 1e-6));
+        assert!((p.weights.values().sum::<f64>() - 1.0).abs() < 1e-6);
+    }
 }
 
 #[test]
@@ -324,7 +330,7 @@ fn the_portfolio_dataset_reports_in_full() {
     let report = portfolio.report_with(&datasets::report_options()).unwrap();
     assert!(report.attribution.is_some());
     assert_eq!(report.scenarios.unwrap().scenarios.len(), 4);
-    let weights = portfolio.weights(None).unwrap();
+    let weights = portfolio.weights().unwrap();
     assert!((weights.values().sum::<f64>() - 1.0).abs() < 1e-9);
     let performance = portfolio.performance().unwrap();
     assert_eq!(performance.dates().len(), portfolio.dates().len());
@@ -370,7 +376,7 @@ fn a_portfolio_hands_its_holdings_to_the_optimiser() {
         "{unknown:?}"
     );
     let traded = portfolio.with_rebalance(&proposal).unwrap();
-    let after = traded.weights(None).unwrap();
+    let after = traded.weights().unwrap();
     for (key, target) in &targets {
         assert!((after[key] - target).abs() < 0.01, "{key}: {}", after[key]);
     }
@@ -387,7 +393,7 @@ fn a_portfolio_from_its_transactions_alone() {
     let portfolio = Portfolio::from_csv(&PortfolioCsv::new(transactions).prices(prices)).unwrap();
     assert_eq!(portfolio.base_currency().code(), "USD");
     assert_eq!(portfolio.data().accounts[0].id.as_str(), "main");
-    let value = portfolio.valuation(None).unwrap().total_base;
+    let value = portfolio.valuation().unwrap().total_base;
     assert_eq!(value.to_string(), "20120.0");
     let bad = "date,type,amount,currency\n2026-01-02,deposit,-5,USD\n";
     let found = paths(Portfolio::from_csv(
@@ -494,8 +500,8 @@ fn builders_read_files_and_build_reports() {
         .build()
         .unwrap();
     assert_eq!(
-        portfolio.valuation(None).unwrap(),
-        datasets::portfolio().valuation(None).unwrap()
+        portfolio.valuation().unwrap(),
+        datasets::portfolio().valuation().unwrap()
     );
     let report = portfolio
         .report()

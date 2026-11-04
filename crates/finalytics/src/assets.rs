@@ -8,8 +8,8 @@ use finalytics_core::{Date, Decimal, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_ledger::HoldingKey;
 use finalytics_opt::{
-    AssetBound, Bound, Constraints, FrontierPoint, GroupLimit, Linkage, Objective, Problem,
-    ReturnUncertainty, Solution, SolveStatus,
+    AssetBound, Bound, Constraints, GroupLimit, Linkage, Objective, Problem, ReturnUncertainty,
+    Solution, SolveStatus,
 };
 use finalytics_reports::OptimisationReport;
 use finalytics_risk::{
@@ -266,6 +266,20 @@ pub struct OptimiseOptions {
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     #[cfg_attr(feature = "schema", schemars(extend("default" = false)))]
     pub frontier: bool,
+}
+
+/// A portfolio on the efficient frontier of [`Assets`]: its annual expected return and
+/// volatility, and its weights by asset.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct FrontierPortfolio {
+    /// The annual expected return.
+    pub expected_return: f64,
+    /// The annual volatility.
+    pub volatility: f64,
+    /// The weights, by asset.
+    pub weights: BTreeMap<String, f64>,
 }
 
 /// The result of an optimisation over assets: the weights by asset, with their expected return,
@@ -624,6 +638,7 @@ impl Assets {
                 method,
                 ..OptimiseOptions::default()
             },
+            name: None,
         }
     }
 
@@ -754,9 +769,22 @@ impl Assets {
 
     /// The efficient frontier: `points` portfolios from the one with the least variance to the
     /// one with the largest expected return, under the limits of `options` (its method is not
-    /// used). Each point's weights are in the order of the risky assets.
-    pub fn frontier(&self, points: usize, options: &OptimiseOptions) -> Result<Vec<FrontierPoint>> {
-        self.problem(options)?.0.frontier(points)
+    /// used), each with its weights by asset.
+    pub fn frontier(
+        &self,
+        points: usize,
+        options: &OptimiseOptions,
+    ) -> Result<Vec<FrontierPortfolio>> {
+        let (problem, labels) = self.problem(options)?;
+        Ok(problem
+            .frontier(points)?
+            .into_iter()
+            .map(|p| FrontierPortfolio {
+                expected_return: p.expected_return,
+                volatility: p.volatility,
+                weights: labels.iter().cloned().zip(p.weights).collect(),
+            })
+            .collect())
     }
 
     /// Every problem with `options` on these assets, at the paths of the options
@@ -1159,6 +1187,7 @@ fn objective(
 pub struct Optimise<'a> {
     assets: &'a Assets,
     options: OptimiseOptions,
+    name: Option<String>,
 }
 
 impl Optimise<'_> {
@@ -1264,14 +1293,22 @@ impl Optimise<'_> {
         &self.options
     }
 
+    /// The report's title, such as `"Defensive equity"`: the method's name by default.
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_owned());
+        self
+    }
+
     /// Runs the optimisation: the weights in `results`, with the optimisation report in
     /// `report`.
     pub fn build(&self) -> Result<Optimisation> {
-        self.assets.optimise_with(&self.options)
+        let mut optimisation = self.assets.optimise_with(&self.options)?;
+        optimisation.report.name.clone_from(&self.name);
+        Ok(optimisation)
     }
 
     /// The efficient frontier under the limits built so far.
-    pub fn frontier(&self, points: usize) -> Result<Vec<FrontierPoint>> {
+    pub fn frontier(&self, points: usize) -> Result<Vec<FrontierPortfolio>> {
         self.assets.frontier(points, &self.options)
     }
 }

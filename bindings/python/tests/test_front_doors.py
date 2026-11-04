@@ -19,7 +19,7 @@ def test_the_asset_class_dataset(prices):
     assert list(prices.columns) == ["US Equity", "Intl Equity", "Bonds", "T-Bills", "Gold", "Real Estate"]
     assert prices.index[0] == pd.Timestamp("1996-10-31") and prices.index[-1] == pd.Timestamp("2026-10-30")
     assert (prices.iloc[0] == 100).all()
-    table = fl.datasets.price_table()
+    table = fl.datasets.asset_class_table()
     assert table.labels == list(prices.columns) and len(table.dates) == len(prices)
 
 
@@ -39,7 +39,7 @@ def test_assets_from_a_data_frame(prices):
 def test_the_same_assets_from_csv_returns_and_a_price_table(prices):
     from_frame = fl.Assets(prices)
     from_csv = fl.Assets(fl.datasets.file("asset-classes.csv"))
-    from_table = fl.Assets(fl.datasets.price_table())
+    from_table = fl.Assets(fl.datasets.asset_class_table())
     returns = prices.pct_change().dropna()
     from_returns = fl.Assets.from_returns(returns)
     for other in (from_csv, from_table, from_returns):
@@ -69,6 +69,7 @@ def test_optimising_with_named_limits(prices):
     assert target.results.volatility <= 0.08 + 1e-6
     frontier = assets.frontier(points=5, bounds=(0.0, 0.5))
     assert len(frontier) == 5
+    assert set(frontier[0].weights) == set(weights)
     assert all(b.volatility >= a.volatility - 1e-9 for a, b in zip(frontier, frontier[1:]))
 
 

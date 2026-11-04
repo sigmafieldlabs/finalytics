@@ -34,9 +34,9 @@ from finalytics.portfolio import Portfolio
 __all__ = [
     "FILES",
     "asset_class_prices",
+    "asset_class_table",
     "file",
     "portfolio",
-    "price_table",
     "report_options",
     "sp500",
     "sp500_companies",
@@ -102,9 +102,10 @@ def sp500_companies() -> list[_types.Company]:
     return loads(list[_types.Company], _finalytics.dataset_sp500_companies())
 
 
-def price_table() -> _types.PriceTable:
+def asset_class_table() -> _types.PriceTable:
     """The asset-class prices of :func:`asset_class_prices`, as a
-    :class:`~finalytics.types.PriceTable`, without pandas."""
+    :class:`~finalytics.types.PriceTable`, without pandas, as :func:`sp500_table` gives the
+    S&P 500 prices."""
     return loads(_types.PriceTable, _finalytics.dataset_asset_class_prices())
 
 
@@ -113,8 +114,8 @@ def asset_class_prices() -> Any:
     at 100: US Equity, Intl Equity, Bonds, T-Bills, Gold and Real Estate, as a pandas DataFrame
     indexed by date. The data is synthetic: drawn with a fixed seed, with bear markets modelled
     loosely on those of 2000–02, 2007–09, 2020 and 2022. The indices include income. (Needs
-    pandas; :func:`price_table` gives the same prices without it.)"""
-    return _frame(price_table())
+    pandas; :func:`asset_class_table` gives the same prices without it.)"""
+    return _frame(asset_class_table())
 
 
 def portfolio() -> Portfolio:

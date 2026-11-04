@@ -675,6 +675,44 @@ macro_rules! common_setters {
                 self
             }
 
+            /// The uncertainty of the expected returns, for robust mean–variance.
+            pub fn uncertainty(mut self, uncertainty: finalytics_opt::ReturnUncertainty) -> Self {
+                self.common.options.uncertainty = Some(uncertainty);
+                self
+            }
+
+            /// Each asset's risk budget, for risk budgeting; equal shares without them.
+            pub fn budget(mut self, asset: &str, budget: f64) -> Self {
+                self.common
+                    .options
+                    .budgets
+                    .get_or_insert_with(BTreeMap::new)
+                    .insert(asset.to_owned(), budget);
+                self
+            }
+
+            /// How hierarchical risk parity joins clusters: single linkage by default.
+            pub fn linkage(mut self, linkage: finalytics_opt::Linkage) -> Self {
+                self.common.options.linkage = Some(linkage);
+                self
+            }
+
+            /// An asset's annual expected return, in place of its historical mean.
+            pub fn expected_return(mut self, asset: &str, value: f64) -> Self {
+                self.common
+                    .options
+                    .expected_returns
+                    .insert(asset.to_owned(), value);
+                self
+            }
+
+            /// An annual risk-free rate for the Sharpe ratio of the maximum Sharpe method, in place
+            /// of the assets' own.
+            pub fn risk_free_rate(mut self, rate: f64) -> Self {
+                self.common.options.risk_free_rate = Some(rate);
+                self
+            }
+
             /// Weights fitted once to the whole history and tested on it (the default).
             pub fn in_sample(mut self) -> Self {
                 self.common.validation = Validation::InSample;
