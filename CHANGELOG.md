@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] - 2026-11-04
+
 ### Added
 
 - `Statistics` adds the conditional drawdown at risk at 95% (the mean of the worst 5% of the
@@ -576,7 +578,8 @@ Finalytics 1.0 is a redesign of the library. See the
 
 The last release of the 0.x series. See the `0.9.x` branch.
 
-[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.1...HEAD
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.2...HEAD
+[1.0.0-rc.2]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-alpha.0...v1.0.0-rc.1
 [1.0.0-alpha.0]: https://github.com/sigmafieldlabs/finalytics/releases/tag/v1.0.0-alpha.0
 [0.9.0]: https://github.com/sigmafieldlabs/finalytics/tree/0.9.x

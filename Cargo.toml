@@ -11,7 +11,7 @@ members = [
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "1.0.0-rc.1"
+version = "1.0.0-rc.2"
 edition = "2024"
 rust-version = "1.88"
 authors = ["Nnamdi Olisaeloka <nnamdi@sigmafieldlabs.com>"]
@@ -22,15 +22,15 @@ keywords = ["finance", "portfolio", "optimization", "risk", "performance"]
 categories = ["finance", "mathematics", "science", "wasm"]
 
 [workspace.dependencies]
-finalytics-core = { path = "crates/finalytics-core", version = "=1.0.0-rc.1" }
-finalytics-ledger = { path = "crates/finalytics-ledger", version = "=1.0.0-rc.1" }
-finalytics-formats = { path = "crates/finalytics-formats", version = "=1.0.0-rc.1" }
-finalytics-perf = { path = "crates/finalytics-perf", version = "=1.0.0-rc.1" }
-finalytics-risk = { path = "crates/finalytics-risk", version = "=1.0.0-rc.1" }
-finalytics-opt = { path = "crates/finalytics-opt", version = "=1.0.0-rc.1" }
-finalytics-reports = { path = "crates/finalytics-reports", version = "=1.0.0-rc.1" }
-finalytics-backtest = { path = "crates/finalytics-backtest", version = "=1.0.0-rc.1" }
-finalytics = { path = "crates/finalytics", version = "=1.0.0-rc.1", default-features = false }
+finalytics-core = { path = "crates/finalytics-core", version = "=1.0.0-rc.2" }
+finalytics-ledger = { path = "crates/finalytics-ledger", version = "=1.0.0-rc.2" }
+finalytics-formats = { path = "crates/finalytics-formats", version = "=1.0.0-rc.2" }
+finalytics-perf = { path = "crates/finalytics-perf", version = "=1.0.0-rc.2" }
+finalytics-risk = { path = "crates/finalytics-risk", version = "=1.0.0-rc.2" }
+finalytics-opt = { path = "crates/finalytics-opt", version = "=1.0.0-rc.2" }
+finalytics-reports = { path = "crates/finalytics-reports", version = "=1.0.0-rc.2" }
+finalytics-backtest = { path = "crates/finalytics-backtest", version = "=1.0.0-rc.2" }
+finalytics = { path = "crates/finalytics", version = "=1.0.0-rc.2", default-features = false }
 
 rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde"] }
 serde = { version = "1.0.228", features = ["derive", "rc"] }
