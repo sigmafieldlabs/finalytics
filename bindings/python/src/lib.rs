@@ -28,8 +28,8 @@ use finalytics::risk::{
 };
 use finalytics::{
     Assets, Currency, Date, Decimal, Error, HoldingKey, HoldingSeries, InstrumentId, LotMethod,
-    MarketData, Observation, OptimiseOptions, Portfolio, PortfolioCsv, PortfolioData, PriceTable,
-    TimeSeries, ValidationReport, datasets,
+    MarketData, Observation, OptimiseOptions, PlanOptions, Portfolio, PortfolioCsv, PortfolioData,
+    PriceTable, TimeSeries, ValidationReport, datasets,
 };
 
 create_exception!(
@@ -808,6 +808,13 @@ impl NativeAssets {
             to_json(&self.inner.backtest_with(&options).map_err(engine)?)
         })
     }
+
+    fn plan(&self, py: Python<'_>, options: &str) -> PyResult<String> {
+        let options: PlanOptions = from_json(options, "options")?;
+        released(py, || {
+            to_json(&self.inner.plan_with(&options).map_err(engine)?)
+        })
+    }
 }
 
 #[pyfunction]
@@ -831,6 +838,11 @@ fn dataset_files() -> Vec<&'static str> {
 #[pyfunction]
 fn dataset_asset_class_prices() -> PyResult<String> {
     to_json(&datasets::asset_class_prices())
+}
+
+#[pyfunction]
+fn dataset_us_cpi() -> PyResult<String> {
+    to_json(&datasets::us_cpi())
 }
 
 #[pyfunction]
@@ -1389,6 +1401,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dataset_file, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_files, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_asset_class_prices, m)?)?;
+    m.add_function(wrap_pyfunction!(dataset_us_cpi, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_report_options, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_sp500_prices, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_sp500_index, m)?)?;

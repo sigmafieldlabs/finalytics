@@ -12,8 +12,8 @@
 
 Finalytics is a portfolio analytics engine written in Rust, with this typed
 Python package over it. It compares portfolio optimisation methods on returns
-they have not seen, and keeps the books of a real portfolio to report its
-performance, risk and attribution.
+they have not seen, keeps the books of a real portfolio to report its
+performance, risk and attribution, and tests a plan's chance of meeting a goal.
 
 ```sh
 pip install "finalytics[pandas]"  # with pandas, as the examples below use
@@ -33,7 +33,8 @@ replaces each part of 0.9.
 [backtest](https://sigmafieldlabs.github.io/finalytics/reports/backtest.html) ·
 [optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
 [portfolio](https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html) ·
-[rebalance](https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html)
+[rebalance](https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html) ·
+[planning](https://sigmafieldlabs.github.io/finalytics/reports/planning.html)
 
 ## Portfolio optimisation
 
@@ -195,6 +196,55 @@ Sales in the brokerage account take the lots that cost the least tax; the
 retirement account is not taxable (`taxable` is false in `accounts.csv`), so its
 sales pay none. `portfolio.with_rebalance(result)` makes the trades.
 
+## Financial Planning
+
+Test a plan of saving, spending and investing against one goal: an amount by a
+date, such as a house deposit, or payments over a period, such as an income in
+retirement. The plan runs month by month through 10,000 markets drawn from the
+assets' monthly returns, in today's money: returns are after inflation and
+fees.
+
+```python
+import finalytics as fl
+
+assets = fl.Assets(fl.datasets.asset_class_prices())
+
+plan = assets.plan(
+    fl.Payments(amount=4_000, start="2046-11", end="2076-10"),
+    name="Retirement income",
+    chance=0.85,
+    start_value=250_000,
+    flows=[fl.Saving(amount=1_500, every="month")],
+    weights=("Balanced 60/40", {"US Equity": 0.60, "Bonds": 0.40}),
+    alternatives={
+        "Cautious 30/70": {"US Equity": 0.30, "Bonds": 0.70},
+        "Growth 80/20": {"US Equity": 0.80, "Bonds": 0.20},
+    },
+    inflation=0.025,
+    fee=0.0025,
+    currency="USD",
+)
+
+plan.show()
+```
+
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/planning.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/planning-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/planning-light.png" alt="The planning report: the plan, its chance of meeting the goal, and the money over time in simulated markets" width="760">
+</picture></a>
+
+The report gives the chance of meeting the goal against the chance wanted, how
+the money could grow, and the smallest change that would reach that chance:
+saving more, starting with more, starting the payments later or taking a
+little less. It tests the plan when returns are lower and when markets crash as
+the payments start, and compares other mixes on the same simulations.
+`plan.results` holds the figures behind it, with the value over time.
+
+For an amount by a date, give `fl.Target(amount=150_000, by="2030-06")`; for a
+single payment out along the way,
+`fl.Spending(name="Car", amount=25_000, on="2028-03")`; and for inflation month
+by month, the US consumer price index, `inflation=fl.datasets.us_cpi()`.
+
 ## What is included
 
 **Optimisation**
@@ -217,6 +267,15 @@ sales pay none. `portfolio.with_rebalance(result)` makes the trades.
 - Volatility, drawdowns, value at risk, risk decomposition, factor models and
   scenarios
 - Rebalancing trades with fees and tax-aware lot selection, across accounts
+
+**Planning**
+
+- The chance of a goal, an amount by a date or payments over a period, from
+  simulated markets: block bootstrap, normal or historical
+- Saving and spending once or regularly, fixed or glide-path mixes, fees and
+  inflation, in today's money
+- The changes that reach the chance wanted, lower returns and a crash, and
+  other mixes on the same simulations
 
 Every report prints as text, 80 columns wide, and shows as one self-contained
 HTML page, in light and dark. Every model is tested against an independent

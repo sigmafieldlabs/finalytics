@@ -1,4 +1,4 @@
-"""Builds the sample reports that the READMEs show and link to: the five reports the READMEs'
+"""Builds the sample reports that the READMEs show and link to: the six reports the READMEs'
 programs build from the bundled datasets, as HTML pages, with an index page and, with
 --screenshots, the top of each page in light and dark for the READMEs' images.
 
@@ -21,6 +21,7 @@ REPORTS = [
     ("optimisation", "Optimisation report", "The maximum Sharpe ratio's weights, their risk and the efficient frontier."),
     ("portfolio", "Portfolio report", "A household's two accounts: holdings, performance, risk, attribution and scenarios."),
     ("rebalance", "Rebalance report", "The trades that move both accounts to the least risky mix of their funds, tax-aware."),
+    ("planning", "Planning report", "A retirement income's chance of lasting 30 years, what would change it, and when markets do worse."),
 ]
 
 # The size of the screenshots: the top of each page.
@@ -28,7 +29,7 @@ WIDTH, HEIGHT = 1200, 760
 
 
 def build() -> dict[str, object]:
-    """The five results, built as the READMEs' Python programs build them."""
+    """The six results, built as the READMEs' Python programs build them."""
     import finalytics as fl
 
     assets = fl.Assets(prices=fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
@@ -60,12 +61,28 @@ def build() -> dict[str, object]:
     report = portfolio.report(fl.datasets.report_options())
     target = portfolio.assets().optimise(method="minimum_variance", bounds=(0.05, 0.40))
     rebalancing = portfolio.rebalance(target, whole_units=True, fee_bps=5, minimum_fee=1, tax=(0.37, 0.20))
+    plan = fl.Assets(prices=fl.datasets.asset_class_prices()).plan(
+        fl.Payments(amount=4_000, start="2046-11", end="2076-10"),
+        name="Retirement income",
+        chance=0.85,
+        start_value=250_000,
+        flows=[fl.Saving(amount=1_500, every="month")],
+        weights=("Balanced 60/40", {"US Equity": 0.60, "Bonds": 0.40}),
+        alternatives={
+            "Cautious 30/70": {"US Equity": 0.30, "Bonds": 0.70},
+            "Growth 80/20": {"US Equity": 0.80, "Bonds": 0.20},
+        },
+        inflation=0.025,
+        fee=0.0025,
+        currency="USD",
+    )
     return {
         "comparison": comparison,
         "backtest": backtest,
         "optimisation": optimisation,
         "portfolio": report,
         "rebalance": rebalancing,
+        "planning": plan,
     }
 
 

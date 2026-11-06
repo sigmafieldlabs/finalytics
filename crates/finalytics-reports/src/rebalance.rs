@@ -978,6 +978,7 @@ impl RebalanceReport {
                 version: &c.version,
                 digest: &c.digest,
                 source: "the portfolio's records and prices",
+                style: "",
             },
             &html,
         )

@@ -40,6 +40,15 @@ and the EUR/USD rate are real; the transactions are illustrative.
 | --- | --- |
 | `asset-classes.csv` | Month-end levels, from October 1996 to October 2026, of six asset-class indices that start at 100: US Equity, Intl Equity, Bonds, T-Bills, Gold and Real Estate. The data is synthetic: drawn from fixed distributions with a fixed seed, with bear markets modelled loosely on those of 2000–02, 2007–09, 2020 and 2022. |
 
+## US consumer prices
+
+| File | What it holds |
+| --- | --- |
+| `us-cpi.csv` | The US consumer price index for all urban consumers (CPI-U, all items, seasonally adjusted, 1982–84 = 100), monthly from January 1947 to September 2026, dated at each month's end, in one column, `US CPI`. October 2025 has no value: the Bureau of Labor Statistics did not publish one. |
+
+Plans use it as their inflation, to keep every amount in today's money. A month without a value
+is filled in between its neighbours at a steady rate.
+
 ## Sources
 
 - Prices, distributions, the S&P 500 total return index (`^SP500TR`), the 13-week Treasury bill
@@ -48,6 +57,9 @@ and the EUR/USD rate are real; the transactions are illustrative.
   `scripts/portfolio-market.json`.
 - S&P 500 members, sectors and sub-industries: the
   [s-and-p-500-companies](https://github.com/datasets/s-and-p-500-companies) list.
+- The US consumer price index: the Bureau of Labor Statistics' series `CUSR0000SA0`, as
+  published by the Federal Reserve Bank of St. Louis (FRED, series `CPIAUCSL`), downloaded by
+  `scripts/fetch-market-data.py`.
 - The household's transactions and the asset-class indices: `scripts/datasets.py`.
 
 The data is provided for examples and education, as it is, with no warranty of accuracy. The

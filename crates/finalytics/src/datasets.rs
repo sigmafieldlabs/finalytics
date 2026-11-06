@@ -7,9 +7,11 @@
 //! - [`portfolio`]: three years of a two-account household in US dollars and euros, holding five
 //!   real funds at their real prices, and [`report_options`], the options of its full report.
 //! - [`asset_class_prices`]: 30 years of month-end levels of six asset-class indices, synthetic.
+//! - [`us_cpi`]: the US consumer price index, monthly since 1947, for plans in today's money.
 //!
 //! The market data is real, from Yahoo Finance, and `scripts/fetch-market-data.py` in the
-//! repository downloads it. The S&P 500 companies are today's largest members, so their history
+//! repository downloads it, with the price index from the Federal Reserve Bank of St. Louis
+//! (FRED). The S&P 500 companies are today's largest members, so their history
 //! looks back with hindsight (survivorship bias). The household's transactions and the
 //! asset-class indices are illustrative, written by `scripts/datasets.py`.
 //!
@@ -39,6 +41,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Portfolio, PortfolioCsv};
 
 const ASSET_CLASSES: &str = include_str!("../data/asset-classes.csv");
+const US_CPI: &str = include_str!("../data/us-cpi.csv");
 const ACCOUNTS: &str = include_str!("../data/portfolio/accounts.csv");
 const INSTRUMENTS: &str = include_str!("../data/portfolio/instruments.csv");
 const TRANSACTIONS: &str = include_str!("../data/portfolio/transactions.csv");
@@ -52,7 +55,7 @@ const SP500_PRICES: &str = include_str!("../data/sp500/prices.csv");
 const SP500_INDEX: &str = include_str!("../data/sp500/index.csv");
 
 /// The names of the dataset files, for [`file()`].
-pub const FILES: [&str; 10] = [
+pub const FILES: [&str; 11] = [
     "sp500/prices.csv",
     "sp500/index.csv",
     "sp500/companies.csv",
@@ -63,6 +66,7 @@ pub const FILES: [&str; 10] = [
     "portfolio/fx.csv",
     "portfolio/report-options.json",
     "asset-classes.csv",
+    "us-cpi.csv",
 ];
 
 /// The text of a dataset file, by its name in [`FILES`]. Without the `sp500` feature,
@@ -75,6 +79,7 @@ pub fn file(name: &str) -> Option<&'static str> {
         "sp500/index.csv" => SP500_INDEX,
         "sp500/companies.csv" => SP500_COMPANIES,
         "asset-classes.csv" => ASSET_CLASSES,
+        "us-cpi.csv" => US_CPI,
         "portfolio/accounts.csv" => ACCOUNTS,
         "portfolio/instruments.csv" => INSTRUMENTS,
         "portfolio/transactions.csv" => TRANSACTIONS,
@@ -159,6 +164,16 @@ pub fn price_table(text: &str) -> Result<PriceTable> {
 /// 2020 and 2022. The indices include income.
 pub fn asset_class_prices() -> PriceTable {
     price_table(ASSET_CLASSES).expect("the asset-class dataset is valid")
+}
+
+/// The US consumer price index for all urban consumers (CPI-U, all items, seasonally adjusted,
+/// 1982–84 = 100), monthly from January 1947 to September 2026, dated at each month's end, in
+/// one column, `US CPI`. October 2025 is missing: it was not published. Give it to
+/// [`PlanBuilder::inflation_index`](crate::PlanBuilder::inflation_index) to draw each month's
+/// inflation with the same month's returns; a missing month is filled in between its
+/// neighbours.
+pub fn us_cpi() -> PriceTable {
+    price_table(US_CPI).expect("the price index dataset is valid")
 }
 
 /// A portfolio of two accounts held by one person, from November 2023 to October 2026, in US

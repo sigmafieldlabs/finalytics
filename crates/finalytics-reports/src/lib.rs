@@ -2,8 +2,8 @@
 //! attribution and scenarios), each computed in one call from a portfolio's books and market
 //! data; three reports on assets: the optimisation report, on the weights an optimisation
 //! chose, the comparison report, on several methods backtested side by side, and the backtest
-//! report, on one allocation; and the rebalance report, on the trades that move a portfolio's
-//! accounts to target weights.
+//! report, on one allocation; the rebalance report, on the trades that move a portfolio's
+//! accounts to target weights; and the planning report, on a plan's chance of meeting its goal.
 //!
 //! A report carries everything its screen draws and exports, not only summary figures: series
 //! over time, breakdowns, grids, distributions and tables, each labelled with its units, so a
@@ -27,6 +27,9 @@ mod html;
 mod optimisation;
 mod overview;
 mod performance;
+mod planning;
+mod planning_html;
+mod planning_text;
 mod rebalance;
 mod report;
 mod risk;
@@ -59,6 +62,9 @@ pub use overview::{Headline, HoldingRiskReturn, OverviewReport, PortfolioPoint, 
 pub use performance::{
     MonthFlows, PerformanceReport, PeriodRow, SchemeContributions, YearReturn, performance_report,
 };
+pub use planning::{InflationBasis, PlanContext, PlanReport};
+#[doc(hidden)]
+pub use planning::{PlanInputs, plan_report};
 pub use rebalance::{
     AccountTrades, ConversionRow, HoldingMove, RebalanceContext, RebalanceEstimates,
     RebalanceReport, RebalanceSummary, TradeRow,

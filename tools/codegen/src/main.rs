@@ -124,6 +124,11 @@ fn api() -> Value {
     // Rebalancing.
     add::<finalytics::Rebalancing>(&mut g);
     add::<finalytics::RebalanceReport>(&mut g);
+    // Planning.
+    add::<finalytics::PlanOptions>(&mut g);
+    add::<finalytics::Plan>(&mut g);
+    add::<finalytics::PlanReport>(&mut g);
+    add::<finalytics::PlanResults>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

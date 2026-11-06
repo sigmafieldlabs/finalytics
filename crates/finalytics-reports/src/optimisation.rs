@@ -1045,6 +1045,7 @@ impl OptimisationReport {
                 version: &c.version,
                 digest: &c.digest,
                 source: "the assets' returns",
+                style: "",
             },
             &body,
         )

@@ -102,6 +102,18 @@ impl Show for Backtest {
     }
 }
 
+impl Show for crate::Plan {
+    fn html(&self) -> String {
+        self.report.to_html(None)
+    }
+}
+
+impl Show for finalytics_reports::PlanReport {
+    fn html(&self) -> String {
+        self.to_html(None)
+    }
+}
+
 impl Show for RebalanceReport {
     fn html(&self) -> String {
         self.to_html(None)

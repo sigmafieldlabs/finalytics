@@ -29,6 +29,9 @@ TransactionId = str
 LotId = str
 """A tax lot's identifier."""
 
+Month = str
+"""A calendar month, written as "2030-06"."""
+
 HoldingKey = str
 """A holding: an instrument's identifier, such as "SPY", or a currency's code followed by " cash",
 such as "USD cash".
@@ -45,6 +48,9 @@ separate from investment returns.
 
 FlowTiming = Literal["start_of_day", "end_of_day"]
 """When external flows are assumed to happen within the day they are recorded on."""
+
+Frequency = Literal["month", "quarter", "year"]
+"""How often a regular amount falls due."""
 
 InstrumentKind = Literal["equity", "fund", "bond", "future", "option", "fx_forward", "other"]
 """What kind of instrument something is.
@@ -83,6 +89,9 @@ SolveMethod = Literal["interior_point", "newton", "recursive_bisection", "closed
 
 SolveStatus = Literal["optimal", "nearly_optimal", "infeasible", "unbounded", "iteration_limit", "numerical_difficulty"]
 """How an optimisation ended."""
+
+Status = Literal["room_to_spare", "on_track", "nearly_on_track", "off_track"]
+"""Where a plan stands against the chance wanted."""
 
 TailMethod = Literal["historical", "parametric", "cornish_fisher"]
 """How the tail of the return distribution is estimated."""
@@ -366,6 +375,25 @@ class Amount:
 
     value: float
     """As an amount in the base currency."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class AmountChange:
+    """A change of an amount that reaches, or keeps, the chance wanted."""
+
+    what: str
+    """What is changed, such as "Monthly saving"."""
+
+    flow: int | None = None
+    """The flow changed, by its place in the plan's flows; absent for the start value or the goal's
+    amount.
+    """
+
+    from_: float
+    """The amount in the plan."""
+
+    to: float
+    """The amount that gives the chance wanted, the rest of the plan as it is."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -904,6 +932,29 @@ Cell = Union[float, bool, str, None]
 
 
 @dataclass(frozen=True, kw_only=True)
+class Changes:
+    """What would change the outcome, one change at a time on the same simulations: below the chance
+    wanted, the smallest change that reaches it; at or above it, the largest change the plan
+    could absorb and keep it. A change that no amount within reach achieves is absent.
+    """
+
+    to_reach: bool
+    """Whether the changes reach the chance wanted (true) or keep it (false)."""
+
+    saving: AmountChange | None = None
+    """The plan's largest regular saving."""
+
+    start_value: AmountChange | None = None
+    """The value at the start."""
+
+    amount: AmountChange | None = None
+    """The goal's amount: the target, or each payment."""
+
+    date: MonthChange | None = None
+    """The target's date, or the month of the first payment, saving until then."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Column:
     """One column of a `ReportTable`."""
 
@@ -1267,6 +1318,23 @@ In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`
 name alone, such as `"ledoit_wolf"`; an exponentially weighted covariance without a decay has
 0.94.
 """
+
+
+@dataclass(frozen=True, kw_only=True)
+class CrashWindow:
+    """The worst run of twelve months in the history, for the plan's weights."""
+
+    from_: str
+    """Its first month."""
+
+    to: str
+    """Its last month."""
+
+    loss: float
+    """The plan's return over it, in money of the day, such as -0.26."""
+
+    placed: str
+    """The first month of the plan it is placed at."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1766,6 +1834,41 @@ class Flow:
 
 
 @dataclass(frozen=True, kw_only=True)
+class FlowSummary:
+    """A flow as simulated: when it falls due and how often."""
+
+    name: str
+    """The flow's name, such as "Monthly saving"."""
+
+    saving: bool
+    """Whether money is paid in (a saving) or taken out (spending)."""
+
+    amount: float
+    """The amount each time, in today's money unless the flow has a growth rate."""
+
+    every: Frequency | None = None
+    """How often it falls due; absent for a single payment."""
+
+    first: str
+    """The first month it falls due."""
+
+    last: str | None = None
+    """The last month it falls due; absent when it never does."""
+
+    count: int
+    """The number of times it falls due."""
+
+    until_goal: bool
+    """Whether it runs until the goal: to the month before a target's date or the first payment."""
+
+    growth: float | None = None
+    """The growth a year in money of the day, when it does not rise with inflation."""
+
+    paid_in_full: float | None = None
+    """For spending, the share of simulations in which every payment of it is made in full."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class FrontierPoint:
     """A portfolio on the efficient frontier."""
 
@@ -1793,6 +1896,54 @@ class FrontierPortfolio:
 
     weights: dict[str, float]
     """The weights, by asset."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Target:
+    """An amount by a date, such as a house deposit, the money to start a business, or a savings
+    milestone. Met when the plan is worth at least `amount` at the start of the month `by`.
+    """
+
+    TYPE: ClassVar[str] = "target"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """The goal's name, such as "House deposit"."""
+
+    amount: float
+    """The amount, in today's money."""
+
+    by: str
+    """The month it is needed by."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Payments:
+    """An amount paid regularly from `start` to `end`, such as college fees or retirement income.
+    Met when every payment is made in full.
+    """
+
+    TYPE: ClassVar[str] = "payments"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """The goal's name, such as "Retirement income"."""
+
+    amount: float
+    """Each payment, in today's money."""
+
+    every: Frequency = "month"
+    """How often it is paid: every month by default."""
+
+    start: str
+    """The month of the first payment."""
+
+    end: str
+    """The month of the last payment, or of the last month the payments run to."""
+
+
+Goal = Union[Target, Payments]
+"""The goal a plan is tested against."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2342,6 +2493,64 @@ class IncomeSummary:
 
 
 @dataclass(frozen=True, kw_only=True)
+class InflationRate:
+    """A fixed rate a year, such as 0.025; 0 keeps every figure in money of the day."""
+
+    TYPE: ClassVar[str] = "rate"
+    """The value of the `type` tag that identifies this variant."""
+
+    rate: float
+    """The rate a year."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class InflationIndex:
+    """A price index, such as the US consumer price index: one column of levels at least monthly
+    over the assets' history. Each simulated month takes the inflation of the same past month as
+    its returns.
+    """
+
+    TYPE: ClassVar[str] = "index"
+    """The value of the `type` tag that identifies this variant."""
+
+    prices: PriceTable
+    """The index's levels."""
+
+
+Inflation = Union[InflationRate, InflationIndex]
+"""How prices rise, for amounts in today's money."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class InflationBasisRate:
+    """A fixed inflation rate a year."""
+
+    TYPE: ClassVar[str] = "rate"
+    """The value of the `type` tag that identifies this variant."""
+
+    rate: float
+    """The rate, such as 0.025."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class InflationBasisIndex:
+    """A price index, month by month in the history."""
+
+    TYPE: ClassVar[str] = "index"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str
+    """The index's name, such as "US CPI"."""
+
+    average: float
+    """Its average rise a year over the history."""
+
+
+InflationBasis = Union[InflationBasisRate, InflationBasisIndex]
+"""How the plan's amounts are kept in today's money."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Instrument:
     """Something a portfolio can hold, other than cash."""
 
@@ -2544,6 +2753,126 @@ name alone, such as `"james_stein"`; an exponentially weighted mean without a de
 
 
 @dataclass(frozen=True, kw_only=True)
+class FixedMix:
+    """The same weights throughout."""
+
+    TYPE: ClassVar[str] = "fixed"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """A name for the mix, such as "Balanced 60/40"."""
+
+    weights: dict[str, float]
+    """The weights by asset, adding up to one."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class GlidePath:
+    """Weights given at some months, moving in a straight line between them and held before the
+    first and after the last.
+    """
+
+    TYPE: ClassVar[str] = "glide_path"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """A name for the mix, such as "Glide path"."""
+
+    points: dict[str, dict[str, float]]
+    """The weights by asset at each month, each set adding up to one."""
+
+
+Mix = Union[FixedMix, GlidePath]
+"""What the money is invested in: fixed weights, or weights that change along a glide path. The
+weights are restored every month.
+"""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MixOutcome:
+    """One mix compared with the plan's on the same simulations."""
+
+    name: str
+    """The mix's name."""
+
+    weights: list[tuple[str, float]]
+    """The weights by asset at the start."""
+
+    glide_path: bool
+    """Whether the weights change along a glide path."""
+
+    outcome: Outcome
+    """The outcome."""
+
+    end: Percentiles
+    """The value at the end across the simulations."""
+
+    runs_out_weak: str | None = None
+    """For payments, the month by which 1 simulation in 10 has run short."""
+
+    risk: MixRisk
+    """The risk of the mix."""
+
+    what_if: WhatIf
+    """The mix when markets do worse."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MixRisk:
+    """The risk of a mix over the plan, before any money is paid in or out."""
+
+    typical_return: float
+    """The typical return a year after inflation and fees: the median across the simulations."""
+
+    worst_year: float | None = None
+    """The 5th percentile of twelve-month returns: 1 year in 20 is worse; absent for a plan shorter
+    than a year.
+    """
+
+    largest_fall: float
+    """The median of each simulation's largest fall from a peak."""
+
+    volatility: float
+    """The volatility a year of the mix's returns in the history, in money of the day."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Bootstrap:
+    """A stationary block bootstrap (Politis and Romano, 1994): runs of past months, all assets
+    together, of random length averaging `block` months, wrapping round at the end of the
+    history. The default, with blocks of 12 months.
+    """
+
+    TYPE: ClassVar[str] = "bootstrap"
+    """The value of the `type` tag that identifies this variant."""
+
+    block: float = 12.0
+    """The average length of a run, in months: 12 by default."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Normal:
+    """A normal distribution with the assets' expected returns and covariance, per month."""
+
+    TYPE: ClassVar[str] = "normal"
+    """The value of the `type` tag that identifies this variant."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Historical:
+    """Every stretch of the history as long as the plan, each once, in order: as many simulations as
+    there are stretches.
+    """
+
+    TYPE: ClassVar[str] = "historical"
+    """The value of the `type` tag that identifies this variant."""
+
+
+Model = Union[Bootstrap, Normal, Historical]
+"""How the simulations draw each month's returns."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Money:
     """An exact decimal amount in one currency.
 
@@ -2579,6 +2908,20 @@ class MoneyFigures:
 
     flows: int
     """The number of flows that fell in the run."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MonthChange:
+    """A change of a month that reaches, or keeps, the chance wanted."""
+
+    what: str
+    """What is changed: the target's date, or the month of the first payment."""
+
+    from_: str
+    """The month in the plan."""
+
+    to: str
+    """The month that gives the chance wanted, saving until then."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3064,6 +3407,20 @@ class OptimiseOptions:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Outcome:
+    """The outcome of the plan, or of one of its tests."""
+
+    chance: float | None = None
+    """The chance of meeting the goal; absent without a goal."""
+
+    typical: float
+    """The value at the end in the average market (the median), in today's money."""
+
+    runs_out: str | None = None
+    """For payments, the month by which half the simulations have run short, if they do."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class OverviewReport(PrintedReport):
     """The overview report."""
 
@@ -3100,6 +3457,52 @@ class OverviewReport(PrintedReport):
 
     current: PortfolioPoint | None = None
     """The current portfolio on the same axes as the frontier."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaymentsOutcome:
+    """What a goal of payments comes to."""
+
+    paid: float
+    """The share of all the planned payments made, across the simulations."""
+
+    paid_when_short: float | None = None
+    """The share made in the simulations that run short; absent if none does."""
+
+    runs_short: str | None = None
+    """The typical month the money runs short, among the simulations that run short."""
+
+    runs_out_weak: str | None = None
+    """The month by which 1 simulation in 10 has run short: the weak market."""
+
+    runs_out_average: str | None = None
+    """The month by which half the simulations have run short: the average market."""
+
+    runs_out_strong: str | None = None
+    """The month by which 9 simulations in 10 have run short: the strong market."""
+
+    lasts_until: str | None = None
+    """The last month paid in full in at least the chance wanted of the simulations."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Percentiles:
+    """The 10th, 25th, 50th, 75th and 90th percentiles of a value across the simulations."""
+
+    p10: float
+    """The 10th percentile: the weak market, 1 simulation in 10 below it."""
+
+    p25: float
+    """The 25th percentile."""
+
+    p50: float
+    """The median: the average market."""
+
+    p75: float
+    """The 75th percentile."""
+
+    p90: float
+    """The 90th percentile: the strong market, 1 simulation in 10 above it."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3300,6 +3703,296 @@ class PeriodRow:
 
     excess_geometric: float | None = None
     """`(1 + cumulative) / (1 + benchmark) - 1`."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Plan(Result):
+    """A plan: the planning report and the raw results of its simulations. Printing it prints the
+    report, and showing it shows the report as a page.
+    """
+
+    report: PlanReport
+    """The planning report."""
+
+    results: PlanResults
+    """The raw results: the chance, the value over time, the changes, the tests when markets do
+    worse and the alternatives.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlanContext:
+    """What a plan simulated, beside what `PlanResults` records: what the report needs to describe
+    it.
+    """
+
+    version: str
+    """The engine's version."""
+
+    digest: str
+    """A SHA-256 digest of the assets' returns and the plan, in hexadecimal: the same inputs give
+    the same report.
+    """
+
+    goal: Goal | None = None
+    """The goal; absent for a projection."""
+
+    start_value: float
+    """The value at the start, in today's money."""
+
+    mix: Mix
+    """The plan's investment mix."""
+
+    mix_name: str
+    """The mix's name, such as "Balanced 60/40", or "Your mix" when it has none."""
+
+    assets: list[str]
+    """The assets the simulations draw from, in the order of the history."""
+
+    history_start: str
+    """The first month of the history of returns."""
+
+    history_end: str
+    """The last month of the history of returns."""
+
+    model: Model
+    """How markets were simulated."""
+
+    expected_returns: dict[str, float] | None = None
+    """The expected returns a year given for the assets, if any."""
+
+    inflation: InflationBasis
+    """How amounts are kept in today's money."""
+
+    fee: float
+    """The fee a year, such as 0.0025."""
+
+    currency: str | None = None
+    """The currency of the amounts, if given."""
+
+    seed: int
+    """The seed of the random draws."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Saving:
+    """Money paid in."""
+
+    TYPE: ClassVar[str] = "saving"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """A name for it in the report, such as "Monthly saving"."""
+
+    amount: float
+    """The amount, in today's money."""
+
+    on: str | None = None
+    """The month of a single payment."""
+
+    every: Frequency | None = None
+    """How often a regular payment is made."""
+
+    start: str | None = None
+    """The first month of a regular payment: the plan's start by default."""
+
+    end: str | None = None
+    """The last month of a regular payment: by default, the month before a target's date or before
+    the first goal payment, or the end of a plan without a goal.
+    """
+
+    growth: float | None = None
+    """How the amount grows a year in money of the day: with inflation by default, so that it stays
+    the same in today's money; 0 keeps it fixed in money of the day.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class Spending:
+    """Money taken out, as planned and not scored, such as a car bought along the way. When the plan
+    cannot cover it, what is left is paid.
+    """
+
+    TYPE: ClassVar[str] = "spending"
+    """The value of the `type` tag that identifies this variant."""
+
+    name: str | None = None
+    """A name for it in the report, such as "Car"."""
+
+    amount: float
+    """The amount, in today's money."""
+
+    on: str | None = None
+    """The month of a single payment."""
+
+    every: Frequency | None = None
+    """How often a regular payment is made."""
+
+    start: str | None = None
+    """The first month of a regular payment: the plan's start by default."""
+
+    end: str | None = None
+    """The last month of a regular payment: by default, the plan's last month (the month before a
+    target's date, the last goal payment, or the end of a projection).
+    """
+
+    growth: float | None = None
+    """How the amount grows a year in money of the day: with inflation by default."""
+
+
+PlanFlow = Union[Saving, Spending]
+"""Money paid into the plan, or taken out of it, other than the goal: once, in the month `on`, or
+regularly, `every` month, quarter or year from `start` to `end`.
+"""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlanOptions:
+    """What a plan simulates and how."""
+
+    goal: Goal | None = None
+    """The goal; without one, the plan is a projection to `end`."""
+
+    chance: float = 0.8
+    """The chance of meeting the goal wanted, such as 0.8."""
+
+    spare: float | None = None
+    """The chance from which the plan has room to spare: 10 points above `chance` by default, at
+    most 0.99.
+    """
+
+    start: str | None = None
+    """The first month: the month after the assets' last date by default."""
+
+    end: str | None = None
+    """The last month of a projection without a goal."""
+
+    start_value: float = 0.0
+    """What the money set aside is worth at the start, in today's money."""
+
+    flows: list[PlanFlow] = field(default_factory=list)
+    """Money paid in and taken out, other than the goal."""
+
+    weights: Mix | None = None
+    """What the money is invested in."""
+
+    alternatives: list[Mix] = field(default_factory=list)
+    """Other mixes to compare on the same simulations, each named."""
+
+    fee: float = 0.0
+    """The fee a year, as a share of the value, taken monthly."""
+
+    inflation: Inflation | None = None
+    """How prices rise: required, as a rate or an index."""
+
+    model: Model = field(default_factory=lambda: {'type': 'bootstrap', 'block': 12.0})
+    """How each month's returns are drawn: a block bootstrap of 12 months by default."""
+
+    expected_returns: dict[str, float] | None = None
+    """Expected returns a year by asset, in place of the history's: they shift the bootstrap's
+    returns and set the normal model's means.
+    """
+
+    simulations: int = 10000
+    """The number of simulations: 10,000 by default."""
+
+    seed: int = 0
+    """The seed of the random numbers: the same seed gives the same plan on every platform."""
+
+    currency: str | None = None
+    """The currency of the amounts, for the report."""
+
+    name: str | None = None
+    """The report's title: the goal's name by default."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlanReport(ReportPage):
+    """The planning report: what a plan's simulations show, with the plan it simulated."""
+
+    context: PlanContext
+    """What was simulated and how."""
+
+    figures: PlanResults
+    """What the simulations show."""
+
+    name: str | None = None
+    """The report's title, such as "Retirement income": shown when it is printed or laid out as a
+    page.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlanResults(PrintedResults):
+    """What a plan's simulations show: the chance of the goal, the value over time, what would
+    change the outcome, the plan when markets do worse, and the alternatives.
+    """
+
+    start: str
+    """The first month."""
+
+    end: str
+    """The month after the last one simulated: a target's date, or the month after the last payment
+    or the end of a projection.
+    """
+
+    simulations: int
+    """The number of simulations."""
+
+    chance_wanted: float
+    """The chance wanted."""
+
+    spare_from: float
+    """The chance from which there is room to spare."""
+
+    status: Status | None = None
+    """The status; absent without a goal."""
+
+    outcome: Outcome
+    """The plan's outcome."""
+
+    months: list[str]
+    """The months recorded: every month, or every few months for a long plan."""
+
+    values: list[Percentiles]
+    """The value at the start of each recorded month across the simulations."""
+
+    end_value: Percentiles
+    """The value at the end across the simulations."""
+
+    shortfall: float | None = None
+    """For a target, the typical amount short among the simulations that miss it."""
+
+    payments: PaymentsOutcome | None = None
+    """For payments, how many are made and when the money runs short."""
+
+    chance_by_month: list[float] = field(default_factory=list)
+    """For a target, the chance of having the amount by each month from the start to the target's
+    date, saving as planned.
+    """
+
+    sample: list[SamplePath]
+    """100 simulations spread evenly from the best outcome to the worst, so that the share of them
+    that meets the goal is the chance.
+    """
+
+    flows: list[FlowSummary]
+    """The flows as simulated, in the order given."""
+
+    changes: Changes | None = None
+    """What would change the outcome; absent without a goal."""
+
+    what_if: WhatIf
+    """The plan when markets do worse."""
+
+    risk: MixRisk
+    """The risk of the plan's mix."""
+
+    weights: list[tuple[str, float]]
+    """The plan's mix at the start, by asset."""
+
+    alternatives: list[MixOutcome]
+    """The alternatives, in the order given."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4435,6 +5128,17 @@ class RunReport:
 
     money: MoneyFigures | None = None
     """The run followed with money, when the backtest follows it."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SamplePath:
+    """One simulation's value at each recorded month."""
+
+    values: list[float]
+    """The value at the start of each of the recorded months, in today's money."""
+
+    met: bool
+    """Whether this simulation meets the goal."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -5888,6 +6592,22 @@ class WeightsAt:
 
 
 @dataclass(frozen=True, kw_only=True)
+class WhatIf:
+    """The plan when markets do worse than the simulations assume."""
+
+    lower_returns: Outcome
+    """Every simulated month's return a percentage point a year lower."""
+
+    crash: Outcome | None = None
+    """The worst twelve months of the history placed before the target's date or at the first
+    payment, in every simulation; absent with less than twelve months to place them in.
+    """
+
+    crash_window: CrashWindow | None = None
+    """The months placed."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class YearReturn:
     """The return of one calendar year (or the part of it covered)."""
 
@@ -5922,9 +6642,15 @@ UNIONS = {
     "ColumnKind": ("type", {"boolean": BooleanColumn, "date": DateColumn, "fraction": FractionColumn, "integer": IntegerColumn, "money": MoneyColumn, "number": NumberColumn, "text": TextColumn}),
     "CovarianceMethod": ("type", {"constant_correlation": ConstantCorrelation, "denoised": Denoised, "ewma": Ewma, "ledoit_wolf": LedoitWolf, "nonlinear_shrinkage": NonlinearShrinkage, "oas": Oas, "sample": Sample, "statistical": Statistical}),
     "Effect": ("type", {"cash": CashChange, "close_lot": LotClosed, "set_lot": LotSet}),
+    "Goal": ("type", {"payments": Payments, "target": Target}),
+    "Inflation": ("type", {"index": InflationIndex, "rate": InflationRate}),
+    "InflationBasis": ("type", {"index": InflationBasisIndex, "rate": InflationBasisRate}),
     "MeanMethod": ("type", {"ewma": EwmaMean, "historical": HistoricalMean, "james_stein": JamesSteinMean}),
+    "Mix": ("type", {"fixed": FixedMix, "glide_path": GlidePath}),
+    "Model": ("type", {"bootstrap": Bootstrap, "historical": Historical, "normal": Normal}),
     "Objective": ("type", {"equal_weight": EqualWeight, "hierarchical_risk_parity": HierarchicalRiskParity, "inverse_volatility": InverseVolatility, "maximum_diversification": MaximumDiversification, "maximum_sharpe": MaximumSharpe, "mean_variance": MeanVariance, "minimum_cdar": MinimumCdar, "minimum_cvar": MinimumCvar, "minimum_semivariance": MinimumSemivariance, "minimum_variance": MinimumVariance, "risk_budgeting": RiskBudgeting, "robust_mean_variance": RobustMeanVariance, "target_return": TargetReturn, "target_volatility": TargetVolatility}),
     "Period": ("type", {"month_to_date": MonthToDate, "quarter_to_date": QuarterToDate, "since": Since, "since_inception": SinceInception, "year_to_date": YearToDate, "years": Years}),
+    "PlanFlow": ("type", {"saving": Saving, "spending": Spending}),
     "Prior": ("type", {"market": MarketPrior, "returns": ReturnsPrior}),
     "RebalanceSchedule": ("type", {"drift": Drift, "every": Every, "monthly": Monthly, "never": Never, "quarterly": Quarterly, "yearly": Yearly}),
     "ReturnUncertainty": ("type", {"box": Box, "ellipsoid": Ellipsoid}),
@@ -5953,6 +6679,7 @@ __all__ = [
     "Allocation",
     "AllocationRow",
     "Amount",
+    "AmountChange",
     "AssetBound",
     "AssetFit",
     "AssetGroup",
@@ -5975,6 +6702,7 @@ __all__ = [
     "BlackLitterman",
     "BlackLittermanEstimate",
     "BooleanColumn",
+    "Bootstrap",
     "Bound",
     "Box",
     "Breakdown",
@@ -5986,6 +6714,7 @@ __all__ = [
     "CashSource",
     "CashValue",
     "Cell",
+    "Changes",
     "Column",
     "ColumnKind",
     "Company",
@@ -6001,6 +6730,7 @@ __all__ = [
     "CountUnit",
     "CovarianceEstimate",
     "CovarianceMethod",
+    "CrashWindow",
     "Currency",
     "CurrencyAttribution",
     "CurrencyAttributionPeriod",
@@ -6038,15 +6768,20 @@ __all__ = [
     "Failure",
     "Fee",
     "Fees",
+    "FixedMix",
     "FixedWeights",
     "Flow",
     "FlowKind",
+    "FlowSummary",
     "FlowTiming",
     "FractionColumn",
     "FractionUnit",
+    "Frequency",
     "FrontierPoint",
     "FrontierPortfolio",
     "FxConversion",
+    "GlidePath",
+    "Goal",
     "Grid",
     "GroupContribution",
     "GroupImpact",
@@ -6058,6 +6793,7 @@ __all__ = [
     "Headline",
     "HierarchicalRiskParity",
     "Histogram",
+    "Historical",
     "HistoricalMean",
     "HistoricalScenario",
     "HistoricalWindow",
@@ -6079,6 +6815,12 @@ __all__ = [
     "InSample",
     "IncomeAllocation",
     "IncomeSummary",
+    "Inflation",
+    "InflationBasis",
+    "InflationBasisIndex",
+    "InflationBasisRate",
+    "InflationIndex",
+    "InflationRate",
     "Instrument",
     "InstrumentId",
     "InstrumentKind",
@@ -6112,10 +6854,16 @@ __all__ = [
     "MinimumCvar",
     "MinimumSemivariance",
     "MinimumVariance",
+    "Mix",
+    "MixOutcome",
+    "MixRisk",
+    "Model",
     "Money",
     "MoneyColumn",
     "MoneyFigures",
     "MoneyUnit",
+    "Month",
+    "MonthChange",
     "MonthFlows",
     "MonthToDate",
     "Monthly",
@@ -6123,6 +6871,7 @@ __all__ = [
     "Never",
     "NoSource",
     "NonlinearShrinkage",
+    "Normal",
     "NumberColumn",
     "Oas",
     "Objective",
@@ -6134,12 +6883,22 @@ __all__ = [
     "OptimisationSummary",
     "OptimiseOptions",
     "OptimisedStrategy",
+    "Outcome",
     "OverviewReport",
+    "Payments",
+    "PaymentsOutcome",
+    "Percentiles",
     "PerformanceReport",
     "Period",
     "PeriodAttribution",
     "PeriodReturn",
     "PeriodRow",
+    "Plan",
+    "PlanContext",
+    "PlanFlow",
+    "PlanOptions",
+    "PlanReport",
+    "PlanResults",
     "PortfolioData",
     "PortfolioDocument",
     "PortfolioPoint",
@@ -6188,6 +6947,8 @@ __all__ = [
     "Run",
     "RunReport",
     "Sample",
+    "SamplePath",
+    "Saving",
     "ScenarioDefinition",
     "ScenarioOptions",
     "ScenarioOutcome",
@@ -6220,11 +6981,13 @@ __all__ = [
     "SolveMethod",
     "SolveStatus",
     "Source",
+    "Spending",
     "SpinOff",
     "Split",
     "Statistical",
     "Statistics",
     "StatisticsOptions",
+    "Status",
     "Strategy",
     "StrategyReport",
     "StrategyResult",
@@ -6232,6 +6995,7 @@ __all__ = [
     "TailMethod",
     "TailRisk",
     "TailRow",
+    "Target",
     "TargetReturn",
     "TargetVolatility",
     "Tax",
@@ -6259,6 +7023,7 @@ __all__ = [
     "ViewUncertainty",
     "WalkForward",
     "WeightsAt",
+    "WhatIf",
     "Withdrawal",
     "YearReturn",
     "YearToDate",

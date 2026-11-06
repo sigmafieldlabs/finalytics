@@ -476,6 +476,7 @@ dependencies = [
  "finalytics-ledger",
  "finalytics-opt",
  "finalytics-perf",
+ "finalytics-plan",
  "finalytics-reports",
  "finalytics-risk",
  "rayon",
@@ -590,6 +591,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "finalytics-plan"
+version = "1.0.0-rc.2"
+dependencies = [
+ "finalytics-core",
+ "finalytics-risk",
+ "libm",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "finalytics-py"
 version = "1.0.0-rc.2"
 dependencies = [
@@ -609,6 +622,7 @@ dependencies = [
  "finalytics-ledger",
  "finalytics-opt",
  "finalytics-perf",
+ "finalytics-plan",
  "finalytics-risk",
  "schemars",
  "serde",

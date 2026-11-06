@@ -6,9 +6,10 @@
   the S&P 500 total return index; and 3-month US Treasury bills as a return index;
 - scripts/portfolio-market.json: the quoted closes, adjusted closes and distributions of the
   five funds of the portfolio dataset, and the EUR/USD rate, from which scripts/datasets.py
-  writes the portfolio's files.
+  writes the portfolio's files;
+- us-cpi.csv: the US consumer price index (CPI-U, seasonally adjusted), monthly, from FRED.
 
-Prices come from Yahoo Finance, and the S&P 500 members and their sectors from the
+Prices come from Yahoo Finance, the price index from the Federal Reserve Bank of St. Louis, and the S&P 500 members and their sectors from the
 datasets/s-and-p-500-companies list on GitHub. Members are chosen by their market
 capitalisation on the day the script runs, so the selection looks back with today's
 knowledge (survivorship bias). It needs only the standard library:
@@ -34,6 +35,7 @@ START, END = dt.date(2005, 1, 3), dt.date(2026, 10, 30)
 PORTFOLIO_START = dt.date(2023, 11, 1)
 PER_SECTOR = 5
 MEMBERS = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+CPI = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL"
 FUNDS = {"VTI": "VTI", "EXSA": "EXSA.DE", "BND": "BND", "GLD": "GLD", "VNQ": "VNQ"}
 
 jar = http.cookiejar.CookieJar()
@@ -212,6 +214,23 @@ def portfolio() -> None:
     print(f"portfolio: {len(us_days)} US trading days, {us_days[0]} to {us_days[-1]}")
 
 
+def us_cpi() -> None:
+    """The US consumer price index from FRED, dated at each month's end, through the month before
+    the last month of the other datasets. A month FRED has no value for is written empty."""
+    rows = []
+    for line in list(csv.reader(io.StringIO(get(CPI).decode())))[1:]:
+        first = dt.date.fromisoformat(line[0])
+        if (first.year, first.month) >= (END.year, END.month):
+            break
+        following = dt.date(first.year + first.month // 12, first.month % 12 + 1, 1)
+        value = line[1].strip()
+        rows.append([(following - dt.timedelta(days=1)).isoformat(),
+                     "" if value in ("", ".") else f"{float(value):.3f}"])
+    write_csv(OUT / "us-cpi.csv", ["date", "US CPI"], rows)
+    print(f"US CPI: {len(rows)} months, {rows[0][0]} to {rows[-1][0]}")
+
+
 if __name__ == "__main__":
     sp500(crumb())
     portfolio()
+    us_cpi()

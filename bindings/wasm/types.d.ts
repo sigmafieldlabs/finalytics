@@ -209,6 +209,21 @@ export interface Amount {
   value: number;
 }
 
+/** A change of an amount that reaches, or keeps, the chance wanted. */
+export interface AmountChange {
+  /** What is changed, such as "Monthly saving". */
+  what: string;
+  /**
+   * The flow changed, by its place in the plan's flows; absent for the start value or the
+   * goal's amount.
+   */
+  flow?: number | null;
+  /** The amount in the plan. */
+  from: number;
+  /** The amount that gives the chance wanted, the rest of the plan as it is. */
+  to: number;
+}
+
 /** Limits on one asset's weight, in place of the default bounds. */
 export interface AssetBound {
   /** The asset's label. */
@@ -610,6 +625,24 @@ export interface CashValue {
 /** One cell of a `ReportTable`: a number, text, yes or no, or nothing. */
 export type Cell = number | boolean | string | null;
 
+/**
+ * What would change the outcome, one change at a time on the same simulations: below the
+ * chance wanted, the smallest change that reaches it; at or above it, the largest change the
+ * plan could absorb and keep it. A change that no amount within reach achieves is absent.
+ */
+export interface Changes {
+  /** Whether the changes reach the chance wanted (true) or keep it (false). */
+  to_reach: boolean;
+  /** The plan's largest regular saving. */
+  saving?: AmountChange | null;
+  /** The value at the start. */
+  start_value?: AmountChange | null;
+  /** The goal's amount: the target, or each payment. */
+  amount?: AmountChange | null;
+  /** The target's date, or the month of the first payment, saving until then. */
+  date?: MonthChange | null;
+}
+
 /** One column of a `ReportTable`. */
 export interface Column {
   /** A stable key for the column, such as `value_base`. */
@@ -835,6 +868,18 @@ export type CovarianceMethod =
   | {
     type: "nonlinear_shrinkage";
   };
+
+/** The worst run of twelve months in the history, for the plan's weights. */
+export interface CrashWindow {
+  /** Its first month. */
+  from: Month;
+  /** Its last month. */
+  to: Month;
+  /** The plan's return over it, in money of the day, such as -0.26. */
+  loss: number;
+  /** The first month of the plan it is placed at. */
+  placed: Month;
+}
 
 /** An ISO 4217 currency code, for example "USD". */
 export type Currency = string;
@@ -1220,8 +1265,35 @@ export interface Flow {
  */
 export type FlowKind = "deposit" | "withdrawal" | "transfer_in" | "transfer_out";
 
+/** A flow as simulated: when it falls due and how often. */
+export interface FlowSummary {
+  /** The flow's name, such as "Monthly saving". */
+  name: string;
+  /** Whether money is paid in (a saving) or taken out (spending). */
+  saving: boolean;
+  /** The amount each time, in today's money unless the flow has a growth rate. */
+  amount: number;
+  /** How often it falls due; absent for a single payment. */
+  every?: Frequency | null;
+  /** The first month it falls due. */
+  first: Month;
+  /** The last month it falls due; absent when it never does. */
+  last?: Month | null;
+  /** The number of times it falls due. */
+  count: number;
+  /** Whether it runs until the goal: to the month before a target's date or the first payment. */
+  until_goal: boolean;
+  /** The growth a year in money of the day, when it does not rise with inflation. */
+  growth?: number | null;
+  /** For spending, the share of simulations in which every payment of it is made in full. */
+  paid_in_full?: number | null;
+}
+
 /** When external flows are assumed to happen within the day they are recorded on. */
 export type FlowTiming = "start_of_day" | "end_of_day";
+
+/** How often a regular amount falls due. */
+export type Frequency = "month" | "quarter" | "year";
 
 /** A portfolio on the efficient frontier. */
 export interface FrontierPoint {
@@ -1245,6 +1317,31 @@ export interface FrontierPortfolio {
   /** The weights, by asset. */
   weights: Record<string, number>;
 }
+
+/** The goal a plan is tested against. */
+export type Goal =
+  | {
+    type: "target";
+    /** The goal's name, such as "House deposit". */
+    name?: string | null;
+    /** The amount, in today's money. */
+    amount: number;
+    /** The month it is needed by. */
+    by: Month;
+  }
+  | {
+    type: "payments";
+    /** The goal's name, such as "Retirement income". */
+    name?: string | null;
+    /** Each payment, in today's money. */
+    amount: number;
+    /** How often it is paid: every month by default. */
+    every?: Frequency;
+    /** The month of the first payment. */
+    start: Month;
+    /** The month of the last payment, or of the last month the payments run to. */
+    end: Month;
+  };
 
 /** A table of numbers with labelled rows and columns, for a heatmap. */
 export interface Grid {
@@ -1656,6 +1753,34 @@ export interface IncomeSummary {
   by_holding: Record<string, Decimal>;
 }
 
+/** How prices rise, for amounts in today's money. */
+export type Inflation =
+  | {
+    type: "rate";
+    /** The rate a year. */
+    rate: number;
+  }
+  | {
+    type: "index";
+    /** The index's levels. */
+    prices: PriceTable;
+  };
+
+/** How the plan's amounts are kept in today's money. */
+export type InflationBasis =
+  | {
+    type: "rate";
+    /** The rate, such as 0.025. */
+    rate: number;
+  }
+  | {
+    type: "index";
+    /** The index's name, such as "US CPI". */
+    name: string;
+    /** Its average rise a year over the history. */
+    average: number;
+  };
+
 /** Something a portfolio can hold, other than cash. */
 export interface Instrument {
   /** The caller's identifier. */
@@ -1839,6 +1964,75 @@ export type MeanMethod =
 export type Method = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "minimum_semivariance" | "minimum_cdar" | "equal_weight" | "inverse_volatility" | "risk_parity" | "risk_budgeting" | "hierarchical_risk_parity";
 
 /**
+ * What the money is invested in: fixed weights, or weights that change along a glide path.
+ * The weights are restored every month.
+ */
+export type Mix =
+  | {
+    type: "fixed";
+    /** A name for the mix, such as "Balanced 60/40". */
+    name?: string | null;
+    /** The weights by asset, adding up to one. */
+    weights: Record<string, number>;
+  }
+  | {
+    type: "glide_path";
+    /** A name for the mix, such as "Glide path". */
+    name?: string | null;
+    /** The weights by asset at each month, each set adding up to one. */
+    points: Record<string, Record<string, number>>;
+  };
+
+/** One mix compared with the plan's on the same simulations. */
+export interface MixOutcome {
+  /** The mix's name. */
+  name: string;
+  /** The weights by asset at the start. */
+  weights: [string, number][];
+  /** Whether the weights change along a glide path. */
+  glide_path: boolean;
+  /** The outcome. */
+  outcome: Outcome;
+  /** The value at the end across the simulations. */
+  end: Percentiles;
+  /** For payments, the month by which 1 simulation in 10 has run short. */
+  runs_out_weak?: Month | null;
+  /** The risk of the mix. */
+  risk: MixRisk;
+  /** The mix when markets do worse. */
+  what_if: WhatIf;
+}
+
+/** The risk of a mix over the plan, before any money is paid in or out. */
+export interface MixRisk {
+  /** The typical return a year after inflation and fees: the median across the simulations. */
+  typical_return: number;
+  /**
+   * The 5th percentile of twelve-month returns: 1 year in 20 is worse; absent for a plan
+   * shorter than a year.
+   */
+  worst_year?: number | null;
+  /** The median of each simulation's largest fall from a peak. */
+  largest_fall: number;
+  /** The volatility a year of the mix's returns in the history, in money of the day. */
+  volatility: number;
+}
+
+/** How the simulations draw each month's returns. */
+export type Model =
+  | {
+    type: "bootstrap";
+    /** The average length of a run, in months: 12 by default. */
+    block?: number;
+  }
+  | {
+    type: "normal";
+  }
+  | {
+    type: "historical";
+  };
+
+/**
  * An exact decimal amount in one currency.
  *
  * Arithmetic between amounts checks that the currencies match and that no overflow occurs.
@@ -1866,6 +2060,19 @@ export interface MoneyFigures {
   money_weighted_return?: number | null;
   /** The number of flows that fell in the run. */
   flows: number;
+}
+
+/** A calendar month, written as "2030-06"; a date such as "2030-06-15" reads as its month. */
+export type Month = string;
+
+/** A change of a month that reaches, or keeps, the chance wanted. */
+export interface MonthChange {
+  /** What is changed: the target's date, or the month of the first payment. */
+  what: string;
+  /** The month in the plan. */
+  from: Month;
+  /** The month that gives the chance wanted, saving until then. */
+  to: Month;
 }
 
 /** External flows and income in one calendar month, in the base currency. */
@@ -2193,6 +2400,16 @@ export interface OptimiseOptions {
   frontier?: boolean;
 }
 
+/** The outcome of the plan, or of one of its tests. */
+export interface Outcome {
+  /** The chance of meeting the goal; absent without a goal. */
+  chance?: number | null;
+  /** The value at the end in the average market (the median), in today's money. */
+  typical: number;
+  /** For payments, the month by which half the simulations have run short, if they do. */
+  runs_out?: Month | null;
+}
+
 /** The overview report. */
 export interface OverviewReport {
   /** Where the numbers come from. */
@@ -2220,6 +2437,38 @@ export interface OverviewReport {
   frontier?: FrontierPoint[] | null;
   /** The current portfolio on the same axes as the frontier. */
   current?: PortfolioPoint | null;
+}
+
+/** What a goal of payments comes to. */
+export interface PaymentsOutcome {
+  /** The share of all the planned payments made, across the simulations. */
+  paid: number;
+  /** The share made in the simulations that run short; absent if none does. */
+  paid_when_short?: number | null;
+  /** The typical month the money runs short, among the simulations that run short. */
+  runs_short?: Month | null;
+  /** The month by which 1 simulation in 10 has run short: the weak market. */
+  runs_out_weak?: Month | null;
+  /** The month by which half the simulations have run short: the average market. */
+  runs_out_average?: Month | null;
+  /** The month by which 9 simulations in 10 have run short: the strong market. */
+  runs_out_strong?: Month | null;
+  /** The last month paid in full in at least the chance wanted of the simulations. */
+  lasts_until?: Month | null;
+}
+
+/** The 10th, 25th, 50th, 75th and 90th percentiles of a value across the simulations. */
+export interface Percentiles {
+  /** The 10th percentile: the weak market, 1 simulation in 10 below it. */
+  p10: number;
+  /** The 25th percentile. */
+  p25: number;
+  /** The median: the average market. */
+  p50: number;
+  /** The 75th percentile. */
+  p75: number;
+  /** The 90th percentile: the strong market, 1 simulation in 10 above it. */
+  p90: number;
 }
 
 /** The performance report. */
@@ -2351,6 +2600,222 @@ export interface PeriodRow {
   excess_arithmetic?: number | null;
   /** `(1 + cumulative) / (1 + benchmark) - 1`. */
   excess_geometric?: number | null;
+}
+
+/**
+ * A plan: the planning report and the raw results of its simulations. Printing it prints the
+ * report, and showing it shows the report as a page.
+ */
+export interface Plan {
+  /** The planning report. */
+  report: PlanReport;
+  /**
+   * The raw results: the chance, the value over time, the changes, the tests when markets do
+   * worse and the alternatives.
+   */
+  results: PlanResults;
+}
+
+/**
+ * What a plan simulated, beside what `PlanResults` records: what the report needs to
+ * describe it.
+ */
+export interface PlanContext {
+  /** The engine's version. */
+  version: string;
+  /**
+   * A SHA-256 digest of the assets' returns and the plan, in hexadecimal: the same inputs
+   * give the same report.
+   */
+  digest: string;
+  /** The goal; absent for a projection. */
+  goal?: Goal | null;
+  /** The value at the start, in today's money. */
+  start_value: number;
+  /** The plan's investment mix. */
+  mix: Mix;
+  /** The mix's name, such as "Balanced 60/40", or "Your mix" when it has none. */
+  mix_name: string;
+  /** The assets the simulations draw from, in the order of the history. */
+  assets: string[];
+  /** The first month of the history of returns. */
+  history_start: Month;
+  /** The last month of the history of returns. */
+  history_end: Month;
+  /** How markets were simulated. */
+  model: Model;
+  /** The expected returns a year given for the assets, if any. */
+  expected_returns?: Record<string, number> | null;
+  /** How amounts are kept in today's money. */
+  inflation: InflationBasis;
+  /** The fee a year, such as 0.0025. */
+  fee: number;
+  /** The currency of the amounts, if given. */
+  currency?: Currency | null;
+  /** The seed of the random draws. */
+  seed: number;
+}
+
+/**
+ * Money paid into the plan, or taken out of it, other than the goal: once, in the month `on`,
+ * or regularly, `every` month, quarter or year from `start` to `end`.
+ */
+export type PlanFlow =
+  | {
+    type: "saving";
+    /** A name for it in the report, such as "Monthly saving". */
+    name?: string | null;
+    /** The amount, in today's money. */
+    amount: number;
+    /** The month of a single payment. */
+    on?: Month | null;
+    /** How often a regular payment is made. */
+    every?: Frequency | null;
+    /** The first month of a regular payment: the plan's start by default. */
+    start?: Month | null;
+    /**
+     * The last month of a regular payment: by default, the month before a target's date or
+     * before the first goal payment, or the end of a plan without a goal.
+     */
+    end?: Month | null;
+    /**
+     * How the amount grows a year in money of the day: with inflation by default, so that
+     * it stays the same in today's money; 0 keeps it fixed in money of the day.
+     */
+    growth?: number | null;
+  }
+  | {
+    type: "spending";
+    /** A name for it in the report, such as "Car". */
+    name?: string | null;
+    /** The amount, in today's money. */
+    amount: number;
+    /** The month of a single payment. */
+    on?: Month | null;
+    /** How often a regular payment is made. */
+    every?: Frequency | null;
+    /** The first month of a regular payment: the plan's start by default. */
+    start?: Month | null;
+    /**
+     * The last month of a regular payment: by default, the plan's last month (the month
+     * before a target's date, the last goal payment, or the end of a projection).
+     */
+    end?: Month | null;
+    /** How the amount grows a year in money of the day: with inflation by default. */
+    growth?: number | null;
+  };
+
+/** What a plan simulates and how. */
+export interface PlanOptions {
+  /** The goal; without one, the plan is a projection to `end`. */
+  goal?: Goal | null;
+  /** The chance of meeting the goal wanted, such as 0.8. */
+  chance?: number;
+  /**
+   * The chance from which the plan has room to spare: 10 points above `chance` by default,
+   * at most 0.99.
+   */
+  spare?: number | null;
+  /** The first month: the month after the assets' last date by default. */
+  start?: Month | null;
+  /** The last month of a projection without a goal. */
+  end?: Month | null;
+  /** What the money set aside is worth at the start, in today's money. */
+  start_value?: number;
+  /** Money paid in and taken out, other than the goal. */
+  flows?: PlanFlow[];
+  /** What the money is invested in. */
+  weights?: Mix | null;
+  /** Other mixes to compare on the same simulations, each named. */
+  alternatives?: Mix[];
+  /** The fee a year, as a share of the value, taken monthly. */
+  fee?: number;
+  /** How prices rise: required, as a rate or an index. */
+  inflation?: Inflation | null;
+  /** How each month's returns are drawn: a block bootstrap of 12 months by default. */
+  model?: Model;
+  /**
+   * Expected returns a year by asset, in place of the history's: they shift the bootstrap's
+   * returns and set the normal model's means.
+   */
+  expected_returns?: Record<string, number> | null;
+  /** The number of simulations: 10,000 by default. */
+  simulations?: number;
+  /** The seed of the random numbers: the same seed gives the same plan on every platform. */
+  seed?: number;
+  /** The currency of the amounts, for the report. */
+  currency?: Currency | null;
+  /** The report's title: the goal's name by default. */
+  name?: string | null;
+}
+
+/** The planning report: what a plan's simulations show, with the plan it simulated. */
+export interface PlanReport {
+  /** What was simulated and how. */
+  context: PlanContext;
+  /** What the simulations show. */
+  figures: PlanResults;
+  /**
+   * The report's title, such as "Retirement income": shown when it is printed or laid out
+   * as a page.
+   */
+  name?: string | null;
+}
+
+/**
+ * What a plan's simulations show: the chance of the goal, the value over time, what would
+ * change the outcome, the plan when markets do worse, and the alternatives.
+ */
+export interface PlanResults {
+  /** The first month. */
+  start: Month;
+  /**
+   * The month after the last one simulated: a target's date, or the month after the last
+   * payment or the end of a projection.
+   */
+  end: Month;
+  /** The number of simulations. */
+  simulations: number;
+  /** The chance wanted. */
+  chance_wanted: number;
+  /** The chance from which there is room to spare. */
+  spare_from: number;
+  /** The status; absent without a goal. */
+  status?: Status | null;
+  /** The plan's outcome. */
+  outcome: Outcome;
+  /** The months recorded: every month, or every few months for a long plan. */
+  months: Month[];
+  /** The value at the start of each recorded month across the simulations. */
+  values: Percentiles[];
+  /** The value at the end across the simulations. */
+  end_value: Percentiles;
+  /** For a target, the typical amount short among the simulations that miss it. */
+  shortfall?: number | null;
+  /** For payments, how many are made and when the money runs short. */
+  payments?: PaymentsOutcome | null;
+  /**
+   * For a target, the chance of having the amount by each month from the start to the
+   * target's date, saving as planned.
+   */
+  chance_by_month?: number[];
+  /**
+   * 100 simulations spread evenly from the best outcome to the worst, so that the share of
+   * them that meets the goal is the chance.
+   */
+  sample: SamplePath[];
+  /** The flows as simulated, in the order given. */
+  flows: FlowSummary[];
+  /** What would change the outcome; absent without a goal. */
+  changes?: Changes | null;
+  /** The plan when markets do worse. */
+  what_if: WhatIf;
+  /** The risk of the plan's mix. */
+  risk: MixRisk;
+  /** The plan's mix at the start, by asset. */
+  weights: [string, number][];
+  /** The alternatives, in the order given. */
+  alternatives: MixOutcome[];
 }
 
 /**
@@ -3211,6 +3676,14 @@ export interface RunReport {
   money?: MoneyFigures | null;
 }
 
+/** One simulation's value at each recorded month. */
+export interface SamplePath {
+  /** The value at the start of each of the recorded months, in today's money. */
+  values: number[];
+  /** Whether this simulation meets the goal. */
+  met: boolean;
+}
+
 /** What a scenario does: shocks, or a historical period replayed. */
 export type ScenarioDefinition =
   | {
@@ -3697,6 +4170,9 @@ export interface StatisticsOptions {
    */
   target_return?: number;
 }
+
+/** Where a plan stands against the chance wanted. */
+export type Status = "room_to_spare" | "on_track" | "nearly_on_track" | "off_track";
 
 /** A strategy to backtest. */
 export type Strategy =
@@ -4228,6 +4704,19 @@ export interface WeightsAt {
   date: Date;
   /** The weights, by asset. */
   weights: Record<string, number>;
+}
+
+/** The plan when markets do worse than the simulations assume. */
+export interface WhatIf {
+  /** Every simulated month's return a percentage point a year lower. */
+  lower_returns: Outcome;
+  /**
+   * The worst twelve months of the history placed before the target's date or at the first
+   * payment, in every simulation; absent with less than twelve months to place them in.
+   */
+  crash?: Outcome | null;
+  /** The months placed. */
+  crash_window?: CrashWindow | null;
 }
 
 /** The return of one calendar year (or the part of it covered). */

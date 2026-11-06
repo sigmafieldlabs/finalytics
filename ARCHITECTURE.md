@@ -33,8 +33,9 @@ finalytics-risk      statistics, drawdowns, covariance, VaR and expected shortfa
    ↑
 finalytics-opt       optimisation: convex formulations, risk parity, HRP, frontiers, rebalancing
 finalytics-backtest  backtests: strategies held through time, validation, rebalancing, costs
+finalytics-plan      goal planning: saving and spending through simulated markets, in today's money
    ↑
-finalytics-reports   reports on portfolios and backtests: chart-ready data, text, HTML, tables
+finalytics-reports   reports on portfolios, backtests and plans: chart-ready data, text, HTML, tables
    ↑
 finalytics           the public API, re-exporting what users need
    ↑

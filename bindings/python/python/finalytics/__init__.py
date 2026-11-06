@@ -22,6 +22,13 @@ There are two front doors: :class:`Portfolio`, for a portfolio's transactions, a
         max_weight=0.4,
         validation=fl.WalkForward(years=5),
     )
+    plan = assets.plan(
+        fl.Target(amount=150_000, by="2030-06"),
+        start_value=60_000,
+        flows=[fl.Saving(amount=2_350, every="month")],
+        weights={"US Equity": 0.6, "Bonds": 0.4},
+        inflation=0.025,
+    )
 """
 
 from importlib.metadata import version as _distribution_version
@@ -29,7 +36,22 @@ from importlib.metadata import version as _distribution_version
 from finalytics import datasets, opt, performance, reports, risk, types
 from finalytics._errors import FinalyticsError, ValidationError
 from finalytics._finalytics import version
-from finalytics._types import Drift, Every, Holdout, InSample, WalkForward
+from finalytics._types import (
+    Bootstrap,
+    Drift,
+    Every,
+    FixedMix,
+    GlidePath,
+    Historical,
+    Holdout,
+    InSample,
+    Normal,
+    Payments,
+    Saving,
+    Spending,
+    Target,
+    WalkForward,
+)
 from finalytics.assets import Assets
 from finalytics.performance import Performance, group_contributions, period
 from finalytics.portfolio import (
@@ -49,18 +71,27 @@ __version__: str = _distribution_version("finalytics")
 
 __all__ = [
     "Assets",
+    "Bootstrap",
     "Document",
     "Drift",
     "Every",
     "FinalyticsError",
+    "FixedMix",
+    "GlidePath",
+    "Historical",
     "Holdings",
     "Holdout",
     "InSample",
     "MarketData",
+    "Normal",
     "Observed",
+    "Payments",
     "Performance",
     "Portfolio",
     "PortfolioData",
+    "Saving",
+    "Spending",
+    "Target",
     "ValidationError",
     "WalkForward",
     "__version__",

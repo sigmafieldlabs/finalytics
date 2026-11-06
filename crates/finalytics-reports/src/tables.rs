@@ -10,7 +10,7 @@ use crate::context::{ReportKind, invalid, label, to_f64};
 use crate::shapes::{Grid, Unit};
 use crate::{
     AttributionReport, BacktestReport, ComparisonReport, HoldingsReport, OptimisationReport,
-    OverviewReport, PerformanceReport, RebalanceReport, RiskReport, ScenariosReport,
+    OverviewReport, PerformanceReport, PlanReport, RebalanceReport, RiskReport, ScenariosReport,
 };
 
 /// What a column holds, so that an export can format it.
@@ -96,6 +96,7 @@ pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
             return Ok(read_report::<OptimisationReport>(value)?.tables());
         }
         Some(Assets::Rebalance) => return Ok(read_report::<RebalanceReport>(value)?.tables()),
+        Some(Assets::Plan) => return Ok(read_report::<PlanReport>(value)?.tables()),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -132,6 +133,7 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
             return Ok(read::<OptimisationReport>(value)?.to_text(name));
         }
         Some(Assets::Rebalance) => return Ok(read::<RebalanceReport>(value)?.to_text(name)),
+        Some(Assets::Plan) => return Ok(read::<PlanReport>(value)?.to_text(name)),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -169,6 +171,7 @@ pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
         Some(Assets::Rebalance) => {
             return Ok(read_report::<RebalanceReport>(value)?.to_html(name));
         }
+        Some(Assets::Plan) => return Ok(read_report::<PlanReport>(value)?.to_html(name)),
         None => {}
     }
     let report: crate::PortfolioReport = serde_json::from_value(value)
@@ -182,11 +185,14 @@ enum Assets {
     Comparison,
     Backtest,
     Rebalance,
+    Plan,
 }
 
 fn backtest_kind(value: &serde_json::Value) -> Option<Assets> {
     value.get("context")?;
-    if value.get("allocation").is_some() {
+    if value.get("figures").is_some() {
+        Some(Assets::Plan)
+    } else if value.get("allocation").is_some() {
         Some(Assets::Optimisation)
     } else if value.get("strategies").is_some() {
         Some(Assets::Comparison)

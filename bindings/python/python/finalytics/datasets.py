@@ -9,8 +9,10 @@
   report.
 - :func:`asset_class_prices`: 30 years of month-end levels of six asset-class indices,
   synthetic.
+- :func:`us_cpi`: the US consumer price index, monthly since 1947, for plans in today's money.
 
-The market data is real, from Yahoo Finance. The S&P 500 companies are today's largest members,
+The market data is real, from Yahoo Finance, and the price index from the Federal Reserve Bank
+of St. Louis (FRED). The S&P 500 companies are today's largest members,
 so their history looks back with hindsight (survivorship bias). The household's transactions and
 the asset-class indices are illustrative.
 
@@ -43,6 +45,8 @@ __all__ = [
     "sp500_index",
     "sp500_index_table",
     "sp500_table",
+    "us_cpi",
+    "us_cpi_table",
 ]
 
 FILES: list[str] = _finalytics.dataset_files()
@@ -116,6 +120,22 @@ def asset_class_prices() -> Any:
     loosely on those of 2000–02, 2007–09, 2020 and 2022. The indices include income. (Needs
     pandas; :func:`asset_class_table` gives the same prices without it.)"""
     return _frame(asset_class_table())
+
+
+def us_cpi_table() -> _types.PriceTable:
+    """The price index of :func:`us_cpi`, as a :class:`~finalytics.types.PriceTable`, without
+    pandas."""
+    return loads(_types.PriceTable, _finalytics.dataset_us_cpi())
+
+
+def us_cpi() -> Any:
+    """The US consumer price index for all urban consumers (CPI-U, all items, seasonally
+    adjusted, 1982–84 = 100), monthly from January 1947 to September 2026, dated at each month's
+    end, as a pandas DataFrame with one column, ``US CPI``. October 2025 is missing: it was not
+    published. Give it as the inflation of :meth:`~finalytics.Assets.plan` to draw each month's
+    inflation with the same month's returns; a missing month is filled in between its
+    neighbours. (Needs pandas; :func:`us_cpi_table` gives the same index without it.)"""
+    return _frame(us_cpi_table())
 
 
 def portfolio() -> Portfolio:

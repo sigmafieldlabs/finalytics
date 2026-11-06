@@ -1,0 +1,32 @@
+[package]
+name = "finalytics-plan"
+description = "Goal planning for Finalytics: Monte Carlo simulations of saving and spending towards one goal, with what would change the outcome and stress tests."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+
+[features]
+# JSON Schema descriptions of the public types, for the bindings and documentation.
+schema = ["dep:schemars", "finalytics-core/schema", "finalytics-risk/schema"]
+# The simulations spread over threads; off for WebAssembly.
+parallel = ["finalytics-core/parallel"]
+
+[dependencies]
+finalytics-core = { workspace = true }
+finalytics-risk = { workspace = true }
+libm = { workspace = true }
+serde = { workspace = true }
+schemars = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

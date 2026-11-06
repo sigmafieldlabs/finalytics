@@ -185,8 +185,8 @@ export interface ResultsMethods {
 }
 
 /**
- * What `Assets.optimise`, `Assets.compare` and `Assets.backtest` return: the report and the raw
- * results. `${result}` is the report as text, and `result.show()` shows it as a page.
+ * What `Assets.optimise`, `Assets.compare`, `Assets.backtest` and `Assets.plan` return: the
+ * report and the raw results. `${result}` is the report as text, and `result.show()` shows it as a page.
  */
 export interface Result<R, D> {
   /** The report. */
@@ -291,6 +291,33 @@ export type BacktestChoices =
       /** The name of the strategy, and the report's title: `Weights` by default. */
       name?: string;
     });
+
+/** An investment mix: weights by asset, adding up to one, or a `Mix`, such as a glide path. */
+export type MixChoice = Record<string, number> | Mix;
+
+/**
+ * Choices for `Assets.plan`: those of `PlanOptions`, with plainer forms for the mixes, the
+ * inflation, the chance and the model.
+ */
+export interface PlanChoices
+  extends Partial<Omit<PlanOptions, "weights" | "alternatives" | "inflation" | "chance" | "model">> {
+  /**
+   * The goal: `{ type: "target", amount: 150000, by: "2030-06" }`, an amount by a month, or
+   * `{ type: "payments", amount: 4000, start: "2046-11", end: "2076-10" }`, paid every month;
+   * none, with `end`, for a projection.
+   */
+  goal?: Goal;
+  /** What the money is invested in, rebalanced every month. */
+  weights: MixChoice;
+  /** Other mixes to compare on the same simulations: weights by name, or named mixes. */
+  alternatives?: Record<string, MixChoice> | Mix[];
+  /** The inflation a year, such as 0.025, or a price index of one column, such as `datasets.usCpi()`. */
+  inflation: number | PriceTable | Inflation;
+  /** The chance wanted, 0.8 by default, or it and the chance from which there is room to spare. */
+  chance?: number | [number, number];
+  /** How markets are simulated: `"bootstrap"` (the default), `"normal"` or `"historical"`, or a `Model`. */
+  model?: "bootstrap" | "normal" | "historical" | Model;
+}
 
 /** Choices for `Portfolio.shockScenario` and `Portfolio.historicalScenario`, all optional. */
 export interface ScenarioChoices extends Partial<ScenarioOptions> {
@@ -1502,6 +1529,88 @@ impl Assets {
         )
     }
 
+    /// The chance that a plan of saving, spending and investing meets `options.goal`, from
+    /// `options.simulations` markets drawn from these assets' monthly returns: the planning
+    /// report in `report`, and the raw results in `results`.
+    #[wasm_bindgen(unchecked_return_type = "Result<PlanReport, PlanResults>")]
+    pub fn plan(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "PlanChoices")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut choices = object(options, &fields::<finalytics::PlanOptions>(&[]))?;
+        let mix = |value: serde_json::Value, name: Option<&str>| -> serde_json::Value {
+            let mut mix = match value {
+                serde_json::Value::Object(map) if map.contains_key("type") => map,
+                weights => serde_json::Map::from_iter([
+                    ("type".to_owned(), "fixed".into()),
+                    ("weights".to_owned(), weights),
+                ]),
+            };
+            if let Some(name) = name {
+                mix.insert("name".to_owned(), name.into());
+            }
+            serde_json::Value::Object(mix)
+        };
+        if let Some(weights) = choices.remove("weights") {
+            choices.insert("weights".to_owned(), mix(weights, None));
+        }
+        match choices.remove("alternatives") {
+            Some(serde_json::Value::Object(named)) => {
+                let mixes = named
+                    .into_iter()
+                    .map(|(name, weights)| mix(weights, Some(&name)))
+                    .collect();
+                choices.insert("alternatives".to_owned(), serde_json::Value::Array(mixes));
+            }
+            Some(serde_json::Value::Array(list)) => {
+                let mixes = list.into_iter().map(|m| mix(m, None)).collect();
+                choices.insert("alternatives".to_owned(), serde_json::Value::Array(mixes));
+            }
+            Some(other) => {
+                choices.insert("alternatives".to_owned(), other);
+            }
+            None => {}
+        }
+        match choices.remove("inflation") {
+            Some(serde_json::Value::Number(rate)) => {
+                choices.insert(
+                    "inflation".to_owned(),
+                    serde_json::json!({ "type": "rate", "rate": rate }),
+                );
+            }
+            Some(serde_json::Value::Object(map)) if !map.contains_key("type") => {
+                choices.insert(
+                    "inflation".to_owned(),
+                    serde_json::json!({ "type": "index", "prices": map }),
+                );
+            }
+            Some(other) => {
+                choices.insert("inflation".to_owned(), other);
+            }
+            None => {}
+        }
+        if let Some(serde_json::Value::Array(pair)) = choices.get("chance").cloned()
+            && let [wanted, spare] = pair.as_slice()
+        {
+            choices.insert("chance".to_owned(), wanted.clone());
+            choices.insert("spare".to_owned(), spare.clone());
+        }
+        if let Some(serde_json::Value::String(model)) = choices.get("model").cloned() {
+            choices.insert("model".to_owned(), serde_json::json!({ "type": model }));
+        }
+        if let (Some(name), Some(serde_json::Value::Object(goal))) =
+            (choices.get("name").cloned(), choices.get_mut("goal"))
+        {
+            goal.entry("name").or_insert(name);
+        }
+        let options: finalytics::PlanOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(choices).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        to_js(&self.inner.plan_with(&options).map_err(error)?)
+    }
+
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
     /// the limits of `options`.
     #[wasm_bindgen(unchecked_return_type = "FrontierPortfolio[]")]
@@ -1724,6 +1833,14 @@ impl Datasets {
     #[wasm_bindgen(js_name = assetClassPrices, unchecked_return_type = "PriceTable")]
     pub fn asset_class_prices() -> Result<JsValue, JsValue> {
         to_js(&finalytics::datasets::asset_class_prices())
+    }
+
+    /// The US consumer price index for all urban consumers (CPI-U, all items, seasonally
+    /// adjusted), monthly from January 1947 to September 2026, dated at each month's end, in one
+    /// column, `US CPI`: the inflation of a plan, in place of a fixed rate.
+    #[wasm_bindgen(js_name = usCpi, unchecked_return_type = "PriceTable")]
+    pub fn us_cpi() -> Result<JsValue, JsValue> {
+        to_js(&finalytics::datasets::us_cpi())
     }
 
     /// A portfolio of two accounts in US dollars and euros, from November 2023 to October 2026:
@@ -2247,7 +2364,7 @@ pub fn report_text(
 #[wasm_bindgen(js_name = reportHtml)]
 pub fn report_html(
     #[wasm_bindgen(
-        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport | RebalanceReport"
+        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport | RebalanceReport | PlanReport"
     )]
     report: JsValue,
     name: Option<String>,
@@ -2267,11 +2384,12 @@ pub fn report_html(
         .map_err(error)
 }
 
-/// The raw results of `Assets.optimise`, `Assets.compare` or `Assets.backtest` as text: the
-/// weights, or each strategy's periods, growth, trades and refits.
+/// The raw results of `Assets.optimise`, `Assets.compare`, `Assets.backtest` or `Assets.plan` as
+/// text: the weights, each strategy's periods, growth, trades and refits, or a plan's chance.
 #[wasm_bindgen(js_name = resultsText)]
 pub fn results_text(
-    #[wasm_bindgen(unchecked_param_type = "OptimisationResult | BacktestResults")] results: JsValue,
+    #[wasm_bindgen(unchecked_param_type = "OptimisationResult | BacktestResults | PlanResults")]
+    results: JsValue,
 ) -> Result<String, JsValue> {
     let text = js_sys::JSON::stringify(&results)
         .map_err(|_| invalid("results", "could not be written as JSON"))?

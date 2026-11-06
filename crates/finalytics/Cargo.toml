@@ -23,9 +23,14 @@ io = []
 # The daily S&P 500 prices and index of `datasets::sp500` (2.5 MB). The WebAssembly package
 # leaves them out and loads them on demand.
 sp500 = []
-# Comparisons, walk-forward fits, resampling and frontiers spread over threads with rayon,
+# Comparisons, walk-forward fits, resampling, frontiers and plans spread over threads with rayon,
 # with the same results on any number of threads. The WebAssembly package leaves this out.
-parallel = ["finalytics-core/parallel", "finalytics-opt/parallel", "finalytics-backtest/parallel"]
+parallel = [
+    "finalytics-core/parallel",
+    "finalytics-opt/parallel",
+    "finalytics-backtest/parallel",
+    "finalytics-plan/parallel",
+]
 # JSON Schema descriptions of the public types, for the bindings and documentation.
 schema = [
     "dep:schemars",
@@ -37,6 +42,7 @@ schema = [
     "finalytics-opt/schema",
     "finalytics-reports/schema",
     "finalytics-backtest/schema",
+    "finalytics-plan/schema",
 ]
 
 [dependencies]
@@ -48,6 +54,7 @@ finalytics-risk = { workspace = true }
 finalytics-opt = { workspace = true }
 finalytics-reports = { workspace = true }
 finalytics-backtest = { workspace = true }
+finalytics-plan = { workspace = true }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

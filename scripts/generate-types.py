@@ -39,6 +39,7 @@ SCALARS = {
     "AccountId": ("str", "string", "An account's identifier."),
     "TransactionId": ("str", "string", "A transaction's identifier."),
     "LotId": ("str", "string", "A tax lot's identifier."),
+    "Month": ("str", "string", "A calendar month, written as \"2030-06\"."),
     "HoldingKey": (
         "str",
         "string",
@@ -76,6 +77,9 @@ VARIANT_NAMES = {
     "ScenarioDefinition": {"shocks": "ShockScenario", "historical": "HistoricalScenario"},
     "Strategy": {"optimise": "OptimisedStrategy", "weights": "FixedWeights"},
     "Benchmark": {"weights": "BenchmarkWeights", "prices": "BenchmarkPrices"},
+    "Mix": {"fixed": "FixedMix", "glide_path": "GlidePath"},
+    "Inflation": {"rate": "InflationRate", "index": "InflationIndex"},
+    "InflationBasis": {"rate": "InflationBasisRate", "index": "InflationBasisIndex"},
     "ShockSource": {
         "instrument": "InstrumentSource",
         "group": "GroupSource",
@@ -155,13 +159,16 @@ BASES = {
     "ComparisonReport": "ReportPage",
     "BacktestReport": "ReportPage",
     "RebalanceReport": "ReportPage",
+    "PlanReport": "ReportPage",
     "Optimisation": "Result",
     "Comparison": "Result",
     "Backtest": "Result",
     "Rebalancing": "Result",
+    "Plan": "Result",
     "OptimisationResult": "PrintedResults",
     "BacktestResults": "PrintedResults",
     "RebalanceResults": "PrintedResults",
+    "PlanResults": "PrintedResults",
 }
 
 

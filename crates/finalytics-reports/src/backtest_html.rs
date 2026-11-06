@@ -1243,6 +1243,8 @@ pub(crate) struct Frame<'a> {
     pub(crate) digest: &'a str,
     /// What every figure is computed from, such as "the assets' returns".
     pub(crate) source: &'a str,
+    /// Styles of the page's own, added to the reports' styles.
+    pub(crate) style: &'a str,
 }
 
 /// A report page: the frame around `body`.
@@ -1255,6 +1257,7 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
         version,
         digest,
         source,
+        style,
     } = *f;
     let nav: String = nav
         .iter()
@@ -1267,7 +1270,7 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
     format!(
         r#"<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="generator" content="Finalytics {version}"><title>{title}</title><style>{CSS}</style></head>
+<meta name="generator" content="Finalytics {version}"><title>{title}</title><style>{CSS}{style}</style></head>
 <body><div class="page">
 <div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,{light}"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,{dark}"></div>
 <h1>{title}</h1>{brand}</div>
@@ -2135,6 +2138,7 @@ impl ComparisonReport {
                 version: &c.version,
                 digest: &c.digest,
                 source: "the assets' returns",
+                style: "",
             },
             &body,
         )
@@ -2825,6 +2829,7 @@ impl BacktestReport {
                 version: &c.version,
                 digest: &c.digest,
                 source: "the assets' returns",
+                style: "",
             },
             &body,
         )

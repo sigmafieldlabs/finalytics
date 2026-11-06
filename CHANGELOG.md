@@ -9,6 +9,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Goal planning: `Assets::plan` (`assets.plan(...)` in Python and JavaScript) tests a plan of
+  saving, spending and investing against one goal, an amount by a date (`Target`) or payments
+  over a period (`Payments`), or projects it to a month without one. The plan runs month by month
+  through simulated markets, 10,000 by default: a stationary block bootstrap of the assets'
+  monthly returns (the default), a normal distribution, or every stretch of the history. Every
+  amount is in today's money: returns are after inflation, a fixed rate or a price index, and
+  fees. Flows are paid in (`Saving`) or taken out (`Spending`) once or regularly, and a mix is
+  fixed weights or a glide path. The results give the chance of the goal and its status against
+  the chance wanted; the value over time in strong, average and weak markets; for payments, the
+  share paid and when the money runs short; the smallest change to the saving, the start value,
+  the amount or the date that reaches the chance wanted (or the largest that keeps it); the plan
+  with returns a point a year lower and with the worst twelve months of the history placed in
+  it; and other mixes compared on the same simulations. The planning report shows them as a
+  page, in 80 columns of text and as tables. A new crate, `finalytics-plan`, holds the engine;
+  the `finalytics::planning` module re-exports it. The methods page is
+  `docs/methods/planning.md`, and the engine is checked against an independent implementation
+  in NumPy (`scripts/reference/planning.py`).
+- `datasets::us_cpi()` (`fl.datasets.us_cpi()`, `datasets.usCpi()`): the US consumer price index,
+  monthly from January 1947 to September 2026, from FRED, as a plan's inflation.
 - Backtests and comparisons can follow money as well as returns: `start_value` and `flows`
   (`.start_value(...)` and `.flow(date, amount)` in Rust) start each run with a value and pay
   money in or take it out on dates. The comparison and backtest reports then show each run's
@@ -36,7 +55,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Breaking:** resampled optimisation seeds each history with the `k`-th number SplitMix64 gives
   from the seed, so that histories can be simulated in any order. Resampled weights differ from
-  rc.2's for the same seed. The reference script reimplements the new seeding.
+  rc.2's for the same seed. The reference script reimplements the new seeding. The random numbers
+  are now `finalytics_core::random`, which plans draw from too; resampled weights are unchanged
+  by the move.
 - **Breaking (Rust):** the backtest engine's `Fitter` is `Send + Sync`, so that fits can run on
   several threads, and it reports problems by returning an error, never by panicking: walk-forward
   validation fits every window before it uses the refits.

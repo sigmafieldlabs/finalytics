@@ -22,6 +22,10 @@ __all__ = ["Assets"]
 BoundLike = _types.Bound | tuple[float, float]
 """Limits on a weight: a :class:`~finalytics.types.Bound` or a ``(min, max)`` pair."""
 
+MixLike = Any
+"""An investment mix: weights by asset, a ``(name, weights)`` pair, a
+:class:`~finalytics.FixedMix` or :class:`~finalytics.GlidePath`, or a result with weights."""
+
 FlowsLike = Mapping[Any, float] | Sequence[tuple[Any, float]]
 """Money paid in or taken out on dates: amounts by date, such as ``{"2020-01-31": 500}``, or
 ``(date, amount)`` pairs; a date is a :class:`datetime.date` or its ISO text."""
@@ -577,6 +581,86 @@ class Assets:
         )
         return loads(_types.Backtest, call(self._native.backtest, dumps(options, "options")))
 
+    def plan(
+        self,
+        goal: _types.Goal | None = None,
+        *,
+        weights: MixLike,
+        inflation: float | Any,
+        flows: Sequence[_types.PlanFlow] = (),
+        start_value: float = 0.0,
+        alternatives: Mapping[str, MixLike] | Sequence[MixLike] = (),
+        fee: float = 0.0,
+        chance: float | tuple[float, float] = 0.8,
+        model: _types.Model | str = "bootstrap",
+        expected_returns: Mapping[str, float] | None = None,
+        start: str | datetime.date | None = None,
+        end: str | datetime.date | None = None,
+        simulations: int = 10_000,
+        seed: int = 0,
+        currency: str | None = None,
+        name: str | None = None,
+    ) -> _types.Plan:
+        """The chance that a plan of saving, spending and investing meets one `goal`, from
+        `simulations` markets drawn from these assets' monthly returns: the planning report in
+        ``plan.report``, and the raw results in ``plan.results``. ``print(plan)`` prints the
+        report and ``plan.show()`` shows it, inline in a notebook or in a browser.
+
+        - `goal`: :class:`~finalytics.Target`, an amount by a month, such as
+          ``fl.Target(amount=150_000, by="2030-06")``; :class:`~finalytics.Payments`, an
+          amount paid regularly, such as ``fl.Payments(amount=4_000, start="2046-11",
+          end="2076-10")``; or none, for a projection to the month `end`.
+        - `weights`: what the money is invested in, rebalanced every month: weights by asset,
+          such as ``{"US Equity": 0.6, "Bonds": 0.4}``; a name and weights, such as
+          ``("Balanced 60/40", {...})``; a :class:`~finalytics.GlidePath`; or a result with
+          weights, such as a frontier portfolio.
+        - `inflation`: the rate a year, such as ``0.025``, or a price index of one column, such
+          as ``fl.datasets.us_cpi()``. Every amount is in today's money: returns are after
+          inflation and fees.
+        - `flows`: money paid in and taken out, such as ``fl.Saving(amount=1_500,
+          every="month")``, which runs until the goal, or ``fl.Spending(name="Car",
+          amount=25_000, on="2028-03")``.
+        - `alternatives`: other mixes to compare on the same simulations, by name.
+        - `chance`: the chance wanted (0.8 by default), or the chance wanted and the chance from
+          which the plan has room to spare, such as ``(0.85, 0.95)``.
+        - `model`: ``"bootstrap"`` (blocks of past months, the default), ``"normal"`` or
+          ``"historical"``, or :class:`~finalytics.Bootstrap` with its `block` length.
+        - `start`: the first month, the month after the assets' last by default.
+        """
+        wanted, spare = (chance if isinstance(chance, tuple) else (chance, None))
+        if isinstance(model, str):
+            model = _named("model", model, _MODELS)
+        if isinstance(inflation, (int, float)) and not isinstance(inflation, bool):
+            inflation = _types.InflationRate(rate=float(inflation))
+        elif inflation is not None and not isinstance(inflation, (_types.InflationRate, _types.InflationIndex)):
+            inflation = _types.InflationIndex(prices=_price_table(inflation))
+        if isinstance(alternatives, Mapping):
+            mixes = [_mix((key, value)) for key, value in alternatives.items()]
+        else:
+            mixes = [_mix(value) for value in alternatives]
+        if name is not None and goal is not None and goal.name is None:
+            goal = dataclasses.replace(goal, name=name)
+        options = _types.PlanOptions(
+            goal=goal,
+            chance=float(wanted),
+            spare=None if spare is None else float(spare),
+            start=_month(start),
+            end=_month(end),
+            start_value=float(start_value),
+            flows=list(flows),
+            weights=_mix(weights),
+            alternatives=mixes,
+            fee=float(fee),
+            inflation=inflation,
+            model=model,
+            expected_returns=None if expected_returns is None else {k: float(v) for k, v in expected_returns.items()},
+            simulations=int(simulations),
+            seed=int(seed),
+            currency=currency,
+            name=name,
+        )
+        return loads(_types.Plan, call(self._native.plan, dumps(options, "options")))
+
     def __repr__(self) -> str:
         return f"Assets({len(self.labels)} assets, {len(self.dates)} periods, {self.periods_per_year:g} a year)"
 
@@ -621,6 +705,43 @@ def _backtest_options(
             for date, amount in items
         ],
     )
+
+
+_MODELS: dict[str, Any] = {
+    "bootstrap": _types.Bootstrap(),
+    "normal": _types.Normal(),
+    "historical": _types.Historical(),
+}
+
+
+def _mix(value: Any) -> Any:
+    """An investment mix from weights by asset, a (name, weights) pair, a mix, or anything with
+    weights, such as a frontier portfolio or an optimisation's result."""
+    if isinstance(value, (_types.FixedMix, _types.GlidePath)):
+        return value
+    name = None
+    if isinstance(value, tuple) and len(value) == 2 and isinstance(value[0], str):
+        name, value = value
+        if isinstance(value, (_types.FixedMix, _types.GlidePath)):
+            return dataclasses.replace(value, name=name)
+    if not isinstance(value, Mapping):
+        found = getattr(value, "weights", None)
+        if found is None and hasattr(value, "results"):
+            found = getattr(value.results, "weights", None)
+        if not isinstance(found, Mapping):
+            raise TypeError(
+                "a mix must be weights by asset, a (name, weights) pair, a FixedMix or GlidePath, "
+                "or a result with weights"
+            )
+        value = found
+    return _types.FixedMix(name=name, weights={str(k): float(v) for k, v in value.items()})
+
+
+def _month(value: str | datetime.date | None) -> str | None:
+    """A month as text, from text or a date (a datetime or a pandas Timestamp included)."""
+    if value is None or isinstance(value, str):
+        return value
+    return _arrays.date(value)
 
 
 _SCHEDULES: dict[str, Any] = {

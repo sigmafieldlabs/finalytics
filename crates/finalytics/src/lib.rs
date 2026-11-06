@@ -15,7 +15,8 @@
 //!   covariance; [`Assets::optimise`] for weights by a [`Method`] ([`Optimisation`]);
 //!   [`Assets::compare`] to backtest several methods side by side ([`Comparison`]); and
 //!   [`Assets::backtest`] for one method or one set of weights, in sample, on a holdout or
-//!   walk-forward ([`Backtest`]).
+//!   walk-forward ([`Backtest`]); and [`Assets::plan`] for the chance that a plan of saving,
+//!   spending and investing meets a goal ([`Plan`]).
 //! - [`Portfolio`], a portfolio's transactions with the market data that values them: its
 //!   valuation, performance and risk; [`Portfolio::report`] for every report; and
 //!   [`Portfolio::rebalance`] for the trades that reach target weights.
@@ -85,8 +86,8 @@
 //! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
 //! non-exhaustive too, so a `match` on one needs a wildcard arm.
 
-/// The raw results of an optimisation, a comparison, a backtest or a rebalancing, given as JSON,
-/// as text. The Python and JavaScript packages use it; from Rust, display the results.
+/// The raw results of an optimisation, a comparison, a backtest, a rebalancing or a plan, given
+/// as JSON, as text. The Python and JavaScript packages use it; from Rust, display the results.
 #[doc(hidden)]
 pub fn results_text(results: &str) -> Result<String> {
     let invalid = |message: String| {
@@ -104,13 +105,18 @@ pub fn results_text(results: &str) -> Result<String> {
         let result: BacktestResults =
             serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
         Ok(result.to_string())
+    } else if value.get("chance_wanted").is_some() {
+        let result: PlanResults =
+            serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
+        Ok(result.to_string())
     } else if value.get("weights_before").is_some() {
         let result: opt::RebalanceResults =
             serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
         Ok(result.to_string())
     } else {
         Err(invalid(
-            "are not the results of an optimisation, a backtest or a rebalancing".to_owned(),
+            "are not the results of an optimisation, a backtest, a rebalancing or a plan"
+                .to_owned(),
         ))
     }
 }
@@ -133,6 +139,7 @@ pub use finalytics_formats::PortfolioDocument;
 mod assets;
 pub mod backtest;
 pub mod datasets;
+pub mod planning;
 mod portfolio;
 #[cfg(feature = "io")]
 mod show;
@@ -140,6 +147,7 @@ mod show;
 /// What most programs need, in one import: `use finalytics::prelude::*;`.
 pub mod prelude {
     pub use crate::backtest::{Months, Periods, Rebalance, Years};
+    pub use crate::planning::Frequency;
     #[cfg(feature = "io")]
     pub use crate::show::Show;
     pub use crate::{Assets, Error, Method, Portfolio, PortfolioCsv, Result, datasets};
@@ -151,9 +159,11 @@ pub use assets::{
 };
 pub use backtest::{Backtest, BacktestResults, Comparison};
 pub use finalytics_reports::{
-    BacktestReport, ComparisonReport, OptimisationReport, PortfolioReport, RebalanceReport, Theme,
+    BacktestReport, ComparisonReport, OptimisationReport, PlanReport, PortfolioReport,
+    RebalanceReport, Theme,
 };
 pub use finalytics_risk::PriceTable;
+pub use planning::{Plan, PlanBuilder, PlanOptions, PlanResults};
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;
 pub use portfolio::{

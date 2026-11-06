@@ -42,6 +42,7 @@ from finalytics._types import (
     OptimisationReport,
     OverviewReport,
     PerformanceReport,
+    PlanReport,
     PortfolioReport,
     Provenance,
     RebalanceReport,
@@ -64,6 +65,7 @@ __all__ = [
     "OptimisationReport",
     "OverviewReport",
     "PerformanceReport",
+    "PlanReport",
     "PortfolioReport",
     "Provenance",
     "RebalanceReport",
@@ -87,6 +89,7 @@ _KINDS = {
     ComparisonReport: "comparison",
     BacktestReport: "backtest",
     RebalanceReport: "rebalance",
+    PlanReport: "planning",
 }
 
 
