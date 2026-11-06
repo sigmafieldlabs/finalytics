@@ -50,8 +50,18 @@ def test_other_python_threads_run_while_a_problem_is_resampled():
     problem = fl.opt.Problem.from_covariance(
         fl.risk.matrix(covariance.tolist(), labels), expected_returns=list(rng.uniform(0.02, 0.1, 60))
     )
-    duration, longest = stalls(
-        lambda: problem.resampled(fl.opt.MeanVariance(risk_aversion=4.0), observations=120, samples=300, seed=1)
-    )
-    assert duration > 0.1, duration
+    # Natively the samples run on every core, so the call is quick on a fast machine: it grows until
+    # it takes long enough to judge. Each call is judged on its own, and one holding the GIL would
+    # stall this thread throughout.
+    samples = 300
+    while True:
+        duration, longest = stalls(
+            lambda n=samples: problem.resampled(
+                fl.opt.MeanVariance(risk_aversion=4.0), observations=120, samples=n, seed=1
+            )
+        )
+        if duration > 0.1 or samples >= 19_200:
+            break
+        samples *= 4
+    assert duration > 0.1, (duration, samples)
     assert longest < duration / 2, (longest, duration)
