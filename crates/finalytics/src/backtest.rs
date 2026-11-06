@@ -40,6 +40,7 @@ use serde::{Deserialize, Serialize};
 use finalytics_backtest::{self as engine, Fit, Market, Plan};
 use finalytics_core::{Date, Error, Result, ValidationReport};
 use finalytics_reports::BacktestSetup;
+pub use finalytics_reports::{CashFlow, MoneyFigures};
 use finalytics_risk::PriceTable;
 
 pub use finalytics_backtest::{
@@ -194,6 +195,12 @@ pub struct BacktestOptions {
     pub trading_cost_bps: f64,
     /// What the strategies are compared with, if anything.
     pub benchmark: Option<Benchmark>,
+    /// The value each run starts with, to follow money as well as returns: the reports then
+    /// give each run's ending value and money-weighted return. Zero, with flows, if absent.
+    pub start_value: Option<f64>,
+    /// Money paid in (positive) or taken out (negative) on dates, at the end of the period each
+    /// falls in, after its return.
+    pub flows: Vec<CashFlow>,
 }
 
 impl Assets {
@@ -274,6 +281,16 @@ impl Assets {
                 ))
             }
         };
+        if let Some(v) = options.start_value
+            && !(v.is_finite() && v >= 0.0)
+        {
+            report.error("start_value", "must be zero or more");
+        }
+        for (i, f) in options.flows.iter().enumerate() {
+            if !f.amount.is_finite() {
+                report.error(format!("flows[{i}].amount"), "must be a number");
+            }
+        }
         let settings = Settings::new(options.validation.clone())
             .with_rebalance(options.rebalance)
             .with_trading_cost_bps(options.trading_cost_bps);
@@ -336,6 +353,7 @@ impl Assets {
         )
         .with_mean_returns(self.mean_method())
         .with_origin(self.origin())
+        .with_money(options.start_value, options.flows.clone())
     }
 
     /// Fixed weights by asset as one weight per risky asset, the risk-free asset as cash.
@@ -583,6 +601,8 @@ struct Common {
     trading_cost_bps: f64,
     benchmark: Option<Benchmark>,
     benchmark_name: Option<String>,
+    start_value: Option<f64>,
+    flows: Vec<(String, f64)>,
 }
 
 impl Common {
@@ -631,12 +651,29 @@ impl Common {
             );
             return Err(Error::Validation(report));
         }
+        let mut report = ValidationReport::new();
+        let mut flows = Vec::with_capacity(self.flows.len());
+        for (i, (text, amount)) in self.flows.iter().enumerate() {
+            match text.parse::<Date>() {
+                Ok(date) => flows.push(CashFlow {
+                    date,
+                    amount: *amount,
+                }),
+                Err(_) => report.error(
+                    format!("flows[{i}].date"),
+                    format!("{text:?} is not a date: write it as 2020-01-31"),
+                ),
+            }
+        }
+        report.into_result(())?;
         Ok(BacktestOptions {
             strategies,
             validation,
             rebalance: self.rebalance,
             trading_cost_bps: self.trading_cost_bps,
             benchmark,
+            start_value: self.start_value,
+            flows,
         })
     }
 }
@@ -813,6 +850,20 @@ macro_rules! common_setters {
             /// column's name for an index's prices.
             pub fn benchmark_name(mut self, name: &str) -> Self {
                 self.common.benchmark_name = Some(name.to_owned());
+                self
+            }
+
+            /// The value each run starts with, to follow money as well as returns: the reports
+            /// then give each run's ending value and money-weighted return.
+            pub fn start_value(mut self, value: f64) -> Self {
+                self.common.start_value = Some(value);
+                self
+            }
+
+            /// Money paid in (a positive `amount`) or taken out (a negative one) on `date`, such
+            /// as `"2020-01-31"`, at the end of the period it falls in. Repeatable.
+            pub fn flow(mut self, date: &str, amount: f64) -> Self {
+                self.common.flows.push((date.to_owned(), amount));
                 self
             }
         }

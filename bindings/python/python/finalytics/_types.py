@@ -592,6 +592,12 @@ class BacktestContext:
     origin: datetime.date | None = None
     """The date the first period of the data starts from, when it is known."""
 
+    start_value: float | None = None
+    """The value each run starts with, when the backtest follows money."""
+
+    flows: list[CashFlow] = field(default_factory=list)
+    """Money paid in or taken out on dates, when the backtest follows money."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class BacktestOptions:
@@ -611,6 +617,16 @@ class BacktestOptions:
 
     benchmark: Benchmark | None = None
     """What the strategies are compared with, if anything."""
+
+    start_value: float | None = None
+    """The value each run starts with, to follow money as well as returns: the reports then give
+    each run's ending value and money-weighted return. Zero, with flows, if absent.
+    """
+
+    flows: list[CashFlow] = field(default_factory=list)
+    """Money paid in (positive) or taken out (negative) on dates, at the end of the period each
+    falls in, after its return.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -848,6 +864,19 @@ class CashBalance:
 
     amount: decimal.Decimal
     """The balance, negative if overdrawn."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CashFlow:
+    """Money paid into a backtest's runs (a positive amount) or taken out (a negative one) on a
+    date.
+    """
+
+    date: datetime.date
+    """The date: the money moves at the end of the period it falls in."""
+
+    amount: float
+    """The amount: positive paid in, negative taken out."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2525,6 +2554,31 @@ class Money:
     amount: decimal.Decimal
 
     currency: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class MoneyFigures:
+    """A run followed with money: a value at the start, and money paid in and taken out."""
+
+    start_value: float
+    """The value on the date the run enters."""
+
+    paid_in: float
+    """The money paid in during the run, after the start."""
+
+    taken_out: float
+    """The money taken out during the run; a withdrawal takes no more than the value."""
+
+    ending_value: float
+    """The value at the end of the last period."""
+
+    money_weighted_return: float | None = None
+    """The money-weighted return: the internal rate of return of the start value, the flows and the
+    ending value, a year (actual/365); absent when there is none.
+    """
+
+    flows: int
+    """The number of flows that fell in the run."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -4379,6 +4433,9 @@ class RunReport:
     months: Grid
     """The return in each month, a row per year and a column per month."""
 
+    money: MoneyFigures | None = None
+    """The run followed with money, when the backtest follows it."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class ShockScenario:
@@ -5925,6 +5982,7 @@ __all__ = [
     "CalendarReturn",
     "CashBalance",
     "CashChange",
+    "CashFlow",
     "CashSource",
     "CashValue",
     "Cell",
@@ -6056,6 +6114,7 @@ __all__ = [
     "MinimumVariance",
     "Money",
     "MoneyColumn",
+    "MoneyFigures",
     "MoneyUnit",
     "MonthFlows",
     "MonthToDate",

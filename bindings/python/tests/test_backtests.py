@@ -268,3 +268,20 @@ def test_the_downside_methods_report_their_optimum():
     cdar = assets.optimise(method="minimum_cdar", confidence=0.9)
     figure = cdar.report.summary.drawdown_at_risk
     assert (figure.confidence, figure.value) == (0.9, cdar.results.solution.objective_value)
+
+
+def test_a_backtest_follows_money_in_and_out():
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+    result = assets.backtest(
+        weights={"US Equity": 0.6, "Bonds": 0.4},
+        start_value=10_000,
+        flows={"2020-01-31": 1_000, "2021-06-15": -500, "2040-01-31": 99},
+    )
+    money = result.report.strategy.tested.money
+    assert money.start_value == 10_000 and money.paid_in == 1_000 and money.taken_out == 500
+    assert money.flows == 2 and money.ending_value > 0
+    assert money.money_weighted_return is not None
+    assert "Money in and out" in str(result) and "Money in and out" in result.to_html()
+    assert "money" in [t.name for t in fl.reports.tables(result.report)]
+    plain = assets.backtest(weights={"US Equity": 0.6, "Bonds": 0.4})
+    assert plain.report.strategy.tested.money is None and "Money in and out" not in str(plain)

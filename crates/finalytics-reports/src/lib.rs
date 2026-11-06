@@ -39,8 +39,9 @@ pub use attribution::{
     AttributionInputs, AttributionReport, BenchmarkPeriod, BenchmarkSegment, attribution_report,
 };
 pub use backtests::{
-    BacktestContext, BacktestReport, BacktestSetup, CalendarReturn, ComparisonReport, History,
-    RunReport, StrategyReport, WeightsAt, backtest_report, comparison_report,
+    BacktestContext, BacktestReport, BacktestSetup, CalendarReturn, CashFlow, ComparisonReport,
+    History, MoneyFigures, RunReport, StrategyReport, WeightsAt, backtest_report,
+    comparison_report,
 };
 pub use context::{Provenance, ReportKind, ReportOptions, Source};
 pub use holdings::{

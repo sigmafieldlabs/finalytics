@@ -1144,6 +1144,64 @@ pub(crate) fn table(
     out
 }
 
+/// The runs followed with money, one row each: (name, figures).
+pub(crate) fn money_card(c: &BacktestContext, rows: &[(String, &crate::MoneyFigures)]) -> String {
+    let amount = |x: f64| crate::text::money(x);
+    let body: Vec<Vec<String>> = rows
+        .iter()
+        .map(|(name, m)| {
+            vec![
+                esc(name),
+                amount(m.start_value),
+                amount(m.paid_in),
+                amount(m.taken_out),
+                amount(m.ending_value),
+                m.money_weighted_return
+                    .map_or_else(|| "–".to_owned(), percent),
+            ]
+        })
+        .collect();
+    card(
+        "Money in and out",
+        &table(
+            &[
+                "",
+                "Start value",
+                "Paid in",
+                "Taken out",
+                "Ending value",
+                "Money-weighted return",
+            ]
+            .map(str::to_owned),
+            &body,
+            1,
+            "cmp",
+        ),
+        Some(&money_note(c)),
+    )
+}
+
+/// How the money is followed, in a sentence or two.
+pub(crate) fn money_note(c: &BacktestContext) -> String {
+    let start = crate::text::money(c.start_value.unwrap_or(0.0));
+    let flows = match c.flows.len() {
+        0 => String::new(),
+        1 => " The amount paid in or taken out on its date moves at the end of the period it \
+               falls in, after that period's return; a withdrawal takes no more than the value, \
+               and money dated outside a run is left out of it."
+            .to_owned(),
+        n => format!(
+            " The {n} amounts paid in or taken out on dates move at the end of the period they \
+             fall in, after that period's return; a withdrawal takes no more than the value, \
+             and money dated outside a run is left out of it."
+        ),
+    };
+    format!(
+        "Each run starts with {start} on the date it enters.{flows} The money-weighted return is \
+         the internal rate of return of the start value, the flows and the ending value, a year."
+    )
+}
+
 /// A strategy's name with its colour key.
 pub(crate) fn key(name: &str, colour: &str) -> String {
     format!(
@@ -1647,6 +1705,13 @@ impl ComparisonReport {
             ),
             Some(&note),
         ));
+        if c.follows_money() {
+            let rows: Vec<(String, &crate::MoneyFigures)> = entries
+                .iter()
+                .filter_map(|(s, _)| s.tested.money.as_ref().map(|m| (s.name.clone(), m)))
+                .collect();
+            summary.push_str(&money_card(c, &rows));
+        }
 
         // Performance.
         let growth: Vec<Line<'_>> = entries
@@ -2398,6 +2463,13 @@ impl BacktestReport {
             &table(&head, &rows, 1, ""),
             Some(&note),
         ));
+        if c.follows_money() {
+            let rows: Vec<(String, &crate::MoneyFigures)> = runs
+                .iter()
+                .filter_map(|(name, r)| r.money.as_ref().map(|m| (name.clone(), m)))
+                .collect();
+            summary.push_str(&money_card(c, &rows));
+        }
 
         // Growth and drawdown.
         let (main, base, shade) = match &self.history {

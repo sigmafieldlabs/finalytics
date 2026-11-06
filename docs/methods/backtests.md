@@ -58,6 +58,18 @@ fitting):
 A fit that finds no weights keeps the weights held, without trading, and the reports list it;
 a method that never found weights holds cash.
 
+## Money in and out
+
+A backtest follows returns, as the growth of 100. Given `start_value` or `flows`, it follows
+money too: each run starts with `start_value` (zero if only flows are given) on the date it
+enters, and each flow dated after that and on or before its last period's end is paid in (a
+positive amount) or taken out (a negative one) at the end of the period it falls in, after that
+period's return. Flows in the same period are netted, and a withdrawal takes no more than the
+value. The value evolves as $V_t = V_{t-1}(1 + R_t) + F_t$. The reports give each run's start
+value, the money paid in and taken out, the ending value, and the money-weighted return: the
+internal rate of return, a year (actual/365), of the start value, the flows and the ending
+value. The returns, statistics and trades do not depend on the money.
+
 ## The reports
 
 The comparison and backtest reports score each run over the periods it was tested on:

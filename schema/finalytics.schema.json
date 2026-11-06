@@ -873,6 +873,23 @@
           ],
           "description": "The date the first period of the data starts from, when it is known.",
           "default": null
+        },
+        "start_value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The value each run starts with, when the backtest follows money.",
+          "default": null
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CashFlow"
+          },
+          "description": "Money paid in or taken out on dates, when the backtest follows money.",
+          "default": []
         }
       },
       "required": [
@@ -933,6 +950,23 @@
           ],
           "description": "What the strategies are compared with, if anything.",
           "default": null
+        },
+        "start_value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The value each run starts with, to follow money as well as returns: the reports then\ngive each run's ending value and money-weighted return. Zero, with flows, if absent.",
+          "default": null
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CashFlow"
+          },
+          "description": "Money paid in (positive) or taken out (negative) on dates, at the end of the period each\nfalls in, after its return.",
+          "default": []
         }
       },
       "description": "What a backtest tests and how."
@@ -1385,6 +1419,25 @@
         "amount"
       ],
       "description": "A cash balance in one account and currency."
+    },
+    "CashFlow": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/Date",
+          "description": "The date: the money moves at the end of the period it falls in."
+        },
+        "amount": {
+          "type": "number",
+          "format": "double",
+          "description": "The amount: positive paid in, negative taken out."
+        }
+      },
+      "required": [
+        "date",
+        "amount"
+      ],
+      "description": "Money paid into a backtest's runs (a positive amount) or taken out (a negative one) on a date."
     },
     "CashValue": {
       "type": "object",
@@ -4749,6 +4802,53 @@
         "currency"
       ],
       "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until they are rounded."
+    },
+    "MoneyFigures": {
+      "type": "object",
+      "properties": {
+        "start_value": {
+          "type": "number",
+          "format": "double",
+          "description": "The value on the date the run enters."
+        },
+        "paid_in": {
+          "type": "number",
+          "format": "double",
+          "description": "The money paid in during the run, after the start."
+        },
+        "taken_out": {
+          "type": "number",
+          "format": "double",
+          "description": "The money taken out during the run; a withdrawal takes no more than the value."
+        },
+        "ending_value": {
+          "type": "number",
+          "format": "double",
+          "description": "The value at the end of the last period."
+        },
+        "money_weighted_return": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The money-weighted return: the internal rate of return of the start value, the flows and\nthe ending value, a year (actual/365); absent when there is none."
+        },
+        "flows": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of flows that fell in the run."
+        }
+      },
+      "required": [
+        "start_value",
+        "paid_in",
+        "taken_out",
+        "ending_value",
+        "flows"
+      ],
+      "description": "A run followed with money: a value at the start, and money paid in and taken out."
     },
     "MonthFlows": {
       "type": "object",
@@ -8271,6 +8371,18 @@
         "months": {
           "$ref": "#/$defs/Grid",
           "description": "The return in each month, a row per year and a column per month."
+        },
+        "money": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MoneyFigures"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The run followed with money, when the backtest follows it.",
+          "default": null
         }
       },
       "required": [

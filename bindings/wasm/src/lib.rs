@@ -255,6 +255,10 @@ export interface BacktestSettings {
   benchmark?: Record<string, number> | PriceTable | Benchmark;
   /** The benchmark's name: `"Benchmark"` by default, or the prices' column name. */
   benchmark_name?: string;
+  /** The value each run starts with, to follow money: the reports then give each run's ending value and money-weighted return. */
+  start_value?: number;
+  /** Money paid in (positive) or taken out (negative) on dates, such as `[{ date: "2020-01-31", amount: 500 }]`. */
+  flows?: CashFlow[];
 }
 
 /** Choices for `Assets.compare`: the methods, with limits and settings applied to each. */
@@ -1552,12 +1556,14 @@ fn backtest_options(
 }
 
 /// How `Assets.compare` and `Assets.backtest` run.
-const SETTINGS: [&str; 5] = [
+const SETTINGS: [&str; 7] = [
     "validation",
     "rebalance",
     "trading_cost_bps",
     "benchmark",
     "benchmark_name",
+    "start_value",
+    "flows",
 ];
 
 /// The names of the fields of `T`, as JSON writes them, with `extra`.
@@ -1603,8 +1609,10 @@ fn settings(
             settings.insert(key.to_owned(), tagged(value));
         }
     }
-    if let Some(cost) = choices.remove("trading_cost_bps") {
-        settings.insert("trading_cost_bps".to_owned(), cost);
+    for key in ["trading_cost_bps", "start_value", "flows"] {
+        if let Some(value) = choices.remove(key) {
+            settings.insert(key.to_owned(), value);
+        }
     }
     if let Some(benchmark) = choices.remove("benchmark") {
         let tagged = match &benchmark {

@@ -22,6 +22,10 @@ __all__ = ["Assets"]
 BoundLike = _types.Bound | tuple[float, float]
 """Limits on a weight: a :class:`~finalytics.types.Bound` or a ``(min, max)`` pair."""
 
+FlowsLike = Mapping[Any, float] | Sequence[tuple[Any, float]]
+"""Money paid in or taken out on dates: amounts by date, such as ``{"2020-01-31": 500}``, or
+``(date, amount)`` pairs; a date is a :class:`datetime.date` or its ISO text."""
+
 GroupLike = _types.AssetGroup | tuple[Sequence[str], float, float]
 """A group of assets and the limits on their total weight: a
 :class:`~finalytics.types.AssetGroup` or an ``(assets, min, max)`` triple."""
@@ -436,6 +440,8 @@ class Assets:
         expected_returns: Mapping[str, float] | None = None,
         risk_free_rate: float | None = None,
         resample: int | None = None,
+        start_value: float | None = None,
+        flows: FlowsLike = (),
     ) -> _types.Comparison:
         """The comparison of `methods`, each backtested on these assets with the same limits,
         rebalancing, validation and trading costs and scored on the periods it was tested on:
@@ -460,6 +466,10 @@ class Assets:
         - `benchmark`: weights by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}``, or an
           index's prices, such as ``fl.datasets.sp500_index()``; `benchmark_name` names it
           (``"Benchmark"`` by default, or the prices' column name).
+        - `start_value` and `flows`: money to follow as well as returns. Each run starts with
+          `start_value`, and `flows` pays in (positive) or takes out (negative) amounts on
+          dates, such as ``{"2020-01-31": 500}``, at the end of the period each falls in; the
+          reports then give each run's ending value and money-weighted return.
 
         The limits and parameters are those of :meth:`optimise`; they apply to every method
         that takes them.
@@ -491,7 +501,9 @@ class Assets:
         ]
         if not strategies:
             raise invalid(("methods", "give the methods to compare, or fixed weights"))
-        options = _backtest_options(strategies, validation, rebalance, trading_cost_bps, benchmark, benchmark_name)
+        options = _backtest_options(
+            strategies, validation, rebalance, trading_cost_bps, benchmark, benchmark_name, start_value, flows
+        )
         result = loads(_types.Comparison, call(self._native.compare, dumps(options, "options")))
         if name is not None:
             result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
@@ -522,6 +534,8 @@ class Assets:
         expected_returns: Mapping[str, float] | None = None,
         risk_free_rate: float | None = None,
         resample: int | None = None,
+        start_value: float | None = None,
+        flows: FlowsLike = (),
     ) -> _types.Backtest:
         """The backtest of one strategy: a `method`, fitted as `validation` says, or fixed
         `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the
@@ -558,7 +572,9 @@ class Assets:
         else:
             assert method is not None
             strategy = _types.OptimisedStrategy(name=name, options=self._options(method, **limits))
-        options = _backtest_options([strategy], validation, rebalance, trading_cost_bps, benchmark, benchmark_name)
+        options = _backtest_options(
+            [strategy], validation, rebalance, trading_cost_bps, benchmark, benchmark_name, start_value, flows
+        )
         return loads(_types.Backtest, call(self._native.backtest, dumps(options, "options")))
 
     def __repr__(self) -> str:
@@ -572,6 +588,8 @@ def _backtest_options(
     trading_cost_bps: float,
     benchmark: Any,
     benchmark_name: str | None = None,
+    start_value: float | None = None,
+    flows: FlowsLike = (),
 ) -> _types.BacktestOptions:
     if isinstance(validation, str):
         validation = _named("validation", validation, {"in_sample": _types.InSample()})
@@ -587,12 +605,21 @@ def _backtest_options(
         if benchmark is None:
             raise invalid(("benchmark_name", "names a benchmark: give the benchmark too"))
         benchmark = dataclasses.replace(benchmark, name=benchmark_name)
+    items = flows.items() if isinstance(flows, Mapping) else flows
     return _types.BacktestOptions(
         strategies=strategies,
         validation=validation,
         rebalance=rebalance,
         trading_cost_bps=float(trading_cost_bps),
         benchmark=benchmark,
+        start_value=None if start_value is None else float(start_value),
+        flows=[
+            _types.CashFlow(
+                date=datetime.date.fromisoformat(_arrays.date(date)),
+                amount=float(amount),
+            )
+            for date, amount in items
+        ],
     )
 
 

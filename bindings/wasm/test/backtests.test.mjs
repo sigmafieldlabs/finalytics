@@ -297,3 +297,20 @@ test("the downside methods report their optimum", () => {
   assert.equal(figure.confidence, 0.9);
   assert.equal(figure.value, cdar.results.solution.objective_value);
 });
+
+test("a backtest follows money in and out", () => {
+  const result = assets.backtest({
+    weights: { "US Equity": 0.6, Bonds: 0.4 },
+    start_value: 10000,
+    flows: [
+      { date: "2020-01-31", amount: 1000 },
+      { date: "2021-06-15", amount: -500 },
+    ],
+  });
+  const money = result.report.strategy.tested.money;
+  assert.equal(money.start_value, 10000);
+  assert.equal(money.paid_in, 1000);
+  assert.equal(money.taken_out, 500);
+  assert.equal(money.flows, 2);
+  assert.ok(`${result}`.includes("Money in and out"));
+});

@@ -9,6 +9,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Backtests and comparisons can follow money as well as returns: `start_value` and `flows`
+  (`.start_value(...)` and `.flow(date, amount)` in Rust) start each run with a value and pay
+  money in or take it out on dates. The comparison and backtest reports then show each run's
+  money paid in and taken out, its ending value and its money-weighted return, as text, on the
+  page and in a `money` table.
 - A `parallel` feature, on by default in the `finalytics` crate and in the native Python package,
   runs independent work on several threads with `rayon`: the strategies of a comparison or
   backtest, the walk-forward fits (the first window is fitted first; then the refit dates are

@@ -383,6 +383,10 @@ export interface BacktestContext {
   risk_free_rate: number;
   /** The date the first period of the data starts from, when it is known. */
   origin?: Date | null;
+  /** The value each run starts with, when the backtest follows money. */
+  start_value?: number | null;
+  /** Money paid in or taken out on dates, when the backtest follows money. */
+  flows?: CashFlow[];
 }
 
 /** What a backtest tests and how. */
@@ -397,6 +401,16 @@ export interface BacktestOptions {
   trading_cost_bps?: number;
   /** What the strategies are compared with, if anything. */
   benchmark?: Benchmark | null;
+  /**
+   * The value each run starts with, to follow money as well as returns: the reports then
+   * give each run's ending value and money-weighted return. Zero, with flows, if absent.
+   */
+  start_value?: number | null;
+  /**
+   * Money paid in (positive) or taken out (negative) on dates, at the end of the period each
+   * falls in, after its return.
+   */
+  flows?: CashFlow[];
 }
 
 /** One allocation, tested against its benchmark: the backtest report. */
@@ -569,6 +583,14 @@ export interface CashBalance {
   currency: Currency;
   /** The balance, negative if overdrawn. */
   amount: Decimal;
+}
+
+/** Money paid into a backtest's runs (a positive amount) or taken out (a negative one) on a date. */
+export interface CashFlow {
+  /** The date: the money moves at the end of the period it falls in. */
+  date: Date;
+  /** The amount: positive paid in, negative taken out. */
+  amount: number;
 }
 
 /** A cash balance valued on a date. */
@@ -1825,6 +1847,25 @@ export type Method = "minimum_variance" | "mean_variance" | "robust_mean_varianc
 export interface Money {
   amount: Decimal;
   currency: Currency;
+}
+
+/** A run followed with money: a value at the start, and money paid in and taken out. */
+export interface MoneyFigures {
+  /** The value on the date the run enters. */
+  start_value: number;
+  /** The money paid in during the run, after the start. */
+  paid_in: number;
+  /** The money taken out during the run; a withdrawal takes no more than the value. */
+  taken_out: number;
+  /** The value at the end of the last period. */
+  ending_value: number;
+  /**
+   * The money-weighted return: the internal rate of return of the start value, the flows and
+   * the ending value, a year (actual/365); absent when there is none.
+   */
+  money_weighted_return?: number | null;
+  /** The number of flows that fell in the run. */
+  flows: number;
 }
 
 /** External flows and income in one calendar month, in the base currency. */
@@ -3166,6 +3207,8 @@ export interface RunReport {
   years: CalendarReturn[];
   /** The return in each month, a row per year and a column per month. */
   months: Grid;
+  /** The run followed with money, when the backtest follows it. */
+  money?: MoneyFigures | null;
 }
 
 /** What a scenario does: shocks, or a historical period replayed. */

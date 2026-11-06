@@ -27,6 +27,39 @@ fn weight(v: f64) -> String {
     crate::text::weight_pct(v, 0)
 }
 
+/// The runs followed with money, a row each: (name, figures).
+fn money(page: &mut Page, c: &BacktestContext, rows: &[(String, &crate::MoneyFigures)]) {
+    if rows.is_empty() {
+        return;
+    }
+    page.section("Money in and out");
+    let amount = |x: f64| crate::text::money(x);
+    let table: Vec<Vec<String>> = rows
+        .iter()
+        .map(|(name, m)| {
+            vec![
+                name.clone(),
+                amount(m.start_value),
+                amount(m.paid_in),
+                amount(m.taken_out),
+                amount(m.ending_value),
+                m.money_weighted_return
+                    .map_or_else(|| "–".to_owned(), percent),
+            ]
+        })
+        .collect();
+    page.table(
+        &["", "Start", "Paid in", "Taken out", "Ending", "MWR"],
+        &table,
+        None,
+    );
+    page.blank();
+    page.note(&format!(
+        "{} MWR: money-weighted return.",
+        crate::backtest_html::money_note(c)
+    ));
+}
+
 /// The heading of a report: its kind and the periods scored, its title, and how it was run.
 fn header(page: &mut Page, kind: &str, title: Option<&str>, lines: &[String], c: &BacktestContext) {
     page.rule('━');
@@ -304,6 +337,18 @@ impl ComparisonReport {
             note.push_str(&line);
         }
         page.note(&note);
+        if c.follows_money() {
+            let mut rows: Vec<(String, &crate::MoneyFigures)> = strategies
+                .iter()
+                .filter_map(|s| s.tested.money.as_ref().map(|m| (s.name.clone(), m)))
+                .collect();
+            if let Some(b) = &self.benchmark
+                && let Some(m) = &b.tested.money
+            {
+                rows.push((b.name.clone(), m));
+            }
+            money(&mut page, c, &rows);
+        }
         // In sample against out of sample, for the methods fitted to returns.
         if strategies.iter().any(|s| s.fitted)
             && strategies
@@ -551,6 +596,18 @@ impl BacktestReport {
         }
         let head: Vec<&str> = heads.iter().map(String::as_str).collect();
         page.table(&head, &rows, None);
+        if c.follows_money() {
+            let mut rows: Vec<(String, &crate::MoneyFigures)> = Vec::new();
+            if let Some(m) = &s.tested.money {
+                rows.push((s.name.clone(), m));
+            }
+            if let Some(b) = &self.benchmark
+                && let Some(m) = &b.tested.money
+            {
+                rows.push((b.name.clone(), m));
+            }
+            money(&mut page, c, &rows);
+        }
         let o = &s.tested;
         page.section(&qualified("Trading", tested));
         if o.rebalances == 0 {

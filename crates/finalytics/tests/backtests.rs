@@ -295,3 +295,29 @@ fn compare(label: &str, run: &finalytics::backtest::Run, want: &serde_json::Valu
         }
     }
 }
+
+#[test]
+fn a_backtest_follows_money_in_and_out() {
+    let assets = Assets::builder()
+        .prices(datasets::asset_class_prices())
+        .risk_free_asset("T-Bills")
+        .build()
+        .unwrap();
+    let result = assets
+        .backtest([("US Equity", 0.6), ("Bonds", 0.4)])
+        .start_value(10_000.0)
+        .flow("2020-01-31", 1_000.0)
+        .flow("2021-06-15", -500.0)
+        .build()
+        .unwrap();
+    let money = result.report.strategy.tested.money.unwrap();
+    assert_eq!(money.flows, 2);
+    assert_eq!((money.paid_in, money.taken_out), (1_000.0, 500.0));
+    assert!(result.to_string().contains("Money in and out"));
+    let err = assets
+        .backtest([("US Equity", 1.0)])
+        .flow("soon", 1.0)
+        .build()
+        .unwrap_err();
+    assert!(err.to_string().contains("flows[0].date"), "{err}");
+}

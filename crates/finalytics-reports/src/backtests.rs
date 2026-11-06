@@ -29,6 +29,36 @@ const ROLLING_YEARS: f64 = 3.0;
 /// The most assets the weights held are shown for; the rest are shown together.
 const HELD: usize = 7;
 
+/// Money paid into a backtest's runs (a positive amount) or taken out (a negative one) on a date.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+pub struct CashFlow {
+    /// The date: the money moves at the end of the period it falls in.
+    pub date: Date,
+    /// The amount: positive paid in, negative taken out.
+    pub amount: f64,
+}
+
+/// A run followed with money: a value at the start, and money paid in and taken out.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct MoneyFigures {
+    /// The value on the date the run enters.
+    pub start_value: f64,
+    /// The money paid in during the run, after the start.
+    pub paid_in: f64,
+    /// The money taken out during the run; a withdrawal takes no more than the value.
+    pub taken_out: f64,
+    /// The value at the end of the last period.
+    pub ending_value: f64,
+    /// The money-weighted return: the internal rate of return of the start value, the flows and
+    /// the ending value, a year (actual/365); absent when there is none.
+    pub money_weighted_return: Option<f64>,
+    /// The number of flows that fell in the run.
+    pub flows: usize,
+}
+
 /// How a backtest was set up, beside what [`BacktestResults`] records: what the reports need to
 /// describe it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -49,6 +79,12 @@ pub struct BacktestSetup {
     /// first returns are measured from.
     #[serde(default)]
     pub origin: Option<Date>,
+    /// The value each run starts with, when the backtest follows money.
+    #[serde(default)]
+    pub start_value: Option<f64>,
+    /// Money paid in or taken out on dates, when the backtest follows money.
+    #[serde(default)]
+    pub flows: Vec<CashFlow>,
 }
 
 impl BacktestSetup {
@@ -65,7 +101,18 @@ impl BacktestSetup {
             mean_returns: MeanMethod::Historical,
             limits,
             origin: None,
+            start_value: None,
+            flows: Vec::new(),
         }
+    }
+
+    /// The same setup following money: each run starts with `start_value` (zero if absent) and
+    /// pays in or takes out `flows`.
+    #[must_use]
+    pub fn with_money(mut self, start_value: Option<f64>, flows: Vec<CashFlow>) -> BacktestSetup {
+        self.start_value = start_value;
+        self.flows = flows;
+        self
     }
 
     /// The same setup with the date the first period starts from.
@@ -126,6 +173,19 @@ pub struct BacktestContext {
     /// The date the first period of the data starts from, when it is known.
     #[serde(default)]
     pub origin: Option<Date>,
+    /// The value each run starts with, when the backtest follows money.
+    #[serde(default)]
+    pub start_value: Option<f64>,
+    /// Money paid in or taken out on dates, when the backtest follows money.
+    #[serde(default)]
+    pub flows: Vec<CashFlow>,
+}
+
+impl BacktestContext {
+    /// Whether the backtest follows money: a value at the start, or flows.
+    pub fn follows_money(&self) -> bool {
+        self.start_value.is_some() || !self.flows.is_empty()
+    }
 }
 
 /// One run of a strategy, summarised: its statistics, trading and the series its charts draw.
@@ -166,6 +226,66 @@ pub struct RunReport {
     pub years: Vec<CalendarReturn>,
     /// The return in each month, a row per year and a column per month.
     pub months: Grid,
+    /// The run followed with money, when the backtest follows it.
+    #[serde(default)]
+    pub money: Option<MoneyFigures>,
+}
+
+/// A run followed with money: `start_value` on the date it `entered`, and each flow dated after
+/// that, up to the last period's end, paid at the end of the period it falls in, after that
+/// period's return.
+pub(crate) fn money_figures(
+    start_value: f64,
+    flows: &[CashFlow],
+    entered: Date,
+    dates: &[Date],
+    returns: &[f64],
+) -> MoneyFigures {
+    let years = |d: Date| f64::from(entered.days_until(d)) / 365.0;
+    let mut value = start_value;
+    let mut paid_in = 0.0;
+    let mut taken_out = 0.0;
+    let mut counted = 0;
+    let mut cash_flows = vec![(0.0, -start_value)];
+    let mut before = entered;
+    for (d, r) in dates.iter().zip(returns) {
+        value *= 1.0 + r;
+        let due: Vec<f64> = flows
+            .iter()
+            .filter(|f| f.date > before && f.date <= *d)
+            .map(|f| f.amount)
+            .collect();
+        before = *d;
+        if due.is_empty() {
+            continue;
+        }
+        counted += due.len();
+        let net: f64 = due.iter().sum();
+        // A withdrawal takes no more than the value.
+        let moved = net.max(-value);
+        value += moved;
+        if moved > 0.0 {
+            paid_in += moved;
+        } else {
+            taken_out -= moved;
+        }
+        if moved != 0.0 {
+            cash_flows.push((years(*d), -moved));
+        }
+    }
+    let end = dates.last().copied().unwrap_or(entered);
+    cash_flows.push((years(end), value));
+    MoneyFigures {
+        start_value,
+        paid_in,
+        taken_out,
+        ending_value: value,
+        // Without money in, there is no rate of return on it.
+        money_weighted_return: (start_value + paid_in > 0.0)
+            .then(|| finalytics_perf::internal_rate_of_return(&cash_flows))
+            .flatten(),
+        flows: counted,
+    }
 }
 
 /// The return over one calendar year, or the part of it in the run.
@@ -425,6 +545,8 @@ impl<'a> Inputs<'a> {
             window,
             risk_free_rate: annual(&backtest.cash[first_test..last_test], ppy),
             origin: setup.origin,
+            start_value: setup.start_value,
+            flows: setup.flows.clone(),
         };
         Ok(Inputs {
             backtest,
@@ -583,7 +705,24 @@ impl<'a> Inputs<'a> {
         } else {
             None
         };
+        let money = self.context.follows_money().then(|| {
+            // Without the date of the prices before the first period, the run enters a period
+            // before its first period ends.
+            let entered = entry.unwrap_or_else(|| {
+                start
+                    .add_days(-(365.25 / ppy).round() as i32)
+                    .unwrap_or(start)
+            });
+            money_figures(
+                self.context.start_value.unwrap_or(0.0),
+                &self.context.flows,
+                entered,
+                &run.dates,
+                &run.returns,
+            )
+        });
         Ok(RunReport {
+            money,
             start,
             end,
             statistics: stats,
@@ -823,6 +962,61 @@ fn digest(backtest: &BacktestResults, returns: &ReturnsTable) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn money_follows_the_returns_and_the_flows() {
+        let d = |s: &str| s.parse::<Date>().unwrap();
+        let dates = [
+            d("2020-01-31"),
+            d("2020-02-29"),
+            d("2020-03-31"),
+            d("2020-04-30"),
+        ];
+        let returns = [0.10, -0.05, 0.02, 0.0];
+        let flows = [
+            // Before the run: left out.
+            CashFlow {
+                date: d("2019-12-31"),
+                amount: 500.0,
+            },
+            // In February: after February's return.
+            CashFlow {
+                date: d("2020-02-10"),
+                amount: 50.0,
+            },
+            CashFlow {
+                date: d("2020-02-29"),
+                amount: 25.0,
+            },
+            // A withdrawal larger than the value takes the value.
+            CashFlow {
+                date: d("2020-04-15"),
+                amount: -1_000.0,
+            },
+            // After the run: left out.
+            CashFlow {
+                date: d("2020-05-31"),
+                amount: 10.0,
+            },
+        ];
+        let m = money_figures(100.0, &flows, d("2019-12-31"), &dates, &returns);
+        let feb = 100.0 * 1.10 * 0.95 + 75.0;
+        let apr = feb * 1.02;
+        assert_eq!(m.flows, 3);
+        assert!((m.paid_in - 75.0).abs() < 1e-12);
+        assert!((m.taken_out - apr).abs() < 1e-12);
+        assert_eq!(m.ending_value, 0.0);
+        // The rate at which the money in is worth the money out.
+        let r = m.money_weighted_return.unwrap();
+        let years = |x: &str| f64::from(d("2019-12-31").days_until(d(x))) / 365.0;
+        let npv = -100.0 - 75.0 / (1.0 + r).powf(years("2020-02-29"))
+            + apr / (1.0 + r).powf(years("2020-04-30"));
+        assert!(npv.abs() < 1e-9, "{npv}");
+        // Nothing in: no rate.
+        let none = money_figures(0.0, &[], d("2019-12-31"), &dates, &returns);
+        assert_eq!(none.money_weighted_return, None);
+        assert_eq!(none.ending_value, 0.0);
+    }
 
     fn d(text: &str) -> Date {
         text.parse().unwrap_or_else(|e| panic!("{e}"))

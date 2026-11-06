@@ -203,6 +203,47 @@ fn read_report<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> Resu
     serde_json::from_value(value).map_err(|e| invalid("report", e.to_string()))
 }
 
+/// One row per run followed with money: `(strategy, run, report)`; none without money.
+fn money_table(runs: &[(&str, &str, &RunReport)]) -> Option<ReportTable> {
+    let rows: Vec<Vec<Cell>> = runs
+        .iter()
+        .filter_map(|(strategy, run, r)| {
+            let m = r.money.as_ref()?;
+            Some(vec![
+                Cell::Text((*strategy).to_owned()),
+                Cell::Text((*run).to_owned()),
+                Cell::Number(m.start_value),
+                Cell::Number(m.paid_in),
+                Cell::Number(m.taken_out),
+                Cell::Number(m.ending_value),
+                m.money_weighted_return.map_or(Cell::Missing, Cell::Number),
+                Cell::Number(m.flows as f64),
+            ])
+        })
+        .collect();
+    (!rows.is_empty()).then(|| {
+        table(
+            "money",
+            "Money in and out",
+            vec![
+                col("strategy", "Strategy", ColumnKind::Text),
+                col("run", "Run", ColumnKind::Text),
+                col("start_value", "Start value", ColumnKind::Number),
+                col("paid_in", "Paid in", ColumnKind::Number),
+                col("taken_out", "Taken out", ColumnKind::Number),
+                col("ending_value", "Ending value", ColumnKind::Number),
+                col(
+                    "money_weighted_return",
+                    "Money-weighted return",
+                    ColumnKind::Fraction,
+                ),
+                col("flows", "Flows", ColumnKind::Integer),
+            ],
+            rows,
+        )
+    })
+}
+
 /// One row of statistics per run: `(strategy, run, report)`.
 fn statistics_table(runs: &[(&str, &str, &RunReport)]) -> ReportTable {
     table(
@@ -434,8 +475,8 @@ impl RebalanceReport {
 }
 
 impl ComparisonReport {
-    /// The report's tables: statistics of every run, calendar-year returns and the weights at
-    /// each refit.
+    /// The report's tables: statistics of every run, the money in and out when the backtest
+    /// follows it, calendar-year returns and the weights at each refit.
     pub fn tables(&self) -> Vec<ReportTable> {
         let fixed = crate::backtest_html::all_fixed(&self.strategies);
         let tested = crate::backtest_html::tested_label(&self.context, fixed)
@@ -446,17 +487,17 @@ impl ComparisonReport {
             all.push(b);
         }
         let strategies: Vec<&StrategyReport> = self.strategies.iter().collect();
-        vec![
-            statistics_table(&runs(&all, &tested)),
-            years_table(&all),
-            weights_table(&strategies),
-        ]
+        let runs = runs(&all, &tested);
+        let mut out = vec![statistics_table(&runs)];
+        out.extend(money_table(&runs));
+        out.extend([years_table(&all), weights_table(&strategies)]);
+        out
     }
 }
 
 impl BacktestReport {
-    /// The report's tables: statistics in and out of sample, calendar-year and monthly returns,
-    /// and the weights at each refit.
+    /// The report's tables: statistics in and out of sample, the money in and out when the
+    /// backtest follows it, calendar-year and monthly returns, and the weights at each refit.
     pub fn tables(&self) -> Vec<ReportTable> {
         let tested = crate::backtest_html::tested_label(&self.context, !self.strategy.fitted)
             .unwrap_or("Tested")
@@ -465,12 +506,15 @@ impl BacktestReport {
         if let Some(b) = &self.benchmark {
             all.push(b);
         }
-        vec![
-            statistics_table(&runs(&all, &tested)),
+        let runs = runs(&all, &tested);
+        let mut out = vec![statistics_table(&runs)];
+        out.extend(money_table(&runs));
+        out.extend([
             years_table(&all),
             grid_table("monthly_returns", "Year", &self.strategy.tested.months),
             weights_table(&[&self.strategy]),
-        ]
+        ]);
+        out
     }
 }
 
