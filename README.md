@@ -74,10 +74,7 @@ fn main() -> Result<()> {
 }
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/comparison.html"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/comparison-dark.png">
-  <img src="https://sigmafieldlabs.github.io/finalytics/images/comparison-light.png" alt="The comparison report: each method's return, volatility, Sharpe ratio, drawdown and turnover out of sample" width="760">
-</picture></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/comparison.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/comparison-light.png" alt="The comparison report: each method's return, volatility, Sharpe ratio, drawdown and turnover out of sample" width="760"></a>
 
 Every result has the same shape: `result.report` is the report, which
 `println!("{result}")` prints as text and `result.show()` opens as a page, and
@@ -99,10 +96,7 @@ let result = assets
 result.show()?;
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/backtest.html"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/backtest-dark.png">
-  <img src="https://sigmafieldlabs.github.io/finalytics/images/backtest-light.png" alt="The backtest report: the allocation, its statistics in and out of sample against the benchmark, and its growth" width="760">
-</picture></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/backtest.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/backtest-light.png" alt="The backtest report: the allocation, its statistics in and out of sample against the benchmark, and its growth" width="760"></a>
 
 To see the weights a method chooses today, where their risk comes from and
 where they sit on the efficient frontier:
@@ -117,10 +111,7 @@ let result = assets
 result.show()?;
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/optimisation-dark.png">
-  <img src="https://sigmafieldlabs.github.io/finalytics/images/optimisation-light.png" alt="The optimisation report: the weights, what they are expected to deliver, and each asset's share of the risk" width="760">
-</picture></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/optimisation-light.png" alt="The optimisation report: the weights, what they are expected to deliver, and each asset's share of the risk" width="760"></a>
 
 ## Portfolio analytics
 
@@ -153,10 +144,7 @@ fn main() -> Result<()> {
 }
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/portfolio-dark.png">
-  <img src="https://sigmafieldlabs.github.io/finalytics/images/portfolio-light.png" alt="The portfolio report: value, returns, volatility, drawdown and value at risk, and growth against the benchmark" width="760">
-</picture></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/portfolio-light.png" alt="The portfolio report: value, returns, volatility, drawdown and value at risk, and growth against the benchmark" width="760"></a>
 
 The files are the portfolio dataset: a household's brokerage and retirement
 accounts, holding five funds in dollars and euros for three years.
@@ -214,10 +202,7 @@ let result = portfolio
 result.show()?;
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/rebalance-dark.png">
-  <img src="https://sigmafieldlabs.github.io/finalytics/images/rebalance-light.png" alt="The rebalance report: the trades, how each holding's weight moves, and what the trades change and cost" width="760">
-</picture></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/rebalance-light.png" alt="The rebalance report: the trades, how each holding's weight moves, and what the trades change and cost" width="760"></a>
 
 Sales in the brokerage account take the lots that cost the least tax; the
 retirement account is not taxable (`taxable` is false in `accounts.csv`), so its
@@ -263,10 +248,7 @@ fn main() -> Result<()> {
 }
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/planning.html"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/planning-dark.png">
-  <img src="https://sigmafieldlabs.github.io/finalytics/images/planning-light.png" alt="The planning report: the plan, its chance of meeting the goal, and the money over time in simulated markets" width="760">
-</picture></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/planning.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/planning-light.png" alt="The planning report: the plan, its chance of meeting the goal, and the money over time in simulated markets" width="760"></a>
 
 The report gives the chance of meeting the goal against the chance wanted, how
 the money could grow, and the smallest change that would reach that chance:
