@@ -18,6 +18,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   thread pool is the caller's: `rayon`'s global pool by default, sized by `RAYON_NUM_THREADS`.
   The WebAssembly package and Pyodide leave the feature out and run on one thread.
   `finalytics_core::parallel::map` is the helper.
+- The Python package releases the GIL during the engine's longer calls (building assets and
+  portfolios, optimising, comparing, backtesting, reports, value and holding series, performance,
+  rebalancing, scenarios, rolling statistics, statistical factor models, and solving, resampling
+  and tracing the frontier of `fl.opt.Problem`), so other Python threads run meanwhile.
 
 ### Changed
 

@@ -78,7 +78,8 @@ were measured on one thread of another machine. On more cores the same work spre
 The thread pool is the caller's. By default it is `rayon`'s global pool, which uses every core
 unless `RAYON_NUM_THREADS` says otherwise; in Rust, run the engine inside a pool of your own with
 `ThreadPool::install`. Without the feature, as in the WebAssembly package and Pyodide, the same
-work runs in order on the calling thread.
+work runs in order on the calling thread. The Python package releases the GIL during the engine's
+longer calls, so other Python threads run meanwhile.
 
 ## Machine
 

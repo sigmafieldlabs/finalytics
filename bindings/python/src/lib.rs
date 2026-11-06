@@ -47,6 +47,11 @@ fn engine(error: Error) -> PyErr {
     EngineError::new_err((error.to_string(), issues))
 }
 
+/// Runs `work` with the GIL released, so that other Python threads run while the engine does.
+fn released<T: Send>(py: Python<'_>, work: impl FnOnce() -> T + Send) -> T {
+    py.detach(work)
+}
+
 fn invalid(path: &str, message: impl Into<String>) -> PyErr {
     let mut report = ValidationReport::new();
     report.error(path, message);
@@ -266,16 +271,19 @@ impl From<Portfolio> for NativePortfolio {
 #[pymethods]
 impl NativePortfolio {
     #[new]
-    fn new(data: &str, market: &Market) -> PyResult<NativePortfolio> {
+    fn new(py: Python<'_>, data: &str, market: &Market) -> PyResult<NativePortfolio> {
         let data: PortfolioData = from_json(data, "portfolio")?;
-        Ok(Portfolio::new(data, market.inner.clone())
+        let market = market.inner.clone();
+        Ok(released(py, || Portfolio::new(data, market))
             .map_err(engine)?
             .into())
     }
 
     #[staticmethod]
     #[pyo3(signature = (transactions, delimiter, instruments=None, accounts=None, prices=None, fx=None, base_currency=None))]
+    #[allow(clippy::too_many_arguments)]
     fn from_csv(
+        py: Python<'_>,
         transactions: &str,
         delimiter: &str,
         instruments: Option<&str>,
@@ -305,12 +313,16 @@ impl NativePortfolio {
         if let Some(code) = base_currency {
             files = files.base_currency(code);
         }
-        Ok(Portfolio::from_csv(&files).map_err(engine)?.into())
+        Ok(released(py, || Portfolio::from_csv(&files))
+            .map_err(engine)?
+            .into())
     }
 
     #[staticmethod]
-    fn from_document(text: &str) -> PyResult<NativePortfolio> {
-        Ok(Portfolio::from_json(text).map_err(engine)?.into())
+    fn from_document(py: Python<'_>, text: &str) -> PyResult<NativePortfolio> {
+        Ok(released(py, || Portfolio::from_json(text))
+            .map_err(engine)?
+            .into())
     }
 
     #[staticmethod]
@@ -377,16 +389,18 @@ impl NativePortfolio {
         })
     }
 
-    fn report_all(&self, options: &str) -> PyResult<String> {
+    fn report_all(&self, py: Python<'_>, options: &str) -> PyResult<String> {
         let options: finalytics::reports::ReportOptions = from_json(options, "options")?;
-        to_json(&self.portfolio.report_with(&options).map_err(engine)?)
+        released(py, || {
+            to_json(&self.portfolio.report_with(&options).map_err(engine)?)
+        })
     }
 
     fn source(&self) -> PyResult<String> {
         to_json(self.report_source())
     }
 
-    fn report(&self, kind: &str, options: &str) -> PyResult<String> {
+    fn report(&self, py: Python<'_>, kind: &str, options: &str) -> PyResult<String> {
         use finalytics::reports;
         let options: reports::ReportOptions = from_json(options, "options")?;
         let (books, market, source) = (
@@ -394,7 +408,7 @@ impl NativePortfolio {
             self.portfolio.market(),
             self.report_source(),
         );
-        match kind {
+        released(py, || match kind {
             "holdings" => {
                 to_json(&reports::holdings_report(books, market, source, &options).map_err(engine)?)
             }
@@ -414,7 +428,7 @@ impl NativePortfolio {
                 &reports::scenarios_report(books, market, source, &options).map_err(engine)?,
             ),
             other => Err(invalid("kind", format!("{other:?} is not a report"))),
-        }
+        })
     }
 
     fn base_currency(&self) -> String {
@@ -445,43 +459,55 @@ impl NativePortfolio {
         )
     }
 
-    fn value_series(&self, dates_buffer: &[u8]) -> PyResult<String> {
-        let series = self
-            .portfolio
-            .books()
-            .value_series(&dates(dates_buffer, "dates")?, self.portfolio.market())
-            .map_err(engine)?;
-        to_json(&series)
+    fn value_series(&self, py: Python<'_>, dates_buffer: &[u8]) -> PyResult<String> {
+        let dates = dates(dates_buffer, "dates")?;
+        released(py, || {
+            let series = self
+                .portfolio
+                .books()
+                .value_series(&dates, self.portfolio.market())
+                .map_err(engine)?;
+            to_json(&series)
+        })
     }
 
-    fn holding_series(&self, dates_buffer: &[u8]) -> PyResult<String> {
-        let series = self
-            .portfolio
-            .books()
-            .holding_series(&dates(dates_buffer, "dates")?, self.portfolio.market())
-            .map_err(engine)?;
-        to_json(&series)
+    fn holding_series(&self, py: Python<'_>, dates_buffer: &[u8]) -> PyResult<String> {
+        let dates = dates(dates_buffer, "dates")?;
+        released(py, || {
+            let series = self
+                .portfolio
+                .books()
+                .holding_series(&dates, self.portfolio.market())
+                .map_err(engine)?;
+            to_json(&series)
+        })
     }
 
-    fn account_series(&self, dates_buffer: &[u8]) -> PyResult<String> {
-        let series = self
-            .portfolio
-            .books()
-            .account_series(&dates(dates_buffer, "dates")?, self.portfolio.market())
-            .map_err(engine)?;
-        to_json(&series)
+    fn account_series(&self, py: Python<'_>, dates_buffer: &[u8]) -> PyResult<String> {
+        let dates = dates(dates_buffer, "dates")?;
+        released(py, || {
+            let series = self
+                .portfolio
+                .books()
+                .account_series(&dates, self.portfolio.market())
+                .map_err(engine)?;
+            to_json(&series)
+        })
     }
 
-    fn household(&self, dates_buffer: &[u8], options: &str) -> PyResult<String> {
+    fn household(&self, py: Python<'_>, dates_buffer: &[u8], options: &str) -> PyResult<String> {
         let options: finalytics::performance::HouseholdOptions = from_json(options, "options")?;
-        let found = finalytics::performance::household(
-            self.portfolio.books(),
-            self.portfolio.market(),
-            &dates(dates_buffer, "dates")?,
-            &options,
-        )
-        .map_err(engine)?;
-        to_json(&found)
+        let dates = dates(dates_buffer, "dates")?;
+        released(py, || {
+            let found = finalytics::performance::household(
+                self.portfolio.books(),
+                self.portfolio.market(),
+                &dates,
+                &options,
+            )
+            .map_err(engine)?;
+            to_json(&found)
+        })
     }
 
     fn realised_gains(&self) -> PyResult<String> {
@@ -493,24 +519,15 @@ impl NativePortfolio {
     }
 
     /// Performance on `dates`, with the holding-level series for contribution.
-    fn performance(&self, dates_buffer: &[u8], timing: &str) -> PyResult<NativePerformance> {
+    fn performance(
+        &self,
+        py: Python<'_>,
+        dates_buffer: &[u8],
+        timing: &str,
+    ) -> PyResult<NativePerformance> {
         let dates = dates(dates_buffer, "dates")?;
         let timing: FlowTiming = named(timing, "timing")?;
-        let values = self
-            .portfolio
-            .books()
-            .value_series(&dates, self.portfolio.market())
-            .map_err(engine)?;
-        let holdings = self
-            .portfolio
-            .books()
-            .holding_series(&dates, self.portfolio.market())
-            .map_err(engine)?;
-        Ok(NativePerformance {
-            inner: Performance::from_values(&values, timing).map_err(engine)?,
-            holdings: Some(holdings),
-            warnings: values.warnings,
-        })
+        released(py, || self.performance_on(&dates, timing))
     }
 
     fn holding_weights(&self, on: &str) -> PyResult<String> {
@@ -555,61 +572,110 @@ impl NativePortfolio {
         to_json(&sale)
     }
 
-    fn rebalance(&self, on: &str, account: &str, targets: &str, options: &str) -> PyResult<String> {
+    fn rebalance(
+        &self,
+        py: Python<'_>,
+        on: &str,
+        account: &str,
+        targets: &str,
+        options: &str,
+    ) -> PyResult<String> {
         let account = finalytics::AccountId::new(account)
             .ok_or_else(|| invalid("account", format!("{account:?} is not a valid identifier")))?;
         let targets: BTreeMap<HoldingKey, f64> = from_json(targets, "targets")?;
         let targets: Vec<(HoldingKey, f64)> = targets.into_iter().collect();
         let options: RebalanceOptions = from_json(options, "options")?;
-        let plan = finalytics::opt::rebalance(
-            self.portfolio.books(),
-            self.portfolio.market(),
-            date(on)?,
-            &account,
-            &targets,
-            &options,
-        )
-        .map_err(engine)?;
-        to_json(&plan)
+        let on = date(on)?;
+        released(py, || {
+            let plan = finalytics::opt::rebalance(
+                self.portfolio.books(),
+                self.portfolio.market(),
+                on,
+                &account,
+                &targets,
+                &options,
+            )
+            .map_err(engine)?;
+            to_json(&plan)
+        })
     }
 
-    fn rebalance_accounts(&self, targets: &str, choices: &str) -> PyResult<String> {
+    fn rebalance_accounts(&self, py: Python<'_>, targets: &str, choices: &str) -> PyResult<String> {
         let targets = finalytics::targets_from_json(targets).map_err(engine)?;
         let choices: finalytics::RebalanceChoices = from_json(choices, "choices")?;
-        let builder = choices.apply(self.portfolio.rebalance(targets));
-        to_json(&builder.build().map_err(engine)?)
+        released(py, || {
+            let builder = choices.apply(self.portfolio.rebalance(targets));
+            to_json(&builder.build().map_err(engine)?)
+        })
     }
 
-    fn shock_scenario(&self, on: &str, shocks: &str, options: &str) -> PyResult<String> {
+    fn shock_scenario(
+        &self,
+        py: Python<'_>,
+        on: &str,
+        shocks: &str,
+        options: &str,
+    ) -> PyResult<String> {
         let shocks: risk::Shocks = from_json(shocks, "shocks")?;
         let options: risk::ScenarioOptions = from_json(options, "options")?;
-        let result = risk::shock_scenario(
-            self.portfolio.books(),
-            self.portfolio.market(),
-            date(on)?,
-            &shocks,
-            &options,
-        )
-        .map_err(engine)?;
-        to_json(&result)
+        let on = date(on)?;
+        released(py, || {
+            let result = risk::shock_scenario(
+                self.portfolio.books(),
+                self.portfolio.market(),
+                on,
+                &shocks,
+                &options,
+            )
+            .map_err(engine)?;
+            to_json(&result)
+        })
     }
 
-    fn historical_scenario(&self, on: &str, window: &str, options: &str) -> PyResult<String> {
+    fn historical_scenario(
+        &self,
+        py: Python<'_>,
+        on: &str,
+        window: &str,
+        options: &str,
+    ) -> PyResult<String> {
         let window: risk::HistoricalWindow = from_json(window, "window")?;
         let options: risk::ScenarioOptions = from_json(options, "options")?;
-        let result = risk::historical_scenario(
-            self.portfolio.books(),
-            self.portfolio.market(),
-            date(on)?,
-            &window,
-            &options,
-        )
-        .map_err(engine)?;
-        to_json(&result)
+        let on = date(on)?;
+        released(py, || {
+            let result = risk::historical_scenario(
+                self.portfolio.books(),
+                self.portfolio.market(),
+                on,
+                &window,
+                &options,
+            )
+            .map_err(engine)?;
+            to_json(&result)
+        })
     }
 }
 
 impl NativePortfolio {
+    /// Performance on `dates`, with the holding-level series for contribution.
+    fn performance_on(&self, dates: &[Date], timing: FlowTiming) -> PyResult<NativePerformance> {
+        let values = self
+            .portfolio
+            .books()
+            .value_series(dates, self.portfolio.market())
+            .map_err(engine)?;
+        let holdings = self
+            .portfolio
+            .books()
+            .holding_series(dates, self.portfolio.market())
+            .map_err(engine)?;
+        Ok(NativePerformance {
+            inner: Performance::from_values(&values, timing).map_err(engine)?,
+            holdings: Some(holdings),
+            warnings: values.warnings,
+        })
+    }
+
     fn report_source(&self) -> &finalytics::reports::Source {
         self.source.get_or_init(|| {
             finalytics::reports::Source::of(self.portfolio.data(), self.portfolio.market())
@@ -627,38 +693,42 @@ struct NativeAssets {
 #[pymethods]
 impl NativeAssets {
     #[staticmethod]
-    fn from_prices(table: &str) -> PyResult<NativeAssets> {
-        let table: PriceTable = from_json(table, "prices")?;
-        Ok(NativeAssets {
-            inner: Assets::from_prices(&table).map_err(engine)?,
-        })
+    fn from_prices(py: Python<'_>, table: &str) -> PyResult<NativeAssets> {
+        let inner = released(py, || {
+            let table: PriceTable = from_json(table, "prices")?;
+            Assets::from_prices(&table).map_err(engine)
+        })?;
+        Ok(NativeAssets { inner })
     }
 
     #[staticmethod]
     fn from_returns(
+        py: Python<'_>,
         dates_buffer: &[u8],
         labels: &str,
         columns: Vec<Vec<f64>>,
     ) -> PyResult<NativeAssets> {
         let labels: Vec<String> = from_json(labels, "labels")?;
-        let table = ReturnsTable::new(labels, columns).map_err(engine)?;
-        Ok(NativeAssets {
-            inner: Assets::from_returns(dates(dates_buffer, "dates")?, table).map_err(engine)?,
-        })
+        let dates = dates(dates_buffer, "dates")?;
+        let inner = released(py, || {
+            let table = ReturnsTable::new(labels, columns).map_err(engine)?;
+            Assets::from_returns(dates, table).map_err(engine)
+        })?;
+        Ok(NativeAssets { inner })
     }
 
     #[staticmethod]
-    fn from_csv(text: &str) -> PyResult<NativeAssets> {
+    fn from_csv(py: Python<'_>, text: &str) -> PyResult<NativeAssets> {
         Ok(NativeAssets {
-            inner: Assets::from_csv(text).map_err(engine)?,
+            inner: released(py, || Assets::from_csv(text)).map_err(engine)?,
         })
     }
 
     /// The same assets with `settings` (JSON), every problem with them reported together.
-    fn with_settings(&self, settings: &str) -> PyResult<NativeAssets> {
+    fn with_settings(&self, py: Python<'_>, settings: &str) -> PyResult<NativeAssets> {
         let settings: finalytics::AssetSettings = from_json(settings, "settings")?;
         Ok(NativeAssets {
-            inner: settings.apply(self.inner.clone()).map_err(engine)?,
+            inner: released(py, || settings.apply(self.inner.clone())).map_err(engine)?,
         })
     }
 
@@ -695,8 +765,8 @@ impl NativeAssets {
         to_json(self.inner.warnings())
     }
 
-    fn statistics(&self) -> PyResult<String> {
-        to_json(&self.inner.statistics().map_err(engine)?)
+    fn statistics(&self, py: Python<'_>) -> PyResult<String> {
+        released(py, || to_json(&self.inner.statistics().map_err(engine)?))
     }
 
     fn covariance(&self) -> PyResult<String> {
@@ -711,24 +781,32 @@ impl NativeAssets {
         self.inner.mean_returns()
     }
 
-    fn optimise(&self, options: &str) -> PyResult<String> {
+    fn optimise(&self, py: Python<'_>, options: &str) -> PyResult<String> {
         let options: OptimiseOptions = from_json(options, "options")?;
-        to_json(&self.inner.optimise_with(&options).map_err(engine)?)
+        released(py, || {
+            to_json(&self.inner.optimise_with(&options).map_err(engine)?)
+        })
     }
 
-    fn frontier(&self, points: usize, options: &str) -> PyResult<String> {
+    fn frontier(&self, py: Python<'_>, points: usize, options: &str) -> PyResult<String> {
         let options: OptimiseOptions = from_json(options, "options")?;
-        to_json(&self.inner.frontier(points, &options).map_err(engine)?)
+        released(py, || {
+            to_json(&self.inner.frontier(points, &options).map_err(engine)?)
+        })
     }
 
-    fn compare(&self, options: &str) -> PyResult<String> {
+    fn compare(&self, py: Python<'_>, options: &str) -> PyResult<String> {
         let options: BacktestOptions = from_json(options, "options")?;
-        to_json(&self.inner.compare_with(&options).map_err(engine)?)
+        released(py, || {
+            to_json(&self.inner.compare_with(&options).map_err(engine)?)
+        })
     }
 
-    fn backtest(&self, options: &str) -> PyResult<String> {
+    fn backtest(&self, py: Python<'_>, options: &str) -> PyResult<String> {
         let options: BacktestOptions = from_json(options, "options")?;
-        to_json(&self.inner.backtest_with(&options).map_err(engine)?)
+        released(py, || {
+            to_json(&self.inner.backtest_with(&options).map_err(engine)?)
+        })
     }
 }
 
@@ -983,12 +1061,17 @@ fn tail_risk(returns: &[u8], confidence: f64, method: &str) -> PyResult<String> 
 }
 
 #[pyfunction]
-fn rolling_statistics(returns: &[u8], window: usize, options: &str) -> PyResult<String> {
+fn rolling_statistics(
+    py: Python<'_>,
+    returns: &[u8],
+    window: usize,
+    options: &str,
+) -> PyResult<String> {
     let options: StatisticsOptions = from_json(options, "options")?;
-    to_json(
-        &risk::rolling_statistics(&floats(returns, "returns")?, window, &options)
-            .map_err(engine)?,
-    )
+    let returns = floats(returns, "returns")?;
+    released(py, || {
+        to_json(&risk::rolling_statistics(&returns, window, &options).map_err(engine)?)
+    })
 }
 
 #[pyfunction]
@@ -1081,9 +1164,16 @@ fn regression_model(
 }
 
 #[pyfunction]
-fn statistical_model(columns: &[u8], labels: &str, factors: usize) -> PyResult<String> {
+fn statistical_model(
+    py: Python<'_>,
+    columns: &[u8],
+    labels: &str,
+    factors: usize,
+) -> PyResult<String> {
     let returns = table(columns, labels, "returns")?;
-    to_json(&risk::statistical_model(&returns, factors).map_err(engine)?)
+    released(py, || {
+        to_json(&risk::statistical_model(&returns, factors).map_err(engine)?)
+    })
 }
 
 #[pyfunction]
@@ -1241,18 +1331,20 @@ fn karnosky_singer(periods: &str, linking: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn solve(problem: &str, objective: &str) -> PyResult<String> {
+fn solve(py: Python<'_>, problem: &str, objective: &str) -> PyResult<String> {
     let problem: Problem = from_json(problem, "problem")?;
     let objective: Objective = from_json(objective, "objective")?;
-    to_json(&problem.solve(&objective).map_err(engine)?)
+    released(py, || to_json(&problem.solve(&objective).map_err(engine)?))
 }
 
 #[pyfunction]
-fn resampled(problem: &str, objective: &str, resampling: &str) -> PyResult<String> {
+fn resampled(py: Python<'_>, problem: &str, objective: &str, resampling: &str) -> PyResult<String> {
     let problem: Problem = from_json(problem, "problem")?;
     let objective: Objective = from_json(objective, "objective")?;
     let resampling: Resampling = from_json(resampling, "resampling")?;
-    to_json(&problem.resampled(&objective, &resampling).map_err(engine)?)
+    released(py, || {
+        to_json(&problem.resampled(&objective, &resampling).map_err(engine)?)
+    })
 }
 
 #[pyfunction]
@@ -1276,9 +1368,9 @@ fn implied_risk_aversion(
 }
 
 #[pyfunction]
-fn frontier(problem: &str, points: usize) -> PyResult<String> {
+fn frontier(py: Python<'_>, problem: &str, points: usize) -> PyResult<String> {
     let problem: Problem = from_json(problem, "problem")?;
-    to_json(&problem.frontier(points).map_err(engine)?)
+    released(py, || to_json(&problem.frontier(points).map_err(engine)?))
 }
 
 #[pyfunction]
