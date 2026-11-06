@@ -1,30 +1,23 @@
 //! Datasets for examples, tests and practice.
 //!
-//! - [`sp500`]: daily prices, from January 2005 to October 2026, of 55 S&P 500 companies (the
-//!   five largest in each sector) and of 3-month US Treasury bills; [`sp500_index`], the
-//!   S&P 500 total return index; and [`sp500_companies`], each company's name, sector and
-//!   industry.
 //! - [`portfolio`]: three years of a two-account household in US dollars and euros, holding five
 //!   real funds at their real prices, and [`report_options`], the options of its full report.
 //! - [`asset_class_prices`]: 30 years of month-end levels of six asset-class indices, synthetic.
-//! - [`us_cpi`]: the US consumer price index, monthly since 1947, for plans in today's money.
 //!
-//! The market data is real, from Yahoo Finance, and `scripts/fetch-market-data.py` in the
-//! repository downloads it, with the price index from the Federal Reserve Bank of St. Louis
-//! (FRED). The S&P 500 companies are today's largest members, so their history
-//! looks back with hindsight (survivorship bias). The household's transactions and the
-//! asset-class indices are illustrative, written by `scripts/datasets.py`.
+//! The funds' prices and the EUR/USD rate are real, from Yahoo Finance;
+//! `scripts/fetch-market-data.py` in the repository downloads them. The household's
+//! transactions and the asset-class indices are illustrative, written by `scripts/datasets.py`.
 //!
 //! Each file is also available as text, through [`file()`], as an example of the layout
-//! Finalytics reads. The S&P 500 prices are part of the default `sp500` feature, which adds
-//! 2.5 MB to a program that uses them.
+//! Finalytics reads.
 //!
 //! ```
 //! use finalytics::{Assets, datasets};
 //!
-//! let assets = Assets::from_prices(&datasets::sp500())?.with_risk_free_asset("T-Bills")?;
-//! assert_eq!(assets.risky_assets().len(), 55);
-//! assert_eq!(assets.periods_per_year(), 252.0);
+//! let assets =
+//!     Assets::from_prices(&datasets::asset_class_prices())?.with_risk_free_asset("T-Bills")?;
+//! assert_eq!(assets.risky_assets().len(), 5);
+//! assert_eq!(assets.periods_per_year(), 12.0);
 //!
 //! let portfolio = datasets::portfolio();
 //! let report = portfolio.report_with(&datasets::report_options())?;
@@ -36,29 +29,19 @@ use finalytics_core::{Date, Result};
 use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_reports::ReportOptions;
 use finalytics_risk::PriceTable;
-use serde::{Deserialize, Serialize};
 
 use crate::{Portfolio, PortfolioCsv};
 
 const ASSET_CLASSES: &str = include_str!("../data/asset-classes.csv");
-const US_CPI: &str = include_str!("../data/us-cpi.csv");
 const ACCOUNTS: &str = include_str!("../data/portfolio/accounts.csv");
 const INSTRUMENTS: &str = include_str!("../data/portfolio/instruments.csv");
 const TRANSACTIONS: &str = include_str!("../data/portfolio/transactions.csv");
 const PRICES: &str = include_str!("../data/portfolio/prices.csv");
 const FX: &str = include_str!("../data/portfolio/fx.csv");
 const REPORT_OPTIONS: &str = include_str!("../data/portfolio/report-options.json");
-const SP500_COMPANIES: &str = include_str!("../data/sp500/companies.csv");
-#[cfg(feature = "sp500")]
-const SP500_PRICES: &str = include_str!("../data/sp500/prices.csv");
-#[cfg(feature = "sp500")]
-const SP500_INDEX: &str = include_str!("../data/sp500/index.csv");
 
 /// The names of the dataset files, for [`file()`].
-pub const FILES: [&str; 11] = [
-    "sp500/prices.csv",
-    "sp500/index.csv",
-    "sp500/companies.csv",
+pub const FILES: [&str; 7] = [
     "portfolio/accounts.csv",
     "portfolio/instruments.csv",
     "portfolio/transactions.csv",
@@ -66,20 +49,12 @@ pub const FILES: [&str; 11] = [
     "portfolio/fx.csv",
     "portfolio/report-options.json",
     "asset-classes.csv",
-    "us-cpi.csv",
 ];
 
-/// The text of a dataset file, by its name in [`FILES`]. Without the `sp500` feature,
-/// `"sp500/prices.csv"` and `"sp500/index.csv"` are absent.
+/// The text of a dataset file, by its name in [`FILES`].
 pub fn file(name: &str) -> Option<&'static str> {
     Some(match name {
-        #[cfg(feature = "sp500")]
-        "sp500/prices.csv" => SP500_PRICES,
-        #[cfg(feature = "sp500")]
-        "sp500/index.csv" => SP500_INDEX,
-        "sp500/companies.csv" => SP500_COMPANIES,
         "asset-classes.csv" => ASSET_CLASSES,
-        "us-cpi.csv" => US_CPI,
         "portfolio/accounts.csv" => ACCOUNTS,
         "portfolio/instruments.csv" => INSTRUMENTS,
         "portfolio/transactions.csv" => TRANSACTIONS,
@@ -90,56 +65,9 @@ pub fn file(name: &str) -> Option<&'static str> {
     })
 }
 
-/// A company in [`sp500`]: its ticker, name, GICS sector and GICS sub-industry.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[non_exhaustive]
-pub struct Company {
-    /// The ticker, the company's column in [`sp500`], such as `"AAPL"`.
-    pub ticker: String,
-    /// The company's name, such as `"Apple Inc."`.
-    pub name: String,
-    /// The GICS sector, such as `"Information Technology"`.
-    pub sector: String,
-    /// The GICS sub-industry, such as `"Technology Hardware, Storage & Peripherals"`.
-    pub industry: String,
-}
-
-/// Daily prices, from 3 January 2005 to 30 October 2026, of 55 S&P 500 companies: the five
-/// largest in each of the 11 sectors, by market value in November 2026, among members that
-/// traded throughout. The prices are adjusted closes, which include dividends and splits. A
-/// last column, `T-Bills`, is the return index of 3-month US Treasury bills (the 13-week rate,
-/// accrued daily), for use as the risk-free asset. [`sp500_companies`] gives each company's
-/// sector.
-///
-/// The companies are chosen with hindsight: they are today's largest members, so their past
-/// returns are higher than those of the index's members at the time (survivorship bias).
-#[cfg(feature = "sp500")]
-pub fn sp500() -> PriceTable {
-    price_table(SP500_PRICES).expect("the S&P 500 dataset is valid")
-}
-
-/// The S&P 500 total return index, daily from 3 January 2005 to 30 October 2026, in one column,
-/// `S&P 500`: a benchmark for [`sp500`].
-#[cfg(feature = "sp500")]
-pub fn sp500_index() -> PriceTable {
-    price_table(SP500_INDEX).expect("the S&P 500 index is valid")
-}
-
-/// The companies of [`sp500`], in the order of its columns: by sector, and by market value
-/// within each sector.
-pub fn sp500_companies() -> Vec<Company> {
-    let mut reader = csv::Reader::from_reader(SP500_COMPANIES.as_bytes());
-    reader
-        .deserialize()
-        .collect::<std::result::Result<_, _>>()
-        .expect("the S&P 500 companies are valid")
-}
-
 /// Prices in CSV text, a `date` column and one column per asset, as a [`PriceTable`]: the
-/// format of the price datasets. The JavaScript package uses it to load [`sp500`] on demand.
-#[doc(hidden)]
-pub fn price_table(text: &str) -> Result<PriceTable> {
+/// format of the price datasets.
+fn price_table(text: &str) -> Result<PriceTable> {
     let series = price_columns_from_csv(text, CsvOptions::default())?;
     let dates: Vec<Date> = series
         .first()
@@ -164,16 +92,6 @@ pub fn price_table(text: &str) -> Result<PriceTable> {
 /// 2020 and 2022. The indices include income.
 pub fn asset_class_prices() -> PriceTable {
     price_table(ASSET_CLASSES).expect("the asset-class dataset is valid")
-}
-
-/// The US consumer price index for all urban consumers (CPI-U, all items, seasonally adjusted,
-/// 1982–84 = 100), monthly from January 1947 to September 2026, dated at each month's end, in
-/// one column, `US CPI`. October 2025 is missing: it was not published. Give it to
-/// [`PlanBuilder::inflation_index`](crate::PlanBuilder::inflation_index) to draw each month's
-/// inflation with the same month's returns; a missing month is filled in between its
-/// neighbours.
-pub fn us_cpi() -> PriceTable {
-    price_table(US_CPI).expect("the price index dataset is valid")
 }
 
 /// A portfolio of two accounts held by one person, from November 2023 to October 2026, in US

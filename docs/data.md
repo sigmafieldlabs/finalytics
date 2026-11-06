@@ -31,13 +31,7 @@ date,US Equity,Intl Equity,Bonds,T-Bills,Gold,Real Estate
 
 The same prices may come as a pandas DataFrame indexed by date, with one column per asset, or in
 the long layout of `date`, `instrument` and `price` columns. The assets keep the order of the
-columns. The S&P 500 dataset has the same layout, with daily prices:
-
-```python
->>> print(fl.datasets.file("sp500/prices.csv").splitlines()[0][:56])
-date,GOOGL,NFLX,DIS,VZ,T,AMZN,HD,MCD,TJX,LOW,WMT,COST,KO
-
-```
+columns.
 
 - **Prices should include income.** Use total-return prices, such as adjusted closes, so that
   dividends and interest count in each asset's return.

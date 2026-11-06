@@ -180,21 +180,6 @@ def test_reports_print_and_save_as_html(tmp_path):
     assert "<script" not in html
 
 
-def test_the_sp500_dataset():
-    prices = fl.datasets.sp500()
-    assert prices.shape == (5492, 56) and prices.columns[-1] == "T-Bills"
-    assert prices.index[0] == pd.Timestamp("2005-01-03") and prices.index[-1] == pd.Timestamp("2026-10-30")
-    assert not prices.isna().any().any()
-    index = fl.datasets.sp500_index()
-    assert list(index.columns) == ["S&P 500"] and index.index.equals(prices.index)
-    companies = fl.datasets.sp500_companies()
-    assert [c.ticker for c in companies] == list(prices.columns[:-1])
-    assert len({c.sector for c in companies}) == 11
-    assets = fl.Assets(prices, risk_free_asset="T-Bills")
-    assert assets.periods_per_year == 252 and len(assets.labels) == 56
-    assert fl.datasets.sp500_table().labels == list(prices.columns)
-
-
 def test_a_rebalance_has_a_report_and_raw_results():
     portfolio = fl.datasets.portfolio()
     target = portfolio.assets().optimise(method="minimum_variance", bounds=(0.05, 0.40))

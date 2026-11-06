@@ -42,7 +42,7 @@
 //!
 //! The modules beneath them, such as [`risk`], [`opt`], [`performance`] and [`backtest`], give
 //! each method on its own, for analysis the front doors do not cover. [`datasets`] has data to
-//! practise on: S&P 500 stocks, a household portfolio and asset-class indices.
+//! practise on: a household portfolio and asset-class indices.
 //!
 //! Every result of [`Assets`] has the same shape: the report in `report`, the raw results in
 //! `results`, the report as text when printed, and the report as a page with

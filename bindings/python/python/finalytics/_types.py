@@ -1032,23 +1032,6 @@ ColumnKind = Union[TextColumn, DateColumn, NumberColumn, IntegerColumn, Fraction
 
 
 @dataclass(frozen=True, kw_only=True)
-class Company:
-    """A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry."""
-
-    ticker: str
-    """The ticker, the company's column in `sp500`, such as `"AAPL"`."""
-
-    name: str
-    """The company's name, such as `"Apple Inc."`."""
-
-    sector: str
-    """The GICS sector, such as `"Information Technology"`."""
-
-    industry: str
-    """The GICS sub-industry, such as `"Technology Hardware, Storage & Peripherals"`."""
-
-
-@dataclass(frozen=True, kw_only=True)
 class Comparison(Result):
     """A comparison: the comparison report on several methods backtested side by side, and the raw
     results. Printing it prints the report, and showing it shows the report as a page.
@@ -6717,7 +6700,6 @@ __all__ = [
     "Changes",
     "Column",
     "ColumnKind",
-    "Company",
     "Comparison",
     "ComparisonReport",
     "Concentration",

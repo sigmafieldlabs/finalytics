@@ -77,4 +77,5 @@ so that amounts keep their exact value in every language.
   finds into a report rather than stopping at the first.
 - Tests that compare against reference implementations keep their fixtures in the crate's
   `tests/` directory, with the script that produced them in `scripts/reference/`. The Python
-  and JavaScript tests check the same fixtures, and share the scenario in `tests/scenario/`.
+  and JavaScript tests check the same fixtures, and share the scenario in `tests/scenario/` and
+  the daily S&P 500 prices in `tests/sp500/`.

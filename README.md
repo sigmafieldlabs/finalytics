@@ -277,8 +277,8 @@ the payments start, and compares other mixes on the same simulations.
 
 For an amount by a date, give `.target(150_000.0, "2030-06")`; for a single
 payment out along the way, `.spending_on("Car", 25_000.0, "2028-03")`; and for
-inflation month by month, the US consumer price index,
-`.inflation_index(datasets::us_cpi())`.
+inflation month by month, a price index of one column, such as a consumer price
+index, `.inflation_index(index)`.
 
 ## What is included
 

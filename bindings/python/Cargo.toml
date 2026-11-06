@@ -15,7 +15,7 @@ name = "_finalytics"
 crate-type = ["cdylib"]
 
 [dependencies]
-finalytics = { workspace = true, features = ["sp500"] }
+finalytics = { workspace = true }
 pyo3 = { workspace = true, features = ["abi3-py310"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -1593,10 +1593,10 @@ impl Optimise<'_> {
 /// use finalytics::{Assets, datasets};
 ///
 /// let assets = Assets::builder()
-///     .prices(datasets::sp500())
+///     .prices(datasets::asset_class_prices())
 ///     .risk_free_asset("T-Bills")
 ///     .build()?;
-/// assert_eq!(assets.periods_per_year(), 252.0);
+/// assert_eq!(assets.periods_per_year(), 12.0);
 /// # Ok::<(), finalytics::Error>(())
 /// ```
 #[derive(Debug, Clone, Default)]

@@ -1,16 +1,6 @@
 // The entry point for browsers and bundlers: call `await init()` once before using the engine.
-// The S&P 500 datasets are fetched from the package's files when first used, and reports show in
-// a frame inside an element of the page, or in a new window.
-import { install as installDatasets } from "./datasets.js";
+// Reports show in a frame inside an element of the page, or in a new window.
 import { install as installReports } from "./reports.js";
-
-installDatasets(async (url) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`could not load ${url}: ${response.status} ${response.statusText}`);
-  }
-  return response.text();
-});
 
 installReports((html, element) => {
   if (typeof document === "undefined") {

@@ -2,6 +2,7 @@
 
 import datetime
 
+import pandas as pd
 import pytest
 
 import finalytics as fl
@@ -69,16 +70,26 @@ def test_payments_say_when_the_money_runs_short(assets):
     assert plan.report.context.mix_name == "Balanced 60/40"
 
 
+def steady_index() -> pd.DataFrame:
+    """A price index rising 2.5% a year, on the 28th of each month from January 1990 to September
+    2026, without a level for October 2025."""
+    months = [k for k in range(441) if (1990 + k // 12, k % 12 + 1) != (2025, 10)]
+    return pd.DataFrame(
+        {"Prices": [100 * 1.025 ** (k / 12) for k in months]},
+        index=pd.DatetimeIndex([datetime.date(1990 + k // 12, k % 12 + 1, 28) for k in months], name="date"),
+    )
+
+
 def test_a_price_index_and_a_glide_path(assets):
     plan = house(
         assets,
-        inflation=fl.datasets.us_cpi(),
+        inflation=steady_index(),
         weights=fl.GlidePath(points={"2026-11": {"US Equity": 0.8, "Bonds": 0.2}, "2030-01": {"Bonds": 1.0}}),
         model="normal",
     )
     basis = plan.report.context.inflation
-    assert isinstance(basis, fl.types.InflationBasisIndex) and basis.name == "US CPI"
-    assert 0.015 < basis.average < 0.04
+    assert isinstance(basis, fl.types.InflationBasisIndex) and basis.name == "Prices"
+    assert abs(basis.average - 0.025) < 1e-12
     # The index ends a month before the assets, so the history does too.
     assert plan.report.context.history_end == "2026-09"
 
@@ -109,10 +120,3 @@ def test_problems_are_reported_together(assets):
     assert {"goal.amount", "fee"} <= paths and any(p.startswith("weights") for p in paths)
     with pytest.raises(fl.ValidationError):
         assets.plan(fl.Target(amount=1, by="2030-06"), weights={"US Equity": 1.0}, inflation=0.02, model="monte")
-
-
-def test_the_price_index_dataset():
-    cpi = fl.datasets.us_cpi()
-    assert list(cpi.columns) == ["US CPI"]
-    assert str(cpi.index[0].date()) == "1947-01-31" and str(cpi.index[-1].date()) == "2026-09-30"
-    assert "us-cpi.csv" in fl.datasets.FILES

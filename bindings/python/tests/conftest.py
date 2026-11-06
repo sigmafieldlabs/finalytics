@@ -1,4 +1,5 @@
-"""Shared inputs: the scenario in ``tests/scenario`` at the repository root."""
+"""Shared inputs: the scenario in ``tests/scenario`` and the S&P 500 prices in ``tests/sp500``,
+at the repository root."""
 
 import pathlib
 import sys
@@ -11,6 +12,7 @@ import finalytics as fl
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 SCENARIO = ROOT / "tests" / "scenario"
+SP500 = ROOT / "tests" / "sp500"
 FIXTURES = ROOT / "crates"
 
 # Pyodide has no browser for show() to open.

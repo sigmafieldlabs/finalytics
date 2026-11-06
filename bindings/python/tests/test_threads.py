@@ -4,6 +4,7 @@ import threading
 import time
 
 import numpy as np
+from conftest import SP500
 
 import finalytics as fl
 
@@ -27,7 +28,7 @@ def stalls(work):
 
 
 def test_other_python_threads_run_while_the_engine_compares():
-    assets = fl.Assets(fl.datasets.sp500(), risk_free_asset="T-Bills")
+    assets = fl.Assets(SP500 / "prices.csv", risk_free_asset="T-Bills")
     duration, longest = stalls(
         lambda: assets.compare(
             methods=["minimum_variance", "maximum_sharpe", "risk_parity"],

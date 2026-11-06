@@ -4,21 +4,6 @@ Data for examples, tests and practice, read by `finalytics::datasets` in Rust,
 `finalytics.datasets` in Python and `datasets` in JavaScript. Each file also shows the layout
 Finalytics reads.
 
-## S&P 500
-
-| File | What it holds |
-| --- | --- |
-| `sp500/prices.csv` | Daily adjusted closes, from 3 January 2005 to 30 October 2026, of 55 S&P 500 companies: the five largest in each of the 11 GICS sectors by market value in November 2026, among members that traded throughout, with one share class per company. Adjusted closes include dividends and splits. A last column, `T-Bills`, is a return index of 3-month US Treasury bills: the 13-week rate, accrued each calendar day at actual/360. |
-| `sp500/index.csv` | The S&P 500 total return index on the same dates. |
-| `sp500/companies.csv` | Each company's ticker, name, GICS sector and GICS sub-industry, in the order of the price columns. |
-
-The companies are chosen with hindsight: they are today's largest members, so their past returns
-are higher than those of the index's members at the time (survivorship bias). Results on this
-data illustrate the methods; they are not evidence that a method works.
-
-The JavaScript package keeps `sp500/prices.csv` and `sp500/index.csv` out of the WebAssembly
-module and reads them on first use (`await datasets.sp500()`).
-
 ## A household portfolio
 
 Three years, from November 2023 to October 2026, of a taxable brokerage account and a
@@ -40,27 +25,12 @@ and the EUR/USD rate are real; the transactions are illustrative.
 | --- | --- |
 | `asset-classes.csv` | Month-end levels, from October 1996 to October 2026, of six asset-class indices that start at 100: US Equity, Intl Equity, Bonds, T-Bills, Gold and Real Estate. The data is synthetic: drawn from fixed distributions with a fixed seed, with bear markets modelled loosely on those of 2000–02, 2007–09, 2020 and 2022. |
 
-## US consumer prices
-
-| File | What it holds |
-| --- | --- |
-| `us-cpi.csv` | The US consumer price index for all urban consumers (CPI-U, all items, seasonally adjusted, 1982–84 = 100), monthly from January 1947 to September 2026, dated at each month's end, in one column, `US CPI`. October 2025 has no value: the Bureau of Labor Statistics did not publish one. |
-
-Plans use it as their inflation, to keep every amount in today's money. A month without a value
-is filled in between its neighbours at a steady rate.
-
 ## Sources
 
-- Prices, distributions, the S&P 500 total return index (`^SP500TR`), the 13-week Treasury bill
-  rate (`^IRX`) and the EUR/USD rate: Yahoo Finance, downloaded by
-  `scripts/fetch-market-data.py`. The fund data it downloads is kept in
-  `scripts/portfolio-market.json`.
-- S&P 500 members, sectors and sub-industries: the
-  [s-and-p-500-companies](https://github.com/datasets/s-and-p-500-companies) list.
-- The US consumer price index: the Bureau of Labor Statistics' series `CUSR0000SA0`, as
-  published by the Federal Reserve Bank of St. Louis (FRED, series `CPIAUCSL`), downloaded by
-  `scripts/fetch-market-data.py`.
+- The funds' prices and distributions, the EUR/USD rate, and the 13-week Treasury bill rate
+  (`^IRX`) behind the risk-free rate of the report options: Yahoo Finance, downloaded by
+  `scripts/fetch-market-data.py`. The fund data is kept in `scripts/portfolio-market.json`.
 - The household's transactions and the asset-class indices: `scripts/datasets.py`.
 
 The data is provided for examples and education, as it is, with no warranty of accuracy. The
-prices and index levels remain the property of their providers.
+prices remain the property of their providers.

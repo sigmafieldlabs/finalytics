@@ -243,7 +243,8 @@ the payments start, and compares other mixes on the same simulations.
 For an amount by a date, give `fl.Target(amount=150_000, by="2030-06")`; for a
 single payment out along the way,
 `fl.Spending(name="Car", amount=25_000, on="2028-03")`; and for inflation month
-by month, the US consumer price index, `inflation=fl.datasets.us_cpi()`.
+by month, a price index of one column, such as a consumer price index,
+`inflation=index`.
 
 ## What is included
 

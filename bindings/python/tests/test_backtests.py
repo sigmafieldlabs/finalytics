@@ -6,8 +6,9 @@ import pathlib
 import sys
 import types
 
+import pandas as pd
 import pytest
-from conftest import NO_BROWSER, page_path
+from conftest import NO_BROWSER, SP500, page_path
 
 import finalytics as fl
 
@@ -127,8 +128,9 @@ def test_one_method_or_fixed_weights(assets):
 
 
 def test_an_index_as_the_benchmark():
-    sp500 = fl.Assets(prices=fl.datasets.sp500(), risk_free_asset="T-Bills")
-    backtest = sp500.backtest(method="equal_weight", rebalance="yearly", benchmark=fl.datasets.sp500_index()).report
+    sp500 = fl.Assets(SP500 / "prices.csv", risk_free_asset="T-Bills")
+    index = pd.read_csv(SP500 / "index.csv", index_col="date", parse_dates=True)
+    backtest = sp500.backtest(method="equal_weight", rebalance="yearly", benchmark=index).report
     assert backtest.benchmark.name == "S&P 500"
     assert backtest.benchmark.tested.statistics.observations == len(sp500.dates)
     assert len(backtest.strategy.tested.growth.dates) < 300, "daily returns are charted by month"

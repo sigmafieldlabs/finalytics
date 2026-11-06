@@ -12,7 +12,7 @@ so that you can judge whether the engine fits your workload.
 | Build the books (native) | 100,000 transactions, 2,000 instruments, 10 accounts, 10 years | 2 s | 0.35 s |
 | Build the books (WebAssembly, Node.js) | the same portfolio, passed as JavaScript objects | 2 s | 0.86 s |
 | Minimum-variance portfolio | 500 assets, bounds and 10 group limits | 0.5 s | 0.36 s |
-| Walk-forward comparison | 7 methods on the S&P 500 dataset: 55 stocks, 5,491 daily returns, 5-year window, 67 quarterly refits each, with the optimisation report | 5 s | 2.43 s |
+| Walk-forward comparison | 7 methods on the S&P 500 prices in `tests/sp500`: 55 stocks, 5,491 daily returns, 5-year window, 67 quarterly refits each, with the optimisation report | 5 s | 2.43 s |
 
 Each measurement is the median of five runs (three for the comparison). The WebAssembly time includes reading the
 100,000 transactions out of JavaScript, as an application would call `new Portfolio(data,

@@ -19,6 +19,16 @@ export async function json(path) {
   return JSON.parse(await text(path));
 }
 
+// Prices in CSV text, a `date` column and one column per asset, as a `PriceTable`.
+export function priceTable(csv) {
+  const [header, ...rows] = csv.trim().split(/\r?\n/).map((line) => line.split(","));
+  return {
+    dates: rows.map((row) => row[0]),
+    labels: header.slice(1),
+    columns: header.slice(1).map((_, j) => rows.map((row) => (row[j + 1] === "" ? null : Number(row[j + 1])))),
+  };
+}
+
 export function close(actual, expected, tolerance, what) {
   const scale = Math.max(Math.abs(expected), 1);
   if (!(Math.abs(actual - expected) <= tolerance * scale)) {

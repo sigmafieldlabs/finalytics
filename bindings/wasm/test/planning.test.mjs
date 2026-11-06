@@ -22,6 +22,14 @@ const house = {
   currency: "USD",
 };
 
+// A price index rising 2.5% a year, on the 28th of each month from January 1990 to September 2026,
+// without a level for October 2025.
+function steadyIndex() {
+  const months = [...Array(441).keys()].filter((k) => !(1990 + Math.floor(k / 12) === 2025 && k % 12 === 9));
+  const date = (k) => `${1990 + Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, "0")}-28`;
+  return { dates: months.map(date), labels: ["Prices"], columns: [months.map((k) => 100 * 1.025 ** (k / 12))] };
+}
+
 test("a plan has a report and the raw results", () => {
   const plan = assets.plan(house);
   assert.deepEqual(Object.keys(plan), ["report", "results"]);
@@ -43,7 +51,7 @@ test("plain choices: a chance and its room, mixes by name, a price index and a m
     chance: [0.75, 0.9],
     weights: { type: "fixed", name: "Balanced", weights: { "US Equity": 0.6, Bonds: 0.4 } },
     alternatives: { Cautious: { "US Equity": 0.3, Bonds: 0.7 } },
-    inflation: datasets.usCpi(),
+    inflation: steadyIndex(),
     model: "normal",
   });
   assert.equal(plan.results.chance_wanted, 0.75);
@@ -51,6 +59,7 @@ test("plain choices: a chance and its room, mixes by name, a price index and a m
   assert.deepEqual(plan.results.alternatives.map((a) => a.name), ["Cautious"]);
   assert.equal(plan.report.context.mix_name, "Balanced");
   assert.equal(plan.report.context.inflation.type, "index");
+  assert.equal(plan.report.context.inflation.name, "Prices");
   assert.equal(plan.report.context.model.type, "normal");
 });
 

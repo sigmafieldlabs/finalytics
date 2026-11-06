@@ -1,18 +1,14 @@
 // The entry point for Node.js: loads the engine from the package's WebAssembly file, so that it is
-// ready on import, with no call to `init`. The S&P 500 datasets are read from the package's
-// files when first used, and reports show in the default browser.
+// ready on import, with no call to `init`. Reports show in the default browser.
 import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
-import { install as installDatasets } from "./datasets.js";
 import { initSync } from "./finalytics.js";
 import { install as installReports } from "./reports.js";
 
 initSync({ module: readFileSync(new URL("./finalytics_bg.wasm", import.meta.url)) });
-installDatasets((url) => readFile(url, "utf8"));
 
 installReports(
   (html) => {

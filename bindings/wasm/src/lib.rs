@@ -249,8 +249,7 @@ export interface BacktestSettings {
   trading_cost_bps?: number;
   /**
    * What the strategies are compared with: weights by asset, such as
-   * `{ "US Equity": 0.6, Bonds: 0.4 }`, or an index's prices, such as
-   * `await datasets.sp500Index()`.
+   * `{ "US Equity": 0.6, Bonds: 0.4 }`, or an index's prices, as a `PriceTable` of one column.
    */
   benchmark?: Record<string, number> | PriceTable | Benchmark;
   /** The benchmark's name: `"Benchmark"` by default, or the prices' column name. */
@@ -311,7 +310,7 @@ export interface PlanChoices
   weights: MixChoice;
   /** Other mixes to compare on the same simulations: weights by name, or named mixes. */
   alternatives?: Record<string, MixChoice> | Mix[];
-  /** The inflation a year, such as 0.025, or a price index of one column, such as `datasets.usCpi()`. */
+  /** The inflation a year, such as 0.025, or a price index of one column, such as a consumer price index. */
   inflation: number | PriceTable | Inflation;
   /** The chance wanted, 0.8 by default, or it and the chance from which there is room to spare. */
   chance?: number | [number, number];
@@ -1782,10 +1781,9 @@ fn limits(
     Ok(choices)
 }
 
-/// Datasets for examples, tests and practice: daily prices of 55 S&P 500 companies and T-bills
-/// with the S&P 500 index (`await datasets.sp500()`, `await datasets.sp500Index()`), a
-/// two-account household holding five real funds, and synthetic asset-class indices. The market
-/// data is real, from Yahoo Finance; the household's transactions are illustrative.
+/// Datasets for examples, tests and practice: a two-account household holding five real funds,
+/// and synthetic asset-class indices. The funds' prices are real, from Yahoo Finance; the
+/// household's transactions are illustrative.
 #[wasm_bindgen(js_name = datasets)]
 pub struct Datasets;
 
@@ -1802,30 +1800,9 @@ impl Datasets {
     /// The text of a dataset file, such as `"portfolio/transactions.csv"`: an example of the
     /// layout each file takes.
     pub fn file(name: &str) -> Result<String, JsValue> {
-        if matches!(name, "sp500/prices.csv" | "sp500/index.csv") {
-            return Err(invalid(
-                "name",
-                format!(
-                    "{name:?} is loaded on demand: use await datasets.sp500() or await datasets.sp500Index()"
-                ),
-            ));
-        }
         finalytics::datasets::file(name)
             .map(str::to_owned)
             .ok_or_else(|| invalid("name", format!("{name:?} is not a dataset file")))
-    }
-
-    /// The companies of `datasets.sp500()`, in the order of its columns, with their names, GICS
-    /// sectors and sub-industries.
-    #[wasm_bindgen(js_name = sp500Companies, unchecked_return_type = "Company[]")]
-    pub fn sp500_companies() -> Result<JsValue, JsValue> {
-        to_js(&finalytics::datasets::sp500_companies())
-    }
-
-    /// Prices in CSV text as a `PriceTable`: how `datasets.sp500()` reads the package's file.
-    #[wasm_bindgen(js_name = __priceTable, skip_typescript)]
-    pub fn price_table(text: &str) -> Result<JsValue, JsValue> {
-        to_js(&finalytics::datasets::price_table(text).map_err(error)?)
     }
 
     /// Month-end levels, from October 1996 to October 2026, of six asset-class indices that
@@ -1833,14 +1810,6 @@ impl Datasets {
     #[wasm_bindgen(js_name = assetClassPrices, unchecked_return_type = "PriceTable")]
     pub fn asset_class_prices() -> Result<JsValue, JsValue> {
         to_js(&finalytics::datasets::asset_class_prices())
-    }
-
-    /// The US consumer price index for all urban consumers (CPI-U, all items, seasonally
-    /// adjusted), monthly from January 1947 to September 2026, dated at each month's end, in one
-    /// column, `US CPI`: the inflation of a plan, in place of a fixed rate.
-    #[wasm_bindgen(js_name = usCpi, unchecked_return_type = "PriceTable")]
-    pub fn us_cpi() -> Result<JsValue, JsValue> {
-        to_js(&finalytics::datasets::us_cpi())
     }
 
     /// A portfolio of two accounts in US dollars and euros, from November 2023 to October 2026:

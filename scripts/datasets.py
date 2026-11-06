@@ -260,8 +260,9 @@ def portfolio() -> None:
         })
         previous = i
 
-    # The risk-free rate: the T-bills' annual return over the same three years.
-    with open(OUT / "sp500/prices.csv") as f:
+    # The risk-free rate: the T-bills' annual return over the same three years, from the T-bill
+    # index of the S&P 500 test data.
+    with open(ROOT / "tests/sp500/prices.csv") as f:
         bills = {r["date"]: float(r["T-Bills"]) for r in csv.DictReader(f)}
     years = (days[-1] - days[0]).days / 365.25
     risk_free = round((bills[days[-1].isoformat()] / bills[days[0].isoformat()]) ** (1 / years) - 1, 3)

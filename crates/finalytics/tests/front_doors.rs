@@ -457,29 +457,9 @@ fn fees_are_their_own_line_in_contribution() {
 }
 
 #[test]
-fn the_sp500_dataset_is_daily_with_t_bills_and_sectors() {
-    let prices = datasets::sp500();
-    assert_eq!(prices.labels().len(), 56);
-    assert_eq!(prices.labels().last().unwrap(), "T-Bills");
-    assert_eq!(prices.dates().first().unwrap().to_string(), "2005-01-03");
-    assert_eq!(prices.dates().last().unwrap().to_string(), "2026-10-30");
-    assert!(prices.columns().iter().flatten().all(Option::is_some));
-    let index = datasets::sp500_index();
-    assert_eq!(index.labels(), ["S&P 500"]);
-    assert_eq!(index.dates(), prices.dates());
-    let companies = datasets::sp500_companies();
-    let tickers: Vec<&str> = companies.iter().map(|c| c.ticker.as_str()).collect();
-    assert_eq!(tickers, prices.labels()[..55]);
-    let sectors: std::collections::BTreeSet<&str> =
-        companies.iter().map(|c| c.sector.as_str()).collect();
-    assert_eq!(sectors.len(), 11);
-    let assets = Assets::from_prices(&prices)
-        .unwrap()
-        .with_risk_free_asset("T-Bills")
-        .unwrap();
-    assert_eq!(assets.periods_per_year(), 252.0);
-    assert_eq!(assets.risky_assets().len(), 55);
+fn every_dataset_file_is_available_as_text() {
     assert!(datasets::FILES.iter().all(|f| datasets::file(f).is_some()));
+    assert_eq!(datasets::file("prices.csv"), None);
 }
 
 #[test]

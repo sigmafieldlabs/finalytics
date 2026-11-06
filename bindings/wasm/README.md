@@ -258,8 +258,8 @@ the payments start, and compares other mixes on the same simulations.
 For an amount by a date, give
 `goal: { type: "target", amount: 150000, by: "2030-06" }`; for a single payment
 out along the way, `{ type: "spending", name: "Car", amount: 25000, on: "2028-03" }`
-among the flows; and for inflation month by month, the US consumer price index,
-`inflation: datasets.usCpi()`.
+among the flows; and for inflation month by month, a price index of one column,
+such as a consumer price index, `inflation: index`.
 
 ## What is included
 

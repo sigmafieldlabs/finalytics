@@ -41,9 +41,9 @@ as given, so $4,000 in 2050 buys what $4,000 buys today. A flow with a `growth` 
 money of the day instead: its amount in month $t$ is $a (1 + \gamma)^{t/12} / P_t$, with $P_t$
 the price level since the start.
 
-A price index (`fl.datasets.us_cpi()`, say) is matched to the assets' months by its last level
-in each month; a month the index lacks is filled in between its neighbours at a steady rate, and
-the history is cut to the months both cover.
+A price index, such as a consumer price index, is matched to the assets' months by its last
+level in each month; a month the index lacks is filled in between its neighbours at a steady
+rate, and the history is cut to the months both cover.
 
 ## Simulating markets
 

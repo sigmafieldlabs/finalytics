@@ -679,18 +679,6 @@ export type ColumnKind =
     type: "boolean";
   };
 
-/** A company in `sp500`: its ticker, name, GICS sector and GICS sub-industry. */
-export interface Company {
-  /** The ticker, the company's column in `sp500`, such as `"AAPL"`. */
-  ticker: string;
-  /** The company's name, such as `"Apple Inc."`. */
-  name: string;
-  /** The GICS sector, such as `"Information Technology"`. */
-  sector: string;
-  /** The GICS sub-industry, such as `"Technology Hardware, Storage & Peripherals"`. */
-  industry: string;
-}
-
 /**
  * A comparison: the comparison report on several methods backtested side by side, and the
  * raw results. Printing it prints the report, and showing it shows the report as a page.

@@ -8,6 +8,8 @@ use finalytics::backtest::{Rebalance, Years};
 use finalytics::risk::{StatisticsOptions, statistics};
 use finalytics::{Assets, Error, Method, datasets};
 
+mod common;
+
 fn assets() -> Assets {
     Assets::builder()
         .prices(datasets::asset_class_prices())
@@ -574,7 +576,7 @@ fn reports_print_and_lay_out_as_pages() {
 
 #[test]
 fn daily_returns_are_charted_by_month() {
-    let prices = datasets::sp500();
+    let prices = common::sp500();
     let assets = Assets::builder()
         .prices(prices)
         .risk_free_asset("T-Bills")
@@ -583,7 +585,7 @@ fn daily_returns_are_charted_by_month() {
     let report = assets
         .backtest(Method::EqualWeight)
         .rebalance(Rebalance::Yearly)
-        .benchmark(datasets::sp500_index())
+        .benchmark(common::sp500_index())
         .build()
         .unwrap()
         .report;

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { Assets, datasets } from "../pkg/node.js";
-import { close } from "./setup.mjs";
+import { close, priceTable, text } from "./setup.mjs";
 
 const assets = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
 
@@ -146,11 +146,11 @@ test("one method, or fixed weights, against a benchmark", () => {
 });
 
 test("an index as the benchmark", async () => {
-  const sp500 = new Assets(await datasets.sp500(), { risk_free_asset: "T-Bills" });
+  const sp500 = Assets.fromCsv(await text("tests/sp500/prices.csv"), { risk_free_asset: "T-Bills" });
   const { report } = sp500.backtest({
     method: "equal_weight",
     rebalance: "yearly",
-    benchmark: await datasets.sp500Index(),
+    benchmark: priceTable(await text("tests/sp500/index.csv")),
   });
   assert.equal(report.benchmark.name, "S&P 500");
   assert.equal(report.benchmark.tested.statistics.observations, sp500.dates.length);

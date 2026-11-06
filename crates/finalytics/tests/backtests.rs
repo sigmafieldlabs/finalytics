@@ -8,6 +8,8 @@ use finalytics::backtest::{
 use finalytics::opt::Bound;
 use finalytics::{Assets, Error, Method, OptimiseOptions, datasets};
 
+mod common;
+
 fn method(method: Method, max_weight: f64) -> Strategy {
     let mut options = OptimiseOptions::default();
     options.method = method;
@@ -34,7 +36,7 @@ fn paths(error: Error) -> Vec<String> {
 
 #[test]
 fn methods_walk_forward_on_the_sp500() {
-    let assets = Assets::from_prices(&datasets::sp500())
+    let assets = Assets::from_prices(&common::sp500())
         .unwrap()
         .with_risk_free_asset("T-Bills")
         .unwrap();
@@ -53,7 +55,7 @@ fn methods_walk_forward_on_the_sp500() {
     options.trading_cost_bps = 10.0;
     options.benchmark = Some(Benchmark::Prices {
         name: None,
-        prices: datasets::sp500_index(),
+        prices: common::sp500_index(),
     });
     let backtest = simulate(&assets, &options).unwrap();
     let names: Vec<&str> = backtest

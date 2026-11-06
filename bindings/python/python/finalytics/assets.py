@@ -468,8 +468,8 @@ class Assets:
           with daily returns.
         - `trading_cost_bps`: the cost of trading in basis points of the value traded.
         - `benchmark`: weights by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}``, or an
-          index's prices, such as ``fl.datasets.sp500_index()``; `benchmark_name` names it
-          (``"Benchmark"`` by default, or the prices' column name).
+          index's prices, as a pandas DataFrame indexed by date with one column;
+          `benchmark_name` names it (``"Benchmark"`` by default, or the prices' column name).
         - `start_value` and `flows`: money to follow as well as returns. Each run starts with
           `start_value`, and `flows` pays in (positive) or takes out (negative) amounts on
           dates, such as ``{"2020-01-31": 500}``, at the end of the period each falls in; the
@@ -615,8 +615,8 @@ class Assets:
           ``("Balanced 60/40", {...})``; a :class:`~finalytics.GlidePath`; or a result with
           weights, such as a frontier portfolio.
         - `inflation`: the rate a year, such as ``0.025``, or a price index of one column, such
-          as ``fl.datasets.us_cpi()``. Every amount is in today's money: returns are after
-          inflation and fees.
+          as a consumer price index, as a pandas DataFrame indexed by date. Every amount is in
+          today's money: returns are after inflation and fees.
         - `flows`: money paid in and taken out, such as ``fl.Saving(amount=1_500,
           every="month")``, which runs until the goal, or ``fl.Spending(name="Car",
           amount=25_000, on="2028-03")``.

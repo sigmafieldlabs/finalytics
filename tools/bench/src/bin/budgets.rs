@@ -3,8 +3,9 @@
 //! - building the books for 100,000 transactions over 10 years for 2,000 instruments in under
 //!   2 seconds;
 //! - a 500-asset quadratic programme with linear constraints in under 0.5 seconds;
-//! - a walk-forward comparison of seven methods on the S&P 500 dataset (55 stocks, daily, 5-year
-//!   window, 67 quarterly refits each), with its optimisation report, in under 5 seconds.
+//! - a walk-forward comparison of seven methods on the S&P 500 prices in `tests/sp500` (55
+//!   stocks, daily, 5-year window, 67 quarterly refits each), with its optimisation report, in
+//!   under 5 seconds.
 //!
 //! ```sh
 //! cargo run --release -p finalytics-bench --bin budgets
@@ -25,7 +26,7 @@ use web_time::Instant;
 use finalytics::backtest::Years;
 use finalytics::formats::PortfolioDocument;
 use finalytics::opt::Objective;
-use finalytics::{Assets, Books, Method, datasets};
+use finalytics::{Assets, Books, Method};
 use finalytics_bench::{large_portfolio, large_problem};
 
 fn median(mut seconds: Vec<f64>) -> f64 {
@@ -76,7 +77,7 @@ fn main() -> ExitCode {
     });
 
     let assets = Assets::builder()
-        .prices(datasets::sp500())
+        .prices_csv(include_str!("../../../../tests/sp500/prices.csv"))
         .risk_free_asset("T-Bills")
         .build()
         .unwrap_or_else(|e| panic!("{e}"));

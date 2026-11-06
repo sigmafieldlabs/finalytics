@@ -486,8 +486,8 @@ impl PlanBuilder<'_> {
         self
     }
 
-    /// A price index of one column, such as `datasets::us_cpi()`, as the inflation: each month's
-    /// inflation is drawn with the same month's returns.
+    /// A price index of one column, such as a consumer price index, as the inflation: each
+    /// month's inflation is drawn with the same month's returns.
     pub fn inflation_index(mut self, prices: PriceTable) -> Self {
         self.index = prices.labels().first().cloned();
         self.options.inflation = Some(Inflation::Index { prices });
@@ -546,12 +546,27 @@ impl PlanBuilder<'_> {
 mod tests {
     use super::*;
     use crate::datasets;
+    use finalytics_core::Date;
 
     fn assets() -> Assets {
         Assets::builder()
             .prices(datasets::asset_class_prices())
             .build()
             .unwrap()
+    }
+
+    /// A price index rising 2.5% a year, on the 28th of each month from January 1990 to
+    /// September 2026, without a level for October 2025.
+    fn price_index() -> PriceTable {
+        let (mut dates, mut levels) = (Vec::new(), Vec::new());
+        for k in 0..441 {
+            let (year, month) = (1990 + k / 12, k % 12 + 1);
+            if (year, month) != (2025, 10) {
+                dates.push(Date::from_ymd(year, month as u32, 28).unwrap());
+                levels.push(Some(100.0 * 1.025f64.powf(f64::from(k) / 12.0)));
+            }
+        }
+        PriceTable::new(dates, vec!["Prices".to_owned()], vec![levels]).unwrap()
     }
 
     #[test]
@@ -575,7 +590,7 @@ mod tests {
             inflation: None,
             estimates: None,
         };
-        let h = with_index(history, &datasets::us_cpi()).unwrap();
+        let h = with_index(history, &price_index()).unwrap();
         let inflation = h.inflation.as_ref().unwrap();
         // The index ends in September 2026, a month before the assets.
         assert_eq!(h.first.to_string(), "1996-11");
@@ -584,13 +599,10 @@ mod tests {
             h.first.plus(inflation.len() as i32 - 1).to_string(),
             "2026-09"
         );
-        let average = inflation
-            .iter()
-            .map(|r| 1.0 + r)
-            .product::<f64>()
-            .powf(12.0 / inflation.len() as f64)
-            - 1.0;
-        assert!(average > 0.015 && average < 0.04, "{average}");
+        // Every month rises at the index's steady rate, October and November 2025 too, around
+        // the missing level.
+        let monthly = 1.025f64.powf(1.0 / 12.0) - 1.0;
+        assert!(inflation.iter().all(|r| (r - monthly).abs() < 1e-12));
     }
 
     #[test]
@@ -620,21 +632,16 @@ mod tests {
             .start_value(250_000.0)
             .saving(2_000.0, Frequency::Month)
             .weights([("US Equity", 0.6), ("Bonds", 0.4)])
-            .inflation_index(datasets::us_cpi())
+            .inflation_index(price_index())
             .simulations(500)
             .build()
             .unwrap();
         assert_eq!(plan.results.start.to_string(), "2026-11");
-        assert_eq!(
-            plan.report.context.inflation,
-            InflationBasis::Index {
-                name: "US CPI".to_owned(),
-                average: match plan.report.context.inflation {
-                    InflationBasis::Index { average, .. } => average,
-                    _ => 0.0,
-                }
-            }
-        );
+        let InflationBasis::Index { name, average } = &plan.report.context.inflation else {
+            panic!("the inflation is not the index")
+        };
+        assert_eq!(name, "Prices");
+        assert!((average - 0.025).abs() < 1e-12, "{average}");
         assert!(plan.to_string().contains("FINALYTICS  ·  PLANNING"));
     }
 }

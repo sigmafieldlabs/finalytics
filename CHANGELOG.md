@@ -26,8 +26,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the `finalytics::planning` module re-exports it. The methods page is
   `docs/methods/planning.md`, and the engine is checked against an independent implementation
   in NumPy (`scripts/reference/planning.py`).
-- `datasets::us_cpi()` (`fl.datasets.us_cpi()`, `datasets.usCpi()`): the US consumer price index,
-  monthly from January 1947 to September 2026, from FRED, as a plan's inflation.
 - Backtests and comparisons can follow money as well as returns: `start_value` and `flows`
   (`.start_value(...)` and `.flow(date, amount)` in Rust) start each run with a value and pay
   money in or take it out on dates. The comparison and backtest reports then show each run's
@@ -77,6 +75,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   shortening them.
 - The methods pages on tail risk and risk decomposition explain how the historical expected
   shortfall and the Rockafellar–Uryasev tail mean differ.
+
+### Removed
+
+- **Breaking:** the S&P 500 dataset: `datasets::sp500`, `sp500_index`, `sp500_companies` and
+  `Company` in Rust, with the `sp500` feature; `fl.datasets.sp500`, `sp500_table`, `sp500_index`,
+  `sp500_index_table` and `sp500_companies` in Python; `datasets.sp500()`, `sp500Index()` and
+  `sp500Companies()` in JavaScript; and its three files from the dataset files. The files, 2.6 MB
+  of CSV, are now test data in `tests/sp500` in the repository, outside the packages. The
+  household portfolio and the asset-class indices remain.
 
 ## [1.0.0-rc.2] - 2026-11-04
 
