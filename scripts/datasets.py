@@ -169,9 +169,9 @@ def portfolio() -> None:
         ["GLD", "fund", "USD", "SPDR Gold Shares", "Real assets", "Global"],
         ["VNQ", "fund", "USD", "Vanguard Real Estate ETF", "Real assets", "North America"],
     ])
-    write_csv(out / "accounts.csv", ["id", "name", "lot_method", "class.owner", "class.wrapper"], [
-        ["brokerage", "Brokerage account", "fifo", "Alex", "Taxable"],
-        ["ira", "Retirement account", "fifo", "Alex", "Tax-deferred"],
+    write_csv(out / "accounts.csv", ["id", "name", "lot_method", "taxable", "class.owner", "class.wrapper"], [
+        ["brokerage", "Brokerage account", "fifo", "true", "Alex", "Taxable"],
+        ["ira", "Retirement account", "fifo", "false", "Alex", "Tax-deferred"],
     ])
 
     rows: list[dict[str, str]] = []
