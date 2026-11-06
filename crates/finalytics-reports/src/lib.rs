@@ -49,8 +49,8 @@ pub use holdings::{
 };
 pub use html::Theme;
 pub use optimisation::{
-    AllocationRow, GroupRow, OptimisationContext, OptimisationHistory, OptimisationReport,
-    OptimisationSummary, ResamplingSummary, RiskReturn, ShortfallFigure,
+    AllocationRow, DrawdownFigure, GroupRow, OptimisationContext, OptimisationHistory,
+    OptimisationReport, OptimisationSummary, ResamplingSummary, RiskReturn, ShortfallFigure,
 };
 #[doc(hidden)]
 pub use optimisation::{OptimisationInputs, optimisation_report, weights_text};

@@ -437,7 +437,10 @@ impl ComparisonReport {
     /// The report's tables: statistics of every run, calendar-year returns and the weights at
     /// each refit.
     pub fn tables(&self) -> Vec<ReportTable> {
-        let tested = crate::backtest_html::tested_label(&self.context).to_lowercase();
+        let fixed = crate::backtest_html::all_fixed(&self.strategies);
+        let tested = crate::backtest_html::tested_label(&self.context, fixed)
+            .unwrap_or("Tested")
+            .to_lowercase();
         let mut all: Vec<&StrategyReport> = self.strategies.iter().collect();
         if let Some(b) = &self.benchmark {
             all.push(b);
@@ -455,7 +458,9 @@ impl BacktestReport {
     /// The report's tables: statistics in and out of sample, calendar-year and monthly returns,
     /// and the weights at each refit.
     pub fn tables(&self) -> Vec<ReportTable> {
-        let tested = crate::backtest_html::tested_label(&self.context).to_lowercase();
+        let tested = crate::backtest_html::tested_label(&self.context, !self.strategy.fitted)
+            .unwrap_or("Tested")
+            .to_lowercase();
         let mut all: Vec<&StrategyReport> = vec![&self.strategy];
         if let Some(b) = &self.benchmark {
             all.push(b);

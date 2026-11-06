@@ -53,6 +53,11 @@ in the last place.
 - The parametric and Cornish–Fisher methods use the sample standard deviation (divisor $n - 1$)
   with population skewness and kurtosis.
 - At least two returns are needed, and the confidence level must be strictly between 0 and 1.
+- The historical expected shortfall averages whole returns. Minimum CVaR and
+  `shortfall_decomposition` use the Rockafellar–Uryasev tail mean instead, which counts exactly
+  the share $\alpha$ of the returns, taking part of the return at the boundary (see
+  [risk decomposition](risk-decomposition.md)). The two agree when $\alpha n$ is a whole number
+  or less than one, and differ slightly otherwise.
 
 ## Example
 

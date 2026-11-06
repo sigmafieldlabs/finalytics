@@ -271,3 +271,29 @@ test("fixed weights are compared with methods on the same periods", () => {
   ]);
   assert.deepEqual(paths(() => assets.compare({})), ["options.methods"]);
 });
+
+test("fixed weights are not called in sample, and keep their names", () => {
+  const result = assets.compare({
+    weights: { "Min-CVaR": { "US Equity": 0.3, Bonds: 0.7 }, Growth: { "US Equity": 0.8, Gold: 0.2 } },
+    benchmark: { "US Equity": 0.6, Bonds: 0.4 },
+    benchmark_name: "60/40",
+  });
+  const text = result.report.toText();
+  const page = result.report.toHtml();
+  for (const shown of [text, page]) {
+    assert.ok(!shown.toLowerCase().includes("in sample"));
+    assert.ok(shown.includes("2 portfolios"));
+  }
+  assert.ok(page.includes("60/40, the benchmark, is not ranked"));
+  assert.ok(!page.includes("min-CVaR"));
+});
+
+test("the downside methods report their optimum", () => {
+  const semi = assets.optimise({ method: "minimum_semivariance" });
+  close(semi.report.summary.downside_deviation, Math.sqrt(semi.results.solution.objective_value), 1e-15, "deviation");
+  assert.match(semi.report.toText(), /Downside deviation/);
+  const cdar = assets.optimise({ method: "minimum_cdar", confidence: 0.9 });
+  const figure = cdar.report.summary.drawdown_at_risk;
+  assert.equal(figure.confidence, 0.9);
+  assert.equal(figure.value, cdar.results.solution.objective_value);
+});

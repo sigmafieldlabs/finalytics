@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   portfolios, optimising, comparing, backtesting, reports, value and holding series, performance,
   rebalancing, scenarios, rolling statistics, statistical factor models, and solving, resampling
   and tracing the frontier of `fl.opt.Problem`), so other Python threads run meanwhile.
+- The minimum-semivariance optimisation report shows the downside deviation the weights reach
+  (`OptimisationSummary.downside_deviation`), and the minimum-CDaR report the conditional
+  drawdown at risk (`OptimisationSummary.drawdown_at_risk`, a `DrawdownFigure`), as the
+  minimum-CVaR report shows its expected shortfall.
 
 ### Changed
 
@@ -31,6 +35,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Breaking (Rust):** the backtest engine's `Fitter` is `Send + Sync`, so that fits can run on
   several threads, and it reports problems by returning an error, never by panicking: walk-forward
   validation fits every window before it uses the refits.
+- Reports of fixed weights scored on the returns given, with no method fitted, no longer call
+  the periods "in sample": the header says "Fixed weights", headings name the dates alone, and
+  the strategies are counted and named as portfolios ("2 portfolios", "How the portfolios were
+  tested"), or as strategies when methods and fixed weights are mixed. A holdout of fixed weights
+  is split "Before" and "From" the start of the test in its charts.
+- The comparison report says that its highlights and bold figures rank the strategies, beside a
+  benchmark that is not ranked. With one strategy, its tiles name the figures plainly ("Sharpe
+  ratio", not "Highest Sharpe ratio").
+- Names keep their case in the comparison report's tiles and notes ("Min-CVaR", not
+  "min-CVaR").
+- The optimisation report's header counts three or more group limits ("11 group limits"); the
+  Method section still lists each one.
+- The text backtest report gives the strategy's and benchmark's names more room before
+  shortening them.
+- The methods pages on tail risk and risk decomposition explain how the historical expected
+  shortfall and the Rockafellar–Uryasev tail mean differ.
 
 ## [1.0.0-rc.2] - 2026-11-04
 

@@ -115,9 +115,11 @@ pub(crate) fn costs(bps: f64) -> String {
     }
 }
 
-/// The validation in a few words, such as "Walk-forward on 5 years".
-pub(crate) fn validation(c: &BacktestContext) -> String {
+/// The validation in a few words, such as "Walk-forward on 5 years"; "Fixed weights" when every
+/// strategy (`fixed`) holds fixed weights scored on the returns given, which no method saw.
+pub(crate) fn validation(c: &BacktestContext, fixed: bool) -> String {
     match &c.settings.validation {
+        Validation::InSample if fixed => "Fixed weights".to_owned(),
         Validation::InSample => "In sample".to_owned(),
         Validation::Holdout { .. } => format!("Holdout from {}", month(c.test_start)),
         Validation::WalkForward {
@@ -148,11 +150,84 @@ fn years_words(y: f64) -> String {
     }
 }
 
-/// What the scored periods are: "Out of sample" or "In sample".
-pub(crate) fn tested_label(c: &BacktestContext) -> &'static str {
+/// What the scored periods are: "Out of sample" or "In sample"; nothing when every strategy
+/// (`fixed`) holds fixed weights scored on the returns given, as they were not fitted to any.
+pub(crate) fn tested_label(c: &BacktestContext, fixed: bool) -> Option<&'static str> {
     match c.settings.validation {
-        Validation::InSample => "In sample",
-        _ => "Out of sample",
+        Validation::InSample if fixed => None,
+        Validation::InSample => Some("In sample"),
+        _ => Some("Out of sample"),
+    }
+}
+
+/// `base` followed by the scored periods, such as "Growth of 100, in sample"; `base` alone
+/// without them.
+pub(crate) fn qualified(base: &str, tested: Option<&str>) -> String {
+    match tested {
+        Some(t) => format!("{base}, {}", lower_first(t)),
+        None => base.to_owned(),
+    }
+}
+
+/// The scored periods and their dates, such as "Out of sample, Jan 2016 to Dec 2025"; the dates
+/// alone without them.
+pub(crate) fn tested_span(tested: Option<&str>, span: &str) -> String {
+    match tested {
+        Some(t) => format!("{t}, {span}"),
+        None => capitalise(span),
+    }
+}
+
+/// The plural of one of the words `strategy_kind` gives.
+pub(crate) fn plural_word(kind: &str) -> String {
+    match kind {
+        "strategy" => "strategies".to_owned(),
+        other => format!("{other}s"),
+    }
+}
+
+/// Whether every one of `strategies` holds fixed weights.
+pub(crate) fn all_fixed<'a>(strategies: impl IntoIterator<Item = &'a StrategyReport>) -> bool {
+    strategies.into_iter().all(|s| !s.fitted)
+}
+
+/// What `strategies` are, in the singular: "method", "portfolio" (fixed weights) or "strategy"
+/// when both are present.
+pub(crate) fn strategy_kind<'a>(
+    strategies: impl IntoIterator<Item = &'a StrategyReport>,
+) -> &'static str {
+    let (mut fitted, mut fixed) = (false, false);
+    for s in strategies {
+        if s.fitted {
+            fitted = true;
+        } else {
+            fixed = true;
+        }
+    }
+    match (fitted, fixed) {
+        (true, true) => "strategy",
+        (false, true) => "portfolio",
+        _ => "method",
+    }
+}
+
+/// The strategies counted by kind: "3 methods", "2 portfolios", or "4 strategies" when methods
+/// and fixed weights are mixed.
+pub(crate) fn strategy_count<'a>(
+    strategies: impl IntoIterator<Item = &'a StrategyReport>,
+) -> String {
+    let (mut fitted, mut fixed) = (0, 0);
+    for s in strategies {
+        if s.fitted {
+            fitted += 1;
+        } else {
+            fixed += 1;
+        }
+    }
+    match (fitted, fixed) {
+        (n, 0) => plural(n, "method"),
+        (0, n) => plural(n, "portfolio"),
+        (a, b) => format!("{} strategies", a + b),
     }
 }
 
@@ -172,7 +247,8 @@ pub(crate) fn lower_first(text: &str) -> String {
     }
 }
 
-/// A name inside a sentence: "Risk parity" as "risk parity", but "S&P 500" as it is.
+/// One of the engine's method names inside a sentence: "Risk parity" as "risk parity", but
+/// "S&P 500" as it is. Names the user gives are never passed here: they keep their case.
 pub(crate) fn lower_name(name: &str) -> String {
     if name.chars().nth(1).is_some_and(char::is_lowercase) {
         lower_first(name)
@@ -242,11 +318,7 @@ pub(crate) fn grouped_notes(strategies: &[&StrategyReport]) -> Vec<String> {
     groups
         .into_iter()
         .map(|(note, names)| {
-            let names: Vec<String> = names
-                .iter()
-                .enumerate()
-                .map(|(k, n)| if k == 0 { n.clone() } else { lower_name(n) })
-                .collect();
+            // Names keep their case: they may be the user's own, such as "Min-CVaR".
             format!("{}: {}", and_list(&names), lower_first(&note))
         })
         .collect()
@@ -1363,7 +1435,8 @@ impl ComparisonReport {
     pub fn to_html(&self, name: Option<&str>) -> String {
         let name = name.or(self.name.as_deref());
         let c = &self.context;
-        let tested = tested_label(c);
+        let fixed = all_fixed(&self.strategies);
+        let tested = tested_label(c, fixed);
         let range = span(c.test_start, c.test_end);
         let mut entries: Vec<(&StrategyReport, &str)> = self
             .strategies
@@ -1390,22 +1463,18 @@ impl ComparisonReport {
             .filter(|s| first_weights(s).is_some())
             .collect();
         let mut items: Vec<(String, String, Option<String>)> = Vec::new();
+        // With one strategy there is nothing to rank: the tiles name the figures plainly.
+        let one = invested.len() == 1;
+        let best = |ranked: &str, plain: &str| if one { plain } else { ranked }.to_owned();
         let mut by_sharpe: Vec<&StrategyReport> = invested.clone();
         by_sharpe.sort_by(|a, b| sharpe(b).total_cmp(&sharpe(a)));
         if let Some(top) = by_sharpe.first() {
             let sub = by_sharpe.get(1).map_or_else(
                 || top.name.clone(),
-                |next| {
-                    format!(
-                        "{}; next {} {}",
-                        top.name,
-                        lower_name(&next.name),
-                        ratio(sharpe(next))
-                    )
-                },
+                |next| format!("{}; next {} {}", top.name, next.name, ratio(sharpe(next))),
             );
             items.push((
-                "Highest Sharpe ratio".to_owned(),
+                best("Highest Sharpe ratio", "Sharpe ratio"),
                 ratio(sharpe(top)),
                 Some(sub),
             ));
@@ -1417,7 +1486,7 @@ impl ComparisonReport {
                 .total_cmp(&b.tested.statistics.max_drawdown)
         }) {
             items.push((
-                "Smallest drawdown".to_owned(),
+                best("Smallest drawdown", "Maximum drawdown"),
                 percent(s.tested.statistics.max_drawdown),
                 Some(s.name.clone()),
             ));
@@ -1428,7 +1497,7 @@ impl ComparisonReport {
                 .total_cmp(&b.tested.turnover_per_year)
         }) {
             items.push((
-                "Lowest turnover".to_owned(),
+                best("Lowest turnover", "Turnover"),
                 format!("{} a year", pct(Some(s.tested.turnover_per_year), 0, false)),
                 Some(s.name.clone()),
             ));
@@ -1447,7 +1516,10 @@ impl ComparisonReport {
             {
                 let before = s.in_sample.as_ref().and_then(|i| i.statistics.sharpe_ratio);
                 items.push((
-                    format!("Largest fall {}", lower_first(tested)),
+                    match tested {
+                        Some(t) => format!("{} {}", best("Largest fall", "Fall"), lower_first(t)),
+                        None => best("Largest fall", "Fall"),
+                    },
                     format!("{} → {}", num(before, 2), ratio(sharpe(s))),
                     Some(format!("{}, Sharpe ratio", s.name)),
                 ));
@@ -1459,7 +1531,7 @@ impl ComparisonReport {
                 .total_cmp(&b.tested.statistics.annualised_return)
         }) {
             items.push((
-                "Highest return".to_owned(),
+                best("Highest return", "Return"),
                 format!("{} a year", percent(s.tested.statistics.annualised_return)),
                 Some(s.name.clone()),
             ));
@@ -1531,10 +1603,18 @@ impl ComparisonReport {
             "Return, volatility and turnover are a year, turnover one-way (the share of value \
              bought, or sold); drawdown is the largest fall; CVaR is the average loss in the worst \
              5% of {period}s.{}",
-            if n > 1 {
-                " Bold marks the best in each column."
-            } else {
-                ""
+            match (n > 1, &self.benchmark) {
+                (true, Some(b)) => format!(
+                    " Bold marks the best of the {} in each column; {} is not ranked.",
+                    plural_word(strategy_kind(&self.strategies)),
+                    if b.name == "Benchmark" {
+                        "the benchmark".to_owned()
+                    } else {
+                        format!("{}, the benchmark,", b.name)
+                    }
+                ),
+                (true, None) => " Bold marks the best in each column.".to_owned(),
+                _ => String::new(),
             }
         );
         if !c.limits.is_empty() {
@@ -1548,10 +1628,10 @@ impl ComparisonReport {
         }
         let mut summary = tiles(&items);
         summary.push_str(&card(
-            &format!("{tested}, {range}"),
+            &tested_span(tested, &range),
             &table(
                 &[
-                    "Method",
+                    &capitalise(strategy_kind(&self.strategies)),
                     "Return",
                     "Volatility",
                     "Sharpe",
@@ -1888,7 +1968,10 @@ impl ComparisonReport {
 
         // Method.
         let method = card(
-            "How the methods were tested",
+            &format!(
+                "How the {} were tested",
+                plural_word(strategy_kind(&self.strategies))
+            ),
             &notes_table(&method_rows(
                 c,
                 !fitted.is_empty(),
@@ -1906,19 +1989,34 @@ impl ComparisonReport {
         let mut body = section(
             "c-summary",
             "Summary",
-            &format!("Each method, scored {}", lower_first(tested)),
+            &{
+                let kind = strategy_kind(&self.strategies);
+                let scored = match tested {
+                    Some(t) => format!("Each {kind}, scored {}", lower_first(t)),
+                    None => format!("Each {kind}, held over {range}"),
+                };
+                match &self.benchmark {
+                    Some(_) if n > 1 => {
+                        format!("{scored}; the highlights rank the {}", plural_word(kind))
+                    }
+                    _ => scored,
+                }
+            },
             &summary,
         );
         body.push_str(&section(
             "c-performance",
             "Performance",
-            &format!("Growth and returns by year, {}", lower_first(tested)),
+            &qualified("Growth and returns by year", tested),
             &performance,
         ));
         body.push_str(&section(
             "c-risk",
             "Risk",
-            "How far and how long each method fell",
+            &format!(
+                "How far and how long each {} fell",
+                strategy_kind(&self.strategies)
+            ),
             &risk,
         ));
         if compared {
@@ -1935,7 +2033,10 @@ impl ComparisonReport {
             body.push_str(&section(
                 "c-weights",
                 "Weights",
-                "What each method held, and how often it traded",
+                &format!(
+                    "What each {} held, and how often it traded",
+                    strategy_kind(&self.strategies)
+                ),
                 &weights_html,
             ));
         }
@@ -1948,8 +2049,8 @@ impl ComparisonReport {
         ));
         let meta = format!(
             "{}, {range}<br>{} · {} · {} · {} · {}{}",
-            esc(&validation(c)),
-            esc(&plural(n, "method")),
+            esc(&validation(c, fixed)),
+            esc(&strategy_count(&self.strategies)),
             esc(&plural(c.assets.len(), "asset")),
             frequency(c.periods_per_year),
             esc(&rebalancing(&c.settings.rebalance)),
@@ -1991,7 +2092,7 @@ impl BacktestReport {
         let s = &self.strategy;
         let title = name.or(self.name.as_deref()).unwrap_or(&s.name);
         let bench = self.benchmark.as_ref();
-        let tested = tested_label(c);
+        let tested = tested_label(c, !s.fitted);
         let period = period_word(c.periods_per_year);
         let split = c.settings.validation != Validation::InSample;
 
@@ -2125,10 +2226,9 @@ impl BacktestReport {
         let bo = bench.map(|b| &b.tested);
         // The benchmark in sample only beside the strategy's.
         let bi = i.and(bench.and_then(|b| b.in_sample.as_ref()));
-        let suffix = if split {
-            format!(", {}", lower_first(tested))
-        } else {
-            String::new()
+        let suffix = match tested.filter(|_| split) {
+            Some(t) => format!(", {}", lower_first(t)),
+            None => String::new(),
         };
         let mut items = vec![(
             format!("Return{suffix}"),
@@ -2195,7 +2295,7 @@ impl BacktestReport {
         match i {
             Some(i) => {
                 runs.push((format!("{}, in sample", s.name), i));
-                runs.push((format!("{}, {}", s.name, lower_first(tested)), o));
+                runs.push((qualified(&s.name, tested), o));
             }
             None => runs.push((s.name.clone(), o)),
         }
@@ -2203,7 +2303,7 @@ impl BacktestReport {
             match (bi, bo) {
                 (Some(bi), Some(bo)) => {
                     runs.push((format!("{}, in sample", b.name), bi));
-                    runs.push((format!("{}, {}", b.name, lower_first(tested)), bo));
+                    runs.push((qualified(&b.name, tested), bo));
                 }
                 (None, Some(bo)) => runs.push((b.name.clone(), bo)),
                 _ => {}
@@ -2327,25 +2427,34 @@ impl BacktestReport {
                 series: &b.drawdown,
             });
         }
+        // The two parts of a holdout: in and out of sample for a fitted method; for fixed
+        // weights, which no method fitted, before and from the start of the test.
+        let (before, after) = if s.fitted {
+            ("In sample".to_owned(), "Out of sample".to_owned())
+        } else {
+            (
+                format!("Before {}", month(c.test_start)),
+                format!("From {}", month(c.test_start)),
+            )
+        };
         let top_shade = shade.map(|at| Shade {
             at,
-            left: "In sample",
-            right: "Out of sample",
+            left: &before,
+            right: &after,
             bottom: false,
         });
         let bottom_shade = shade.map(|at| Shade {
             at,
-            left: "In sample",
-            right: "Out of sample",
+            left: &before,
+            right: &after,
             bottom: true,
         });
         let mut worst = vec![format!(
             "{} at worst{}",
             percent(o.statistics.max_drawdown),
-            if split {
-                format!(" {}", lower_first(tested))
-            } else {
-                String::new()
+            match tested.filter(|_| split) {
+                Some(t) => format!(" {}", lower_first(t)),
+                None => String::new(),
             }
         )];
         if let Some(b) = bo {
@@ -2382,7 +2491,7 @@ impl BacktestReport {
         );
         let growth_subtitle = match &self.history {
             Some(_) => "The whole history, with the holdout shaded apart".to_owned(),
-            None => format!("{tested}, {}", span(o.start, o.end)),
+            None => tested_span(tested, &span(o.start, o.end)),
         };
 
         // Weights and trading.
@@ -2403,7 +2512,7 @@ impl BacktestReport {
         let held = o.rebalances == 0;
         if !shown.is_empty() {
             weights_html.push_str(&card(
-                &format!("Weights held, {}", lower_first(tested)),
+                &qualified("Weights held", tested),
                 &stacked(&shown),
                 Some(if held {
                     "Bought at the start and held: the weights drift with prices."
@@ -2505,7 +2614,7 @@ impl BacktestReport {
                 &categories,
                 &cols,
                 240.0,
-                split_year.map(|k| (k, "In sample", "Out of sample")),
+                split_year.map(|k| (k, before.as_str(), after.as_str())),
             ),
             {
                 let mut notes = Vec::new();
@@ -2514,11 +2623,19 @@ impl BacktestReport {
                 }
                 if let Some(y) = split_date.and_then(|d| years_of.iter().find(|y| straddles(y, d)))
                 {
-                    notes.push(format!(
-                        "† {} is in sample to {} and out of sample after.",
-                        y.year,
-                        month(c.fit_end.unwrap_or(y.start))
-                    ));
+                    notes.push(if s.fitted {
+                        format!(
+                            "† {} is in sample to {} and out of sample after.",
+                            y.year,
+                            month(c.fit_end.unwrap_or(y.start))
+                        )
+                    } else {
+                        format!(
+                            "† {} straddles the start of the test, {}.",
+                            y.year,
+                            month(c.test_start)
+                        )
+                    });
                 }
                 (!notes.is_empty()).then(|| notes.join(" "))
             }
@@ -2559,11 +2676,7 @@ impl BacktestReport {
             );
         }
         grid.push_str("</tbody></table></div>");
-        returns_html.push_str(&card(
-            &format!("Monthly returns, {}", lower_first(tested)),
-            &grid,
-            None,
-        ));
+        returns_html.push_str(&card(&qualified("Monthly returns", tested), &grid, None));
 
         let method = card(
             "How the allocation was tested",
@@ -2611,7 +2724,7 @@ impl BacktestReport {
                 span(i.start, i.end),
                 span(o.start, o.end)
             ),
-            _ => format!("{}, {}", validation(c), span(o.start, o.end)),
+            _ => format!("{}, {}", validation(c, !s.fitted), span(o.start, o.end)),
         };
         let held = s
             .latest()

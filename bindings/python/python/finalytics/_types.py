@@ -1450,6 +1450,18 @@ class Drawdown:
 
 
 @dataclass(frozen=True, kw_only=True)
+class DrawdownFigure:
+    """A conditional drawdown at risk: the mean of the deepest drawdowns of the cumulative returns.
+    """
+
+    confidence: float
+    """The confidence, such as 0.95."""
+
+    value: float
+    """The mean of the deepest `1 - confidence` of the drawdowns, as a positive fall."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class LotSet:
     """A lot was opened or changed; this is its new state."""
 
@@ -2919,6 +2931,16 @@ class OptimisationSummary:
     shares of risk are then of it.
     """
 
+    downside_deviation: float | None = None
+    """For minimum semivariance, the downside deviation over one period the weights reach: the
+    square root of the semivariance below zero, which the method minimises.
+    """
+
+    drawdown_at_risk: DrawdownFigure | None = None
+    """For minimum CDaR, the conditional drawdown at risk the weights reach, which the method
+    minimises.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class OptimiseOptions:
@@ -4118,7 +4140,9 @@ class Resampling:
     """
 
     seed: int
-    """The seed of the random numbers. The same seed gives the same result on every platform."""
+    """The seed of the random numbers. The same seed gives the same result on every platform and
+    with any number of threads.
+    """
 
     periods_per_year: float | None = None
     """For estimates annualised from returns with this many periods in a year (12 for monthly), the
@@ -5933,6 +5957,7 @@ __all__ = [
     "DocumentFxRates",
     "DocumentMarketData",
     "Drawdown",
+    "DrawdownFigure",
     "Drift",
     "Effect",
     "Ellipsoid",

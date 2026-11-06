@@ -151,6 +151,25 @@ pub struct OptimisationSummary {
     /// the shares of risk are then of it.
     #[serde(default)]
     pub expected_shortfall: Option<ShortfallFigure>,
+    /// For minimum semivariance, the downside deviation over one period the weights reach: the
+    /// square root of the semivariance below zero, which the method minimises.
+    #[serde(default)]
+    pub downside_deviation: Option<f64>,
+    /// For minimum CDaR, the conditional drawdown at risk the weights reach, which the method
+    /// minimises.
+    #[serde(default)]
+    pub drawdown_at_risk: Option<DrawdownFigure>,
+}
+
+/// A conditional drawdown at risk: the mean of the deepest drawdowns of the cumulative returns.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct DrawdownFigure {
+    /// The confidence, such as 0.95.
+    pub confidence: f64,
+    /// The mean of the deepest `1 - confidence` of the drawdowns, as a positive fall.
+    pub value: f64,
 }
 
 /// An expected shortfall over one period of the returns.
@@ -251,6 +270,10 @@ pub struct OptimisationInputs<'a> {
     /// For minimum CVaR, the weights' expected shortfall split by asset, in the order of
     /// `labels`.
     pub shortfall: Option<finalytics_risk::ShortfallDecomposition>,
+    /// For minimum semivariance, the semivariance below zero over one period the weights reach.
+    pub semivariance: Option<f64>,
+    /// For minimum CDaR, the confidence and the conditional drawdown at risk the weights reach.
+    pub drawdown_at_risk: Option<(f64, f64)>,
     /// The groups with limits: name, assets, smallest and largest total weight.
     pub groups: Vec<(String, Vec<String>, f64, f64)>,
     pub resampling: Option<ResamplingSummary>,
@@ -315,6 +338,10 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
                 confidence: s.confidence,
                 value: s.expected_shortfall,
             }),
+            downside_deviation: inputs.semivariance.map(|v| v.max(0.0).sqrt()),
+            drawdown_at_risk: inputs
+                .drawdown_at_risk
+                .map(|(confidence, value)| DrawdownFigure { confidence, value }),
         });
     } else {
         for ((asset, expected), volatility) in
@@ -484,6 +511,24 @@ fn limits(c: &OptimisationContext) -> String {
     }
 }
 
+/// The limits for the report's header: as [`limits`] gives them, but with three or more group
+/// limits counted ("11 group limits") rather than spelled out; the Method section lists them all.
+fn header_limits(c: &OptimisationContext) -> String {
+    let group = |l: &&String| l.ends_with(" together");
+    let groups = c.limits.iter().filter(group).count();
+    if groups < 3 {
+        return limits(c);
+    }
+    let mut parts: Vec<String> = c
+        .limits
+        .iter()
+        .filter(|l| !group(l))
+        .map(|l| crate::backtest_html::limit_in_sentence(l))
+        .collect();
+    parts.push(format!("{groups} group limits"));
+    parts.join("; ")
+}
+
 /// What the shares of risk are of: the variance, or for minimum CVaR the expected shortfall.
 fn risk_basis(r: &OptimisationReport) -> String {
     match r.summary.as_ref().and_then(|s| s.expected_shortfall) {
@@ -500,15 +545,35 @@ fn risk_basis(r: &OptimisationReport) -> String {
     }
 }
 
-/// The optimal expected shortfall as a label and a value, such as ("CVaR 95%", "2.3% a month").
-fn shortfall_figure(r: &OptimisationReport) -> Option<(String, String)> {
-    let es = r.summary.as_ref()?.expected_shortfall?;
+/// The optimum of a downside method as a label, a value and what it is, such as ("CVaR 95%",
+/// "2.3% a month", "The least mean loss in the worst 5% of months").
+fn objective_figure(r: &OptimisationReport) -> Option<(String, String, String)> {
+    let s = r.summary.as_ref()?;
+    let period = period_word(r.context.periods_per_year);
+    if let Some(es) = s.expected_shortfall {
+        return Some((
+            format!("CVaR {}", pct(Some(es.confidence), 0, false)),
+            format!("{} a {period}", pct(Some(es.value), 2, false)),
+            format!(
+                "The least mean loss in the worst {} of {period}s",
+                pct(Some(1.0 - es.confidence), 0, false)
+            ),
+        ));
+    }
+    if let Some(d) = s.downside_deviation {
+        return Some((
+            "Downside deviation".to_owned(),
+            format!("{} a {period}", pct(Some(d), 2, false)),
+            format!("The least root mean square of the {period}s' losses below zero"),
+        ));
+    }
+    let cdar = s.drawdown_at_risk?;
     Some((
-        format!("CVaR {}", pct(Some(es.confidence), 0, false)),
+        format!("CDaR {}", pct(Some(cdar.confidence), 0, false)),
+        pct(Some(cdar.value), 2, false),
         format!(
-            "{} a {}",
-            pct(Some(es.value), 2, false),
-            period_word(r.context.periods_per_year)
+            "The least mean of the deepest {} of the drawdowns",
+            pct(Some(1.0 - cdar.confidence), 0, false)
         ),
     ))
 }
@@ -581,18 +646,8 @@ impl OptimisationReport {
                         Some(capitalise(&covariance_name(&c.covariance))),
                     ),
                 ];
-                if let (Some((label, value)), Some(es)) =
-                    (shortfall_figure(self), s.expected_shortfall)
-                {
-                    items.push((
-                        label,
-                        value,
-                        Some(format!(
-                            "The least mean loss in the worst {} of {}s",
-                            pct(Some(1.0 - es.confidence), 0, false),
-                            period_word(c.periods_per_year)
-                        )),
-                    ));
+                if let Some((label, value, what)) = objective_figure(self) {
+                    items.push((label, value, Some(what)));
                 }
                 items.extend([
                     (
@@ -963,7 +1018,7 @@ impl OptimisationReport {
         let meta = format!(
             "{} · {} · {}<br>{} · {}, {} · {} covariance{}",
             esc(&c.method),
-            esc(&limits(c)),
+            esc(&header_limits(c)),
             esc(&c.status),
             esc(&plural(c.assets.len(), "asset")),
             frequency(c.periods_per_year),
@@ -1282,7 +1337,12 @@ impl OptimisationReport {
         if let Some(name) = name {
             page.line(name);
         }
-        page.parts(format!("{} · {} · {}", c.method, limits(c), c.status));
+        page.parts(format!(
+            "{} · {} · {}",
+            c.method,
+            header_limits(c),
+            c.status
+        ));
         page.parts(format!(
             "{} · {} · {} covariance{}",
             plural(c.assets.len(), "asset"),
@@ -1371,7 +1431,7 @@ impl OptimisationReport {
                     ("Expected return".to_owned(), percent(s.expected_return)),
                     ("Volatility".to_owned(), percent(s.volatility)),
                 ];
-                pairs.extend(shortfall_figure(self));
+                pairs.extend(objective_figure(self).map(|(label, value, _)| (label, value)));
                 pairs.extend([
                     ("Sharpe ratio".to_owned(), num(s.sharpe_ratio, 2)),
                     (

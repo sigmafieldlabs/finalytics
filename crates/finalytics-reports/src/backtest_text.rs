@@ -6,8 +6,9 @@ use std::fmt;
 use finalytics_backtest::Validation;
 
 use crate::backtest_html::{
-    allocation_heading, and_list, capitalise, costs, failure_notes, frequency, grouped_notes,
-    month, rebalancing, shown_assets, span, straddles, table_name, tested_label, validation,
+    all_fixed, allocation_heading, and_list, capitalise, costs, failure_notes, frequency,
+    grouped_notes, month, plural_word, qualified, rebalancing, shown_assets, span, straddles,
+    strategy_count, strategy_kind, table_name, tested_label, tested_span, validation,
     weights_heading,
 };
 use crate::backtests::{
@@ -229,8 +230,8 @@ impl ComparisonReport {
         let name = name.or(self.name.as_deref());
         let c = &self.context;
         let mut page = Page::new(None);
-        let tested = tested_label(c);
-        let n = self.strategies.len();
+        let fixed = all_fixed(&self.strategies);
+        let tested = tested_label(c, fixed);
         header(
             &mut page,
             "COMPARISON",
@@ -238,13 +239,13 @@ impl ComparisonReport {
             &[
                 format!(
                     "{} · {} · {}",
-                    validation(c),
+                    validation(c, fixed),
                     rebalancing(&c.settings.rebalance),
                     costs(c.settings.trading_cost_bps)
                 ),
                 format!(
                     "{} · {} · {}{}",
-                    plural(n, "method"),
+                    strategy_count(&self.strategies),
                     plural(c.assets.len(), "asset"),
                     frequency(c.periods_per_year),
                     c.risk_free_asset
@@ -259,7 +260,7 @@ impl ComparisonReport {
             entries.push(b);
         }
         let strategies: Vec<&StrategyReport> = self.strategies.iter().collect();
-        page.section(&format!("{tested}, {}", span(c.test_start, c.test_end)));
+        page.section(&tested_span(tested, &span(c.test_start, c.test_end)));
         let rows: Vec<Vec<String>> = entries
             .iter()
             .map(|s| {
@@ -275,9 +276,10 @@ impl ComparisonReport {
                 ]
             })
             .collect();
+        let kind = strategy_kind(&self.strategies);
         page.table(
             &[
-                "Method",
+                &capitalise(kind),
                 "Return",
                 "Volatility",
                 "Sharpe",
@@ -342,7 +344,7 @@ impl ComparisonReport {
             );
             page.note(&crate::backtest_html::in_and_out(c));
         }
-        page.section(&format!("Growth of 100, {}", tested.to_lowercase()));
+        page.section(&qualified("Growth of 100", tested));
         let growth: Vec<(&str, &crate::Series)> = entries
             .iter()
             .map(|s| (s.name.as_str(), &s.tested.growth))
@@ -392,7 +394,7 @@ impl ComparisonReport {
             page.section(&weights_heading(c, &strategies));
             weights_table(&mut page, c, &latest);
         }
-        page.section("How the methods were tested");
+        page.section(&format!("How the {} were tested", plural_word(kind)));
         method(
             &mut page,
             c,
@@ -417,12 +419,12 @@ impl BacktestReport {
         let c = &self.context;
         let s = &self.strategy;
         let title = name.or(self.name.as_deref()).unwrap_or(&s.name);
-        let tested = tested_label(c);
+        let tested = tested_label(c, !s.fitted);
         let period = period_word(c.periods_per_year);
         let mut page = Page::new(None);
         let mut meta = vec![format!(
             "{} · {} · {}",
-            validation(c),
+            validation(c, !s.fitted),
             rebalancing(&c.settings.rebalance),
             costs(c.settings.trading_cost_bps)
         )];
@@ -479,12 +481,14 @@ impl BacktestReport {
         page.section("Statistics");
         let mut heads: Vec<String> = vec![String::new()];
         let mut runs: Vec<&RunReport> = Vec::new();
+        // Without a split, the names have the room of one or two columns in 80 characters.
+        let room = if self.benchmark.is_some() { 26 } else { 40 };
         if let Some(i) = &s.in_sample {
             heads.push("In sample".to_owned());
             runs.push(i);
-            heads.push(tested.to_owned());
+            heads.push(tested.unwrap_or("Tested").to_owned());
         } else {
-            heads.push(fit(&s.name, 20));
+            heads.push(fit(&s.name, room));
         }
         runs.push(&s.tested);
         if let Some(b) = &self.benchmark {
@@ -494,7 +498,7 @@ impl BacktestReport {
                 runs.push(i);
                 heads.push(format!("{} out", fit(&b.name, 14)));
             } else {
-                heads.push(fit(&b.name, 20));
+                heads.push(fit(&b.name, room));
             }
             runs.push(&b.tested);
         }
@@ -548,7 +552,7 @@ impl BacktestReport {
         let head: Vec<&str> = heads.iter().map(String::as_str).collect();
         page.table(&head, &rows, None);
         let o = &s.tested;
-        page.section(&format!("Trading, {}", tested.to_lowercase()));
+        page.section(&qualified("Trading", tested));
         if o.rebalances == 0 {
             page.note(
                 "Bought at the start and held: no trades after it, so no turnover or trading \

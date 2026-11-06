@@ -975,6 +975,14 @@ export interface Drawdown {
   days_to_recovery?: number | null;
 }
 
+/** A conditional drawdown at risk: the mean of the deepest drawdowns of the cumulative returns. */
+export interface DrawdownFigure {
+  /** The confidence, such as 0.95. */
+  confidence: number;
+  /** The mean of the deepest `1 - confidence` of the drawdowns, as a positive fall. */
+  value: number;
+}
+
 /** A change to the books made by one transaction. */
 export type Effect =
   | {
@@ -2074,6 +2082,16 @@ export interface OptimisationSummary {
    * the shares of risk are then of it.
    */
   expected_shortfall?: ShortfallFigure | null;
+  /**
+   * For minimum semivariance, the downside deviation over one period the weights reach: the
+   * square root of the semivariance below zero, which the method minimises.
+   */
+  downside_deviation?: number | null;
+  /**
+   * For minimum CDaR, the conditional drawdown at risk the weights reach, which the method
+   * minimises.
+   */
+  drawdown_at_risk?: DrawdownFigure | null;
 }
 
 /**
@@ -2962,7 +2980,10 @@ export interface Resampling {
    * ones.
    */
   observations: number;
-  /** The seed of the random numbers. The same seed gives the same result on every platform. */
+  /**
+   * The seed of the random numbers. The same seed gives the same result on every platform and
+   * with any number of threads.
+   */
   seed: number;
   /**
    * For estimates annualised from returns with this many periods in a year (12 for

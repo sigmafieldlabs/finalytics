@@ -242,3 +242,29 @@ def test_fixed_weights_are_compared_with_methods(assets):
     with pytest.raises(fl.ValidationError) as found:
         assets.compare()
     assert [i.path for i in found.value.issues] == ["methods"]
+
+
+def test_fixed_weights_are_not_called_in_sample_and_keep_their_names():
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+    result = assets.compare(
+        weights={"Min-CVaR": {"US Equity": 0.3, "Bonds": 0.7}, "Growth": {"US Equity": 0.8, "Gold": 0.2}},
+        benchmark={"US Equity": 0.6, "Bonds": 0.4},
+        benchmark_name="60/40",
+    )
+    text, page = result.report.to_text(), result.report.to_html()
+    for shown in (text, page):
+        assert "in sample" not in shown.lower()
+        assert "2 portfolios" in shown
+    assert "60/40, the benchmark, is not ranked" in page
+    assert "min-CVaR" not in page
+
+
+def test_the_downside_methods_report_their_optimum():
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+    semi = assets.optimise(method="minimum_semivariance")
+    optimum = semi.results.solution.objective_value
+    assert semi.report.summary.downside_deviation == pytest.approx(optimum**0.5, rel=1e-12)
+    assert "Downside deviation" in semi.report.to_text()
+    cdar = assets.optimise(method="minimum_cdar", confidence=0.9)
+    figure = cdar.report.summary.drawdown_at_risk
+    assert (figure.confidence, figure.value) == (0.9, cdar.results.solution.objective_value)

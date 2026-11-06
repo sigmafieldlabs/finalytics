@@ -28,7 +28,9 @@ $\text{ES} = \sum_t p_t L_t$, the Rockafellar–Uryasev tail mean that minimum C
 also homogeneous of degree one, and each asset's component is $w_i \sum_t p_t (-r_{it})$: its
 weight times its mean loss in the tail. `shortfall_decomposition` returns them; they add up to
 the expected shortfall exactly. The minimum-CVaR optimisation report gives each asset's share of
-the expected shortfall, rather than of the variance.
+the expected shortfall, rather than of the variance. The historical expected shortfall of
+[tail risk](tail-risk.md) averages whole returns, the worst $\lfloor (T - 1)\alpha \rfloor + 1$, so
+the two differ slightly unless $\alpha T$ is a whole number or less than one.
 
 Components and shares add up by any grouping, such as asset class, region or currency, with
 `group_risk`, or `group_contributions` for either decomposition.

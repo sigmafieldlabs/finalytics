@@ -2491,6 +2491,26 @@
       ],
       "description": "One fall from a peak, to the trough and, if it happened, back to the peak."
     },
+    "DrawdownFigure": {
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "description": "The confidence, such as 0.95."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "The mean of the deepest `1 - confidence` of the drawdowns, as a positive fall."
+        }
+      },
+      "required": [
+        "confidence",
+        "value"
+      ],
+      "description": "A conditional drawdown at risk: the mean of the deepest drawdowns of the cumulative returns."
+    },
     "Effect": {
       "oneOf": [
         {
@@ -5404,6 +5424,27 @@
           ],
           "description": "For minimum CVaR, the expected shortfall the weights reach, which the method minimises;\nthe shares of risk are then of it.",
           "default": null
+        },
+        "downside_deviation": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "For minimum semivariance, the downside deviation over one period the weights reach: the\nsquare root of the semivariance below zero, which the method minimises.",
+          "default": null
+        },
+        "drawdown_at_risk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DrawdownFigure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For minimum CDaR, the conditional drawdown at risk the weights reach, which the method\nminimises.",
+          "default": null
         }
       },
       "required": [
@@ -7803,7 +7844,7 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0,
-          "description": "The seed of the random numbers. The same seed gives the same result on every platform."
+          "description": "The seed of the random numbers. The same seed gives the same result on every platform and\nwith any number of threads."
         },
         "periods_per_year": {
           "type": [

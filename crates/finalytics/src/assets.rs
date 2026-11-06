@@ -852,6 +852,15 @@ impl Assets {
             }
             _ => None,
         };
+        // For minimum semivariance and CDaR, the optimum the method reached.
+        let optimum = results
+            .weights
+            .as_ref()
+            .and(results.solution.objective_value);
+        let semivariance = optimum.filter(|_| options.method == Method::MinimumSemivariance);
+        let drawdown_at_risk = optimum
+            .filter(|_| options.method == Method::MinimumCdar)
+            .map(|v| (options.confidence.unwrap_or(0.95), v));
         let solver = serde_json::to_value(results.solution.method)
             .ok()
             .and_then(|v| v.as_str().map(str::to_owned))
@@ -880,6 +889,8 @@ impl Assets {
             frontier,
             history,
             shortfall,
+            semivariance,
+            drawdown_at_risk,
             groups: options
                 .groups
                 .iter()
