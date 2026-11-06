@@ -517,6 +517,7 @@ dependencies = [
 name = "finalytics-core"
 version = "1.0.0-rc.2"
 dependencies = [
+ "libm",
  "proptest",
  "rayon",
  "rust_decimal",

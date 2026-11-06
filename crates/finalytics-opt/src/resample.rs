@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 use web_time::Instant;
 
+use finalytics_core::random::{Random, stream_seed};
 use finalytics_core::{Result, ValidationReport, parallel};
 use finalytics_risk::Matrix;
 
@@ -181,11 +182,11 @@ impl Problem {
         // can run at once; the first error in order is the one reported.
         let histories: Vec<usize> = (0..resampling.samples).collect();
         let outcomes = parallel::map(&histories, |&k| {
-            let mut normal = Normal::new(history_seed(resampling.seed, k));
+            let mut normal = Random::new(stream_seed(resampling.seed, k));
             let mut history = vec![vec![0.0; t]; n];
             let mut z = vec![0.0; root.width()];
             for s in 0..t {
-                z.iter_mut().for_each(|x| *x = normal.next());
+                z.iter_mut().for_each(|x| *x = normal.normal());
                 for (i, column) in history.iter_mut().enumerate() {
                     column[s] = means[i] + root.apply(i, &z);
                 }
@@ -317,85 +318,9 @@ impl Root {
     }
 }
 
-/// SplitMix64's increment, the golden ratio's fractional part in 64 bits.
-const GOLDEN: u64 = 0x9e37_79b9_7f4a_7c15;
-
-/// Standard normal numbers from SplitMix64 (Steele, Lea and Flood, 2014) by the Box–Muller
-/// transform, with `libm`'s functions so that every platform gives the same numbers.
-pub(crate) struct Normal {
-    state: u64,
-    spare: Option<f64>,
-}
-
-impl Normal {
-    pub(crate) fn new(seed: u64) -> Normal {
-        Normal {
-            state: seed,
-            spare: None,
-        }
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(GOLDEN);
-        let mut z = self.state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-        z ^ (z >> 31)
-    }
-
-    /// A uniform number in (0, 1), never 0 or 1.
-    fn uniform(&mut self) -> f64 {
-        ((self.next_u64() >> 11) as f64 + 0.5) / (1u64 << 53) as f64
-    }
-
-    pub(crate) fn next(&mut self) -> f64 {
-        if let Some(z) = self.spare.take() {
-            return z;
-        }
-        let radius = libm::sqrt(-2.0 * libm::log(self.uniform()));
-        let angle = 2.0 * std::f64::consts::PI * self.uniform();
-        self.spare = Some(radius * libm::sin(angle));
-        radius * libm::cos(angle)
-    }
-}
-
-/// The seed of history `k`: the `k`-th number (counting from 0) that SplitMix64 gives from
-/// `seed`. Each history's random numbers depend only on the seed and the history's number, so
-/// histories can be simulated in any order, or at once.
-fn history_seed(seed: u64, k: usize) -> u64 {
-    Normal::new(seed.wrapping_add(GOLDEN.wrapping_mul(k as u64))).next_u64()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn normal_numbers_are_reproducible_and_standard() {
-        let mut a = Normal::new(42);
-        let mut b = Normal::new(42);
-        let draws: Vec<f64> = (0..20_000).map(|_| a.next()).collect();
-        assert!(
-            draws
-                .iter()
-                .zip((0..20_000).map(|_| b.next()))
-                .all(|(x, y)| *x == y)
-        );
-        let mean = draws.iter().sum::<f64>() / draws.len() as f64;
-        let variance =
-            draws.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / (draws.len() as f64 - 1.0);
-        assert!(mean.abs() < 0.03 && (variance - 1.0).abs() < 0.03);
-    }
-
-    #[test]
-    fn each_history_has_a_seed_of_its_own() {
-        // The k-th seed is the k-th number of the generator started at the seed.
-        let mut stream = Normal::new(2026);
-        for k in 0..5 {
-            assert_eq!(history_seed(2026, k), stream.next_u64());
-        }
-        assert_ne!(history_seed(2026, 0), history_seed(2027, 0));
-    }
 
     #[test]
     fn invalid_resampling_is_reported() {

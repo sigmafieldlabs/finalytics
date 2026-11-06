@@ -1,6 +1,6 @@
 //! Foundations shared by every Finalytics crate: dates and business-day calendars, currencies and
-//! exact decimal amounts, time series, errors and validation reports, and numerical helpers. It
-//! performs no input or output.
+//! exact decimal amounts, time series, errors and validation reports, numerical helpers and
+//! reproducible random numbers. It performs no input or output.
 //!
 //! This crate is one layer of Finalytics. Depend on the [`finalytics`](https://docs.rs/finalytics)
 //! crate instead: it re-exports the public API of every layer, and it is the crate whose API
@@ -13,6 +13,7 @@ mod error;
 mod money;
 pub mod numeric;
 pub mod parallel;
+pub mod random;
 mod series;
 
 pub use calendar::{BusinessDayConvention, Calendar};

@@ -19,6 +19,7 @@ schema = ["dep:schemars"]
 parallel = ["dep:rayon"]
 
 [dependencies]
+libm = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
