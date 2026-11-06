@@ -67,7 +67,9 @@ exposure limits are not supported.
 
 The random numbers come from SplitMix64 (Steele, Lea and Flood, 2014) through the Box–Muller
 transform, computed with portable mathematical functions, so that the same seed gives the same
-result in Rust, Python and JavaScript on every platform. A singular covariance matrix is simulated
+result in Rust, Python and JavaScript on every platform. Each history has a generator of its own,
+seeded with the $k$-th number SplitMix64 gives from the seed, so that natively the histories are
+simulated and solved on several threads at once, with the same result as on one. A singular covariance matrix is simulated
 with a pivoted factorisation instead of $L$.
 
 ## Example
@@ -86,7 +88,7 @@ with a pivoted factorisation instead of $L$.
 [0.091, 0.096, 0.814]
 >>> resampled = problem.resampled(fl.opt.MeanVariance(risk_aversion=4.0), observations=60, samples=200, seed=7)
 >>> [round(w, 3) for w in resampled.weights], resampled.solved
-([0.21, 0.28, 0.51], 200)
+([0.218, 0.289, 0.493], 200)
 
 ```
 

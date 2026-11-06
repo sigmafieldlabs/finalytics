@@ -20,6 +20,10 @@ pyo3 = { workspace = true, features = ["abi3-py310"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# Threads natively; Pyodide, Python in WebAssembly, runs on one thread.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+finalytics = { workspace = true, features = ["parallel"] }
+
 [lints.rust]
 missing_docs = "warn"
 

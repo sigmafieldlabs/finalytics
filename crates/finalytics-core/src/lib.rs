@@ -12,6 +12,7 @@ mod date;
 mod error;
 mod money;
 pub mod numeric;
+pub mod parallel;
 mod series;
 
 pub use calendar::{BusinessDayConvention, Calendar};

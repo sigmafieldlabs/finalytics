@@ -2,11 +2,11 @@
 
 #![allow(clippy::unwrap_used, clippy::single_range_in_vec_init)]
 
-use std::cell::RefCell;
 use std::ops::Range;
+use std::sync::Mutex;
 
 use finalytics_backtest::*;
-use finalytics_core::{Date, Error};
+use finalytics_core::{Date, Error, ValidationReport};
 use finalytics_risk::ReturnsTable;
 
 /// Month ends from January 2025, `n` of them.
@@ -175,11 +175,11 @@ fn cash_earns_the_risk_free_return_and_drift_bands_trade_only_when_crossed() {
 fn a_holdout_fits_before_the_start_and_tests_after_it() {
     let (dates, returns, cash) = market_data();
     let market = Market::new(&dates, &returns, &cash, 12.0);
-    let seen = RefCell::new(vec![]);
+    let seen = Mutex::new(vec![]);
     let strategy = Strategy {
         name: "fitted".into(),
         plan: Plan::Fit(Box::new(|rows: Range<usize>| {
-            seen.borrow_mut().push(rows);
+            seen.lock().unwrap().push(rows);
             Ok(Fit::Weights(vec![0.4, 0.6]))
         })),
         notes: vec!["a note".into()],
@@ -188,7 +188,7 @@ fn a_holdout_fits_before_the_start_and_tests_after_it() {
     let settings = Settings::new(Validation::Holdout { start });
     let result = backtest(&market, vec![strategy], None, &settings).unwrap();
     // The test starts with the first period ending on or after the start: July.
-    assert_eq!(*seen.borrow(), [0..6]);
+    assert_eq!(*seen.lock().unwrap(), [0..6]);
     let s = &result.strategies[0];
     assert_eq!(s.in_sample.dates, dates[..6]);
     let out = s.out_of_sample.as_ref().unwrap();
@@ -205,11 +205,11 @@ fn walk_forward_refits_on_rolling_or_expanding_windows_and_keeps_weights_without
     let (dates, returns, cash) = market_data();
     let market = Market::new(&dates, &returns, &cash, 12.0);
     for expanding in [false, true] {
-        let seen = RefCell::new(vec![]);
+        let seen = Mutex::new(vec![]);
         let strategy = Strategy {
             name: "fitted".into(),
             plan: Plan::Fit(Box::new(|rows: Range<usize>| {
-                seen.borrow_mut().push(rows.clone());
+                seen.lock().unwrap().push(rows.clone());
                 // No solution on the window that ends in June.
                 Ok(if rows.end == 6 {
                     Fit::NoSolution("infeasible".into())
@@ -224,8 +224,10 @@ fn walk_forward_refits_on_rolling_or_expanding_windows_and_keeps_weights_without
         let result = backtest(&market, vec![strategy], None, &settings).unwrap();
         let from = |end: usize| if expanding { 0 } else { end - 3 };
         // The first fit on three months, refits at the quarter ends in June and September, and
-        // the in-sample fit on everything.
-        assert_eq!(*seen.borrow(), [from(3)..3, from(6)..6, from(9)..9, 0..12]);
+        // the in-sample fit on everything, in whatever order the threads ran them.
+        let mut fitted = seen.lock().unwrap().clone();
+        fitted.sort_by_key(|r| (r.end, r.start));
+        assert_eq!(fitted, [from(3)..3, from(6)..6, from(9)..9, 0..12]);
         let s = &result.strategies[0];
         let out = s.out_of_sample.as_ref().unwrap();
         assert_eq!(out.dates, dates[3..]);
@@ -372,4 +374,56 @@ fn settings_read_and_write_as_json() {
     let market = Market::new(&dates, &returns, &cash, 12.0);
     let error = backtest(&market, vec![fixed("70/30", &[0.7, 0.3])], None, &both).unwrap_err();
     assert_eq!(paths(error), ["validation"]);
+}
+
+#[test]
+fn the_first_strategy_that_fails_is_the_one_reported() {
+    // Strategies may run at once; the error reported is still the first in order.
+    let (dates, returns, cash) = market_data();
+    let market = Market::new(&dates, &returns, &cash, 12.0);
+    let failing = |name: &str| {
+        let message = format!("{name} could not be fitted");
+        Strategy {
+            name: name.into(),
+            plan: Plan::Fit(Box::new(move |_rows: Range<usize>| {
+                let mut report = ValidationReport::new();
+                report.error("fit", message.clone());
+                Err(Error::Validation(report))
+            })),
+            notes: vec![],
+        }
+    };
+    for _ in 0..20 {
+        let strategies = vec![
+            Strategy {
+                name: "fixed".into(),
+                plan: Plan::Weights(vec![0.5, 0.5]),
+                notes: vec![],
+            },
+            failing("second"),
+            failing("third"),
+        ];
+        let error = backtest(&market, strategies, None, &Settings::default()).unwrap_err();
+        assert!(error.to_string().contains("second could not"), "{error}");
+    }
+}
+
+#[test]
+fn an_error_in_the_first_walk_forward_window_stops_before_the_refits() {
+    let (dates, returns, cash) = market_data();
+    let market = Market::new(&dates, &returns, &cash, 12.0);
+    let seen = Mutex::new(vec![]);
+    let strategy = Strategy {
+        name: "fitted".into(),
+        plan: Plan::Fit(Box::new(|rows: Range<usize>| {
+            seen.lock().unwrap().push(rows.clone());
+            let mut report = ValidationReport::new();
+            report.error("fit", "no data");
+            Err(Error::Validation(report))
+        })),
+        notes: vec![],
+    };
+    let settings = Settings::new(Validation::walk_forward_periods(3));
+    assert!(backtest(&market, vec![strategy], None, &settings).is_err());
+    assert_eq!(*seen.lock().unwrap(), [0..3]);
 }

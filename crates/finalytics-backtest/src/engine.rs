@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use finalytics_core::{Date, Error, Result, ValidationReport};
+use finalytics_core::{Date, Error, Result, ValidationReport, parallel};
 use finalytics_risk::ReturnsTable;
 
 use crate::results::{BacktestResults, Failure, Run, StrategyResult, Trade};
@@ -64,8 +64,12 @@ pub enum Fit {
     NoSolution(String),
 }
 
-/// A function that fits weights to a range of the market's periods (rows of its returns).
-pub type Fitter<'a> = Box<dyn Fn(Range<usize>) -> Result<Fit> + 'a>;
+/// A function that fits weights to a range of the market's periods (rows of its returns). It may
+/// be called from several threads at once with the `parallel` feature, so it must be `Send` and
+/// `Sync`, and each call must depend only on its range. Walk-forward validation fits every
+/// window before it uses the first refit's weights, so a fit reports a problem by returning an
+/// error, never by panicking.
+pub type Fitter<'a> = Box<dyn Fn(Range<usize>) -> Result<Fit> + Send + Sync + 'a>;
 
 /// How a strategy chooses its weights.
 pub enum Plan<'a> {
@@ -116,9 +120,10 @@ pub fn backtest(
         rebalance: settings.rebalance,
         cost: settings.trading_cost_bps / 10_000.0,
     };
-    let strategies = strategies
-        .iter()
-        .map(|s| simulation.strategy(s, split))
+    // The strategies are independent, so they run at once; the first error in order is the one
+    // reported.
+    let strategies = parallel::map(&strategies, |s| simulation.strategy(s, split))
+        .into_iter()
         .collect::<Result<Vec<_>>>()?;
     let benchmark = benchmark
         .map(|(name, b)| simulation.benchmark(name, &b, split))
@@ -359,14 +364,25 @@ impl Simulation<'_, '_> {
                 )
             }
             (Plan::Fit(fit), Split::WalkForward { window, expanding }) => {
+                let rows = |t: usize| (if expanding { 0 } else { t + 1 - window })..t + 1;
+                // The first window first, so that an error there stops before anything else is
+                // fitted.
                 let first = self.fit(fit, 0..window, &mut failures)?;
-                let mut refit = |t: usize| {
-                    let from = if expanding { 0 } else { t + 1 - window };
-                    fit(from..t + 1)
-                };
+                // Each other fit depends only on its window, and the schedule fixes when the
+                // refits fall, so they run at once before the simulation: each refit's, and the
+                // whole history's.
+                let refits = self.refit_times(window..n);
+                let mut windows: Vec<Range<usize>> = refits.iter().map(|&t| rows(t)).collect();
+                windows.push(0..n);
+                let mut fitted = parallel::map(&windows, |w| fit(w.clone()));
+                let whole_fit = fitted.pop();
+                let mut ready: BTreeMap<usize, Result<Fit>> =
+                    refits.into_iter().zip(fitted).collect();
+                // A refit the schedule did not foresee is fitted when it falls.
+                let mut refit = |t: usize| ready.remove(&t).unwrap_or_else(|| fit(rows(t)));
                 let out = self.run(window..n, first.as_deref(), Some(&mut refit), &mut failures)?;
                 let mut whole = Vec::new();
-                let full = self.fit(fit, 0..n, &mut whole)?;
+                let full = self.record(whole_fit, fit, 0..n, &mut whole)?;
                 failures.extend(whole.into_iter().map(|f| Failure {
                     reason: format!("in-sample fit: {}", f.reason),
                     ..f
@@ -432,8 +448,24 @@ impl Simulation<'_, '_> {
         rows: Range<usize>,
         failures: &mut Vec<Failure>,
     ) -> Result<Option<Vec<f64>>> {
+        self.record(None, fit, rows, failures)
+    }
+
+    /// The weights of a fit to `rows` made beforehand (`fitted`), or fitted now if there is none,
+    /// recording a failure dated at the last of the rows.
+    fn record(
+        &self,
+        fitted: Option<Result<Fit>>,
+        fit: &Fitter<'_>,
+        rows: Range<usize>,
+        failures: &mut Vec<Failure>,
+    ) -> Result<Option<Vec<f64>>> {
         let date = self.market.dates[rows.end - 1];
-        match fit(rows)? {
+        let fitted = match fitted {
+            Some(fitted) => fitted,
+            None => fit(rows),
+        };
+        match fitted? {
             Fit::Weights(weights) => {
                 self.check_fitted(&weights, date)?;
                 Ok(Some(weights))
@@ -443,6 +475,23 @@ impl Simulation<'_, '_> {
                 Ok(None)
             }
         }
+    }
+
+    /// The periods of `rows` at whose end `run` refits: the scheduled rebalances, but not the
+    /// last period, after which there is no trade.
+    fn refit_times(&self, rows: Range<usize>) -> Vec<usize> {
+        rows.clone().filter(|&t| self.scheduled(&rows, t)).collect()
+    }
+
+    /// Whether a scheduled rebalance falls at the end of period `t` of a run over `rows`: never
+    /// after the last period. `run` and [`Self::refit_times`] both ask this, so the refits fitted
+    /// beforehand are the ones the run uses.
+    fn scheduled(&self, rows: &Range<usize>, t: usize) -> bool {
+        let dates = self.market.dates;
+        t + 1 < rows.end
+            && self
+                .rebalance
+                .due(dates[t], dates[t + 1], t + 1 - rows.start)
     }
 
     fn check_fitted(&self, weights: &[f64], date: Date) -> Result<()> {
@@ -495,9 +544,7 @@ impl Simulation<'_, '_> {
                 break;
             }
             let date = market.dates[t];
-            let calendar = self
-                .rebalance
-                .due(date, market.dates[t + 1], t + 1 - rows.start);
+            let calendar = self.scheduled(&rows, t);
             let mut refitted = false;
             if calendar && let Some(refit) = refit.as_mut() {
                 match refit(t)? {

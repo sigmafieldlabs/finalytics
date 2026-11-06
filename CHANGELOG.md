@@ -7,6 +7,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A `parallel` feature, on by default in the `finalytics` crate and in the native Python package,
+  runs independent work on several threads with `rayon`: the strategies of a comparison or
+  backtest, the walk-forward fits (the first window is fitted first; then the refit dates are
+  found, the other fits run at once, and the simulation runs in order), the histories of
+  resampled optimisation and the points of an efficient frontier. Results are the same to the
+  last bit on any number of threads, and the first error in order is the one reported. The
+  thread pool is the caller's: `rayon`'s global pool by default, sized by `RAYON_NUM_THREADS`.
+  The WebAssembly package and Pyodide leave the feature out and run on one thread.
+  `finalytics_core::parallel::map` is the helper.
+
+### Changed
+
+- **Breaking:** resampled optimisation seeds each history with the `k`-th number SplitMix64 gives
+  from the seed, so that histories can be simulated in any order. Resampled weights differ from
+  rc.2's for the same seed. The reference script reimplements the new seeding.
+- **Breaking (Rust):** the backtest engine's `Fitter` is `Send + Sync`, so that fits can run on
+  several threads, and it reports problems by returning an error, never by panicking: walk-forward
+  validation fits every window before it uses the refits.
+
 ## [1.0.0-rc.2] - 2026-11-04
 
 ### Added

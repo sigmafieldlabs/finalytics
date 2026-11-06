@@ -1,8 +1,9 @@
 # Performance
 
-Finalytics is single-threaded and runs the same code natively and in WebAssembly. This page sets
-out the performance budgets that CI checks, and the measured times of the main operations, so
-that you can judge whether the engine fits your workload.
+Finalytics runs the same code natively and in WebAssembly. Natively, independent pieces of work
+run on several threads (see [Threads](#threads)); in WebAssembly the engine runs on one. This page
+sets out the performance budgets that CI checks, and the measured times of the main operations,
+so that you can judge whether the engine fits your workload.
 
 ## Budgets
 
@@ -17,7 +18,8 @@ Each measurement is the median of five runs (three for the comparison). The WebA
 100,000 transactions out of JavaScript, as an application would call `new Portfolio(data,
 market)`.
 
-The CI job "Performance budgets" fails when a budget is exceeded:
+The CI job "Performance budgets" fails when a budget is exceeded. The measured times are on one
+thread; the job itself uses every core of the runner:
 
 ```sh
 cargo run --release -p finalytics-bench --bin budgets -- --write-document large.json
@@ -54,6 +56,29 @@ methods, with deposits, currency conversions, purchases, sales and dividends, da
 month-end prices. The returns for the risk and optimisation benchmarks come from a factor model.
 Every input is generated from a fixed seed (`tools/bench/src/lib.rs`), so each run measures the
 same work.
+
+## Threads
+
+With the `parallel` feature, on by default in the `finalytics` crate and in the native Python
+package, four kinds of independent work run at once on `rayon`'s thread pool: the strategies of a
+comparison or backtest, the walk-forward fits, the histories of resampled optimisation and the
+points of an efficient frontier. A single optimisation, the books and the reports run on one
+thread. Each piece of work is computed on its own and the results are collected in order, so they
+are the same to the last bit on any number of threads.
+
+| Operation | One thread | Two threads |
+| --- | --- | --- |
+| Walk-forward comparison, seven methods on 55 stocks (the budget above) | 1.60 s | 0.90 s |
+| Resampled mean–variance, 50 assets, 100 simulated histories of 120 periods | 157 ms | 78 ms |
+
+Measured on a two-core cloud virtual machine (Intel Xeon at 2.1 GHz), with `RAYON_NUM_THREADS`
+set to 1 and 2. Compare the two columns with each other rather than with the tables above, which
+were measured on one thread of another machine. On more cores the same work spreads further.
+
+The thread pool is the caller's. By default it is `rayon`'s global pool, which uses every core
+unless `RAYON_NUM_THREADS` says otherwise; in Rust, run the engine inside a pool of your own with
+`ThreadPool::install`. Without the feature, as in the WebAssembly package and Pyodide, the same
+work runs in order on the calling thread.
 
 ## Machine
 

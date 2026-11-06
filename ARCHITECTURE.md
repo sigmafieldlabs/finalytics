@@ -7,8 +7,10 @@ This document is a short map of the code base for contributors.
 1. **No input or output in the engine.** No network, files, environment variables or global
    state, and no async runtime. The only clock is the timer behind the solve time an optimisation
    reports. Callers supply data; the engine returns results.
-2. **WebAssembly first.** Every library crate builds for `wasm32-unknown-unknown`, and the engine
-   runs on one thread.
+2. **WebAssembly first.** Every library crate builds for `wasm32-unknown-unknown`. In
+   WebAssembly the engine runs on one thread; natively, the `parallel` feature runs independent
+   fits and solves on the caller's `rayon` thread pool, with the same results on any number of
+   threads.
 3. **Exact where money is counted.** Ledger quantities and amounts use decimal arithmetic;
    analytics use `f64` with documented tolerances.
 4. **Deterministic.** Results do not depend on hash order or platform; the solve time is the one

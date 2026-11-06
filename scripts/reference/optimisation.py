@@ -5,8 +5,8 @@ Each problem is formulated afresh in CVXPY, solved to tight tolerances, and comp
 Sharpe ratio portfolio and hierarchical risk parity come from PyPortfolioOpt. The factor model
 cases are formulated in CVXPY in factor form, with the factor exposures as variables. The robust
 cases are formulated in CVXPY with the worst-case expected return written out, and the resampled
-case reimplements the engine's random numbers (SplitMix64 and Box-Muller) and simulation, and
-solves every simulated problem in CVXPY.
+case reimplements the engine's random numbers (SplitMix64 and Box-Muller, with a generator for
+each history) and simulation, and solves every simulated problem in CVXPY.
 
 Usage:
 
@@ -241,13 +241,14 @@ class Normal:
     """The engine's standard normal numbers: SplitMix64 and the Box-Muller transform."""
 
     MASK = (1 << 64) - 1
+    GOLDEN = 0x9E3779B97F4A7C15
 
     def __init__(self, seed):
         self.state = seed
         self.spare = None
 
     def next_u64(self):
-        self.state = (self.state + 0x9E3779B97F4A7C15) & self.MASK
+        self.state = (self.state + self.GOLDEN) & self.MASK
         z = self.state
         z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & self.MASK
         z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & self.MASK
@@ -271,10 +272,12 @@ def resampled_case(labels, cov, mu):
     n = len(labels)
     samples, observations, seed = 30, 60, 2026
     lower = np.linalg.cholesky(cov)
-    normal = Normal(seed)
     w = cp.Variable(n)
     solutions = []
-    for _ in range(samples):
+    for k in range(samples):
+        # Each history has a generator of its own, seeded with the k-th number of SplitMix64
+        # started at the seed.
+        normal = Normal(Normal((seed + k * Normal.GOLDEN) & Normal.MASK).next_u64())
         history = np.empty((observations, n))
         for t in range(observations):
             z = np.array([normal.next() for _ in range(n)])

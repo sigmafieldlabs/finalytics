@@ -10,7 +10,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-finalytics = { workspace = true, features = ["sp500"] }
+finalytics = { workspace = true, features = ["sp500", "parallel"] }
 web-time = { workspace = true }
 
 [dev-dependencies]

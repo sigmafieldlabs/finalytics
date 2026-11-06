@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use finalytics_core::Result;
+use finalytics_core::{Result, parallel};
 
 use crate::invalid;
 use crate::optimise::maximum_return;
@@ -42,17 +42,26 @@ impl Problem {
             ));
         };
         let high = maximum_return(&prepared).unwrap_or(low).max(low);
+        let targets: Vec<f64> = (0..points)
+            .map(|k| {
+                let target = if k + 1 == points {
+                    high
+                } else {
+                    low + (high - low) * k as f64 / (points - 1) as f64
+                };
+                // Lower each target by a relative 1e-10, so that rounding cannot make the end
+                // points infeasible.
+                target - 1e-10 * target.abs().max(1.0)
+            })
+            .collect();
+        // The points are independent, so they are solved at once; the first error in order is
+        // the one reported.
+        let solutions = parallel::map(&targets, |&target| {
+            self.solve(&Objective::TargetReturn { target })
+        });
         let mut frontier = Vec::with_capacity(points);
-        for k in 0..points {
-            let target = if k + 1 == points {
-                high
-            } else {
-                low + (high - low) * k as f64 / (points - 1) as f64
-            };
-            // Lower each target by a relative 1e-10, so that rounding cannot make the end points
-            // infeasible.
-            let target = target - 1e-10 * target.abs().max(1.0);
-            let solution = self.solve(&Objective::TargetReturn { target })?;
+        for solution in solutions {
+            let solution = solution?;
             if let (Some(weights), Some(expected_return), Some(volatility)) = (
                 solution.weights,
                 solution.expected_return,

@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use web_time::Instant;
 
-use finalytics_core::{Result, ValidationReport};
+use finalytics_core::{Result, ValidationReport, parallel};
 use finalytics_risk::Matrix;
 
 use crate::invalid;
@@ -23,7 +23,8 @@ pub struct Resampling {
     /// the estimates came from, so that the simulated estimates are as uncertain as the real
     /// ones.
     pub observations: usize,
-    /// The seed of the random numbers. The same seed gives the same result on every platform.
+    /// The seed of the random numbers. The same seed gives the same result on every platform and
+    /// with any number of threads.
     pub seed: u64,
     /// For estimates annualised from returns with this many periods in a year (12 for
     /// monthly), the histories are simulated period by period, from the estimates divided by
@@ -119,7 +120,10 @@ impl Problem {
     /// The average portfolio is less sensitive to estimation error than the optimum for the
     /// estimates themselves, and more diversified. Simulated returns are `mu + L z`, with `L` the
     /// Cholesky factor of the covariance and `z` standard normal numbers from a seeded generator
-    /// (SplitMix64 and the Box–Muller transform). The average of portfolios that each satisfy a
+    /// (SplitMix64 and the Box–Muller transform). History `k` has a generator of its own, seeded
+    /// with the `k`-th number SplitMix64 gives from `resampling.seed`, so the histories are
+    /// simulated and solved at once with the `parallel` feature, with the same result as one at a
+    /// time. The average of portfolios that each satisfy a
     /// convex constraint satisfies it too, so the average meets every constraint that does not
     /// depend on the estimates; constraints that do (a tracking-error limit) hold for each
     /// simulated problem's own estimates.
@@ -171,14 +175,15 @@ impl Problem {
             .collect();
         let per_period = covariance.scaled(1.0 / scale);
         let root = Root::of(&per_period)?;
-        let mut normal = Normal::new(resampling.seed);
         let t = resampling.observations;
 
-        let mut solutions: Vec<Vec<f64>> = Vec::with_capacity(resampling.samples);
-        let mut failed = 0;
-        let mut history = vec![vec![0.0; t]; n];
-        let mut z = vec![0.0; root.width()];
-        for _ in 0..resampling.samples {
+        // Each history is simulated from its own seed and solved on its own, so the histories
+        // can run at once; the first error in order is the one reported.
+        let histories: Vec<usize> = (0..resampling.samples).collect();
+        let outcomes = parallel::map(&histories, |&k| {
+            let mut normal = Normal::new(history_seed(resampling.seed, k));
+            let mut history = vec![vec![0.0; t]; n];
+            let mut z = vec![0.0; root.width()];
             for s in 0..t {
                 z.iter_mut().for_each(|x| *x = normal.next());
                 for (i, column) in history.iter_mut().enumerate() {
@@ -216,16 +221,24 @@ impl Problem {
             if mu.is_some() {
                 simulated.expected_returns = Some(annual_means);
             }
-            match simulated.solve(objective) {
+            Ok(match simulated.solve(objective) {
                 Ok(solution)
                     if matches!(
                         solution.status,
                         SolveStatus::Optimal | SolveStatus::NearlyOptimal
-                    ) && solution.weights.is_some() =>
+                    ) =>
                 {
-                    solutions.extend(solution.weights);
+                    solution.weights
                 }
-                _ => failed += 1,
+                _ => None,
+            })
+        });
+        let mut solutions: Vec<Vec<f64>> = Vec::with_capacity(resampling.samples);
+        let mut failed = 0;
+        for outcome in outcomes {
+            match outcome? {
+                Some(weights) => solutions.push(weights),
+                None => failed += 1,
             }
         }
 
@@ -304,6 +317,9 @@ impl Root {
     }
 }
 
+/// SplitMix64's increment, the golden ratio's fractional part in 64 bits.
+const GOLDEN: u64 = 0x9e37_79b9_7f4a_7c15;
+
 /// Standard normal numbers from SplitMix64 (Steele, Lea and Flood, 2014) by the Box–Muller
 /// transform, with `libm`'s functions so that every platform gives the same numbers.
 pub(crate) struct Normal {
@@ -320,7 +336,7 @@ impl Normal {
     }
 
     fn next_u64(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        self.state = self.state.wrapping_add(GOLDEN);
         let mut z = self.state;
         z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
@@ -343,6 +359,13 @@ impl Normal {
     }
 }
 
+/// The seed of history `k`: the `k`-th number (counting from 0) that SplitMix64 gives from
+/// `seed`. Each history's random numbers depend only on the seed and the history's number, so
+/// histories can be simulated in any order, or at once.
+fn history_seed(seed: u64, k: usize) -> u64 {
+    Normal::new(seed.wrapping_add(GOLDEN.wrapping_mul(k as u64))).next_u64()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,6 +385,16 @@ mod tests {
         let variance =
             draws.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / (draws.len() as f64 - 1.0);
         assert!(mean.abs() < 0.03 && (variance - 1.0).abs() < 0.03);
+    }
+
+    #[test]
+    fn each_history_has_a_seed_of_its_own() {
+        // The k-th seed is the k-th number of the generator started at the seed.
+        let mut stream = Normal::new(2026);
+        for k in 0..5 {
+            assert_eq!(history_seed(2026, k), stream.next_u64());
+        }
+        assert_ne!(history_seed(2026, 0), history_seed(2027, 0));
     }
 
     #[test]
