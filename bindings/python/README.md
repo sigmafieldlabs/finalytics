@@ -287,25 +287,7 @@ screen.show()
 </picture></a>
 
 The report shows how many securities were measured, how many met each rule,
-the matches in order and where every measure falls across the universe, with
-each rule's threshold marked, so that a threshold can be set where it bites. A
-measure whose window is longer than a security's history has no value, and a
-security whose last close is more than five days old is listed but not
-measured. `screen.results` holds every measure of every security, and
-`finalytics.pandas.securities(screen.results)` turns them into a DataFrame,
-one row per security.
-
-Here the universe is the repository's `tests/sp500/prices.csv`: daily closes
-since 2005 of 55 S&P 500 companies, the five largest in each sector, and of a
-Treasury bill index. Each company's name, sector and industry come from
-`companies.csv` as fields; the bill index has none, so it fails the sector
-rule. Without a benchmark, the measures against one, such as beta, are left
-out; `benchmark="ID"` names one of the securities as the benchmark.
-
-For thousands of securities, give a long DataFrame of `id`, `date` and `close`
-columns, with `volume` and `dividends` if known, or a dict of Series, and
-fields as a DataFrame indexed by security. Name the measures to compute with
-`measures=[...]`; by default every one the data allows is computed.
+the matches in order and where every measure falls across the universe.
 
 ## What is included
 
