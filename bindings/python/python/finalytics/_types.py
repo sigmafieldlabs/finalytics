@@ -6364,6 +6364,9 @@ class StripPoint:
     value: float
     """Its value."""
 
+    matched: bool
+    """Whether it is one of the matches."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class TailRisk:

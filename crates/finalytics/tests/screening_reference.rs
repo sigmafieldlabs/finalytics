@@ -253,6 +253,17 @@ fn screens_match_the_reference() {
             ids(&|e| e["status"] == "too_short"),
             "{name}: too short"
         );
+        // Each strip holds every security with a value, lowest first, its matches marked.
+        for s in &screen.report.strips {
+            assert!(
+                s.points.windows(2).all(|w| w[0].value <= w[1].value),
+                "{name}"
+            );
+            for p in &s.points {
+                assert_eq!(p.matched, r.matches.contains(&p.id), "{name}: {}", p.id);
+            }
+        }
+
         // The report prints in 80 columns and names the exceptions in its line on the data.
         let text = screen.to_string();
         let html = screen.report.to_html(None);

@@ -3,7 +3,6 @@
 //! found, how the rules narrow the universe, the matches, the near misses, where each rule's
 //! threshold falls among the securities, every measure and a line on the data.
 
-use std::collections::HashSet;
 use std::fmt::Write as _;
 
 use finalytics_risk::screening::{FieldValue, Order};
@@ -11,8 +10,8 @@ use finalytics_risk::screening::{FieldValue, Order};
 use crate::backtest_html::{Frame, frame, section};
 use crate::html::{esc, tiles};
 use crate::screening::{
-    CLOSE_NOTE, ScreenReport, ThresholdStrip, column_text, count, counted, limit_text, on_scale,
-    value_text, vs_average,
+    CLOSE_NOTE, ScreenReport, StripPoint, ThresholdStrip, column_text, count, counted, limit_text,
+    on_scale, value_text, vs_average,
 };
 use crate::text::{date, split_heading};
 
@@ -308,12 +307,11 @@ impl ScreenReport {
 
     /// A strip for each measure the rules compare with a number, under a key.
     fn strips_html(&self) -> String {
-        let matched: HashSet<&str> = self.matches.iter().map(|m| m.id.as_str()).collect();
         let mut out = String::from(
             r#"<div class="legend"><span class="key"><i class="kdm"></i>match</span><span class="key"><i class="kdp"></i>passes this rule</span><span class="key"><i class="kdf"></i>fails it</span><span class="key"><i class="kz"></i>passing side</span><span class="key"><i class="kt"></i>limit</span></div>"#,
         );
         for s in &self.strips {
-            out.push_str(&self.strip_html(s, &matched));
+            out.push_str(&self.strip_html(s));
         }
         out
     }
@@ -321,15 +319,15 @@ impl ScreenReport {
     /// One strip: a dot for each security on a line, close values in rows above and below
     /// one another, the rules' thresholds as lines and the side that passes shaded. Positions
     /// are in percent, so that the text keeps its size on any screen.
-    fn strip_html(&self, s: &ThresholdStrip, matched: &HashSet<&str>) -> String {
+    fn strip_html(&self, s: &ThresholdStrip) -> String {
         let Some(scale) = self.strip_scale(s) else {
             return String::new();
         };
         let x = |v: f64| scale.at(v) * 100.0;
-        let points: Vec<(&str, f64, f64)> = s
+        let points: Vec<(&StripPoint, f64, f64)> = s
             .points
             .iter()
-            .map(|p| (p.id.as_str(), p.value, on_scale(&s.name, p.value)))
+            .map(|p| (p, p.value, on_scale(&s.name, p.value)))
             .collect();
         // Each dot in the first row with room for it.
         let gap = ROW / STRIP_WIDTH * 100.0;
@@ -356,8 +354,8 @@ impl ScreenReport {
         } else {
             BIN_HEIGHT + 10.0
         };
-        let class_of = |id: &str, raw: f64| {
-            if matched.contains(id) {
+        let class_of = |p: &StripPoint, raw: f64| {
+            if p.matched {
                 "dm"
             } else if self.strip_passes(s, raw) {
                 "dp"
@@ -376,18 +374,18 @@ impl ScreenReport {
         }
         if dots {
             let mid = height / 2.0;
-            for ((id, raw, v), row) in points.iter().zip(&placed) {
+            for ((p, raw, v), row) in points.iter().zip(&placed) {
                 // Rows alternate below and above the middle one.
                 let off = row.div_ceil(2) as f64 * if row % 2 == 1 { 1.0 } else { -1.0 };
                 let out_of_scale = *v < scale.lo || *v > scale.hi;
                 let _ = write!(
                     out,
                     r#"<i class="d {}{}" style="left:{:.2}%;top:{:.1}px" title="{}: {}"></i>"#,
-                    class_of(id, *raw),
+                    class_of(p, *raw),
                     if out_of_scale { " out" } else { "" },
                     x(*v),
                     mid + off * ROW,
-                    esc(id),
+                    esc(&p.id),
                     esc(&value_text(&s.name, s.unit, Some(*raw)))
                 );
             }
@@ -417,13 +415,13 @@ impl ScreenReport {
                     );
                 }
             }
-            for (id, raw, v) in points.iter().filter(|p| matched.contains(p.0)) {
+            for (p, raw, v) in points.iter().filter(|p| p.0.matched) {
                 let _ = write!(
                     out,
                     r#"<i class="d dm" style="left:{:.2}%;top:{:.1}px" title="{}: {}"></i>"#,
                     x(*v),
                     height - DOT / 2.0,
-                    esc(id),
+                    esc(&p.id),
                     esc(&value_text(&s.name, s.unit, Some(*raw)))
                 );
             }

@@ -4640,6 +4640,8 @@ export interface StripPoint {
   id: string;
   /** Its value. */
   value: number;
+  /** Whether it is one of the matches. */
+  matched: boolean;
 }
 
 /** How the tail of the return distribution is estimated. */

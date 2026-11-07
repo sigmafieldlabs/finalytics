@@ -12643,11 +12643,16 @@
           "type": "number",
           "format": "double",
           "description": "Its value."
+        },
+        "matched": {
+          "type": "boolean",
+          "description": "Whether it is one of the matches."
         }
       },
       "required": [
         "id",
-        "value"
+        "value",
+        "matched"
       ],
       "description": "One security's value on a threshold strip."
     },

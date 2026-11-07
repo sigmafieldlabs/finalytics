@@ -106,6 +106,8 @@ pub struct StripPoint {
     pub id: String,
     /// Its value.
     pub value: f64,
+    /// Whether it is one of the matches.
+    pub matched: bool,
 }
 
 /// Where the securities' values of one measure, or of a numeric field, fall against the
@@ -316,6 +318,14 @@ pub(crate) fn typical(name: &str, values: impl Iterator<Item = f64>) -> f64 {
     sizes.get(sizes.len() / 2).copied().unwrap_or(0.0)
 }
 
+/// The places from 0 to `n` in the order `cmp` gives, equal ones in place. Every sort of the
+/// report goes through it, so that one sort is compiled for them all.
+fn ordered(n: usize, cmp: &dyn Fn(usize, usize) -> Ordering) -> Vec<usize> {
+    let mut at: Vec<usize> = (0..n).collect();
+    at.sort_by(|a, b| cmp(*a, *b));
+    at
+}
+
 /// The order of the sort on the values `a` and `b`, those without a value last.
 fn sorted(order: Order, a: Option<f64>, b: Option<f64>) -> Ordering {
     match (a, b) {
@@ -427,17 +437,21 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
             strip.rules.push(k);
             continue;
         }
-        let mut points: Vec<StripPoint> = live
+        let found: Vec<(&SecurityScreen, f64)> = live
             .iter()
             .filter_map(|s| match value_of(s, name, field) {
-                Some(FieldValue::Number(x)) if x.is_finite() => Some(StripPoint {
-                    id: s.id.clone(),
-                    value: x,
-                }),
+                Some(FieldValue::Number(x)) if x.is_finite() => Some((*s, x)),
                 _ => None,
             })
             .collect();
-        points.sort_by(|a, b| a.value.total_cmp(&b.value));
+        let points = ordered(found.len(), &|a, b| found[a].1.total_cmp(&found[b].1))
+            .into_iter()
+            .map(|k| StripPoint {
+                id: found[k].0.id.clone(),
+                value: found[k].1,
+                matched: found[k].0.matched,
+            })
+            .collect();
         let column = column_of(name, field);
         strips.push(ThresholdStrip {
             name: name.to_owned(),
@@ -501,27 +515,33 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
         .collect();
 
     // The securities beyond the limit, in the sort's order.
-    let mut beyond: Vec<&SecurityScreen> = results
+    let beyond: Vec<&SecurityScreen> = results
         .securities
         .iter()
         .filter(|s| s.passed && !s.matched)
         .collect();
-    if let Some(sort) = &results.sort {
-        let key = |s: &SecurityScreen| match value_of(s, sort.name(), sort.field.is_some()) {
-            Some(FieldValue::Number(x)) => Some(x),
-            _ => None,
-        };
-        beyond.sort_by(|a, b| sorted(sort.order, key(a), key(b)));
-    }
-    let also_passed = beyond
+    let at = match &results.sort {
+        Some(sort) => {
+            let key = |s: &SecurityScreen| match value_of(s, sort.name(), sort.field.is_some()) {
+                Some(FieldValue::Number(x)) => Some(x),
+                _ => None,
+            };
+            ordered(beyond.len(), &|a, b| {
+                sorted(sort.order, key(beyond[a]), key(beyond[b]))
+            })
+        }
+        None => (0..beyond.len()).collect(),
+    };
+    let also_passed = at
         .into_iter()
+        .map(|k| beyond[k])
         .take(ALSO_PASSED)
         .enumerate()
         .map(|(k, s)| shown_row(s, matches.len() + k + 1))
         .collect();
 
     // The securities that fail just one rule, the closest to passing first.
-    let mut near: Vec<(f64, NearMiss)> = live
+    let near: Vec<(f64, NearMiss)> = live
         .iter()
         .filter_map(|s| {
             let mut failed = results.rules.iter().enumerate().filter(|(_, r)| {
@@ -545,8 +565,15 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
             ))
         })
         .collect();
-    near.sort_by(|(a, x), (b, y)| a.total_cmp(b).then_with(|| x.id.cmp(&y.id)));
-    let near_misses = near.into_iter().map(|(_, m)| m).collect();
+    let near_misses = ordered(near.len(), &|a, b| {
+        near[a]
+            .0
+            .total_cmp(&near[b].0)
+            .then_with(|| near[a].1.id.cmp(&near[b].1.id))
+    })
+    .into_iter()
+    .map(|k| near[k].1.clone())
+    .collect();
 
     // The spread of each measure, and of each numeric field a rule tests, over the securities
     // that are not stale.
