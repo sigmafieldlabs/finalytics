@@ -51,7 +51,7 @@ fn the_report_prints_in_80_columns_and_shows_every_match() {
     let text = screen.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
     assert!(text.contains("sector is Information Technology or Energy"));
-    assert!(text.contains("RSI 14 from 30 to 70"));
+    assert!(text.contains("RSI (14 days) from 30 to 70"));
     // The report reads back from JSON, as the bindings pass it.
     let json = serde_json::to_string(&screen.report).unwrap();
     assert_eq!(
@@ -98,17 +98,17 @@ fn the_spread_leaves_out_the_measures_no_security_has() {
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
     assert!(
         words(&text).contains(
-            "Not computed, for want of history: return 3y a year, return 5y a year, \
-             volatility 3y, max drawdown 3y, Sharpe ratio 3y and Calmar ratio."
+            "Not computed, for want of history: 3-year return, per year, 5-year return, per \
+             year, 3-year volatility, 3-year max drawdown, 3-year Sharpe ratio and Calmar ratio."
         ),
         "{text}"
     );
     let section = &text[text.find("Spread across the universe").unwrap()..];
     let row = |label: &str| section.lines().any(|l| l.trim_start().starts_with(label));
-    assert!(!row("Return 3y") && row("Return 1y"));
+    assert!(!row("3-year return") && row("1-year return"));
     let html = screen.report.to_html(None);
     assert!(html.contains(
-        r#"<p class="note">Not computed, for want of history: return 3y a year, return 5y a year"#
+        r#"<p class="note">Not computed, for want of history: 3-year return, per year, 5-year return"#
     ));
     assert!(!html.contains(r#"<td title="return_3y">"#));
     assert!(html.contains(r#"<td title="return_1y">"#));
@@ -133,8 +133,8 @@ fn the_spread_leaves_out_the_measures_no_security_has() {
     let text = words(&screen.to_string());
     assert!(
         text.contains(
-            "No security has a value of beta, correlation, relative return 6m or relative \
-             return 1y."
+            "No security has a value of beta, correlation, 6-month return vs benchmark or \
+             1-year return vs benchmark."
         ),
         "{text}"
     );

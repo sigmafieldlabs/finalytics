@@ -242,7 +242,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return1w,
         "return_1w",
-        "Return 1w",
+        "1-week return",
         Fraction,
         RETURNS,
         Window(Period::Week),
@@ -250,7 +250,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return1m,
         "return_1m",
-        "Return 1m",
+        "1-month return",
         Fraction,
         RETURNS,
         Window(Period::Month),
@@ -258,7 +258,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return3m,
         "return_3m",
-        "Return 3m",
+        "3-month return",
         Fraction,
         RETURNS,
         Window(Period::Months3),
@@ -266,7 +266,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return6m,
         "return_6m",
-        "Return 6m",
+        "6-month return",
         Fraction,
         RETURNS,
         Window(Period::Months6),
@@ -274,7 +274,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::ReturnYtd,
         "return_ytd",
-        "Return YTD",
+        "Return this year",
         Fraction,
         RETURNS,
         Window(Period::YearToDate),
@@ -282,7 +282,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return1y,
         "return_1y",
-        "Return 1y",
+        "1-year return",
         Fraction,
         RETURNS,
         Window(Period::Year),
@@ -290,7 +290,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return3y,
         "return_3y",
-        "Return 3y a year",
+        "3-year return, per year",
         Fraction,
         RETURNS,
         Window(Period::Years3),
@@ -298,7 +298,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Return5y,
         "return_5y",
-        "Return 5y a year",
+        "5-year return, per year",
         Fraction,
         RETURNS,
         Window(Period::Years5),
@@ -306,7 +306,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Volatility,
         "volatility",
-        "Volatility",
+        "1-year volatility",
         Fraction,
         RISK,
         Window(Period::Year),
@@ -314,7 +314,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Volatility3y,
         "volatility_3y",
-        "Volatility 3y",
+        "3-year volatility",
         Fraction,
         RISK,
         Window(Period::Years3),
@@ -322,7 +322,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::DownsideDeviation,
         "downside_deviation",
-        "Downside deviation",
+        "Downside volatility",
         Fraction,
         RISK,
         Window(Period::Year),
@@ -330,7 +330,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::MaxDrawdown,
         "max_drawdown",
-        "Max drawdown",
+        "1-year max drawdown",
         Fraction,
         RISK,
         Window(Period::Year),
@@ -338,7 +338,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::MaxDrawdown3y,
         "max_drawdown_3y",
-        "Max drawdown 3y",
+        "3-year max drawdown",
         Fraction,
         RISK,
         Window(Period::Years3),
@@ -346,7 +346,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Drawdown,
         "drawdown",
-        "Drawdown",
+        "Below its high",
         Fraction,
         RISK,
         Closes(1),
@@ -354,7 +354,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::SharpeRatio,
         "sharpe_ratio",
-        "Sharpe ratio",
+        "1-year Sharpe ratio",
         Ratio,
         RISK,
         Window(Period::Year),
@@ -362,7 +362,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::SharpeRatio3y,
         "sharpe_ratio_3y",
-        "Sharpe ratio 3y",
+        "3-year Sharpe ratio",
         Ratio,
         RISK,
         Window(Period::Years3),
@@ -386,7 +386,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::ValueAtRisk,
         "value_at_risk",
-        "Value at risk",
+        "Value at risk, 1 day",
         Fraction,
         RISK,
         Window(Period::Year),
@@ -410,7 +410,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::RelativeReturn6m,
         "relative_return_6m",
-        "Relative return 6m",
+        "6-month return vs benchmark",
         Fraction,
         BENCHMARK,
         Window(Period::Months6),
@@ -418,7 +418,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::RelativeReturn1y,
         "relative_return_1y",
-        "Relative return 1y",
+        "1-year return vs benchmark",
         Fraction,
         BENCHMARK,
         Window(Period::Year),
@@ -426,7 +426,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::PriceToSma20,
         "price_to_sma_20",
-        "Price to SMA 20",
+        "Price vs 20-day average",
         Ratio,
         TECHNICALS,
         Closes(20),
@@ -434,7 +434,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::PriceToSma50,
         "price_to_sma_50",
-        "Price to SMA 50",
+        "Price vs 50-day average",
         Ratio,
         TECHNICALS,
         Closes(50),
@@ -442,7 +442,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::PriceToSma200,
         "price_to_sma_200",
-        "Price to SMA 200",
+        "Price vs 200-day average",
         Ratio,
         TECHNICALS,
         Closes(200),
@@ -450,7 +450,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Sma50Above200,
         "sma_50_above_200",
-        "SMA 50 above 200",
+        "50-day average above 200-day",
         Flag,
         TECHNICALS,
         Closes(200),
@@ -458,7 +458,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Rsi14,
         "rsi_14",
-        "RSI 14",
+        "RSI (14 days)",
         Index,
         TECHNICALS,
         Closes(15),
@@ -474,7 +474,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::From52wHigh,
         "from_52w_high",
-        "From 52w high",
+        "Below 52-week high",
         Fraction,
         TECHNICALS,
         Window(Period::Year),
@@ -482,7 +482,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::From52wLow,
         "from_52w_low",
-        "From 52w low",
+        "Above 52-week low",
         Fraction,
         TECHNICALS,
         Window(Period::Year),
@@ -490,7 +490,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Volatility20d,
         "volatility_20d",
-        "Volatility 20d",
+        "20-day volatility",
         Fraction,
         TECHNICALS,
         Closes(21),
@@ -506,7 +506,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::AverageVolume20d,
         "average_volume_20d",
-        "Average volume 20d",
+        "20-day average volume",
         Count,
         VOLUME,
         Closes(20),
@@ -514,7 +514,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::VolumeRatio,
         "volume_ratio",
-        "Volume ratio",
+        "Volume vs 20-day average",
         Ratio,
         VOLUME,
         Closes(20),
@@ -522,7 +522,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::DollarVolume20d,
         "dollar_volume_20d",
-        "Dollar volume 20d",
+        "20-day dollar volume",
         Count,
         VOLUME,
         Closes(20),
@@ -530,7 +530,7 @@ const INFO: [Info; 39] = [
     info(
         Measure::Observations,
         "observations",
-        "Observations",
+        "Number of prices",
         Count,
         DATA,
         Closes(0),
@@ -573,7 +573,8 @@ impl Measure {
         INFO.iter().find(|i| i.name == name).map(|i| i.measure)
     }
 
-    /// The measure's name in words, for reports, such as `"Return 1y"`.
+    /// The measure's name in words, as people say it, for reports, such as
+    /// `"1-year return"` or `"RSI (14 days)"`.
     pub fn label(self) -> &'static str {
         self.info().label
     }

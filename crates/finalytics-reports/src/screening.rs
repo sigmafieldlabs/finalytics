@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(shown(None, Some(MeasureUnit::Ratio)), "–");
         assert_eq!(shown(Some(18.4), None), "18.4");
         let rule = Rule::between("rsi_14", 30.0, 70.0);
-        assert_eq!(rule_words(&rule), "RSI 14 from 30 to 70");
+        assert_eq!(rule_words(&rule), "RSI (14 days) from 30 to 70");
         let rule = Rule::one_of("sector", ["Energy", "Utilities", "Materials"]);
         assert_eq!(
             rule_words(&rule),
@@ -881,11 +881,11 @@ mod tests {
         );
         assert_eq!(
             rule_words(&Rule::above("return_1y", 0.0)),
-            "Return 1y above 0%"
+            "1-year return above 0%"
         );
         assert_eq!(
             sort_words(&Sort::by("sharpe_ratio", Order::Descending)),
-            "by Sharpe ratio, highest first"
+            "by 1-year Sharpe ratio, highest first"
         );
     }
 }
