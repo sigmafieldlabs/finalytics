@@ -13,9 +13,10 @@ fundamentals, for screening a whole index:
 - `fields.csv`: one row per member, with its `id`, `name`, `sector`, `industry` and `exchange`,
   and its fundamentals on the day of the fetch: `market_cap` in US dollars, `trailing_pe` and
   `forward_pe` (the price over the last twelve months' earnings per share, and over the next
-  year's expected), `price_to_book`, `dividend_yield` (the last twelve months' dividends over the
-  price, as a fraction: 0.021 for 2.1%) and `eps_ttm` (earnings per share over the last twelve
-  months). A value is empty where Yahoo Finance has none.
+  year's expected), `price_to_book`, `trailing_dividend_yield` (the last twelve months' dividends
+  over the price, as a fraction: 0.021 for 2.1%) and `eps_ttm` (earnings per share over the last
+  twelve months). A value is empty where Yahoo Finance has none. The dividend yield is not called
+  `dividend_yield`, the name of a measure the screen computes from dividends given with prices.
 
 The members are today's, so the prices look back with today's knowledge: companies that left the
 index in the five years are missing (survivorship bias), and the fundamentals are those of the

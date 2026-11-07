@@ -11,8 +11,9 @@ Needs Python 3.10 or later and nothing else. Writes:
     prices.csv        id,date,close,volume: daily closes adjusted for dividends and splits, and
                       volumes, from Yahoo Finance's chart data
     fields.csv        id,name,sector,industry,exchange,market_cap,trailing_pe,forward_pe,
-                      price_to_book,dividend_yield,eps_ttm: fundamentals from Yahoo Finance's quotes
-                      (empty where Yahoo has no value; dividend_yield is a fraction, 0.021 for 2.1%)
+                      price_to_book,trailing_dividend_yield,eps_ttm: fundamentals from Yahoo
+                      Finance's quotes (empty where Yahoo has no value; trailing_dividend_yield is
+                      a fraction, 0.021 for 2.1%)
 
 Answers are kept in <output>/.cache, so a run that stops (Yahoo can refuse requests for a while)
 resumes where it stopped. Delete the cache to fetch everything again.
@@ -167,7 +168,7 @@ def main() -> None:
     with open(out / "fields.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["id", "name", "sector", "industry", "exchange", "market_cap", "trailing_pe", "forward_pe",
-                    "price_to_book", "dividend_yield", "eps_ttm"])
+                    "price_to_book", "trailing_dividend_yield", "eps_ttm"])
         for c in companies:
             q = quotes.get(yahoo_symbol(c["Symbol"]), {})
             w.writerow([
