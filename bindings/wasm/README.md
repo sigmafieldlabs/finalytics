@@ -325,6 +325,16 @@ const html = await engine.call("reportHtml", report);
 const text = await engine.call("reportText", report);
 ```
 
+Static methods of `Portfolio`, `Assets`, `MarketData` and `datasets` go through
+`engine.static`, and the objects they return stay in the worker too:
+
+```ts
+const csv = await engine.static("datasets", "file", "asset-classes.csv");
+const assets = await engine.static("Assets", "fromCsv", csv);
+const statistics = await assets.call("statistics");
+await assets.free();
+```
+
 ## Documentation
 
 [Data guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/data.md) ·

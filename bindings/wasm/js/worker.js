@@ -24,11 +24,20 @@ const ready = start();
 const objects = new Map();
 let next = 1;
 
+// The classes whose static methods the page may call, such as `Assets.fromCsv` or `datasets.file`.
+const classes = {
+  Portfolio: finalytics.Portfolio,
+  Assets: finalytics.Assets,
+  MarketData: finalytics.MarketData,
+  datasets: finalytics.datasets,
+};
+
 function keep(value) {
   if (
     value instanceof finalytics.Portfolio ||
     value instanceof finalytics.Assets ||
-    value instanceof finalytics.Performance
+    value instanceof finalytics.Performance ||
+    value instanceof finalytics.MarketData
   ) {
     objects.set(next, value);
     return { handle: next++ };
@@ -44,8 +53,16 @@ function target(handle) {
   return found;
 }
 
+function staticMethod(owner, name) {
+  const found = Object.hasOwn(classes, owner) ? classes[owner] : undefined;
+  if (typeof found?.[name] !== "function" || name === "prototype") {
+    throw new Error(`there is no static method ${owner}.${name}`);
+  }
+  return found[name].bind(found);
+}
+
 async function handle(message) {
-  const { id, op, name, args = [], handle: which } = message;
+  const { id, op, name, args = [], handle: which, owner } = message;
   try {
     await ready;
     let value;
@@ -61,6 +78,9 @@ async function handle(message) {
       }
       case "portfolioFromCsv":
         value = keep(finalytics.Portfolio.fromCsv(...args));
+        break;
+      case "static":
+        value = keep(staticMethod(owner, name)(...args));
         break;
       case "assets":
         value = keep(new finalytics.Assets(...args));

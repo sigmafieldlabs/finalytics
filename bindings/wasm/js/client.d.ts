@@ -18,7 +18,17 @@ type Remote<R> = R extends finalytics.Performance
     ? RemotePortfolio
     : R extends finalytics.Assets
       ? RemoteAssets
-      : R;
+      : R extends finalytics.MarketData
+        ? RemoteMarketData
+        : R;
+/** The classes whose static methods a worker can call. */
+type Classes = {
+  Portfolio: typeof finalytics.Portfolio;
+  Assets: typeof finalytics.Assets;
+  MarketData: typeof finalytics.MarketData;
+  datasets: typeof finalytics.datasets;
+};
+type Static<C extends keyof Classes, K extends keyof Methods<Classes[C]>> = Extract<Classes[C][K], (...args: never[]) => unknown>;
 
 /** An object held in the worker. */
 export interface RemoteObject<T> {
@@ -37,6 +47,7 @@ export interface RemoteObject<T> {
 export type RemotePortfolio = RemoteObject<finalytics.Portfolio>;
 export type RemoteAssets = RemoteObject<finalytics.Assets>;
 export type RemotePerformance = RemoteObject<finalytics.Performance>;
+export type RemoteMarketData = RemoteObject<finalytics.MarketData>;
 
 /** The engine running in a worker. */
 export interface Engine {
@@ -48,6 +59,15 @@ export interface Engine {
   portfolioFromCsv(files: finalytics.PortfolioFiles): Promise<RemotePortfolio>;
   /** Assets in the worker, from their prices. */
   assets(prices: finalytics.PriceTable, options?: finalytics.AssetsOptions): Promise<RemoteAssets>;
+  /**
+   * Calls a static method of `Portfolio`, `Assets`, `MarketData` or `datasets` in the worker, such
+   * as `Assets.fromCsv` or `datasets.file`. Objects it returns stay in the worker.
+   */
+  static<C extends keyof Classes, K extends keyof Methods<Classes[C]>>(
+    owner: C,
+    name: K,
+    ...args: Parameters<Static<C, K>>
+  ): Promise<Remote<ReturnType<Static<C, K>>>>;
   /** Stops the worker. */
   terminate(): unknown;
 }

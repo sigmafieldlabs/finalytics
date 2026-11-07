@@ -61,6 +61,7 @@ export function createEngine(worker) {
     portfolio: async (data, market) => remote(await send({ op: "portfolio", args: [data, market] })),
     portfolioFromCsv: async (files) => remote(await send({ op: "portfolioFromCsv", args: [files] })),
     assets: async (prices, options) => remote(await send({ op: "assets", args: [prices, options] })),
+    static: async (owner, name, ...args) => remote(await send({ op: "static", owner, name, args })),
     terminate: () => worker.terminate(),
   };
 }

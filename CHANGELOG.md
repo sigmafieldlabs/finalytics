@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- JavaScript: the worker client calls static methods of `Portfolio`, `Assets`, `MarketData` and
+  `datasets` (`engine.static("Assets", "fromCsv", csv)`), so the sample datasets and every reader
+  of CSV text work off the main thread. Market data returned by the worker stays there as a
+  handle, like portfolios, assets and performance records.
+
 ## [1.0.0-rc.3] - 2026-11-06
 
 ### Added

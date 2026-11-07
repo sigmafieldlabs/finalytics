@@ -112,11 +112,17 @@ export async function example(worker: Worker): Promise<void> {
   const remotePortfolio = await engine.portfolio(portfolio);
   const remotePerformance = await remotePortfolio.call("performance");
   const remoteReturns: Float64Array = await remotePerformance.get("returns");
+  const sampleFiles: string[] = await engine.static("datasets", "files");
+  const remoteAssets = await engine.static("Assets", "fromCsv", "date,X\n2026-01-02,10\n");
+  const remoteLabels: string[] = await remoteAssets.get("labels");
+  // @ts-expect-error: only the listed classes have static methods in the worker.
+  void engine.static("Window", "open");
 
   // @ts-expect-error: an unknown objective is rejected.
   const unknown: Objective = { type: "maximum_profit" };
 
   console.log(sharpe, doubled, tail, returns, threeYears, plan, remote, remoteReturns, unknown, report, weights);
+  console.log(sampleFiles, remoteLabels);
   console.log(optimisation, solved, optimisationText, rebalanced, single, fixedRuns, comparedData, comparedPage, raw);
   console.log(planReport, planResults, planText, tradedAgain);
 }
