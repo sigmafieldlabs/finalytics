@@ -15,7 +15,9 @@ use finalytics::opt::{
 };
 use finalytics::performance::{FlowTiming, Performance};
 use finalytics::risk::{self, CovarianceMethod, StatisticsOptions, TailMethod};
-use finalytics_bench::{factor_returns, large_factor_problem, large_portfolio, large_problem};
+use finalytics_bench::{
+    factor_returns, large_factor_problem, large_portfolio, large_problem, large_universe,
+};
 
 fn ledger(c: &mut Criterion) {
     let large = large_portfolio(2_000, 100_000, 10);
@@ -165,5 +167,27 @@ fn optimisation(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, ledger, risk_measures, optimisation);
+fn screening(c: &mut Criterion) {
+    let universe = large_universe(5_000, 10);
+    let mut group = c.benchmark_group("screening");
+    group.sample_size(10);
+    group.bench_function(
+        "every measure, 5,000 securities by 10 years of daily closes",
+        |b| b.iter(|| universe.screen().build()),
+    );
+    group.bench_function("a rule, a sort and a limit on the same universe", |b| {
+        b.iter(|| {
+            universe
+                .screen()
+                .above("return_1y", 0.0)
+                .below("volatility", 0.3)
+                .sort("sharpe_ratio", finalytics::screening::Order::Descending)
+                .limit(50)
+                .build()
+        })
+    });
+    group.finish();
+}
+
+criterion_group!(benches, ledger, risk_measures, optimisation, screening);
 criterion_main!(benches);

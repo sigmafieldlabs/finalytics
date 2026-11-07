@@ -4,13 +4,17 @@
 //! three currencies, ten accounts, and 100,000 transactions over ten years, with purchases,
 //! sales by several lot methods, dividends, deposits and currency conversions. Every input is
 //! generated from a fixed seed, so each run measures the same work.
+//!
+//! [`large_universe`] builds the universe of the screening budget: thousands of securities with
+//! years of daily closes and volumes, each starting on its own date.
 
 use finalytics::opt::{Constraints, GroupLimit, Problem};
 use finalytics::risk::{Matrix, ReturnsTable};
+use finalytics::screening::Columns;
 use finalytics::{
     Account, AccountId, Currency, Date, Decimal, Instrument, InstrumentId, InstrumentKind,
     LotMethod, MarketData, Money, PortfolioData, TimeSeries, Transaction, TransactionId,
-    TransactionKind,
+    TransactionKind, Universe,
 };
 
 /// A small, fast, deterministic random number generator (SplitMix64).
@@ -336,4 +340,48 @@ fn with_budget_constraints(problem: Problem, assets: usize) -> Problem {
         constraints.groups = groups;
         constraints
     })
+}
+
+/// A universe of `securities` securities with up to `years` years of daily closes (252 a year)
+/// to 30 October 2026, and volumes and quarterly dividends: random walks with drift, each
+/// starting up to a tenth of the way in, so the histories are uneven. The first security,
+/// `INDEX`, starts first and is the benchmark.
+pub fn large_universe(securities: usize, years: usize) -> Universe {
+    let mut random = Random::new(5_000);
+    let rows = years * 252;
+    let start = Date::from_ymd(2026, 10, 30)
+        .and_then(|d| d.add_days(-(rows as i32 * 7 / 5)))
+        .unwrap_or(Date::EPOCH);
+    let days: Vec<i32> = business_days(start, rows)
+        .iter()
+        .map(|d| d.days_since_epoch())
+        .collect();
+    let mut columns = Columns::default();
+    let mut volume = Vec::with_capacity(securities * rows);
+    let mut dividends = Vec::with_capacity(securities * rows);
+    for i in 0..securities {
+        let first = if i == 0 { 0 } else { random.below(rows / 10) };
+        columns.ids.push(if i == 0 {
+            "INDEX".to_owned()
+        } else {
+            format!("S{i:05}")
+        });
+        columns.starts.push(columns.days.len());
+        let drift = 0.0002 + 0.0004 * random.uniform();
+        let scale = 0.008 + 0.02 * random.uniform();
+        let mut price = 20.0 + 180.0 * random.uniform();
+        for (k, day) in days.iter().enumerate().skip(first) {
+            price *= (drift + scale * random.normal()).exp();
+            columns.days.push(*day);
+            columns.close.push(price);
+            volume.push(1e5 + 1e7 * random.uniform());
+            dividends.push(if k % 63 == 0 { 0.005 * price } else { 0.0 });
+        }
+    }
+    columns.volume = Some(volume);
+    columns.dividends = Some(dividends);
+    Universe::from_columns(columns)
+        .and_then(|u| u.with_benchmark("INDEX"))
+        .map(|u| u.with_risk_free_rate(0.03))
+        .unwrap_or_else(|e| unreachable!("the generated universe is valid: {e}"))
 }

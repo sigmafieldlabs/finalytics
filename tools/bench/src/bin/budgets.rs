@@ -5,7 +5,9 @@
 //! - a 500-asset quadratic programme with linear constraints in under 0.5 seconds;
 //! - a walk-forward comparison of seven methods on the S&P 500 prices in `tests/sp500` (55
 //!   stocks, daily, 5-year window, 67 quarterly refits each), with its optimisation report, in
-//!   under 5 seconds.
+//!   under 5 seconds;
+//! - a screen of every measure on 5,000 securities with up to 10 years of daily closes, volumes
+//!   and dividends (about 12 million closes), with its report, in under 1 second.
 //!
 //! ```sh
 //! cargo run --release -p finalytics-bench --bin budgets
@@ -27,7 +29,7 @@ use finalytics::backtest::Years;
 use finalytics::formats::PortfolioDocument;
 use finalytics::opt::Objective;
 use finalytics::{Assets, Books, Method};
-use finalytics_bench::{large_portfolio, large_problem};
+use finalytics_bench::{large_portfolio, large_problem, large_universe};
 
 fn median(mut seconds: Vec<f64>) -> f64 {
     seconds.sort_by(f64::total_cmp);
@@ -98,6 +100,18 @@ fn main() -> ExitCode {
         comparison.build().unwrap_or_else(|e| panic!("{e}"));
     });
 
+    let universe = large_universe(5_000, 10);
+    let mut matched = 0;
+    let screen = time(5, || {
+        matched = universe
+            .screen()
+            .build()
+            .unwrap_or_else(|e| panic!("{e}"))
+            .results
+            .coverage
+            .matched;
+    });
+
     let checks = [
         (
             "books for 100,000 transactions, 2,000 instruments, 10 years",
@@ -114,12 +128,21 @@ fn main() -> ExitCode {
             comparison,
             5.0,
         ),
+        (
+            "screen of 5,000 securities by 10 years of daily closes",
+            screen,
+            1.0,
+        ),
     ];
     let mut failed = false;
     for (name, seconds, budget) in checks {
         let verdict = if seconds <= budget { "within" } else { "OVER" };
         println!("{name}: {seconds:.3} s ({verdict} the budget of {budget} s)");
         failed |= seconds > budget;
+    }
+    if matched == 0 {
+        println!("the screen kept no security");
+        failed = true;
     }
     if status.is_none_or(|s| !s.has_solution()) {
         println!("the quadratic programme was not solved: {status:?}");
