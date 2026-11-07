@@ -633,7 +633,7 @@ impl Page {
 }
 
 /// A heading split at the space nearest its middle, if it has one.
-fn split_heading(h: &str) -> (String, Option<String>) {
+pub(crate) fn split_heading(h: &str) -> (String, Option<String>) {
     let spaces: Vec<usize> = h
         .char_indices()
         .filter(|(_, c)| *c == ' ')

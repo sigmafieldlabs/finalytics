@@ -11,6 +11,7 @@ use crate::shapes::{Grid, Unit};
 use crate::{
     AttributionReport, BacktestReport, ComparisonReport, HoldingsReport, OptimisationReport,
     OverviewReport, PerformanceReport, PlanReport, RebalanceReport, RiskReport, ScenariosReport,
+    ScreenReport,
 };
 
 /// What a column holds, so that an export can format it.
@@ -97,6 +98,7 @@ pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
         }
         Some(Assets::Rebalance) => return Ok(read_report::<RebalanceReport>(value)?.tables()),
         Some(Assets::Plan) => return Ok(read_report::<PlanReport>(value)?.tables()),
+        Some(Assets::Screen) => return Ok(read_report::<ScreenReport>(value)?.tables()),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -134,6 +136,7 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
         }
         Some(Assets::Rebalance) => return Ok(read::<RebalanceReport>(value)?.to_text(name)),
         Some(Assets::Plan) => return Ok(read::<PlanReport>(value)?.to_text(name)),
+        Some(Assets::Screen) => return Ok(read::<ScreenReport>(value)?.to_text(name)),
         None => {}
     }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
@@ -152,8 +155,8 @@ pub fn report_text(report: &str, name: Option<&str>) -> Result<String> {
     Ok(page.finish())
 }
 
-/// The six reports, or the optimisation, comparison, backtest or rebalance report, given as JSON,
-/// as one HTML
+/// The six reports, or the optimisation, comparison, backtest, rebalance, planning or screening
+/// report, given as JSON, as one HTML
 /// page titled with `name` if given. The Python and JavaScript packages use it; from Rust, call
 /// the report's `to_html`.
 #[doc(hidden)]
@@ -172,6 +175,7 @@ pub fn report_html(report: &str, name: Option<&str>) -> Result<String> {
             return Ok(read_report::<RebalanceReport>(value)?.to_html(name));
         }
         Some(Assets::Plan) => return Ok(read_report::<PlanReport>(value)?.to_html(name)),
+        Some(Assets::Screen) => return Ok(read_report::<ScreenReport>(value)?.to_html(name)),
         None => {}
     }
     let report: crate::PortfolioReport = serde_json::from_value(value)
@@ -186,12 +190,15 @@ enum Assets {
     Backtest,
     Rebalance,
     Plan,
+    Screen,
 }
 
 fn backtest_kind(value: &serde_json::Value) -> Option<Assets> {
     value.get("context")?;
     if value.get("figures").is_some() {
         Some(Assets::Plan)
+    } else if value.get("spread").is_some() {
+        Some(Assets::Screen)
     } else if value.get("allocation").is_some() {
         Some(Assets::Optimisation)
     } else if value.get("strategies").is_some() {

@@ -3,7 +3,8 @@
 //! data; three reports on assets: the optimisation report, on the weights an optimisation
 //! chose, the comparison report, on several methods backtested side by side, and the backtest
 //! report, on one allocation; the rebalance report, on the trades that move a portfolio's
-//! accounts to target weights; and the planning report, on a plan's chance of meeting its goal.
+//! accounts to target weights; the planning report, on a plan's chance of meeting its goal; and
+//! the screening report, on the securities of a universe that meet a screen's rules.
 //!
 //! A report carries everything its screen draws and exports, not only summary figures: series
 //! over time, breakdowns, grids, distributions and tables, each labelled with its units, so a
@@ -34,6 +35,9 @@ mod rebalance;
 mod report;
 mod risk;
 mod scenarios;
+mod screening;
+mod screening_html;
+mod screening_text;
 mod shapes;
 mod tables;
 mod text;
@@ -77,5 +81,8 @@ pub use scenarios::{
     NamedScenario, ScenarioDefinition, ScenarioOutcome, ScenarioSummary, ScenariosReport,
     scenarios_report,
 };
+#[doc(hidden)]
+pub use screening::screen_report;
+pub use screening::{MeasureSpread, ScreenColumn, ScreenContext, ScreenMatch, ScreenReport};
 pub use shapes::{Amount, Bin, Breakdown, Grid, Histogram, Series, Slice, Unit};
 pub use tables::{Cell, Column, ColumnKind, ReportTable, report_html, report_tables, report_text};

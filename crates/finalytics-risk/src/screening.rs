@@ -1165,6 +1165,114 @@ impl ScreenResults {
     }
 }
 
+/// The matches shown when raw results are printed.
+const PRINTED: usize = 20;
+
+/// A value as printed in raw results: a percentage for a fraction, a number otherwise.
+fn printed(x: Option<f64>, unit: MeasureUnit) -> String {
+    let Some(x) = x else {
+        return "–".to_owned();
+    };
+    let text = match unit {
+        MeasureUnit::Fraction => format!("{:.1}%", x * 100.0),
+        MeasureUnit::Count | MeasureUnit::Flag => format!("{x:.0}"),
+        MeasureUnit::Index => format!("{x:.1}"),
+        _ => format!("{x:.2}"),
+    };
+    text.replace('-', "\u{2212}")
+}
+
+/// The results as text: the matches, each with the measures the sort and the rules use (or the
+/// first measures), and the counts.
+impl std::fmt::Display for ScreenResults {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let c = &self.coverage;
+        writeln!(
+            f,
+            "ScreenResults · as of {} · {} of {} securities matched",
+            self.as_of, c.matched, c.securities
+        )?;
+        let mut shown: Vec<usize> = Vec::new();
+        let wanted = self
+            .sort
+            .iter()
+            .filter_map(|s| s.measure.as_deref())
+            .chain(self.rules.iter().filter_map(|r| r.rule.measure.as_deref()));
+        for name in wanted {
+            if let Some(k) = self.measures.iter().position(|m| m.name() == name)
+                && !shown.contains(&k)
+            {
+                shown.push(k);
+            }
+        }
+        for k in 0..self.measures.len() {
+            if shown.len() >= 4 {
+                break;
+            }
+            if !shown.contains(&k) {
+                shown.push(k);
+            }
+        }
+        shown.truncate(4);
+        let matched = self.matched();
+        let rows: Vec<Vec<String>> = matched
+            .iter()
+            .take(PRINTED)
+            .map(|s| {
+                let mut row = vec![s.rank.unwrap_or_default().to_string(), s.id.clone()];
+                row.extend(
+                    shown
+                        .iter()
+                        .map(|k| printed(s.values[*k], self.measures[*k].unit())),
+                );
+                row
+            })
+            .collect();
+        let mut heads = vec!["#".to_owned(), "Security".to_owned()];
+        heads.extend(shown.iter().map(|k| self.measures[*k].name().to_owned()));
+        let widths: Vec<usize> = (0..heads.len())
+            .map(|i| {
+                rows.iter()
+                    .map(|r| r[i].chars().count())
+                    .chain([heads[i].chars().count()])
+                    .max()
+                    .unwrap_or(0)
+            })
+            .collect();
+        let line = |cells: &[String]| -> String {
+            let parts: Vec<String> = cells
+                .iter()
+                .enumerate()
+                .map(|(i, cell)| {
+                    let pad = " ".repeat(widths[i] - cell.chars().count());
+                    if i == 1 {
+                        format!("{cell}{pad}")
+                    } else {
+                        format!("{pad}{cell}")
+                    }
+                })
+                .collect();
+            format!("  {}", parts.join("  ")).trim_end().to_owned()
+        };
+        if !rows.is_empty() {
+            writeln!(f)?;
+            writeln!(f, "{}", line(&heads))?;
+            for row in &rows {
+                writeln!(f, "{}", line(row))?;
+            }
+            if matched.len() > PRINTED {
+                writeln!(f, "  and {} more", matched.len() - PRINTED)?;
+            }
+        }
+        writeln!(f)?;
+        write!(
+            f,
+            "  {} measured · {} too short · {} stale · {} passed every rule",
+            c.measured, c.too_short, c.stale, c.passed
+        )
+    }
+}
+
 // ── The screen ───────────────────────────────────────────────────────────────────────────────
 
 /// What a rule or the sort tests, resolved against the universe.
