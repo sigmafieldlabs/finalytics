@@ -114,6 +114,18 @@ impl Show for finalytics_reports::PlanReport {
     }
 }
 
+impl Show for crate::Screen {
+    fn html(&self) -> String {
+        self.report.to_html(None)
+    }
+}
+
+impl Show for finalytics_reports::ScreenReport {
+    fn html(&self) -> String {
+        self.to_html(None)
+    }
+}
+
 impl Show for RebalanceReport {
     fn html(&self) -> String {
         self.to_html(None)

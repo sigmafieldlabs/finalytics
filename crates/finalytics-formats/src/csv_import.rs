@@ -1064,3 +1064,240 @@ impl Currencies {
         found
     }
 }
+
+/// One security's closes read from CSV, on its own dates, with its volumes and dividends when
+/// the file gives them.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct Closes {
+    /// The security's identifier, as the file writes it.
+    pub id: String,
+    /// The dates of its closes, in increasing order.
+    pub dates: Vec<Date>,
+    /// Its close on each date.
+    pub close: Vec<f64>,
+    /// Its volume on each date, NaN where the file gives none, if the file has a volume column.
+    pub volume: Option<Vec<f64>>,
+    /// Its dividend per share on each date, zero where the file gives none, if the file has a
+    /// dividends column.
+    pub dividends: Option<Vec<f64>>,
+}
+
+/// A number written as the readers accept them, as a 64-bit float.
+fn parse_float(text: &str) -> std::result::Result<f64, String> {
+    match text.parse::<f64>() {
+        Ok(x) if x.is_finite() && !text.contains(['_', ',', ' ']) => Ok(x),
+        _ => Err(format!(
+            "{text:?} is not a number (use a dot for decimals and no thousands separators)"
+        )),
+    }
+}
+
+/// Reads the closes of many securities, each on its own dates, for screening, in either layout:
+///
+/// - long: columns `id` (or `instrument`, `ticker` or `symbol`), `date` and `close` (or
+///   `price`), with `volume` and `dividends` (or `dividend`) if known, one row per security and
+///   date, in any order;
+/// - wide: a `date` column and one column of closes per security, empty where a security has no
+///   close that day.
+///
+/// The securities keep the order in which the file first names them, and each one's rows are
+/// sorted by date; a security with two closes on one date is an error.
+pub fn closes_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Closes>> {
+    let mut report = ValidationReport::new();
+    let Some(mut table) = Table::read(text, options, &mut report) else {
+        return Err(Error::Validation(report));
+    };
+    for name in ["instrument", "ticker", "symbol"] {
+        table.alias(name, "id");
+    }
+    table.alias("price", "close");
+    table.alias("dividend", "dividends");
+    // Each security's rows: date, close, volume, dividend and the line they came from.
+    type Point = (Date, f64, f64, f64, u64);
+    let mut order: Vec<String> = Vec::new();
+    let mut points: HashMap<String, Vec<Point>> = HashMap::new();
+    let long = table.columns.contains_key("id");
+    let with_volume = long && table.columns.contains_key("volume");
+    let with_dividends = long && table.columns.contains_key("dividends");
+    if long {
+        if !table.require(&["date", "close"], &mut report) {
+            return Err(Error::Validation(report));
+        }
+        for (line, values) in &table.rows {
+            let mut row = Row {
+                table: &table,
+                line: *line,
+                values,
+                report: &mut report,
+            };
+            let id = row.required("id", |t| Ok(t.to_owned()));
+            let date = row.date("date");
+            let close = row.required("close", parse_float);
+            let volume = if with_volume {
+                row.optional("volume", parse_float)
+                    .map(|v| v.unwrap_or(f64::NAN))
+            } else {
+                Some(f64::NAN)
+            };
+            let dividend = if with_dividends {
+                row.optional("dividends", parse_float)
+                    .map(|v| v.unwrap_or(0.0))
+            } else {
+                Some(0.0)
+            };
+            if let (Some(id), Some(date), Some(close), Some(volume), Some(dividend)) =
+                (id, date, close, volume, dividend)
+            {
+                let entry = points.entry(id.clone()).or_insert_with(|| {
+                    order.push(id);
+                    Vec::new()
+                });
+                entry.push((date, close, volume, dividend, *line));
+            }
+        }
+    } else {
+        if !table.require(&["date"], &mut report) {
+            return Err(Error::Validation(report));
+        }
+        let columns: Vec<(usize, String)> = table
+            .names
+            .iter()
+            .enumerate()
+            .filter(|(_, n)| n.as_str() != "date")
+            .map(|(i, n)| {
+                (
+                    i,
+                    original_header(text, options, i).unwrap_or_else(|| n.clone()),
+                )
+            })
+            .collect();
+        for (_, id) in &columns {
+            order.push(id.clone());
+            points.insert(id.clone(), Vec::new());
+        }
+        for (line, values) in &table.rows {
+            let mut row = Row {
+                table: &table,
+                line: *line,
+                values,
+                report: &mut report,
+            };
+            let Some(date) = row.date("date") else {
+                continue;
+            };
+            for (i, id) in &columns {
+                let Some(text) = values.get(*i).filter(|v| !v.is_empty()) else {
+                    continue;
+                };
+                if let Some(close) = row.parse(id, &text.clone(), parse_float)
+                    && let Some(entry) = points.get_mut(id)
+                {
+                    entry.push((date, close, f64::NAN, 0.0, *line));
+                }
+            }
+        }
+    }
+    let mut out = Vec::with_capacity(order.len());
+    for id in order {
+        let mut rows = points.remove(&id).unwrap_or_default();
+        rows.sort_by_key(|p| p.0);
+        for pair in rows.windows(2) {
+            if pair[0].0 == pair[1].0 {
+                report.error(
+                    format!("line {}", pair[1].4),
+                    format!(
+                        "{id} has a second close on {}, after line {}",
+                        pair[1].0, pair[0].4
+                    ),
+                );
+            }
+        }
+        out.push(Closes {
+            id,
+            dates: rows.iter().map(|p| p.0).collect(),
+            close: rows.iter().map(|p| p.1).collect(),
+            volume: with_volume.then(|| rows.iter().map(|p| p.2).collect()),
+            dividends: with_dividends.then(|| rows.iter().map(|p| p.3).collect()),
+        });
+    }
+    finish(report, out)
+}
+
+/// The values of one field read from CSV, one per security in the file's order: numbers when
+/// every value given is a number, text otherwise; `None` where a cell is empty.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum FieldCells {
+    /// Numbers.
+    Numbers(Vec<Option<f64>>),
+    /// Text.
+    Text(Vec<Option<String>>),
+}
+
+/// Values by security read from CSV, for screening: each security's identifier, and each
+/// field's name and values.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct FieldTable {
+    /// The securities, in the file's order.
+    pub ids: Vec<String>,
+    /// Each field's name, as the file writes it, with its values.
+    pub fields: Vec<(String, FieldCells)>,
+}
+
+/// Reads fields given with securities, such as a sector or a price-to-earnings ratio: an `id`
+/// (or `instrument`, `ticker` or `symbol`) column and one column per field. A column whose every
+/// value is a number holds numbers, and any other text; an empty cell is no value.
+pub fn fields_from_csv(text: &str, options: CsvOptions) -> Result<FieldTable> {
+    let mut report = ValidationReport::new();
+    let Some(mut table) = Table::read(text, options, &mut report) else {
+        return Err(Error::Validation(report));
+    };
+    for name in ["instrument", "ticker", "symbol"] {
+        table.alias(name, "id");
+    }
+    if !table.require(&["id"], &mut report) {
+        return Err(Error::Validation(report));
+    }
+    let id_column = table.columns.get("id").copied().unwrap_or(0);
+    let mut ids: Vec<String> = Vec::with_capacity(table.rows.len());
+    let mut seen: HashMap<String, u64> = HashMap::new();
+    for (line, values) in &table.rows {
+        let id = values.get(id_column).cloned().unwrap_or_default();
+        if id.is_empty() {
+            report.error(format!("line {line} (id)"), "is required");
+        } else if let Some(first) = seen.insert(id.clone(), *line) {
+            report.error(
+                format!("line {line} (id)"),
+                format!("{id} is given again, after line {first}"),
+            );
+        }
+        ids.push(id);
+    }
+    let mut fields = Vec::new();
+    for (i, name) in table.names.iter().enumerate() {
+        if i == id_column {
+            continue;
+        }
+        let name = original_header(text, options, i).unwrap_or_else(|| name.clone());
+        let cells: Vec<Option<&str>> = table
+            .rows
+            .iter()
+            .map(|(_, values)| values.get(i).map(String::as_str).filter(|v| !v.is_empty()))
+            .collect();
+        let numbers: Option<Vec<Option<f64>>> = cells
+            .iter()
+            .map(|c| match c {
+                None => Some(None),
+                Some(t) => parse_float(t).ok().map(Some),
+            })
+            .collect();
+        let data = match numbers {
+            Some(n) if n.iter().any(Option::is_some) => FieldCells::Numbers(n),
+            _ => FieldCells::Text(cells.iter().map(|c| c.map(str::to_owned)).collect()),
+        };
+        fields.push((name, data));
+    }
+    finish(report, FieldTable { ids, fields })
+}

@@ -1,6 +1,6 @@
 //! With the `parallel` feature, the work that runs at once gives the same results, to the last
 //! bit, on one thread as on several: comparisons with walk-forward validation, resampled
-//! optimisation and the efficient frontier.
+//! optimisation, the efficient frontier and screens.
 
 #![cfg(feature = "parallel")]
 #![allow(clippy::unwrap_used)]
@@ -82,4 +82,29 @@ fn the_frontier_is_the_same_on_any_number_of_threads() {
     for threads in [2, 4] {
         assert_eq!(one, on(threads, run), "{threads} threads");
     }
+}
+
+#[test]
+fn a_screen_is_the_same_on_any_number_of_threads() {
+    let universe = finalytics::Universe::builder()
+        .prices_csv(include_str!("../../../tests/sp500/prices.csv"))
+        .fields_csv(include_str!("../../../tests/sp500/companies.csv"))
+        .risk_free_rate(0.03)
+        .build()
+        .unwrap()
+        .with_benchmark("T-Bills")
+        .unwrap();
+    let screen = || {
+        universe
+            .screen()
+            .above("return_1y", 0.0)
+            .none_of("sector", ["Utilities"])
+            .sort("sharpe_ratio", finalytics::screening::Order::Descending)
+            .build()
+            .unwrap()
+    };
+    let one = on(1, screen);
+    let several = on(4, screen);
+    assert!(one.results.matches.len() > 5);
+    assert_eq!(one, several);
 }

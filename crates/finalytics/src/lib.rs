@@ -17,6 +17,9 @@
 //!   [`Assets::backtest`] for one method or one set of weights, in sample, on a holdout or
 //!   walk-forward ([`Backtest`]); and [`Assets::plan`] for the chance that a plan of saving,
 //!   spending and investing meets a goal ([`Plan`]).
+//! - [`Universe`], many securities each on its own dates, such as the stocks of an index:
+//!   [`Universe::screen`] measures each one and keeps those that meet rules on the measures and
+//!   on fields given with them ([`Screen`]).
 //! - [`Portfolio`], a portfolio's transactions with the market data that values them: its
 //!   valuation, performance and risk; [`Portfolio::report`] for every report; and
 //!   [`Portfolio::rebalance`] for the trades that reach target weights.
@@ -44,7 +47,7 @@
 //! each method on its own, for analysis the front doors do not cover. [`datasets`] has data to
 //! practise on: a household portfolio and asset-class indices.
 //!
-//! Every result of [`Assets`] has the same shape: the report in `report`, the raw results in
+//! Every result of [`Assets`] and [`Universe`] has the same shape: the report in `report`, the raw results in
 //! `results`, the report as text when printed, and the report as a page with
 //! [`Show::show`]:
 //!
@@ -86,8 +89,8 @@
 //! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
 //! non-exhaustive too, so a `match` on one needs a wildcard arm.
 
-/// The raw results of an optimisation, a comparison, a backtest, a rebalancing or a plan, given
-/// as JSON, as text. The Python and JavaScript packages use it; from Rust, display the results.
+/// The raw results of an optimisation, a comparison, a backtest, a rebalancing, a plan or a
+/// screen, given as JSON, as text. The Python and JavaScript packages use it; from Rust, display the results.
 #[doc(hidden)]
 pub fn results_text(results: &str) -> Result<String> {
     let invalid = |message: String| {
@@ -109,13 +112,17 @@ pub fn results_text(results: &str) -> Result<String> {
         let result: PlanResults =
             serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
         Ok(result.to_string())
+    } else if value.get("securities").is_some() && value.get("matches").is_some() {
+        let result: ScreenResults =
+            serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
+        Ok(result.to_string())
     } else if value.get("weights_before").is_some() {
         let result: opt::RebalanceResults =
             serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
         Ok(result.to_string())
     } else {
         Err(invalid(
-            "are not the results of an optimisation, a backtest, a rebalancing or a plan"
+            "are not the results of an optimisation, a backtest, a rebalancing, a plan or a screen"
                 .to_owned(),
         ))
     }
@@ -141,6 +148,7 @@ pub mod backtest;
 pub mod datasets;
 pub mod planning;
 mod portfolio;
+pub mod screening;
 #[cfg(feature = "io")]
 mod show;
 
@@ -148,9 +156,12 @@ mod show;
 pub mod prelude {
     pub use crate::backtest::{Months, Periods, Rebalance, Years};
     pub use crate::planning::Frequency;
+    pub use crate::screening::Order;
     #[cfg(feature = "io")]
     pub use crate::show::Show;
-    pub use crate::{Assets, Error, Method, Portfolio, PortfolioCsv, Result, datasets};
+    pub use crate::{
+        Assets, Date, Error, Method, Portfolio, PortfolioCsv, Result, Universe, datasets,
+    };
 }
 
 pub use assets::{
@@ -171,6 +182,11 @@ pub use portfolio::{
 };
 #[doc(hidden)]
 pub use portfolio::{RebalanceChoices, targets_from_json};
+#[doc(hidden)]
+pub use screening::UniverseSettings;
+pub use screening::{
+    Screen, ScreenBuilder, ScreenOptions, ScreenReport, ScreenResults, Universe, UniverseBuilder,
+};
 #[cfg(feature = "io")]
 pub use show::{Show, Themed};
 

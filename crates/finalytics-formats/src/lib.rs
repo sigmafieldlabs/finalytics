@@ -1,5 +1,6 @@
 //! Import and export: CSV readers for accounts, instruments, transactions, prices and FX rates,
-//! the versioned portfolio document in JSON, and a JSON reader for any of the engine's types.
+//! and for the closes and fields of securities to screen; the versioned portfolio document in
+//! JSON; and a JSON reader for any of the engine's types.
 //! Every reader reports all the problems it finds, located by line and column or by path.
 //! Parsing works on strings; there is no file system access.
 //!
@@ -12,8 +13,9 @@ mod document;
 mod json;
 
 pub use csv_import::{
-    CsvOptions, FxSeries, accounts_from_csv, fx_from_csv, instruments_from_csv, market_from_csv,
-    portfolio_from_csv, price_columns_from_csv, prices_from_csv, transactions_from_csv,
+    Closes, CsvOptions, FieldCells, FieldTable, FxSeries, accounts_from_csv, closes_from_csv,
+    fields_from_csv, fx_from_csv, instruments_from_csv, market_from_csv, portfolio_from_csv,
+    price_columns_from_csv, prices_from_csv, transactions_from_csv,
 };
 pub use document::{FORMAT, FORMAT_VERSION, MarketDocument, PortfolioDocument};
 pub use json::from_json;
