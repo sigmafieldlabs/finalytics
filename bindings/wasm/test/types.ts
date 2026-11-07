@@ -17,6 +17,7 @@ import init, {
   stressedCovariance,
   statistics,
   tailRisk,
+  Universe,
   type Attribution,
   type BacktestReport,
   type BacktestResults,
@@ -36,6 +37,8 @@ import init, {
   type Problem,
   type ScenarioResult,
   type ReturnsTable,
+  type ScreenColumns,
+  type ScreenReport,
   type Solution,
   type Statistics,
 } from "../pkg/finalytics.js";
@@ -117,6 +120,52 @@ export async function example(worker: Worker): Promise<void> {
   const remoteLabels: string[] = await remoteAssets.get("labels");
   // @ts-expect-error: only the listed classes have static methods in the worker.
   void engine.static("Window", "open");
+  const remoteUniverse = await engine.universe([{ id: "A", dates: ["2026-10-30"], close: [10] }]);
+  const remoteScreen = await remoteUniverse.call("screen", { limit: 5 });
+  const remoteColumns = await engine.static("Universe", "fromColumns", {
+    ids: ["A"],
+    starts: [0],
+    dates: new Int32Array([20_000]),
+    close: new Float64Array([10]),
+  });
+  const remoteIds: string[] = await remoteColumns.get("ids");
+  void remoteScreen.results.matches;
+  void remoteIds;
+
+  const universe = Universe.fromColumns(
+    {
+      ids: ["A", "B"],
+      starts: new Int32Array([0, 2]),
+      dates: new Int32Array([20_000, 20_001, 20_001]),
+      close: new Float64Array([10, 11, 20]),
+      volume: new Float64Array([1e6, 2e6, NaN]),
+      fields: { sector: ["Energy", null], pe_ratio: new Float64Array([12, NaN]) },
+    },
+    { benchmark: "B", risk_free_rate: 0.03 },
+  );
+  const screen = universe.screen({
+    as_of: "2026-10-30",
+    measures: ["return_1y", "rsi_14"],
+    rules: [
+      { measure: "return_1y", op: ">", value: 0.1 },
+      { measure: "rsi_14", op: "between", value: [30, 70] },
+      { field: "sector", op: "not_in", values: ["Utilities"] },
+    ],
+    sort: { measure: "sharpe_ratio", order: "descending" },
+    limit: 20,
+    name: "Momentum",
+  });
+  const screenReport: ScreenReport = screen.report;
+  const columns: ScreenColumns = screen.results;
+  const oneYear: Float64Array | undefined = columns.measures.return_1y;
+  const screenText: string = `${screen}` + screen.results.toText() + screen.toHtml("Named");
+  const fromSeries = new Universe([{ id: "A", dates: ["2026-10-29", "2026-10-30"], close: [10, 11], fields: { sector: "Energy" } }]);
+  const withFields: Universe = fromSeries.withFields({ A: { pe_ratio: 12 } }).withFieldsCsv("id,industry\nA,Oil\n");
+  // @ts-expect-error: an unknown measure is rejected.
+  universe.screen({ measures: ["return_2y"] });
+  // @ts-expect-error: an unknown comparison is rejected.
+  universe.screen({ rules: [{ measure: "return_1y", op: "=", value: 0 }] });
+  console.log(screenReport, oneYear, screenText, withFields);
 
   // @ts-expect-error: an unknown objective is rejected.
   const unknown: Objective = { type: "maximum_profit" };

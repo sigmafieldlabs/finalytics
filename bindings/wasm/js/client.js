@@ -19,7 +19,7 @@ function rebuild(error) {
 
 /**
  * An engine running in `worker`: every exported function becomes an asynchronous call, and
- * portfolios, assets and performance objects stay in the worker behind handles.
+ * portfolios, assets, universes and performance objects stay in the worker behind handles.
  */
 export function createEngine(worker) {
   let next = 1;
@@ -61,6 +61,7 @@ export function createEngine(worker) {
     portfolio: async (data, market) => remote(await send({ op: "portfolio", args: [data, market] })),
     portfolioFromCsv: async (files) => remote(await send({ op: "portfolioFromCsv", args: [files] })),
     assets: async (prices, options) => remote(await send({ op: "assets", args: [prices, options] })),
+    universe: async (series, options) => remote(await send({ op: "universe", args: [series, options] })),
     static: async (owner, name, ...args) => remote(await send({ op: "static", owner, name, args })),
     terminate: () => worker.terminate(),
   };

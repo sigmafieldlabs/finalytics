@@ -189,6 +189,14 @@ impl Universe {
         Ok(universe)
     }
 
+    /// The same universe with the fields named in `names` in that order, after any others: the
+    /// bindings keep the order fields are given in.
+    #[doc(hidden)]
+    pub fn with_field_order<S: AsRef<str>>(mut self, names: &[S]) -> Universe {
+        self.securities = self.securities.with_field_order(names);
+        self
+    }
+
     /// The securities' identifiers, in order.
     pub fn ids(&self) -> &[String] {
         self.securities.ids()

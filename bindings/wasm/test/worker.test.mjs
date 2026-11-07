@@ -50,3 +50,33 @@ test("the worker calls static methods and keeps the objects they return", async 
     await remote.terminate();
   }
 });
+
+test("the worker holds universes and screens them as the page does", async () => {
+  const remote = createEngine(new Worker(new URL("../pkg/worker.js", import.meta.url)));
+  try {
+    const days = Int32Array.from({ length: 300 }, (_, k) => 20_000 + k);
+    const close = (drift) => Float64Array.from({ length: 300 }, (_, k) => 100 * (1 + drift) ** k * (1 + 0.01 * Math.sin(k)));
+    const series = [
+      { id: "UP", dates: days, close: close(0.001), fields: { sector: "Energy" } },
+      { id: "FLAT", dates: days, close: close(0), fields: { sector: "Utilities" } },
+    ];
+    const options = { rules: [{ field: "sector", op: "in", values: ["Energy"] }] };
+    const universe = await remote.universe(series, { risk_free_rate: 0.02 });
+    assert.deepEqual(await universe.get("ids"), ["UP", "FLAT"]);
+    const screen = await universe.call("screen", options);
+    const local = new fl.Universe(series, { risk_free_rate: 0.02 }).screen(options);
+    assert.ok(screen.results.measures.return_1w instanceof Float64Array);
+    assert.deepEqual(screen.results.matches, ["UP"]);
+    assert.deepEqual(screen.results.measures, local.results.measures);
+    assert.deepEqual(screen.report, local.report);
+    await universe.free();
+
+    const columns = { ids: ["UP"], starts: [0], dates: days, close: close(0.001) };
+    const fromColumns = await remote.static("Universe", "fromColumns", columns);
+    assert.equal(typeof fromColumns.handle, "number");
+    assert.equal(await fromColumns.get("length"), 1);
+    await fromColumns.free();
+  } finally {
+    await remote.terminate();
+  }
+});

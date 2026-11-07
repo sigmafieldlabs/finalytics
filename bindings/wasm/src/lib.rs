@@ -185,8 +185,8 @@ export interface ResultsMethods {
 }
 
 /**
- * What `Assets.optimise`, `Assets.compare`, `Assets.backtest` and `Assets.plan` return: the
- * report and the raw results. `${result}` is the report as text, and `result.show()` shows it as a page.
+ * What `Assets.optimise`, `Assets.compare`, `Assets.backtest`, `Assets.plan` and
+ * `Universe.screen` return: the report and the raw results. `${result}` is the report as text, and `result.show()` shows it as a page.
  */
 export interface Result<R, D> {
   /** The report. */
@@ -322,6 +322,102 @@ export interface PlanChoices
 export interface ScenarioChoices extends Partial<ScenarioOptions> {
   /** The date of the holdings; the last price date by default. */
   date?: Date;
+}
+
+/** One security's prices for `new Universe`, on its own dates. */
+export interface SeriesInput {
+  /** The security's identifier, such as `"AAPL"`. */
+  id: string;
+  /** The dates of its closes, in increasing order: ISO strings, or days since 1970-01-01. */
+  dates: Date[] | Int32Array;
+  /** Its close on each date; NaN or `null` is no close, and its date is left out. */
+  close: Float64Array | (number | null)[];
+  /** The volume traded on each date, if known. */
+  volume?: Float64Array | (number | null)[];
+  /** The dividend per share paid on each date, zero on the others, if known. */
+  dividends?: Float64Array | (number | null)[];
+  /** Values the library does not compute, such as `{ sector: "Technology", pe_ratio: 18.4 }`. */
+  fields?: Record<string, FieldValue>;
+}
+
+/**
+ * Many securities' prices as flat columns, for `Universe.fromColumns`: every security's rows one
+ * after another, so that thousands of histories cross as a few typed arrays.
+ */
+export interface UniverseColumns {
+  /** Each security's identifier. */
+  ids: string[];
+  /** The row each security starts at: the first is 0. */
+  starts: Int32Array | number[];
+  /** Each row's date: days since 1970-01-01, or ISO strings. */
+  dates: Int32Array | Date[];
+  /** Each row's close; NaN where there is none. */
+  close: Float64Array;
+  /** Each row's volume, if known; NaN where not. */
+  volume?: Float64Array;
+  /** Each row's dividend per share, if known: zero where none is paid. */
+  dividends?: Float64Array;
+  /** Each field's values in the order of `ids`: numbers (NaN or `null` where missing) or text. */
+  fields?: Record<string, Float64Array | (number | null)[] | (string | null)[]>;
+}
+
+/** The settings of a `Universe`, all optional. */
+export interface UniverseOptions {
+  /** One of the securities, such as an index, for beta, correlation and relative returns. */
+  benchmark?: string;
+  /** The annual risk-free rate of the Sharpe and Sortino ratios; 0 by default. */
+  risk_free_rate?: number;
+}
+
+/** The options of `Universe.screen`: those of `ScreenOptions`, with the report's title. */
+export interface ScreenChoices extends Partial<ScreenOptions> {
+  /** The report's title, such as `"Quality at a fair price"`. */
+  name?: string;
+}
+
+/**
+ * The raw results of `Universe.screen`, as columns in the order of `ids`: one `Float64Array` per
+ * measure, NaN where a security has no value, and one array per field.
+ */
+export interface ScreenColumns {
+  /** The date measured to. */
+  as_of: Date;
+  /** The most days a last close could be before `as_of` without being stale. */
+  max_carry_days: number;
+  /** The benchmark, if any. */
+  benchmark?: string | null;
+  /** The annual risk-free rate of the Sharpe and Sortino ratios. */
+  risk_free_rate: number;
+  /** The securities, in the universe's order. */
+  ids: string[];
+  /** Whether each was measured. */
+  status: ScreenStatus[];
+  /** Whether each meets every rule. */
+  passed: boolean[];
+  /** Whether each is one of the matches kept. */
+  matched: boolean[];
+  /** Each one's place among the matches, from 1; NaN for the others. */
+  rank: Float64Array;
+  /** The date of each one's first close. */
+  first_date: (Date | null)[];
+  /** The date of each one's last close on or before `as_of`. */
+  last_date: (Date | null)[];
+  /** Each measure computed, in order, with every security's value. */
+  measures: Partial<Record<Measure, Float64Array>>;
+  /** Each field given, with every security's value: numbers or text. */
+  fields: Record<string, Float64Array | (string | null)[]>;
+  /** Each rule, with how many met it. */
+  rules: RuleResult[];
+  /** How the matches are sorted. */
+  sort?: Sort | null;
+  /** The most matches kept. */
+  limit?: number | null;
+  /** The matches kept, in order. */
+  matches: string[];
+  /** How many securities were measured, passed and matched. */
+  coverage: Coverage;
+  /** Problems that did not stop the screen. */
+  warnings: ValidationReport;
 }
 
 /** A validation error: every problem found, with where it is. */
@@ -1655,6 +1751,403 @@ impl Assets {
     }
 }
 
+/// A property of a JavaScript object.
+fn property(object: &JsValue, key: &str) -> Result<JsValue, JsValue> {
+    js_sys::Reflect::get(object, &key.into())
+}
+
+/// Numbers from a `Float64Array`, another typed array or an array of numbers, `null` reading as
+/// NaN: no value.
+fn numbers(value: &JsValue, name: &str) -> Result<Vec<f64>, JsValue> {
+    if let Some(array) = value.dyn_ref::<js_sys::Float64Array>() {
+        return Ok(array.to_vec());
+    }
+    if js_sys::Array::is_array(value) {
+        let array = js_sys::Array::from(value);
+        let mut out = Vec::with_capacity(array.length() as usize);
+        for (k, item) in array.iter().enumerate() {
+            if item.is_null() || item.is_undefined() {
+                out.push(f64::NAN);
+            } else if let Some(x) = item.as_f64() {
+                out.push(x);
+            } else {
+                return Err(invalid(&format!("{name}[{k}]"), "must be a number"));
+            }
+        }
+        return Ok(out);
+    }
+    if value.is_object() && js_sys::ArrayBuffer::is_view(value) {
+        return Ok(js_sys::Float64Array::new(value).to_vec());
+    }
+    Err(invalid(
+        name,
+        "must be a Float64Array or an array of numbers",
+    ))
+}
+
+/// Numbers that are given only sometimes: absent when `undefined` or `null`.
+fn optional_numbers(value: &JsValue, name: &str) -> Result<Option<Vec<f64>>, JsValue> {
+    if value.is_undefined() || value.is_null() {
+        Ok(None)
+    } else {
+        numbers(value, name).map(Some)
+    }
+}
+
+/// Days since 1970-01-01 from an `Int32Array` of them, or from an array of ISO 8601 dates.
+fn day_numbers(value: &JsValue, name: &str) -> Result<Vec<i32>, JsValue> {
+    if let Some(array) = value.dyn_ref::<js_sys::Int32Array>() {
+        return Ok(array.to_vec());
+    }
+    if js_sys::Array::is_array(value) {
+        let array = js_sys::Array::from(value);
+        let mut out = Vec::with_capacity(array.length() as usize);
+        for (k, item) in array.iter().enumerate() {
+            let day = match (item.as_string(), item.as_f64()) {
+                (Some(text), _) => {
+                    text.parse::<Date>()
+                        .map(Date::days_since_epoch)
+                        .map_err(|_| {
+                            invalid(
+                                &format!("{name}[{k}]"),
+                                format!("{text:?} is not a date in YYYY-MM-DD form"),
+                            )
+                        })?
+                }
+                (None, Some(x)) if x.fract() == 0.0 && x.abs() < 3e6 => x as i32,
+                _ => return Err(invalid(&format!("{name}[{k}]"), "must be a date")),
+            };
+            out.push(day);
+        }
+        return Ok(out);
+    }
+    Err(invalid(
+        name,
+        "must be an Int32Array of days since 1970-01-01 or an array of dates",
+    ))
+}
+
+/// Many securities, each with its own dates and closes, and their volumes, dividends and fields
+/// where known, with the benchmark and risk-free rate a screen measures them against.
+#[wasm_bindgen]
+pub struct Universe {
+    inner: finalytics::Universe,
+}
+
+#[wasm_bindgen]
+impl Universe {
+    /// A universe from series, one per security, each on its own dates: `{ id, dates, close }`,
+    /// with `volume`, `dividends` and `fields` if known. Dates are ISO strings or days since
+    /// 1970-01-01 in an `Int32Array`; closes, volumes and dividends are `Float64Array`s or arrays
+    /// of numbers. A close that is not a number is no close: its date is left out.
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        #[wasm_bindgen(unchecked_param_type = "SeriesInput[]")] series: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "UniverseOptions")] options: JsValue,
+    ) -> Result<Universe, JsValue> {
+        if !js_sys::Array::is_array(&series) {
+            return Err(invalid("series", "must be an array of series"));
+        }
+        let mut list = Vec::new();
+        for (i, item) in js_sys::Array::from(&series).iter().enumerate() {
+            let path = format!("series[{i}]");
+            let id = property(&item, "id")?
+                .as_string()
+                .ok_or_else(|| invalid(&format!("{path}.id"), "must be a string"))?;
+            let days = day_numbers(&property(&item, "dates")?, &format!("{path}.dates"))?;
+            let dates = days
+                .iter()
+                .enumerate()
+                .map(|(k, d)| {
+                    Date::from_days_since_epoch(*d)
+                        .map_err(|_| invalid(&format!("{path}.dates[{k}]"), "is not a date"))
+                })
+                .collect::<Result<Vec<Date>, JsValue>>()?;
+            let close = numbers(&property(&item, "close")?, &format!("{path}.close"))?;
+            let mut one = finalytics::screening::Series::new(id, dates, close);
+            one.volume = optional_numbers(&property(&item, "volume")?, &format!("{path}.volume"))?;
+            one.dividends =
+                optional_numbers(&property(&item, "dividends")?, &format!("{path}.dividends"))?;
+            let fields = property(&item, "fields")?;
+            if !(fields.is_undefined() || fields.is_null()) {
+                one.fields = from_js(fields, &format!("{path}.fields"))?;
+            }
+            list.push(one);
+        }
+        let universe = finalytics::Universe::from_series(list).map_err(error)?;
+        Universe::settle(universe, options)
+    }
+
+    /// A universe from flat columns, for large universes: every security's rows one after
+    /// another, `starts` giving the row each security starts at, `dates` as days since 1970-01-01
+    /// in an `Int32Array` (or ISO strings), and `close`, `volume` and `dividends` as
+    /// `Float64Array`s, NaN where there is no value. `fields` gives each field's values in the
+    /// order of `ids`: a `Float64Array` or an array of numbers, or an array of text.
+    #[wasm_bindgen(js_name = fromColumns)]
+    pub fn from_columns(
+        #[wasm_bindgen(unchecked_param_type = "UniverseColumns")] columns: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "UniverseOptions")] options: JsValue,
+    ) -> Result<Universe, JsValue> {
+        if !columns.is_object() {
+            return Err(invalid("columns", "must be an object of columns"));
+        }
+        let ids: Vec<String> = from_js(property(&columns, "ids")?, "ids")?;
+        let starts = numbers(&property(&columns, "starts")?, "starts")?
+            .into_iter()
+            .enumerate()
+            .map(|(k, x)| {
+                if x.fract() == 0.0 && x >= 0.0 {
+                    Ok(x as usize)
+                } else {
+                    Err(invalid(&format!("starts[{k}]"), "must be a row number"))
+                }
+            })
+            .collect::<Result<Vec<usize>, JsValue>>()?;
+        let days = day_numbers(&property(&columns, "dates")?, "dates")?;
+        let close = numbers(&property(&columns, "close")?, "close")?;
+        let mut flat = finalytics::screening::Columns::new(ids.clone(), starts, days, close);
+        flat.volume = optional_numbers(&property(&columns, "volume")?, "volume")?;
+        flat.dividends = optional_numbers(&property(&columns, "dividends")?, "dividends")?;
+        let mut universe = finalytics::Universe::from_columns(flat).map_err(error)?;
+        let fields = property(&columns, "fields")?;
+        if !(fields.is_undefined() || fields.is_null()) {
+            let mut by_id: BTreeMap<String, BTreeMap<String, finalytics::screening::FieldValue>> =
+                BTreeMap::new();
+            let mut order = Vec::new();
+            for entry in js_sys::Object::entries(fields.unchecked_ref()).iter() {
+                let pair = js_sys::Array::from(&entry);
+                let name = pair.get(0).as_string().unwrap_or_default();
+                let values = pair.get(1);
+                let path = format!("fields.{name}");
+                let cells: Vec<Option<finalytics::screening::FieldValue>> =
+                    if values.dyn_ref::<js_sys::Float64Array>().is_some() {
+                        numbers(&values, &path)?
+                            .into_iter()
+                            .map(|x| (!x.is_nan()).then_some(x.into()))
+                            .collect()
+                    } else if js_sys::Array::is_array(&values) {
+                        js_sys::Array::from(&values)
+                            .iter()
+                            .map(|v| match (v.as_f64(), v.as_string()) {
+                                (Some(x), _) if !x.is_nan() => Some(x.into()),
+                                (_, Some(t)) => Some(t.into()),
+                                _ => None,
+                            })
+                            .collect()
+                    } else {
+                        return Err(invalid(&path, "must be an array of values, one per id"));
+                    };
+                if cells.len() != ids.len() {
+                    return Err(invalid(
+                        &path,
+                        format!("{} values for {} ids", cells.len(), ids.len()),
+                    ));
+                }
+                for (id, cell) in ids.iter().zip(cells) {
+                    if let Some(value) = cell {
+                        by_id
+                            .entry(id.clone())
+                            .or_default()
+                            .insert(name.clone(), value);
+                    }
+                }
+                order.push(name);
+            }
+            universe = universe
+                .with_fields(by_id)
+                .map_err(error)?
+                .with_field_order(&order);
+        }
+        Universe::settle(universe, options)
+    }
+
+    /// A universe from prices in CSV text: the long layout of `id`, `date` and `close` columns,
+    /// with `volume` and `dividends` if known, or a `date` column and one column per security.
+    #[wasm_bindgen(js_name = fromCsv)]
+    pub fn from_csv(
+        text: &str,
+        #[wasm_bindgen(unchecked_optional_param_type = "UniverseOptions")] options: JsValue,
+    ) -> Result<Universe, JsValue> {
+        let universe = finalytics::Universe::from_csv(text).map_err(error)?;
+        Universe::settle(universe, options)
+    }
+
+    /// The same universe with fields by security and then by name, such as
+    /// `{ AAPL: { sector: "Technology", pe_ratio: 31.2 } }`.
+    #[wasm_bindgen(js_name = withFields)]
+    pub fn with_fields(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "Record<string, Record<string, FieldValue>>")]
+        fields: JsValue,
+    ) -> Result<Universe, JsValue> {
+        let fields = from_js(fields, "fields")?;
+        Ok(Universe {
+            inner: self.inner.clone().with_fields(fields).map_err(error)?,
+        })
+    }
+
+    /// The same universe with fields from CSV text: an `id` column and one column per field.
+    #[wasm_bindgen(js_name = withFieldsCsv)]
+    pub fn with_fields_csv(&self, text: &str) -> Result<Universe, JsValue> {
+        Ok(Universe {
+            inner: self.inner.clone().with_fields_csv(text).map_err(error)?,
+        })
+    }
+
+    /// The securities, in order.
+    #[wasm_bindgen(getter)]
+    pub fn ids(&self) -> Vec<String> {
+        self.inner.ids().to_vec()
+    }
+
+    /// The number of securities.
+    #[wasm_bindgen(getter)]
+    pub fn length(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// The benchmark, if one is set.
+    #[wasm_bindgen(getter)]
+    pub fn benchmark(&self) -> Option<String> {
+        self.inner.benchmark().map(str::to_owned)
+    }
+
+    /// The annual risk-free rate.
+    #[wasm_bindgen(getter, js_name = riskFreeRate)]
+    pub fn risk_free_rate(&self) -> f64 {
+        self.inner.risk_free_rate()
+    }
+
+    /// The names of the fields given.
+    #[wasm_bindgen(getter)]
+    pub fn fields(&self) -> Vec<String> {
+        self.inner.fields().into_iter().map(str::to_owned).collect()
+    }
+
+    /// The latest date of any security's closes: the date a screen measures to by default.
+    #[wasm_bindgen(getter, js_name = latestDate)]
+    pub fn latest_date(&self) -> Option<String> {
+        self.inner.latest_date().map(|d| d.to_string())
+    }
+
+    /// Problems met reading the securities that did not stop the universe being built.
+    #[wasm_bindgen(getter, unchecked_return_type = "Issue[]")]
+    pub fn warnings(&self) -> Result<JsValue, JsValue> {
+        to_js(self.inner.warnings().issues())
+    }
+
+    /// The screen of `options`: every security measured on its own history up to `as_of`,
+    /// judged on the rules, with the matches sorted and limited: the screening report in
+    /// `report`, and in `results` one array per column, in the order of `ids`, with one
+    /// `Float64Array` per measure (NaN where a security has no value).
+    #[wasm_bindgen(unchecked_return_type = "Result<ScreenReport, ScreenColumns>")]
+    pub fn screen(
+        &self,
+        #[wasm_bindgen(unchecked_optional_param_type = "ScreenChoices")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut choices = object(options, &fields::<finalytics::ScreenOptions>(&["name"]))?;
+        let name = match choices.remove("name") {
+            Some(serde_json::Value::String(name)) => Some(name),
+            Some(serde_json::Value::Null) | None => None,
+            Some(_) => return Err(invalid("options.name", "must be a string")),
+        };
+        let options: finalytics::ScreenOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(choices).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        let screen = self.inner.screen_with(&options).map_err(error)?;
+        let mut report = screen.report;
+        report.name = name;
+        let value = js_sys::Object::new();
+        js_sys::Reflect::set(&value, &"report".into(), &to_js(&report)?)?;
+        js_sys::Reflect::set(&value, &"results".into(), &screen_columns(&screen.results)?)?;
+        Ok(value.into())
+    }
+
+    fn settle(universe: finalytics::Universe, options: JsValue) -> Result<Universe, JsValue> {
+        let settings: finalytics::UniverseSettings = optional(options, "options")?;
+        Ok(Universe {
+            inner: settings.apply(universe).map_err(error)?,
+        })
+    }
+}
+
+/// A screen's results as columns, in the order of the securities: one `Float64Array` per
+/// measure, NaN where a security has no value, and one array per field.
+fn screen_columns(r: &finalytics::ScreenResults) -> Result<JsValue, JsValue> {
+    let rows = &r.securities;
+    let scalars = serde_json::json!({
+        "as_of": r.as_of,
+        "max_carry_days": r.max_carry_days,
+        "benchmark": r.benchmark,
+        "risk_free_rate": r.risk_free_rate,
+        "ids": rows.iter().map(|s| &s.id).collect::<Vec<_>>(),
+        "status": rows.iter().map(|s| s.status).collect::<Vec<_>>(),
+        "passed": rows.iter().map(|s| s.passed).collect::<Vec<_>>(),
+        "matched": rows.iter().map(|s| s.matched).collect::<Vec<_>>(),
+        "first_date": rows.iter().map(|s| s.first_date).collect::<Vec<_>>(),
+        "last_date": rows.iter().map(|s| s.last_date).collect::<Vec<_>>(),
+        "rules": r.rules,
+        "sort": r.sort,
+        "limit": r.limit,
+        "matches": r.matches,
+        "coverage": r.coverage,
+        "warnings": r.warnings,
+    });
+    let value = to_js(&scalars)?;
+    let rank: Vec<f64> = rows
+        .iter()
+        .map(|s| s.rank.map_or(f64::NAN, |k| k as f64))
+        .collect();
+    js_sys::Reflect::set(
+        &value,
+        &"rank".into(),
+        &js_sys::Float64Array::from(rank.as_slice()),
+    )?;
+    let measures = js_sys::Object::new();
+    for (k, m) in r.measures.iter().enumerate() {
+        let column: Vec<f64> = rows
+            .iter()
+            .map(|s| s.values[k].unwrap_or(f64::NAN))
+            .collect();
+        js_sys::Reflect::set(
+            &measures,
+            &m.name().into(),
+            &js_sys::Float64Array::from(column.as_slice()),
+        )?;
+    }
+    js_sys::Reflect::set(&value, &"measures".into(), &measures)?;
+    let fields = js_sys::Object::new();
+    for name in &r.fields {
+        use finalytics::screening::FieldValue;
+        let text = rows
+            .iter()
+            .any(|s| matches!(s.fields.get(name), Some(FieldValue::Text(_))));
+        let column: JsValue = if text {
+            rows.iter()
+                .map(|s| match s.fields.get(name) {
+                    Some(FieldValue::Text(t)) => JsValue::from_str(t),
+                    _ => JsValue::NULL,
+                })
+                .collect::<js_sys::Array>()
+                .into()
+        } else {
+            let numbers: Vec<f64> = rows
+                .iter()
+                .map(|s| match s.fields.get(name) {
+                    Some(FieldValue::Number(x)) => *x,
+                    _ => f64::NAN,
+                })
+                .collect();
+            js_sys::Float64Array::from(numbers.as_slice()).into()
+        };
+        js_sys::Reflect::set(&fields, &name.into(), &column)?;
+    }
+    js_sys::Reflect::set(&value, &"fields".into(), &fields)?;
+    Ok(value)
+}
+
 /// The options of a backtest, from the JSON of `BacktestOptions`.
 fn backtest_options(
     options: serde_json::Map<String, serde_json::Value>,
@@ -2333,7 +2826,7 @@ pub fn report_text(
 #[wasm_bindgen(js_name = reportHtml)]
 pub fn report_html(
     #[wasm_bindgen(
-        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport | RebalanceReport | PlanReport"
+        unchecked_param_type = "PortfolioReport | OptimisationReport | ComparisonReport | BacktestReport | RebalanceReport | PlanReport | ScreenReport"
     )]
     report: JsValue,
     name: Option<String>,
@@ -2357,7 +2850,9 @@ pub fn report_html(
 /// text: the weights, each strategy's periods, growth, trades and refits, or a plan's chance.
 #[wasm_bindgen(js_name = resultsText)]
 pub fn results_text(
-    #[wasm_bindgen(unchecked_param_type = "OptimisationResult | BacktestResults | PlanResults")]
+    #[wasm_bindgen(
+        unchecked_param_type = "OptimisationResult | BacktestResults | PlanResults | ScreenResults"
+    )]
     results: JsValue,
 ) -> Result<String, JsValue> {
     let text = js_sys::JSON::stringify(&results)

@@ -34,3 +34,20 @@ fn the_optimiser_runs() {
         assert!(solution.solve_time >= 0.0);
     }
 }
+
+#[wasm_bindgen_test]
+fn a_screen_runs() {
+    use finalytics::screening::Series;
+    let dates: Vec<finalytics::Date> = (0..300)
+        .map(|k| finalytics::Date::from_days_since_epoch(20_000 + k).expect("a date"))
+        .collect();
+    let close: Vec<f64> = (0..300).map(|k| 100.0 + f64::from(k)).collect();
+    let universe =
+        finalytics::Universe::from_series(vec![Series::new("UP", dates, close)]).expect("valid");
+    let screen = universe
+        .screen()
+        .above("return_6m", 0.0)
+        .build()
+        .expect("a valid screen");
+    assert_eq!(screen.results.matches, ["UP"]);
+}

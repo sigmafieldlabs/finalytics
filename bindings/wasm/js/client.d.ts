@@ -18,13 +18,16 @@ type Remote<R> = R extends finalytics.Performance
     ? RemotePortfolio
     : R extends finalytics.Assets
       ? RemoteAssets
-      : R extends finalytics.MarketData
-        ? RemoteMarketData
-        : R;
+      : R extends finalytics.Universe
+        ? RemoteUniverse
+        : R extends finalytics.MarketData
+          ? RemoteMarketData
+          : R;
 /** The classes whose static methods a worker can call. */
 type Classes = {
   Portfolio: typeof finalytics.Portfolio;
   Assets: typeof finalytics.Assets;
+  Universe: typeof finalytics.Universe;
   MarketData: typeof finalytics.MarketData;
   datasets: typeof finalytics.datasets;
 };
@@ -46,6 +49,7 @@ export interface RemoteObject<T> {
 
 export type RemotePortfolio = RemoteObject<finalytics.Portfolio>;
 export type RemoteAssets = RemoteObject<finalytics.Assets>;
+export type RemoteUniverse = RemoteObject<finalytics.Universe>;
 export type RemotePerformance = RemoteObject<finalytics.Performance>;
 export type RemoteMarketData = RemoteObject<finalytics.MarketData>;
 
@@ -59,9 +63,12 @@ export interface Engine {
   portfolioFromCsv(files: finalytics.PortfolioFiles): Promise<RemotePortfolio>;
   /** Assets in the worker, from their prices. */
   assets(prices: finalytics.PriceTable, options?: finalytics.AssetsOptions): Promise<RemoteAssets>;
+  /** A universe in the worker, from series, one per security, each on its own dates. */
+  universe(series: finalytics.SeriesInput[], options?: finalytics.UniverseOptions): Promise<RemoteUniverse>;
   /**
-   * Calls a static method of `Portfolio`, `Assets`, `MarketData` or `datasets` in the worker, such
-   * as `Assets.fromCsv` or `datasets.file`. Objects it returns stay in the worker.
+   * Calls a static method of `Portfolio`, `Assets`, `Universe`, `MarketData` or `datasets` in the
+   * worker, such as `Assets.fromCsv`, `Universe.fromColumns` or `datasets.file`. Objects it returns
+   * stay in the worker.
    */
   static<C extends keyof Classes, K extends keyof Methods<Classes[C]>>(
     owner: C,

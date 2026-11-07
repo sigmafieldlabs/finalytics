@@ -24,10 +24,12 @@ const ready = start();
 const objects = new Map();
 let next = 1;
 
-// The classes whose static methods the page may call, such as `Assets.fromCsv` or `datasets.file`.
+// The classes whose static methods the page may call, such as `Assets.fromCsv`,
+// `Universe.fromColumns` or `datasets.file`.
 const classes = {
   Portfolio: finalytics.Portfolio,
   Assets: finalytics.Assets,
+  Universe: finalytics.Universe,
   MarketData: finalytics.MarketData,
   datasets: finalytics.datasets,
 };
@@ -36,6 +38,7 @@ function keep(value) {
   if (
     value instanceof finalytics.Portfolio ||
     value instanceof finalytics.Assets ||
+    value instanceof finalytics.Universe ||
     value instanceof finalytics.Performance ||
     value instanceof finalytics.MarketData
   ) {
@@ -84,6 +87,9 @@ async function handle(message) {
         break;
       case "assets":
         value = keep(new finalytics.Assets(...args));
+        break;
+      case "universe":
+        value = keep(new finalytics.Universe(...args));
         break;
       case "method":
         value = keep(target(which)[name](...args));
