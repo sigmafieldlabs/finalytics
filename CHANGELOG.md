@@ -9,6 +9,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Screening: `Universe` holds many securities, each on its own dates (no alignment), with a
+  close on each and, where known, volumes, dividends and fields: numbers or text the library does
+  not compute, such as a sector or a price-to-earnings ratio. It is built from series, from CSV in
+  the long layout (`id`, `date`, `close`, with `volume` and `dividends`) or the wide one, or with
+  `Universe::builder()`, with fields from CSV, a benchmark and a risk-free rate.
+  `universe.screen()` (`universe.screen(...)` in Python and JavaScript) measures every security up
+  to the date measured to: returns over calendar windows from a week to five years, volatility,
+  downside deviation, drawdowns, Sharpe, Sortino and Calmar ratios and value at risk, beta,
+  correlation and relative returns against the benchmark, moving averages, Wilder's RSI, the MACD
+  histogram, 52-week ranges, dividend yield, volumes and the state of the data. A measure whose
+  window is longer than a security's history has no value, and a security whose last close is
+  more than `max_carry_days` (5) old is stale: listed but not measured. Rules compare a measure or
+  a numeric field with a number or a range, or test a text field against a list of values; a
+  security without the value a rule tests fails it, and every problem with a screen is reported
+  together. The matches are sorted and limited. Like every verb, it returns the screening report,
+  which gives the coverage, each rule with how many securities met it, the matches and the
+  quartiles of each measure with the rules' thresholds marked, as a page, in 80 columns of text
+  and as tables, and the raw results, one row per security. Python takes a long DataFrame, a
+  mapping of Series or CSV, and `finalytics.pandas.securities` turns the results into a
+  DataFrame; JavaScript adds `Universe.fromColumns` for flat typed arrays and returns the results
+  as one `Float64Array` per measure, and the worker client holds universes (`engine.universe`).
+  Securities are measured in one pass each, on several threads with the `parallel` feature:
+  5,000 securities with ten years of daily closes take about 0.4 seconds in WebAssembly.
+  The engine is the `screening` module of `finalytics-risk`, and `finalytics::screening`
+  re-exports it. The methods page is `docs/methods/screening.md`, and every measure is checked
+  against an independent implementation in pandas (`scripts/reference/screening.py`).
 - JavaScript: the worker client calls static methods of `Portfolio`, `Assets`, `MarketData` and
   `datasets` (`engine.static("Assets", "fromCsv", csv)`), so the sample datasets and every reader
   of CSV text work off the main thread. Market data returned by the worker stays there as a

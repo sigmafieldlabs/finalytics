@@ -23,6 +23,7 @@ outputs are the engine's own.
 | [Robust and resampled optimisation](robust-optimisation.md) | Worst-case mean–variance over ellipsoids and boxes; Michaud resampling |
 | [Backtests and comparisons](backtests.md) | Weights held and rebalanced on a schedule, trading costs and cash; in-sample, holdout and walk-forward validation; the comparison and backtest reports |
 | [Goal planning](planning.md) | Plans of saving, spending and investing towards a goal; simulated markets; the chance, the changes that reach it, and the plan when markets do worse |
+| [Screening](screening.md) | Measures of many securities on their own histories: returns and risk over calendar windows, measures against a benchmark, technical indicators, income and volume; rules on measures and fields |
 | [Rebalancing](rebalancing.md) | Trades from current holdings to target weights, with lot selection |
 | [Scenarios](scenarios.md) | Shocks to instruments, groups, currencies and factors; historical replay; the effect on value and on risk, with stressed correlations |
 | [Reports](reports.md) | The holdings, overview, performance, risk, attribution and scenario reports; provenance; shapes for charts; tables for export |

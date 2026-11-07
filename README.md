@@ -15,7 +15,8 @@
 Finalytics is a portfolio analytics engine written in Rust, with bindings for
 Python and JavaScript. It compares portfolio optimisation methods on returns
 they have not seen, keeps the books of a real portfolio to report its
-performance, risk and attribution, and tests a plan's chance of meeting a goal.
+performance, risk and attribution, tests a plan's chance of meeting a goal, and
+screens thousands of securities by rules on their measures.
 
 | Language | Package | Install |
 | --- | --- | --- |
@@ -35,7 +36,8 @@ of 0.9.
 [optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
 [portfolio](https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html) ·
 [rebalance](https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html) ·
-[planning](https://sigmafieldlabs.github.io/finalytics/reports/planning.html)
+[planning](https://sigmafieldlabs.github.io/finalytics/reports/planning.html) ·
+[screening](https://sigmafieldlabs.github.io/finalytics/reports/screening.html)
 
 ## Portfolio optimisation
 
@@ -262,6 +264,56 @@ payment out along the way, `.spending_on("Car", 25_000.0, "2028-03")`; and for
 inflation month by month, a price index of one column, such as a consumer price
 index, `.inflation_index(index)`.
 
+## Screening
+
+Screen many securities, each on its own history: returns over calendar
+windows, risk, measures against a benchmark, technical indicators, income and
+volume, with rules on the measures and on fields given with the securities,
+such as a sector or a price-to-earnings ratio.
+
+```rust
+//! The portfolio dataset's funds screened against their benchmark. Run it in a
+//! folder that holds the files.
+
+use finalytics::prelude::*;
+
+fn main() -> Result<()> {
+    let universe = Universe::builder()
+        .prices_file("prices.csv")
+        .fields_file("instruments.csv")
+        .benchmark("BENCH")
+        .risk_free_rate(0.04)
+        .build()?;
+
+    let screen = universe
+        .screen()
+        .above("return_1y", 0.0)
+        .below("volatility", 0.20)
+        .one_of("class.asset_class", ["Equity", "Real assets"])
+        .sort("sharpe_ratio", Order::Descending)
+        .build()?;
+
+    screen.show()?;
+    Ok(())
+}
+```
+
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/screening.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how many securities were measured, each rule with how many met it, and the matches in order" width="760"></a>
+
+The report gives how many securities were measured, each rule with how many
+met it, the matches in order and the spread of every measure across the
+universe, with each rule's threshold marked, so that a threshold can be set
+where it bites. A measure whose window is longer than a security's history has
+no value, and a security whose last close is more than five days old is listed
+but not measured. `screen.results` holds every measure of every security.
+
+Here the universe is the portfolio dataset's five funds and `BENCH`, from the
+same `prices.csv`, with each fund's asset class from `instruments.csv` as a
+field. For thousands of securities, give prices in the long layout of `id`,
+`date` and `close` columns, with `volume` and `dividends` if known, or build
+`Series` in code with `Universe::from_series`. Name the measures to compute
+with `.measures([...])`; by default every one the data allows is computed.
+
 ## What is included
 
 **Optimisation**
@@ -293,6 +345,15 @@ index, `.inflation_index(index)`.
   inflation, in today's money
 - The changes that reach the chance wanted, lower returns and a crash, and
   other mixes on the same simulations
+
+**Screening**
+
+- Thousands of securities, each on its own dates, with volumes, dividends and
+  fields such as a sector or a valuation
+- Returns over calendar windows, volatility, drawdowns, Sharpe and Sortino
+  ratios, value at risk, beta and relative returns, moving averages, RSI and
+  MACD, dividend yield and volume
+- Rules on the measures and on the fields, sorted and limited
 
 Every report prints as text, 80 columns wide, and shows as one self-contained
 HTML page, in light and dark. Every model is tested against an independent

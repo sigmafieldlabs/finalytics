@@ -1,4 +1,4 @@
-"""Builds the sample reports that the READMEs show and link to: the six reports the READMEs'
+"""Builds the sample reports that the READMEs show and link to: the seven reports the READMEs'
 programs build from the bundled datasets, as HTML pages, with an index page and, with
 --screenshots, the top of each page in light and dark for the READMEs' images.
 
@@ -22,6 +22,7 @@ REPORTS = [
     ("portfolio", "Portfolio report", "A household's two accounts: holdings, performance, risk, attribution and scenarios."),
     ("rebalance", "Rebalance report", "The trades that move both accounts to the least risky mix of their funds, tax-aware."),
     ("planning", "Planning report", "A retirement income's chance of lasting 30 years, what would change it, and when markets do worse."),
+    ("screening", "Screening report", "Five funds and their benchmark screened by return, volatility and asset class, with the spread of every measure."),
 ]
 
 # The size of the screenshots: the top of each page.
@@ -29,7 +30,7 @@ WIDTH, HEIGHT = 1200, 760
 
 
 def build() -> dict[str, object]:
-    """The six results, built as the READMEs' Python programs build them."""
+    """The seven results, built as the READMEs' Python programs build them."""
     import finalytics as fl
 
     assets = fl.Assets(prices=fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
@@ -76,6 +77,20 @@ def build() -> dict[str, object]:
         fee=0.0025,
         currency="USD",
     )
+    files = fl.datasets.file
+    screen = fl.Universe(
+        files("portfolio/prices.csv"),
+        fields=files("portfolio/instruments.csv"),
+        benchmark="BENCH",
+        risk_free_rate=0.04,
+    ).screen(
+        rules=[
+            ("return_1y", ">", 0.0),
+            ("volatility", "<", 0.20),
+            ("class.asset_class", "in", ["Equity", "Real assets"]),
+        ],
+        sort=("sharpe_ratio", "descending"),
+    )
     return {
         "comparison": comparison,
         "backtest": backtest,
@@ -83,6 +98,7 @@ def build() -> dict[str, object]:
         "portfolio": report,
         "rebalance": rebalancing,
         "planning": plan,
+        "screening": screen,
     }
 
 

@@ -9,8 +9,8 @@ This document is a short map of the code base for contributors.
    reports. Callers supply data; the engine returns results.
 2. **WebAssembly first.** Every library crate builds for `wasm32-unknown-unknown`. In
    WebAssembly the engine runs on one thread; natively, the `parallel` feature runs independent
-   fits and solves on the caller's `rayon` thread pool, with the same results on any number of
-   threads.
+   fits, solves and a screen's securities on the caller's `rayon` thread pool, with the same
+   results on any number of threads.
 3. **Exact where money is counted.** Ledger quantities and amounts use decimal arithmetic;
    analytics use `f64` with documented tolerances.
 4. **Deterministic.** Results do not depend on hash order or platform; the solve time is the one
@@ -29,13 +29,15 @@ finalytics-ledger    instruments, transactions, corporate actions, tax lots, pos
    |    finalytics-formats   CSV and JSON import and export, validation reports, portfolio document
    |
 finalytics-perf      returns, periods, contribution, benchmark comparison
-finalytics-risk      statistics, drawdowns, covariance, VaR and expected shortfall, risk decomposition
+finalytics-risk      statistics, drawdowns, covariance, VaR and expected shortfall, risk decomposition,
+                     screening: measures and rules on many securities
    ↑
 finalytics-opt       optimisation: convex formulations, risk parity, HRP, frontiers, rebalancing
 finalytics-backtest  backtests: strategies held through time, validation, rebalancing, costs
 finalytics-plan      goal planning: saving and spending through simulated markets, in today's money
    ↑
-finalytics-reports   reports on portfolios, backtests and plans: chart-ready data, text, HTML, tables
+finalytics-reports   reports on portfolios, backtests, plans and screens: chart-ready data, text, HTML,
+                     tables
    ↑
 finalytics           the public API, re-exporting what users need
    ↑

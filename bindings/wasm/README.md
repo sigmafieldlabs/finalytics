@@ -12,8 +12,9 @@
 Finalytics is a portfolio analytics engine written in Rust, run here as
 WebAssembly in browsers, workers and Node.js, with TypeScript types included. It
 compares portfolio optimisation methods on returns they have not seen, keeps the
-books of a real portfolio to report its performance, risk and attribution, and
-tests a plan's chance of meeting a goal.
+books of a real portfolio to report its performance, risk and attribution, tests
+a plan's chance of meeting a goal, and screens thousands of securities by rules
+on their measures.
 
 ```sh
 npm install finalytics
@@ -33,7 +34,8 @@ call.
 [optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
 [portfolio](https://sigmafieldlabs.github.io/finalytics/reports/portfolio.html) ·
 [rebalance](https://sigmafieldlabs.github.io/finalytics/reports/rebalance.html) ·
-[planning](https://sigmafieldlabs.github.io/finalytics/reports/planning.html)
+[planning](https://sigmafieldlabs.github.io/finalytics/reports/planning.html) ·
+[screening](https://sigmafieldlabs.github.io/finalytics/reports/screening.html)
 
 ## Portfolio optimisation
 
@@ -261,6 +263,56 @@ out along the way, `{ type: "spending", name: "Car", amount: 25000, on: "2028-03
 among the flows; and for inflation month by month, a price index of one column,
 such as a consumer price index, `inflation: index`.
 
+## Screening
+
+Screen many securities, each on its own history: returns over calendar
+windows, risk, measures against a benchmark, technical indicators, income and
+volume, with rules on the measures and on fields given with the securities,
+such as a sector or a price-to-earnings ratio.
+
+```js
+import { readFile } from "node:fs/promises";
+import { Universe } from "finalytics";
+
+const read = (file) => readFile(file, "utf8");
+const universe = Universe.fromCsv(await read("prices.csv"), {
+  benchmark: "BENCH",
+  risk_free_rate: 0.04,
+}).withFieldsCsv(await read("instruments.csv"));
+
+const screen = universe.screen({
+  rules: [
+    { measure: "return_1y", op: ">", value: 0 },
+    { measure: "volatility", op: "<", value: 0.2 },
+    { field: "class.asset_class", op: "in", values: ["Equity", "Real assets"] },
+  ],
+  sort: { measure: "sharpe_ratio", order: "descending" },
+});
+
+screen.show();
+```
+
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/screening.html"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://sigmafieldlabs.github.io/finalytics/images/screening-dark.png">
+  <img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how many securities were measured, each rule with how many met it, and the matches in order" width="760">
+</picture></a>
+
+The report gives how many securities were measured, each rule with how many
+met it, the matches in order and the spread of every measure across the
+universe, with each rule's threshold marked, so that a threshold can be set
+where it bites. A measure whose window is longer than a security's history has
+no value, and a security whose last close is more than five days old is listed
+but not measured. `screen.results` holds every measure of every security as
+columns: one `Float64Array` per measure, NaN where a security has no value.
+
+Here the universe is the portfolio dataset's five funds and `BENCH`, from the
+same `prices.csv`, with each fund's asset class from `instruments.csv` as a
+field. For thousands of securities, `Universe.fromColumns` takes flat typed
+arrays, `{ ids, starts, dates, close, volume, dividends, fields }`, so that the
+histories cross to the engine, or to a worker, without thousands of objects:
+`starts` is the row each security starts at, and `dates` may be days since
+1970-01-01 in an `Int32Array`.
+
 ## What is included
 
 **Optimisation**
@@ -292,6 +344,15 @@ such as a consumer price index, `inflation: index`.
   inflation, in today's money
 - The changes that reach the chance wanted, lower returns and a crash, and
   other mixes on the same simulations
+
+**Screening**
+
+- Thousands of securities, each on its own dates, with volumes, dividends and
+  fields such as a sector or a valuation
+- Returns over calendar windows, volatility, drawdowns, Sharpe and Sortino
+  ratios, value at risk, beta and relative returns, moving averages, RSI and
+  MACD, dividend yield and volume
+- Rules on the measures and on the fields, sorted and limited
 
 Every report prints as text, 80 columns wide, and shows as one self-contained
 HTML page, in light and dark. Every model is tested against an independent
@@ -325,14 +386,23 @@ const html = await engine.call("reportHtml", report);
 const text = await engine.call("reportText", report);
 ```
 
-Static methods of `Portfolio`, `Assets`, `MarketData` and `datasets` go through
-`engine.static`, and the objects they return stay in the worker too:
+Static methods of `Portfolio`, `Assets`, `Universe`, `MarketData` and
+`datasets` go through `engine.static`, and the objects they return stay in the
+worker too:
 
 ```ts
 const csv = await engine.static("datasets", "file", "asset-classes.csv");
 const assets = await engine.static("Assets", "fromCsv", csv);
 const statistics = await assets.call("statistics");
 await assets.free();
+```
+
+A screen's columns cross back as typed arrays:
+
+```ts
+const universe = await engine.static("Universe", "fromColumns", columns);
+const screen = await universe.call("screen", { limit: 50 });
+const returns: Float64Array | undefined = screen.results.measures.return_1y;
 ```
 
 ## Documentation
