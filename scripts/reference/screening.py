@@ -14,7 +14,8 @@ Each measure is computed afresh here from its definition, with pandas: calendar 
 quantiles with ``numpy.quantile``, exponential averages with ``ewm(adjust=False)``, and beta and
 correlation from ``numpy.cov`` and ``numpy.corrcoef`` on the dates both have a close. The rules,
 the sort and the limit are applied to the values found, and each case records every security's
-values, status and rank, the matches, each rule's counts and the coverage.
+values, status and rank, the matches, each rule's counts, the coverage and the near misses that
+the screening report lists: the securities that fail just one rule, the closest to passing first.
 
 Usage:
 
@@ -381,6 +382,47 @@ def case(name: str, options: dict) -> dict:
             }
         )
 
+    # The near misses: the securities that fail just one rule, the closest to passing first. How
+    # close is the distance to the rule's nearest threshold, as a share of the threshold or, for a
+    # threshold of zero, of the typical size of the values on the scale the report shows them
+    # (a price against its average as the difference): the upper median of their sizes. A text
+    # rule, or a missing value, comes last; ties go by identifier.
+    def target_value(row, rule):
+        if "measure" in rule:
+            return row["found"]["values"][rule["measure"]]
+        return row["sec"].fields.get(rule["field"])
+
+    def scale(rule, x):
+        return x - 1.0 if rule.get("measure", "").startswith("price_to_sma_") else x
+
+    def typical(rule):
+        sizes = sorted(
+            abs(scale(rule, x))
+            for x in (target_value(r, rule) for r in live)
+            if isinstance(x, float) and not math.isnan(x)
+        )
+        return sizes[len(sizes) // 2] if sizes else 0.0
+
+    near = []
+    for r in live:
+        failed = [k for k, v in enumerate(r["verdicts"]) if v != "pass"]
+        if len(failed) != 1:
+            continue
+        k = failed[0]
+        rule = rules[k]
+        x = target_value(r, rule)
+        distance = math.inf
+        if rule["op"] not in ("in", "not_in") and isinstance(x, float):
+            limits = rule["value"] if rule["op"] == "between" else [rule["value"]]
+            size = typical(rule)
+            for t in limits:
+                t = scale(rule, t)
+                base = abs(t) if abs(t) > 1e-12 else size
+                if base > 0:
+                    distance = min(distance, abs(scale(rule, x) - t) / base)
+        near.append((distance, r["sec"].id, k))
+    near.sort()
+
     def clean(x):
         return None if x is None or (isinstance(x, float) and math.isnan(x)) else float(x)
 
@@ -392,6 +434,7 @@ def case(name: str, options: dict) -> dict:
         "options": options,
         "measures": measures,
         "matches": [rows[i]["sec"].id for i in order],
+        "near_misses": [{"id": i, "rule": k} for _, i, k in near],
         "rules": rule_counts,
         "coverage": {
             "measured": sum(r["status"] == "measured" for r in rows),

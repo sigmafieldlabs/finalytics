@@ -1,6 +1,9 @@
-//! The screening report, on one screen of a universe: how many securities were measured, each
-//! rule with how many met it, the matches in order, and the spread of each measure across the
-//! universe, so that a reader sees where a threshold falls.
+//! The screening report, on one screen of a universe: how the rules narrow the universe to the
+//! matches, the matches in order, the securities that fail just one rule, where each rule's
+//! threshold falls among the securities' values, the spread of every measure and what is out of
+//! the ordinary in the data.
+
+use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -8,7 +11,7 @@ use sha2::{Digest, Sha256};
 use finalytics_core::{Date, ValidationReport};
 use finalytics_risk::screening::{
     Coverage, FieldValue, Measure, MeasureUnit, Op, Order, Rule, RuleResult, RuleValue,
-    ScreenResults, Sort, Status,
+    ScreenResults, SecurityScreen, Sort, Status,
 };
 
 use crate::tables::{Cell, Column, ColumnKind, ReportTable};
@@ -55,7 +58,7 @@ pub struct ScreenContext {
 pub struct ScreenColumn {
     /// The measure's or the field's name, such as `"return_1y"` or `"sector"`.
     pub name: String,
-    /// Its heading, such as "Return 1y".
+    /// Its name in words, such as "1-year return" or "Sector".
     pub label: String,
     /// How a measure is shown; absent for a field.
     pub unit: Option<MeasureUnit>,
@@ -63,17 +66,80 @@ pub struct ScreenColumn {
     pub field: bool,
 }
 
-/// One match, with its value in each of the report's columns.
+/// One security of the matches, with its value in each of the report's columns.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct ScreenMatch {
-    /// Its place among the matches, from 1.
+    /// Its place in the sort, from 1.
     pub rank: usize,
     /// The security.
     pub id: String,
     /// Its value in each column, in the order of the report's `columns`.
     pub values: Vec<Option<FieldValue>>,
+    /// The places in `columns` of its values close to a threshold of a rule: within 10% of it
+    /// or, for a threshold of zero, within 10% of the measure's typical size, the median of its
+    /// size across the securities that are not stale.
+    #[serde(default)]
+    pub near_threshold: Vec<usize>,
+}
+
+/// A security that fails just one rule.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct NearMiss {
+    /// The security.
+    pub id: String,
+    /// The place in the report's `rules` of the rule it fails.
+    pub rule: usize,
+    /// Its value in each column, in the order of the report's `columns`.
+    pub values: Vec<Option<FieldValue>>,
+}
+
+/// One security's value on a threshold strip.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct StripPoint {
+    /// The security.
+    pub id: String,
+    /// Its value.
+    pub value: f64,
+}
+
+/// Where the securities' values of one measure, or of a numeric field, fall against the
+/// thresholds of the rules that test it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct ThresholdStrip {
+    /// The measure's or the field's name.
+    pub name: String,
+    /// Its name in words.
+    pub label: String,
+    /// How a measure is shown; absent for a field.
+    pub unit: Option<MeasureUnit>,
+    /// The places in the report's `rules` of the rules that test it.
+    pub rules: Vec<usize>,
+    /// The value of every security that is not stale and has one, lowest first.
+    pub points: Vec<StripPoint>,
+}
+
+/// What is out of the ordinary in the securities' prices.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct ScreenExceptions {
+    /// The securities measured on a last close before the date measured to, within
+    /// `max_carry_days` of it.
+    pub late: Vec<String>,
+    /// The stale securities: listed, but not measured.
+    pub stale: Vec<String>,
+    /// The securities with too short a history for a rule or the sort.
+    pub too_short: Vec<String>,
+    /// The date of every security's first close, when they all share one.
+    pub common_start: Option<Date>,
 }
 
 /// The spread of one measure, or of a numeric field a rule tests, across the securities that
@@ -85,7 +151,7 @@ pub struct ScreenMatch {
 pub struct MeasureSpread {
     /// The measure's or the field's name.
     pub name: String,
-    /// Its label, such as "Return 1y".
+    /// Its name in words, such as "1-year return".
     pub label: String,
     /// Its group, such as "Returns", or "Fields".
     pub group: String,
@@ -98,6 +164,9 @@ pub struct MeasureSpread {
     /// How many of those without a value have too short a history for it; none for a field.
     #[serde(default)]
     pub lacking_history: usize,
+    /// For a measure that is yes or no, how many securities have yes.
+    #[serde(default)]
+    pub yes: Option<usize>,
     /// The smallest value.
     pub min: Option<f64>,
     /// The lower quartile, interpolated linearly between values.
@@ -123,32 +192,149 @@ pub struct ScreenReport {
     pub coverage: Coverage,
     /// Each rule, with how many met it.
     pub rules: Vec<RuleResult>,
-    /// The columns of the matches: the measure or field sorted by, those the rules test, and a
-    /// few of the main measures.
+    /// The columns of the matches: the security's name and sector when given, the text fields
+    /// the rules test, the measure or field sorted by and those the rules compare with numbers;
+    /// without rules or a sort, a few of the main measures.
     pub columns: Vec<ScreenColumn>,
     /// Every match, in order.
     pub matches: Vec<ScreenMatch>,
+    /// The first securities that pass every rule but are beyond the limit, in order: up to ten.
+    #[serde(default)]
+    pub also_passed: Vec<ScreenMatch>,
+    /// Every security that fails just one rule, the closest to passing first: by how far its
+    /// value is from the rule's threshold, as a share of the threshold (or, for a threshold of
+    /// zero, of the measure's typical size). Those that fail a rule on text, or have no value
+    /// for it, come last.
+    #[serde(default)]
+    pub near_misses: Vec<NearMiss>,
+    /// For each measure or numeric field the rules compare with a number, every security's
+    /// value against the rules' thresholds.
+    #[serde(default)]
+    pub strips: Vec<ThresholdStrip>,
     /// The spread of each measure across the universe.
     pub spread: Vec<MeasureSpread>,
+    /// What is out of the ordinary in the securities' prices.
+    #[serde(default)]
+    pub exceptions: ScreenExceptions,
     /// The report's title, such as "Quality at a fair price": shown when it is printed or laid
     /// out as a page.
     #[serde(default)]
     pub name: Option<String>,
 }
 
-/// The measures shown beside those the rules and the sort use, when computed.
-const HEADLINE: [Measure; 6] = [
+/// The measures the matches show when no rule compares with a number and nothing is sorted.
+const HEADLINE: [Measure; 4] = [
     Measure::Return1y,
     Measure::Volatility,
     Measure::SharpeRatio,
     Measure::MaxDrawdown,
-    Measure::Rsi14,
-    Measure::Beta,
 ];
 
-/// The most columns the matches show besides the security, unless the rules and the sort use
-/// more.
-const COLUMNS: usize = 7;
+/// The fields the matches show, when given, beside the security.
+const NAMED: [&str; 2] = ["name", "sector"];
+
+/// The most securities beyond the limit that the report keeps.
+const ALSO_PASSED: usize = 10;
+
+/// How close to a threshold a value is marked, as a share of the threshold.
+pub(crate) const NEAR: f64 = 0.10;
+
+/// Whether a security meets a rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Verdict {
+    Pass,
+    Fail,
+    Lacking,
+}
+
+/// What `rule` finds of `value`, the value of what it tests.
+fn verdict(rule: &Rule, value: Option<&FieldValue>) -> Verdict {
+    let judged = |ok: bool| if ok { Verdict::Pass } else { Verdict::Fail };
+    match (rule.op, value) {
+        (Op::In | Op::NotIn, Some(FieldValue::Text(t))) => {
+            let inside = rule.values.iter().flatten().any(|v| v == t);
+            judged(inside == (rule.op == Op::In))
+        }
+        (_, Some(FieldValue::Number(x))) if !rule.op.is_text() => judged(passes(rule, *x)),
+        _ => Verdict::Lacking,
+    }
+}
+
+/// Whether the number `x` meets the numeric rule `rule`.
+pub(crate) fn passes(rule: &Rule, x: f64) -> bool {
+    match (rule.op, rule.value) {
+        (Op::Below, Some(RuleValue::Number(v))) => x < v,
+        (Op::AtMost, Some(RuleValue::Number(v))) => x <= v,
+        (Op::Above, Some(RuleValue::Number(v))) => x > v,
+        (Op::AtLeast, Some(RuleValue::Number(v))) => x >= v,
+        (Op::Between, Some(RuleValue::Range([low, high]))) => x >= low && x <= high,
+        _ => false,
+    }
+}
+
+/// The numbers a rule compares with.
+pub(crate) fn thresholds(rule: &Rule) -> Vec<f64> {
+    match rule.value {
+        Some(RuleValue::Number(x)) => vec![x],
+        Some(RuleValue::Range([a, b])) => vec![a, b],
+        None => Vec::new(),
+    }
+}
+
+/// Whether the measure `name` compares the price with its moving average, and so is shown as
+/// the difference: 1.08 as +8%.
+pub(crate) fn vs_average(name: &str) -> bool {
+    name.starts_with("price_to_sma_")
+}
+
+/// A value of `name` on the scale the report shows it: a price against its average as the
+/// difference.
+pub(crate) fn on_scale(name: &str, x: f64) -> f64 {
+    if vs_average(name) { x - 1.0 } else { x }
+}
+
+/// How far `x` is from the threshold `t` of a rule on `name`, as a share of the threshold or,
+/// for a threshold of zero, of `typical`.
+pub(crate) fn gap(name: &str, x: f64, t: f64, typical: f64) -> f64 {
+    let t = on_scale(name, t);
+    let scale = if t.abs() > 1e-12 { t.abs() } else { typical };
+    if scale > 0.0 {
+        (on_scale(name, x) - t).abs() / scale
+    } else {
+        f64::INFINITY
+    }
+}
+
+/// The typical size of values on `name`'s scale: the median of their sizes, the upper of the
+/// two middle ones when there is an even number.
+pub(crate) fn typical(name: &str, values: impl Iterator<Item = f64>) -> f64 {
+    let mut sizes: Vec<f64> = values.map(|x| on_scale(name, x).abs()).collect();
+    sizes.sort_by(f64::total_cmp);
+    sizes.get(sizes.len() / 2).copied().unwrap_or(0.0)
+}
+
+/// The order of the sort on the values `a` and `b`, those without a value last.
+fn sorted(order: Order, a: Option<f64>, b: Option<f64>) -> Ordering {
+    match (a, b) {
+        (Some(x), Some(y)) => match order {
+            Order::Ascending => x.total_cmp(&y),
+            Order::Descending => y.total_cmp(&x),
+        },
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => Ordering::Equal,
+    }
+}
+
+/// A field's name in words, starting with a capital: `pe_ratio` as "Pe ratio".
+pub(crate) fn field_label(name: &str) -> String {
+    let words = name.replace('_', " ");
+    let mut chars = words.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().chain(chars).collect(),
+        None => words,
+    }
+}
 
 /// The screening report on `results`. The `finalytics` crate assembles it.
 #[doc(hidden)]
@@ -161,75 +347,213 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
     };
     let field_column = |name: &str| ScreenColumn {
         name: name.to_owned(),
-        label: name.to_owned(),
+        label: field_label(name),
         unit: None,
         field: true,
-    };
-    let mut columns: Vec<ScreenColumn> = Vec::new();
-    let push = |column: ScreenColumn, columns: &mut Vec<ScreenColumn>| {
-        if !columns.iter().any(|c| c.name == column.name) {
-            columns.push(column);
-        }
     };
     let column_of = |name: &str, field: bool| match (field, Measure::from_name(name)) {
         (false, Some(m)) => measure_column(m),
         _ => field_column(name),
     };
+    let mut columns: Vec<ScreenColumn> = Vec::new();
+    let push = |column: ScreenColumn, columns: &mut Vec<ScreenColumn>| {
+        if !columns
+            .iter()
+            .any(|c| c.name == column.name && c.field == column.field)
+        {
+            columns.push(column);
+        }
+    };
+    for name in NAMED {
+        if results.fields.iter().any(|f| f == name) {
+            push(field_column(name), &mut columns);
+        }
+    }
+    for r in results.rules.iter().filter(|r| r.rule.op.is_text()) {
+        push(field_column(r.rule.name()), &mut columns);
+    }
     if let Some(sort) = &results.sort {
         push(column_of(sort.name(), sort.field.is_some()), &mut columns);
     }
-    for r in &results.rules {
+    for r in results.rules.iter().filter(|r| !r.rule.op.is_text()) {
         push(
             column_of(r.rule.name(), r.rule.field.is_some()),
             &mut columns,
         );
     }
-    for m in HEADLINE {
-        if columns.len() >= COLUMNS.max(1) {
-            break;
-        }
-        if results.measures.contains(&m) {
-            push(measure_column(m), &mut columns);
+    let numeric = results.sort.is_some() || results.rules.iter().any(|r| !r.rule.op.is_text());
+    if !numeric {
+        for m in HEADLINE {
+            if results.measures.contains(&m) {
+                push(measure_column(m), &mut columns);
+            }
         }
     }
 
     let position = |m: &str| results.measures.iter().position(|x| x.name() == m);
+    let value_of = |s: &SecurityScreen, name: &str, field: bool| -> Option<FieldValue> {
+        match (field, position(name)) {
+            (false, Some(k)) => s.values[k].map(FieldValue::Number),
+            _ => s.fields.get(name).cloned(),
+        }
+    };
+    let rule_value = |s: &SecurityScreen, rule: &Rule| -> Option<FieldValue> {
+        value_of(s, rule.name(), rule.field.is_some())
+    };
+    let row = |s: &SecurityScreen| -> Vec<Option<FieldValue>> {
+        columns
+            .iter()
+            .map(|c| value_of(s, &c.name, c.field))
+            .collect()
+    };
+    let live: Vec<&SecurityScreen> = results
+        .securities
+        .iter()
+        .filter(|s| s.status != Status::Stale)
+        .collect();
+
+    // A strip for each measure or numeric field the rules compare with a number, in the order
+    // of the rules.
+    let mut strips: Vec<ThresholdStrip> = Vec::new();
+    for (k, r) in results.rules.iter().enumerate() {
+        if r.rule.op.is_text() {
+            continue;
+        }
+        let (name, field) = (r.rule.name(), r.rule.field.is_some());
+        if let Some(strip) = strips.iter_mut().find(|s| s.name == name) {
+            strip.rules.push(k);
+            continue;
+        }
+        let mut points: Vec<StripPoint> = live
+            .iter()
+            .filter_map(|s| match value_of(s, name, field) {
+                Some(FieldValue::Number(x)) if x.is_finite() => Some(StripPoint {
+                    id: s.id.clone(),
+                    value: x,
+                }),
+                _ => None,
+            })
+            .collect();
+        points.sort_by(|a, b| a.value.total_cmp(&b.value));
+        let column = column_of(name, field);
+        strips.push(ThresholdStrip {
+            name: name.to_owned(),
+            label: column.label,
+            unit: column.unit,
+            rules: vec![k],
+            points,
+        });
+    }
+    let typical_of = |name: &str| -> f64 {
+        strips
+            .iter()
+            .find(|s| s.name == name)
+            .map_or(0.0, |s| typical(name, s.points.iter().map(|p| p.value)))
+    };
+    let typicals: Vec<f64> = results
+        .rules
+        .iter()
+        .map(|r| typical_of(r.rule.name()))
+        .collect();
+    // How far a value is from passing a numeric rule: from its nearest threshold.
+    let distance = |k: usize, x: f64| -> f64 {
+        let rule = &results.rules[k].rule;
+        thresholds(rule)
+            .into_iter()
+            .map(|t| gap(rule.name(), x, t, typicals[k]))
+            .fold(f64::INFINITY, f64::min)
+    };
+    let near_threshold = |values: &[Option<FieldValue>]| -> Vec<usize> {
+        columns
+            .iter()
+            .zip(values)
+            .enumerate()
+            .filter(|(_, (c, v))| {
+                let Some(FieldValue::Number(x)) = v else {
+                    return false;
+                };
+                results.rules.iter().enumerate().any(|(k, r)| {
+                    !r.rule.op.is_text()
+                        && r.rule.name() == c.name
+                        && r.rule.field.is_some() == c.field
+                        && distance(k, *x) <= NEAR
+                })
+            })
+            .map(|(j, _)| j)
+            .collect()
+    };
+    let shown_row = |s: &SecurityScreen, rank: usize| -> ScreenMatch {
+        let values = row(s);
+        ScreenMatch {
+            rank,
+            id: s.id.clone(),
+            near_threshold: near_threshold(&values),
+            values,
+        }
+    };
     let matches: Vec<ScreenMatch> = results
         .matched()
         .into_iter()
-        .map(|s| ScreenMatch {
-            rank: s.rank.unwrap_or_default(),
-            id: s.id.clone(),
-            values: columns
-                .iter()
-                .map(|c| {
-                    if c.field {
-                        s.fields.get(&c.name).cloned()
-                    } else {
-                        position(&c.name)
-                            .and_then(|k| s.values[k])
-                            .map(FieldValue::Number)
-                    }
-                })
-                .collect(),
+        .map(|s| shown_row(s, s.rank.unwrap_or_default()))
+        .collect();
+
+    // The securities beyond the limit, in the sort's order.
+    let mut beyond: Vec<&SecurityScreen> = results
+        .securities
+        .iter()
+        .filter(|s| s.passed && !s.matched)
+        .collect();
+    if let Some(sort) = &results.sort {
+        let key = |s: &SecurityScreen| match value_of(s, sort.name(), sort.field.is_some()) {
+            Some(FieldValue::Number(x)) => Some(x),
+            _ => None,
+        };
+        beyond.sort_by(|a, b| sorted(sort.order, key(a), key(b)));
+    }
+    let also_passed = beyond
+        .into_iter()
+        .take(ALSO_PASSED)
+        .enumerate()
+        .map(|(k, s)| shown_row(s, matches.len() + k + 1))
+        .collect();
+
+    // The securities that fail just one rule, the closest to passing first.
+    let mut near: Vec<(f64, NearMiss)> = live
+        .iter()
+        .filter_map(|s| {
+            let mut failed = results.rules.iter().enumerate().filter(|(_, r)| {
+                verdict(&r.rule, rule_value(s, &r.rule).as_ref()) != Verdict::Pass
+            });
+            let (k, r) = failed.next()?;
+            if failed.next().is_some() {
+                return None;
+            }
+            let far = match rule_value(s, &r.rule) {
+                Some(FieldValue::Number(x)) if !r.rule.op.is_text() => distance(k, x),
+                _ => f64::INFINITY,
+            };
+            Some((
+                far,
+                NearMiss {
+                    id: s.id.clone(),
+                    rule: k,
+                    values: row(s),
+                },
+            ))
         })
         .collect();
+    near.sort_by(|(a, x), (b, y)| a.total_cmp(b).then_with(|| x.id.cmp(&y.id)));
+    let near_misses = near.into_iter().map(|(_, m)| m).collect();
 
     // The spread of each measure, and of each numeric field a rule tests, over the securities
     // that are not stale.
-    let live: Vec<usize> = (0..results.securities.len())
-        .filter(|i| results.securities[*i].status != Status::Stale)
-        .collect();
-    let thresholds = |name: &str| -> Vec<f64> {
-        let mut found: Vec<f64> = Vec::new();
-        for r in results.rules.iter().filter(|r| r.rule.name() == name) {
-            match r.rule.value {
-                Some(RuleValue::Number(x)) => found.push(x),
-                Some(RuleValue::Range([a, b])) => found.extend([a, b]),
-                None => {}
-            }
-        }
-        found
+    let spread_thresholds = |name: &str| -> Vec<f64> {
+        results
+            .rules
+            .iter()
+            .filter(|r| r.rule.name() == name)
+            .flat_map(|r| thresholds(&r.rule))
+            .collect()
     };
     let spread_of = |name: String,
                      label: String,
@@ -242,7 +566,7 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
         have.sort_by(f64::total_cmp);
         let q = |p: f64| (!have.is_empty()).then(|| quantile(&have, p));
         MeasureSpread {
-            thresholds: thresholds(&name),
+            thresholds: spread_thresholds(&name),
             name,
             label,
             group,
@@ -250,6 +574,8 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
             count: have.len(),
             lacking: values.len() - have.len(),
             lacking_history,
+            yes: (unit == Some(MeasureUnit::Flag))
+                .then(|| have.iter().filter(|x| **x != 0.0).count()),
             min: have.first().copied(),
             lower_quartile: q(0.25),
             median: q(0.5),
@@ -267,9 +593,7 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
                 m.label().to_owned(),
                 m.group().to_owned(),
                 Some(m.unit()),
-                live.iter()
-                    .map(|i| results.securities[*i].values[k])
-                    .collect(),
+                live.iter().map(|s| s.values[k]).collect(),
                 results
                     .coverage
                     .lacking_history
@@ -288,20 +612,40 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
         }
         let values = live
             .iter()
-            .map(|i| match results.securities[*i].fields.get(name) {
+            .map(|s| match s.fields.get(name) {
                 Some(FieldValue::Number(x)) => Some(*x),
                 _ => None,
             })
             .collect();
         spread.push(spread_of(
             name.to_owned(),
-            name.to_owned(),
+            field_label(name),
             "Fields".to_owned(),
             None,
             values,
             0,
         ));
     }
+
+    // What is out of the ordinary in the prices.
+    let ids = |keep: &dyn Fn(&SecurityScreen) -> bool| -> Vec<String> {
+        results
+            .securities
+            .iter()
+            .filter(|s| keep(s))
+            .map(|s| s.id.clone())
+            .collect()
+    };
+    let starts: Vec<Option<Date>> = results.securities.iter().map(|s| s.first_date).collect();
+    let exceptions = ScreenExceptions {
+        late: ids(&|s| s.status != Status::Stale && s.last_date.is_some_and(|d| d < results.as_of)),
+        stale: ids(&|s| s.status == Status::Stale),
+        too_short: ids(&|s| s.status == Status::TooShort),
+        common_start: match starts.first() {
+            Some(Some(d)) if starts.iter().all(|s| *s == Some(*d)) => Some(*d),
+            _ => None,
+        },
+    };
 
     ScreenReport {
         context: ScreenContext {
@@ -323,7 +667,11 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
         rules: results.rules.clone(),
         columns,
         matches,
+        also_passed,
+        near_misses,
+        strips,
         spread,
+        exceptions,
         name: None,
     }
 }
@@ -713,8 +1061,8 @@ impl ScreenReport {
         notes
     }
 
-    /// The report as labelled tables for export: the coverage, the rules, the matches and the
-    /// spread of each measure.
+    /// The report as labelled tables for export: the coverage, the rules, the matches, the near
+    /// misses and the spread of every measure.
     pub fn tables(&self) -> Vec<ReportTable> {
         let col = |key: &str, label: &str, kind: ColumnKind| Column {
             key: key.to_owned(),
@@ -781,39 +1129,73 @@ impl ScreenReport {
                 })
                 .collect(),
         ));
-        let mut columns = vec![
-            col("rank", "Rank", ColumnKind::Integer),
-            col("id", "Security", ColumnKind::Text),
-        ];
-        for (j, k) in self.columns.iter().enumerate() {
-            let kind = if k.field {
+        // The columns of the matches, as the matches and the near misses hold them.
+        let kinds: Vec<ColumnKind> = self
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(j, k)| {
                 let text = self
                     .matches
                     .iter()
-                    .any(|m| matches!(m.values.get(j), Some(Some(FieldValue::Text(_)))));
-                if text {
-                    ColumnKind::Text
-                } else {
-                    ColumnKind::Number
+                    .map(|m| &m.values)
+                    .chain(self.near_misses.iter().map(|m| &m.values))
+                    .any(|v| matches!(v.get(j), Some(Some(FieldValue::Text(_)))));
+                match (k.field, text) {
+                    (true, true) => ColumnKind::Text,
+                    (true, false) => ColumnKind::Number,
+                    (false, _) => kind_of(k.unit),
                 }
-            } else {
-                kind_of(k.unit)
-            };
-            columns.push(col(&k.name, &k.label, kind));
-        }
+            })
+            .collect();
+        let with_columns = |mut columns: Vec<Column>| {
+            for (k, kind) in self.columns.iter().zip(&kinds) {
+                columns.push(col(&k.name, &k.label, *kind));
+            }
+            columns
+        };
+        let cells = |values: &[Option<FieldValue>]| -> Vec<Cell> {
+            values
+                .iter()
+                .map(|v| match v {
+                    Some(FieldValue::Number(x)) => number(Some(*x)),
+                    Some(FieldValue::Text(t)) => Cell::Text(t.clone()),
+                    None => Cell::Missing,
+                })
+                .collect()
+        };
         out.push(table(
             "matches",
             "Matches",
-            columns,
+            with_columns(vec![
+                col("rank", "Rank", ColumnKind::Integer),
+                col("id", "Security", ColumnKind::Text),
+            ]),
             self.matches
                 .iter()
                 .map(|m| {
                     let mut row = vec![whole(m.rank), Cell::Text(m.id.clone())];
-                    row.extend(m.values.iter().map(|v| match v {
-                        Some(FieldValue::Number(x)) => number(Some(*x)),
-                        Some(FieldValue::Text(t)) => Cell::Text(t.clone()),
-                        None => Cell::Missing,
-                    }));
+                    row.extend(cells(&m.values));
+                    row
+                })
+                .collect(),
+        ));
+        out.push(table(
+            "near_misses",
+            "Near misses",
+            with_columns(vec![
+                col("id", "Security", ColumnKind::Text),
+                col("rule", "Rule failed", ColumnKind::Text),
+            ]),
+            self.near_misses
+                .iter()
+                .map(|m| {
+                    let rule = self
+                        .rules
+                        .get(m.rule)
+                        .map_or_else(String::new, |r| rule_words(&r.rule));
+                    let mut row = vec![Cell::Text(m.id.clone()), Cell::Text(rule)];
+                    row.extend(cells(&m.values));
                     row
                 })
                 .collect(),

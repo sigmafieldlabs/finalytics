@@ -132,7 +132,7 @@ test("a screen prints, lays out as a page and turns into tables", () => {
   assert.ok(screen.toHtml().startsWith("<!doctype html>"));
   assert.deepEqual(
     reportTables(screen.report).map((t) => t.name),
-    ["coverage", "rules", "matches", "spread"],
+    ["coverage", "rules", "matches", "near_misses", "spread"],
   );
   // The results are data: they pass to JSON, with NaN as null.
   assert.ok(JSON.stringify(screen.report).length > 0);

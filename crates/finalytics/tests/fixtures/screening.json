@@ -186,6 +186,7 @@
     "LIN",
     "S&P 500"
    ],
+   "near_misses": [],
    "rules": [],
    "coverage": {
     "measured": 20,
@@ -1361,6 +1362,36 @@
     "NVDA",
     "MSFT"
    ],
+   "near_misses": [
+    {
+     "id": "WMT",
+     "rule": 2
+    },
+    {
+     "id": "MU",
+     "rule": 0
+    },
+    {
+     "id": "AMZN",
+     "rule": 2
+    },
+    {
+     "id": "DUK",
+     "rule": 1
+    },
+    {
+     "id": "JPM",
+     "rule": 2
+    },
+    {
+     "id": "LIN",
+     "rule": 1
+    },
+    {
+     "id": "LLY",
+     "rule": 0
+    }
+   ],
    "rules": [
     {
      "passed": 16,
@@ -1772,6 +1803,40 @@
     "COST",
     "PG",
     "JPM"
+   ],
+   "near_misses": [
+    {
+     "id": "WMT",
+     "rule": 0
+    },
+    {
+     "id": "XOM",
+     "rule": 0
+    },
+    {
+     "id": "HD",
+     "rule": 1
+    },
+    {
+     "id": "AAPL",
+     "rule": 2
+    },
+    {
+     "id": "NEE",
+     "rule": 1
+    },
+    {
+     "id": "GS",
+     "rule": 1
+    },
+    {
+     "id": "MSFT",
+     "rule": 2
+    },
+    {
+     "id": "S&P 500",
+     "rule": 2
+    }
    ],
    "rules": [
     {
@@ -2956,6 +3021,24 @@
     "XOM",
     "NEE",
     "PG"
+   ],
+   "near_misses": [
+    {
+     "id": "AAPL",
+     "rule": 2
+    },
+    {
+     "id": "KO",
+     "rule": 1
+    },
+    {
+     "id": "LLY",
+     "rule": 0
+    },
+    {
+     "id": "MSFT",
+     "rule": 2
+    }
    ],
    "rules": [
     {

@@ -5361,7 +5361,7 @@
         },
         "label": {
           "type": "string",
-          "description": "Its label, such as \"Return 1y\"."
+          "description": "Its name in words, such as \"1-year return\"."
         },
         "group": {
           "type": "string",
@@ -5396,6 +5396,16 @@
           "minimum": 0,
           "description": "How many of those without a value have too short a history for it; none for a field.",
           "default": 0
+        },
+        "yes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "For a measure that is yes or no, how many securities have yes.",
+          "default": null
         },
         "min": {
           "type": [
@@ -5941,6 +5951,41 @@
         "scenario"
       ],
       "description": "A scenario with a name, such as \"Equities -20%\" or \"2008\"."
+    },
+    "NearMiss": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The security."
+        },
+        "rule": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The place in the report's `rules` of the rule it fails."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/FieldValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Its value in each column, in the order of the report's `columns`."
+        }
+      },
+      "required": [
+        "id",
+        "rule",
+        "values"
+      ],
+      "description": "A security that fails just one rule."
     },
     "Objective": {
       "oneOf": [
@@ -10989,7 +11034,7 @@
         },
         "label": {
           "type": "string",
-          "description": "Its heading, such as \"Return 1y\"."
+          "description": "Its name in words, such as \"1-year return\" or \"Sector\"."
         },
         "unit": {
           "anyOf": [
@@ -11116,6 +11161,49 @@
       ],
       "description": "What a screen measured, beside its figures: what the report needs to describe it."
     },
+    "ScreenExceptions": {
+      "type": "object",
+      "properties": {
+        "late": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The securities measured on a last close before the date measured to, within\n`max_carry_days` of it."
+        },
+        "stale": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The stale securities: listed, but not measured."
+        },
+        "too_short": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The securities with too short a history for a rule or the sort."
+        },
+        "common_start": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The date of every security's first close, when they all share one."
+        }
+      },
+      "required": [
+        "late",
+        "stale",
+        "too_short"
+      ],
+      "description": "What is out of the ordinary in the securities' prices."
+    },
     "ScreenMatch": {
       "type": "object",
       "properties": {
@@ -11123,7 +11211,7 @@
           "type": "integer",
           "format": "uint",
           "minimum": 0,
-          "description": "Its place among the matches, from 1."
+          "description": "Its place in the sort, from 1."
         },
         "id": {
           "type": "string",
@@ -11142,6 +11230,16 @@
             ]
           },
           "description": "Its value in each column, in the order of the report's `columns`."
+        },
+        "near_threshold": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "description": "The places in `columns` of its values close to a threshold of a rule: within 10% of it\nor, for a threshold of zero, within 10% of the measure's typical size, the median of its\nsize across the securities that are not stale.",
+          "default": []
         }
       },
       "required": [
@@ -11149,7 +11247,7 @@
         "id",
         "values"
       ],
-      "description": "One match, with its value in each of the report's columns."
+      "description": "One security of the matches, with its value in each of the report's columns."
     },
     "ScreenOptions": {
       "type": "object",
@@ -11240,7 +11338,7 @@
           "items": {
             "$ref": "#/$defs/ScreenColumn"
           },
-          "description": "The columns of the matches: the measure or field sorted by, those the rules test, and a\nfew of the main measures."
+          "description": "The columns of the matches: the security's name and sector when given, the text fields\nthe rules test, the measure or field sorted by and those the rules compare with numbers;\nwithout rules or a sort, a few of the main measures."
         },
         "matches": {
           "type": "array",
@@ -11249,12 +11347,46 @@
           },
           "description": "Every match, in order."
         },
+        "also_passed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScreenMatch"
+          },
+          "description": "The first securities that pass every rule but are beyond the limit, in order: up to ten.",
+          "default": []
+        },
+        "near_misses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NearMiss"
+          },
+          "description": "Every security that fails just one rule, the closest to passing first: by how far its\nvalue is from the rule's threshold, as a share of the threshold (or, for a threshold of\nzero, of the measure's typical size). Those that fail a rule on text, or have no value\nfor it, come last.",
+          "default": []
+        },
+        "strips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ThresholdStrip"
+          },
+          "description": "For each measure or numeric field the rules compare with a number, every security's\nvalue against the rules' thresholds.",
+          "default": []
+        },
         "spread": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/MeasureSpread"
           },
           "description": "The spread of each measure across the universe."
+        },
+        "exceptions": {
+          "$ref": "#/$defs/ScreenExceptions",
+          "description": "What is out of the ordinary in the securities' prices.",
+          "default": {
+            "late": [],
+            "stale": [],
+            "too_short": [],
+            "common_start": null
+          }
         },
         "name": {
           "type": [
@@ -12500,6 +12632,25 @@
       ],
       "description": "One strategy's backtest.\n\n`in_sample` holds the returns of weights fitted to the history they are tested on: the\nwhole history for in-sample validation; the history before the test for a holdout; and, for\nwalk-forward validation, the whole history, tested on the same periods as `out_of_sample`, so\nthat the two can be compared directly. `out_of_sample` holds the returns of weights tested on\nhistory they had not seen; it is absent for in-sample validation."
     },
+    "StripPoint": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The security."
+        },
+        "value": {
+          "type": "number",
+          "format": "double",
+          "description": "Its value."
+        }
+      },
+      "required": [
+        "id",
+        "value"
+      ],
+      "description": "One security's value on a threshold strip."
+    },
     "TailMethod": {
       "oneOf": [
         {
@@ -12613,6 +12764,53 @@
         "long_term"
       ],
       "description": "Tax rates on realised gains, for tax-aware sales. A lot held for more than\n`long_term_after_days` days is long-term. The rates apply to gains in the base currency,\nafter fees; a loss saves tax at its rate."
+    },
+    "ThresholdStrip": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The measure's or the field's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name in words."
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeasureUnit"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How a measure is shown; absent for a field."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "description": "The places in the report's `rules` of the rules that test it."
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StripPoint"
+          },
+          "description": "The value of every security that is not stale and has one, lowest first."
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "rules",
+        "points"
+      ],
+      "description": "Where the securities' values of one measure, or of a numeric field, fall against the\nthresholds of the rules that test it."
     },
     "TimeSeries": {
       "type": "object",

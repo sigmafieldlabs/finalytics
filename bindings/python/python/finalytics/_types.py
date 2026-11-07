@@ -2804,7 +2804,7 @@ class MeasureSpread:
     """The measure's or the field's name."""
 
     label: str
-    """Its label, such as "Return 1y"."""
+    """Its name in words, such as "1-year return"."""
 
     group: str
     """Its group, such as "Returns", or "Fields"."""
@@ -2820,6 +2820,9 @@ class MeasureSpread:
 
     lacking_history: int = 0
     """How many of those without a value have too short a history for it; none for a field."""
+
+    yes: int | None = None
+    """For a measure that is yes or no, how many securities have yes."""
 
     min: float | None = None
     """The smallest value."""
@@ -3041,6 +3044,20 @@ class NamedScenario:
 
     stress: CorrelationStress | None = None
     """A stress of the covariance for the risk after this scenario, as in a crisis."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class NearMiss:
+    """A security that fails just one rule."""
+
+    id: str
+    """The security."""
+
+    rule: int
+    """The place in the report's `rules` of the rule it fails."""
+
+    values: list[FieldValue | None]
+    """Its value in each column, in the order of the report's `columns`."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -5557,7 +5574,7 @@ class ScreenColumn:
     """The measure's or the field's name, such as `"return_1y"` or `"sector"`."""
 
     label: str
-    """Its heading, such as "Return 1y"."""
+    """Its name in words, such as "1-year return" or "Sector"."""
 
     unit: MeasureUnit | None = None
     """How a measure is shown; absent for a field."""
@@ -5613,17 +5630,42 @@ class ScreenContext:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ScreenExceptions:
+    """What is out of the ordinary in the securities' prices."""
+
+    late: list[str]
+    """The securities measured on a last close before the date measured to, within `max_carry_days`
+    of it.
+    """
+
+    stale: list[str]
+    """The stale securities: listed, but not measured."""
+
+    too_short: list[str]
+    """The securities with too short a history for a rule or the sort."""
+
+    common_start: datetime.date | None = None
+    """The date of every security's first close, when they all share one."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class ScreenMatch:
-    """One match, with its value in each of the report's columns."""
+    """One security of the matches, with its value in each of the report's columns."""
 
     rank: int
-    """Its place among the matches, from 1."""
+    """Its place in the sort, from 1."""
 
     id: str
     """The security."""
 
     values: list[FieldValue | None]
     """Its value in each column, in the order of the report's `columns`."""
+
+    near_threshold: list[int] = field(default_factory=list)
+    """The places in `columns` of its values close to a threshold of a rule: within 10% of it or,
+    for a threshold of zero, within 10% of the measure's typical size, the median of its size
+    across the securities that are not stale.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -5670,15 +5712,34 @@ class ScreenReport(ReportPage):
     """Each rule, with how many met it."""
 
     columns: list[ScreenColumn]
-    """The columns of the matches: the measure or field sorted by, those the rules test, and a few
-    of the main measures.
+    """The columns of the matches: the security's name and sector when given, the text fields the
+    rules test, the measure or field sorted by and those the rules compare with numbers; without
+    rules or a sort, a few of the main measures.
     """
 
     matches: list[ScreenMatch]
     """Every match, in order."""
 
+    also_passed: list[ScreenMatch] = field(default_factory=list)
+    """The first securities that pass every rule but are beyond the limit, in order: up to ten."""
+
+    near_misses: list[NearMiss] = field(default_factory=list)
+    """Every security that fails just one rule, the closest to passing first: by how far its value
+    is from the rule's threshold, as a share of the threshold (or, for a threshold of zero, of
+    the measure's typical size). Those that fail a rule on text, or have no value for it, come
+    last.
+    """
+
+    strips: list[ThresholdStrip] = field(default_factory=list)
+    """For each measure or numeric field the rules compare with a number, every security's value
+    against the rules' thresholds.
+    """
+
     spread: list[MeasureSpread]
     """The spread of each measure across the universe."""
+
+    exceptions: ScreenExceptions = field(default_factory=lambda: ScreenExceptions(late=[], stale=[], too_short=[], common_start=None))
+    """What is out of the ordinary in the securities' prices."""
 
     name: str | None = None
     """The report's title, such as "Quality at a fair price": shown when it is printed or laid out
@@ -6294,6 +6355,17 @@ class StrategyResult:
 
 
 @dataclass(frozen=True, kw_only=True)
+class StripPoint:
+    """One security's value on a threshold strip."""
+
+    id: str
+    """The security."""
+
+    value: float
+    """Its value."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class TailRisk:
     """Value at risk and expected shortfall over one period of the returns.
 
@@ -6358,6 +6430,28 @@ class TaxRates:
 
     long_term_after_days: int = 365
     """The holding period, in days, beyond which a gain is long-term: 365 by default."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ThresholdStrip:
+    """Where the securities' values of one measure, or of a numeric field, fall against the
+    thresholds of the rules that test it.
+    """
+
+    name: str
+    """The measure's or the field's name."""
+
+    label: str
+    """Its name in words."""
+
+    unit: MeasureUnit | None = None
+    """How a measure is shown; absent for a field."""
+
+    rules: list[int]
+    """The places in the report's `rules` of the rules that test it."""
+
+    points: list[StripPoint]
+    """The value of every security that is not stale and has one, lowest first."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7287,6 +7381,7 @@ __all__ = [
     "MonthToDate",
     "Monthly",
     "NamedScenario",
+    "NearMiss",
     "Never",
     "NoSource",
     "NonlinearShrinkage",
@@ -7389,6 +7484,7 @@ __all__ = [
     "Screen",
     "ScreenColumn",
     "ScreenContext",
+    "ScreenExceptions",
     "ScreenMatch",
     "ScreenOptions",
     "ScreenReport",
@@ -7426,6 +7522,7 @@ __all__ = [
     "Strategy",
     "StrategyReport",
     "StrategyResult",
+    "StripPoint",
     "SymbolChange",
     "TailMethod",
     "TailRisk",
@@ -7436,6 +7533,7 @@ __all__ = [
     "Tax",
     "TaxRates",
     "TextColumn",
+    "ThresholdStrip",
     "TimeSeries",
     "TrackingErrorLimit",
     "Trade",

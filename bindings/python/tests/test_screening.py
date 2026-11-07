@@ -106,7 +106,8 @@ def test_a_screen_prints_shows_and_becomes_a_dataframe(universe, tmp_path, monke
     assert all(len(line) <= 80 for line in text.splitlines())
     assert "ScreenResults" in str(screen.results)
     assert screen.report.to_html().startswith("<!doctype html>")
-    assert [t.name for t in fl.reports.tables(screen.report)] == ["coverage", "rules", "matches", "spread"]
+    tables = [t.name for t in fl.reports.tables(screen.report)]
+    assert tables == ["coverage", "rules", "matches", "near_misses", "spread"]
     frame = flpd.securities(screen)
     assert frame.index.name == "id" and len(frame) == 21
     assert list(frame[frame.matched].sort_values("rank").index) == screen.results.matches

@@ -68,7 +68,10 @@ fn the_report_prints_in_80_columns_and_shows_every_match() {
         .into_iter()
         .map(|t| t.name)
         .collect();
-    assert_eq!(names, ["coverage", "rules", "matches", "spread"]);
+    assert_eq!(
+        names,
+        ["coverage", "rules", "matches", "near_misses", "spread"]
+    );
     let results = serde_json::to_string(&screen.results).unwrap();
     let printed = finalytics::results_text(&results).unwrap();
     assert!(printed.starts_with("ScreenResults · as of 2026-06-30"));

@@ -1991,7 +1991,7 @@ export type Measure = "return_1w" | "return_1m" | "return_3m" | "return_6m" | "r
 export interface MeasureSpread {
   /** The measure's or the field's name. */
   name: string;
-  /** Its label, such as "Return 1y". */
+  /** Its name in words, such as "1-year return". */
   label: string;
   /** Its group, such as "Returns", or "Fields". */
   group: string;
@@ -2003,6 +2003,8 @@ export interface MeasureSpread {
   lacking: number;
   /** How many of those without a value have too short a history for it; none for a field. */
   lacking_history?: number;
+  /** For a measure that is yes or no, how many securities have yes. */
+  yes?: number | null;
   /** The smallest value. */
   min?: number | null;
   /** The lower quartile, interpolated linearly between values. */
@@ -2161,6 +2163,16 @@ export interface NamedScenario {
   scenario: ScenarioDefinition;
   /** A stress of the covariance for the risk after this scenario, as in a crisis. */
   stress?: CorrelationStress | null;
+}
+
+/** A security that fails just one rule. */
+export interface NearMiss {
+  /** The security. */
+  id: string;
+  /** The place in the report's `rules` of the rule it fails. */
+  rule: number;
+  /** Its value in each column, in the order of the report's `columns`. */
+  values: (FieldValue | null)[];
 }
 
 /** What an optimisation seeks. */
@@ -3999,7 +4011,7 @@ export interface Screen {
 export interface ScreenColumn {
   /** The measure's or the field's name, such as `"return_1y"` or `"sector"`. */
   name: string;
-  /** Its heading, such as "Return 1y". */
+  /** Its name in words, such as "1-year return" or "Sector". */
   label: string;
   /** How a measure is shown; absent for a field. */
   unit?: MeasureUnit | null;
@@ -4040,14 +4052,35 @@ export interface ScreenContext {
   warnings: ValidationReport;
 }
 
-/** One match, with its value in each of the report's columns. */
+/** What is out of the ordinary in the securities' prices. */
+export interface ScreenExceptions {
+  /**
+   * The securities measured on a last close before the date measured to, within
+   * `max_carry_days` of it.
+   */
+  late: string[];
+  /** The stale securities: listed, but not measured. */
+  stale: string[];
+  /** The securities with too short a history for a rule or the sort. */
+  too_short: string[];
+  /** The date of every security's first close, when they all share one. */
+  common_start?: Date | null;
+}
+
+/** One security of the matches, with its value in each of the report's columns. */
 export interface ScreenMatch {
-  /** Its place among the matches, from 1. */
+  /** Its place in the sort, from 1. */
   rank: number;
   /** The security. */
   id: string;
   /** Its value in each column, in the order of the report's `columns`. */
   values: (FieldValue | null)[];
+  /**
+   * The places in `columns` of its values close to a threshold of a rule: within 10% of it
+   * or, for a threshold of zero, within 10% of the measure's typical size, the median of its
+   * size across the securities that are not stale.
+   */
+  near_threshold?: number[];
 }
 
 /**
@@ -4085,14 +4118,31 @@ export interface ScreenReport {
   /** Each rule, with how many met it. */
   rules: RuleResult[];
   /**
-   * The columns of the matches: the measure or field sorted by, those the rules test, and a
-   * few of the main measures.
+   * The columns of the matches: the security's name and sector when given, the text fields
+   * the rules test, the measure or field sorted by and those the rules compare with numbers;
+   * without rules or a sort, a few of the main measures.
    */
   columns: ScreenColumn[];
   /** Every match, in order. */
   matches: ScreenMatch[];
+  /** The first securities that pass every rule but are beyond the limit, in order: up to ten. */
+  also_passed?: ScreenMatch[];
+  /**
+   * Every security that fails just one rule, the closest to passing first: by how far its
+   * value is from the rule's threshold, as a share of the threshold (or, for a threshold of
+   * zero, of the measure's typical size). Those that fail a rule on text, or have no value
+   * for it, come last.
+   */
+  near_misses?: NearMiss[];
+  /**
+   * For each measure or numeric field the rules compare with a number, every security's
+   * value against the rules' thresholds.
+   */
+  strips?: ThresholdStrip[];
   /** The spread of each measure across the universe. */
   spread: MeasureSpread[];
+  /** What is out of the ordinary in the securities' prices. */
+  exceptions?: ScreenExceptions;
   /**
    * The report's title, such as "Quality at a fair price": shown when it is printed or laid
    * out as a page.
@@ -4584,6 +4634,14 @@ export interface StrategyResult {
   notes: string[];
 }
 
+/** One security's value on a threshold strip. */
+export interface StripPoint {
+  /** The security. */
+  id: string;
+  /** Its value. */
+  value: number;
+}
+
 /** How the tail of the return distribution is estimated. */
 export type TailMethod = "historical" | "parametric" | "cornish_fisher";
 
@@ -4642,6 +4700,23 @@ export interface TaxRates {
   long_term: Decimal;
   /** The holding period, in days, beyond which a gain is long-term: 365 by default. */
   long_term_after_days?: number;
+}
+
+/**
+ * Where the securities' values of one measure, or of a numeric field, fall against the
+ * thresholds of the rules that test it.
+ */
+export interface ThresholdStrip {
+  /** The measure's or the field's name. */
+  name: string;
+  /** Its name in words. */
+  label: string;
+  /** How a measure is shown; absent for a field. */
+  unit?: MeasureUnit | null;
+  /** The places in the report's `rules` of the rules that test it. */
+  rules: number[];
+  /** The value of every security that is not stale and has one, lowest first. */
+  points: StripPoint[];
 }
 
 /**
