@@ -50,8 +50,8 @@ fn the_report_prints_in_80_columns_and_shows_every_match() {
     }
     let text = screen.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
-    assert!(text.contains("sector is Information Technology or Energy"));
-    assert!(text.contains("RSI (14 days) from 30 to 70"));
+    assert!(words(&text).contains("Sector is Information Technology or Energy"));
+    assert!(words(&text).contains("RSI (14 days) between 30 and 70"));
     // The report reads back from JSON, as the bindings pass it.
     let json = serde_json::to_string(&screen.report).unwrap();
     assert_eq!(
@@ -84,7 +84,7 @@ fn words(text: &str) -> String {
 }
 
 #[test]
-fn the_spread_leaves_out_the_measures_no_security_has() {
+fn the_measures_leave_out_those_no_security_has() {
     // Two and a half years into the prices, no company has three years of closes.
     let screen = universe().screen().as_of("2007-06-29").build().unwrap();
     let r = &screen.results;
@@ -100,24 +100,23 @@ fn the_spread_leaves_out_the_measures_no_security_has() {
     let text = screen.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
     assert!(
-        words(&text).contains(
-            "Not computed, for want of history: 3-year return, per year, 5-year return, per \
-             year, 3-year volatility, 3-year max drawdown, 3-year Sharpe ratio and Calmar ratio."
-        ),
+        text.contains("With no rules, all 56 securities pass."),
         "{text}"
     );
-    let section = &text[text.find("Spread across the universe").unwrap()..];
-    let row = |label: &str| section.lines().any(|l| l.trim_start().starts_with(label));
-    assert!(!row("3-year return") && row("1-year return"));
-    let html = screen.report.to_html(None);
-    assert!(html.contains(
-        r#"<p class="note">Not computed, for want of history: 3-year return, per year, 5-year return"#
-    ));
-    assert!(!html.contains(r#"<td title="return_3y">"#));
-    assert!(html.contains(r#"<td title="return_1y">"#));
+    let html = words(&screen.report.to_html(None));
+    assert!(
+        html.contains(
+            "Not computed, as no history is long enough: 3-year return, per year; 5-year \
+             return, per year; 3-year volatility; 3-year max drawdown; 3-year Sharpe ratio; \
+             Calmar ratio."
+        ),
+        "{html}"
+    );
+    assert!(!html.contains("<tr><td>3-year return, per year</td>"));
+    assert!(html.contains("<tr><td>1-year return</td>"));
 
-    // A benchmark with no close in the last four months leaves the measures against it with no
-    // value, for want of the benchmark rather than of history.
+    // A benchmark with no close in the last four months is stale, and leaves the measures
+    // against it with no value, for lack of the benchmark rather than of history.
     let prices: String = include_str!("../../../tests/sp500/prices.csv")
         .lines()
         .map(|line| match line.split_once(',') {
@@ -133,15 +132,24 @@ fn the_spread_leaves_out_the_measures_no_security_has() {
         .build()
         .unwrap();
     let screen = u.screen().build().unwrap();
-    let text = words(&screen.to_string());
+    let html = words(&screen.report.to_html(None));
     assert!(
-        text.contains(
+        html.contains(
             "No security has a value of beta, correlation, 6-month return vs benchmark or \
              1-year return vs benchmark."
         ),
+        "{html}"
+    );
+    assert!(!html.contains("no history is long enough"), "{html}");
+    assert_eq!(screen.report.exceptions.stale, ["T-Bills"]);
+    let text = words(&screen.to_string());
+    assert!(
+        text.contains(
+            "55 of 56 securities have at least two prices. 1 has no price in the 5 days to 30 \
+             Oct 2026 and is left out: T-Bills."
+        ),
         "{text}"
     );
-    assert!(!text.contains("for want of history"), "{text}");
 }
 
 #[test]

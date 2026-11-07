@@ -1259,10 +1259,16 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
         source,
         style,
     } = *f;
-    let nav: String = nav
-        .iter()
-        .map(|(anchor, label)| format!(r##"<a href="#{anchor}">{}</a>"##, esc(label)))
-        .collect();
+    // A page without sections to jump to has no bar of links.
+    let nav: String = if nav.is_empty() {
+        String::new()
+    } else {
+        let links: String = nav
+            .iter()
+            .map(|(anchor, label)| format!(r##"<a href="#{anchor}">{}</a>"##, esc(label)))
+            .collect();
+        format!("<nav>{links}</nav>\n")
+    };
     let brand = brand.map_or_else(String::new, |b| {
         format!(r#"<div class="brand">{}</div>"#, esc(b))
     });
@@ -1275,8 +1281,7 @@ pub(crate) fn frame(f: &Frame<'_>, body: &str) -> String {
 <div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,{light}"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,{dark}"></div>
 <h1>{title}</h1>{brand}</div>
 <div class="meta">{meta}</div></div>
-<nav>{nav}</nav>
-{body}
+{nav}{body}
 <div class="foot">Every figure is computed by Finalytics {version} from {source}; the same inputs give the same report, identified by the input digest <code>{digest}</code>.</div>
 </div></body></html>
 "#,

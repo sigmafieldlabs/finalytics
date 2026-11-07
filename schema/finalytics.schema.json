@@ -11012,7 +11012,7 @@
       "properties": {
         "report": {
           "$ref": "#/$defs/ScreenReport",
-          "description": "The screening report: how many securities were measured, each rule with how many met\nit, the matches in order and the spread of each measure."
+          "description": "The screening report: how the rules narrow the universe, the matches in order, the\nsecurities that fail just one rule, where each threshold falls and every measure."
         },
         "results": {
           "$ref": "#/$defs/ScreenResults",

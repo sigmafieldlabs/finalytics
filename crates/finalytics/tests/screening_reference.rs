@@ -184,7 +184,7 @@ fn screens_match_the_reference() {
         assert_eq!(
             r.coverage.lacking_history,
             counts("lacking_history"),
-            "{name}: lacking for want of history"
+            "{name}: lacking for too short a history"
         );
         let rows = case["securities"].as_array().unwrap();
         assert_eq!(r.securities.len(), rows.len(), "{name}: securities");
@@ -253,6 +253,22 @@ fn screens_match_the_reference() {
             ids(&|e| e["status"] == "too_short"),
             "{name}: too short"
         );
+        // The report prints in 80 columns and names the exceptions in its line on the data.
+        let text = screen.to_string();
+        let html = screen.report.to_html(None);
+        assert!(
+            text.lines().all(|l| l.chars().count() <= 80),
+            "{name}:\n{text}"
+        );
+        let data = &text[text.find("\nData\n").unwrap()..];
+        let line = &html[html.find(r#"<p class="dline">"#).unwrap()..];
+        for id in x.stale.iter().chain(&x.too_short).chain(&x.late) {
+            assert!(data.contains(id.as_str()), "{name}: {id} in\n{data}");
+            assert!(
+                line.contains(&id.replace('&', "&amp;")),
+                "{name}: {id} in the page"
+            );
+        }
         assert_eq!(
             x.late,
             ids(&|e| e["status"] != "stale" && e["last_date"].as_str().is_some_and(|d| d < as_of)),

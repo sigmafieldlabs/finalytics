@@ -65,8 +65,8 @@ pub struct Universe {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Screen {
-    /// The screening report: how many securities were measured, each rule with how many met
-    /// it, the matches in order and the spread of each measure.
+    /// The screening report: how the rules narrow the universe, the matches in order, the
+    /// securities that fail just one rule, where each threshold falls and every measure.
     pub report: ScreenReport,
     /// The raw results: one row per security, with each measure's value, its fields and
     /// whether it matched.

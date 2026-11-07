@@ -284,7 +284,10 @@ pub(crate) fn thresholds(rule: &Rule) -> Vec<f64> {
 /// Whether the measure `name` compares the price with its moving average, and so is shown as
 /// the difference: 1.08 as +8%.
 pub(crate) fn vs_average(name: &str) -> bool {
-    name.starts_with("price_to_sma_")
+    matches!(
+        name,
+        "price_to_sma_20" | "price_to_sma_50" | "price_to_sma_200"
+    )
 }
 
 /// A value of `name` on the scale the report shows it: a price against its average as the
@@ -775,15 +778,6 @@ pub(crate) fn shown(x: Option<f64>, unit: Option<MeasureUnit>) -> String {
     }
 }
 
-/// A cell of the matches as the report shows it.
-pub(crate) fn cell(value: &Option<FieldValue>, unit: Option<MeasureUnit>) -> String {
-    match value {
-        None => "–".to_owned(),
-        Some(FieldValue::Number(x)) => shown(Some(*x), unit),
-        Some(FieldValue::Text(t)) => t.clone(),
-    }
-}
-
 /// A rule's number as written in its words: "10%", "1.5", "30".
 fn threshold(x: f64, unit: Option<MeasureUnit>) -> String {
     match unit {
@@ -804,16 +798,19 @@ fn unit_of(rule: &Rule) -> Option<MeasureUnit> {
         .map(Measure::unit)
 }
 
-/// The label of what a rule or sort tests: a measure's label, or a field's name.
+/// The name in words of what a rule or sort tests: a measure's label, or a field's name.
 pub(crate) fn label_of(name: &str, field: bool) -> String {
     match (field, Measure::from_name(name)) {
         (false, Some(m)) => m.label().to_owned(),
-        _ => name.to_owned(),
+        _ => field_label(name),
     }
 }
 
-/// Words joined as a list: "a, b or c".
-fn either(words: &[String], last: &str) -> String {
+/// Words joined as a list: "a, b or c"; with a semicolon between them when one has a comma.
+pub(crate) fn either(words: &[String], last: &str) -> String {
+    if words.iter().any(|w| w.contains(',')) {
+        return words.join("; ");
+    }
     match words {
         [] => String::new(),
         [one] => one.clone(),
@@ -821,57 +818,155 @@ fn either(words: &[String], last: &str) -> String {
     }
 }
 
-/// A rule in words, such as "Return 1y above 10%" or "sector is Energy or Utilities".
-pub(crate) fn rule_words(rule: &Rule) -> String {
-    let name = label_of(rule.name(), rule.field.is_some());
-    let unit = unit_of(rule);
-    let one = || match rule.value {
-        Some(RuleValue::Number(x)) => threshold(x, unit),
-        _ => "–".to_owned(),
-    };
-    match rule.op {
-        Op::Below => format!("{name} below {}", one()),
-        Op::AtMost => format!("{name} at most {}", one()),
-        Op::Above => format!("{name} above {}", one()),
-        Op::AtLeast => format!("{name} at least {}", one()),
-        Op::Between => match rule.value {
-            Some(RuleValue::Range([a, b])) => {
-                format!(
-                    "{name} from {} to {}",
-                    threshold(a, unit),
-                    threshold(b, unit)
-                )
-            }
-            _ => format!("{name} in a range"),
-        },
-        Op::In => format!(
-            "{name} is {}",
-            either(rule.values.as_deref().unwrap_or_default(), "or")
-        ),
-        Op::NotIn => format!(
-            "{name} is not {}",
-            either(rule.values.as_deref().unwrap_or_default(), "or")
-        ),
-        _ => name,
-    }
-}
-
-/// How the matches are sorted, in words, such as "by Sharpe ratio, highest first".
-pub(crate) fn sort_words(sort: &Sort) -> String {
-    let order = match sort.order {
-        Order::Descending => "highest first",
-        Order::Ascending => "lowest first",
-    };
-    format!(
-        "by {}, {order}",
-        lower(&label_of(sort.name(), sort.field.is_some()))
+/// Whether the measure `name` is a fall, negative or zero, for which a value above a threshold
+/// is better than it.
+fn is_fall(name: &str) -> bool {
+    matches!(
+        name,
+        "max_drawdown" | "max_drawdown_3y" | "drawdown" | "from_52w_high"
     )
 }
 
-/// A label inside a sentence: "Return 1y" as "return 1y", but "Sharpe ratio", "RSI 14" and a
-/// field's name as they are.
+/// A value of `name` as the report shows it: a price against its average as the difference,
+/// such as "+7.8%".
+pub(crate) fn value_text(name: &str, unit: Option<MeasureUnit>, x: Option<f64>) -> String {
+    match x {
+        Some(x) if x.is_finite() && vs_average(name) => pct(Some(x - 1.0), 1, true),
+        _ => shown(x, unit),
+    }
+}
+
+/// A cell of the matches as the report shows it.
+pub(crate) fn column_text(column: &ScreenColumn, value: &Option<FieldValue>) -> String {
+    match value {
+        None => "–".to_owned(),
+        Some(FieldValue::Text(t)) => t.clone(),
+        Some(FieldValue::Number(x)) if column.field => shown(Some(*x), None),
+        Some(FieldValue::Number(x)) => value_text(&column.name, column.unit, Some(*x)),
+    }
+}
+
+/// A threshold of a rule on `name` in words: "30%", "1.5", "30"; for a price against its
+/// average, "its average" or the difference, such as "+5%".
+pub(crate) fn limit_text(name: &str, unit: Option<MeasureUnit>, t: f64) -> String {
+    if !vs_average(name) {
+        return threshold(t, unit);
+    }
+    let d = round((t - 1.0) * 100.0, 4);
+    if d == 0.0 {
+        "its average".to_owned()
+    } else {
+        format!(
+            "{}{}%",
+            if d > 0.0 { "+" } else { "" },
+            trimmed(num(Some(d), 4))
+        )
+    }
+}
+
+/// How a rule compares, before its threshold `t`: "above 30%" or, for a fall, "better than
+/// −30%".
+fn comparison(op: Op, t: &str, fall: bool) -> String {
+    match (op, fall) {
+        (Op::Above, false) => format!("above {t}"),
+        (Op::AtLeast, false) => format!("at least {t}"),
+        (Op::Below, false) => format!("below {t}"),
+        (Op::AtMost, false) => format!("at most {t}"),
+        (Op::Above, true) => format!("better than {t}"),
+        (Op::AtLeast, true) => format!("{t} or better"),
+        (Op::Below, true) => format!("worse than {t}"),
+        (Op::AtMost, true) => format!("{t} or worse"),
+        _ => t.to_owned(),
+    }
+}
+
+/// For a rule that compares a price with its average itself, how: "above", "at or below".
+fn against_average(rule: &Rule) -> Option<&'static str> {
+    match rule.value {
+        Some(RuleValue::Number(x)) if rule.field.is_none() && vs_average(rule.name()) => {
+            if round((x - 1.0) * 100.0, 4) != 0.0 {
+                return None;
+            }
+            match rule.op {
+                Op::Above => Some("above"),
+                Op::AtLeast => Some("at or above"),
+                Op::Below => Some("below"),
+                Op::AtMost => Some("at or below"),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+/// A rule in words, such as "1-year return above 0%", "Price above its 200-day average" or
+/// "Sector is not Utilities".
+pub(crate) fn rule_words(rule: &Rule) -> String {
+    let name = rule.name();
+    let label = label_of(name, rule.field.is_some());
+    let unit = unit_of(rule);
+    if rule.op.is_text() {
+        let values = either(rule.values.as_deref().unwrap_or_default(), "or");
+        let not = if rule.op == Op::NotIn { "not " } else { "" };
+        return format!("{label} is {not}{values}");
+    }
+    if let Some(how) = against_average(rule) {
+        let average = label.trim_start_matches("Price vs ");
+        return format!("Price {how} its {average}");
+    }
+    match rule.value {
+        Some(RuleValue::Range([a, b])) => format!(
+            "{label} between {} and {}",
+            limit_text(name, unit, a),
+            limit_text(name, unit, b)
+        ),
+        Some(RuleValue::Number(x)) => format!(
+            "{label} {}",
+            comparison(rule.op, &limit_text(name, unit, x), is_fall(name))
+        ),
+        None => label,
+    }
+}
+
+/// What a numeric rule asks for, after a value that fails it: "needs 30 to 70", "needs above
+/// its average".
+pub(crate) fn needs_words(rule: &Rule) -> String {
+    let name = rule.name();
+    let unit = unit_of(rule);
+    if let Some(how) = against_average(rule) {
+        return format!("needs {how} its average");
+    }
+    match rule.value {
+        Some(RuleValue::Range([a, b])) => format!(
+            "needs {} to {}",
+            limit_text(name, unit, a),
+            limit_text(name, unit, b)
+        ),
+        Some(RuleValue::Number(x)) => format!(
+            "needs {}",
+            comparison(rule.op, &limit_text(name, unit, x), is_fall(name))
+        ),
+        None => String::new(),
+    }
+}
+
+/// "a" or "an" before `word`.
+fn article(word: &str) -> &'static str {
+    match word.chars().next() {
+        Some('a' | 'e' | 'i' | 'o' | 'u' | 'A' | 'E' | 'I' | 'O' | 'U') => "an",
+        _ => "a",
+    }
+}
+
+/// `n` and the noun for it: "1 security", "56 securities".
+pub(crate) fn counted(n: usize, one: &str, many: &str) -> String {
+    format!("{} {}", count(n), if n == 1 { one } else { many })
+}
+
+/// A measure's label inside a sentence: "Beta" as "beta", but "Sortino ratio" and "RSI (14
+/// days)" as they are, and anything else that is not a measure's label as it is.
 pub(crate) fn lower(label: &str) -> String {
-    const NAMES: [&str; 6] = ["Sharpe", "Sortino", "Calmar", "RSI", "MACD", "SMA"];
+    const NAMES: [&str; 5] = ["Sharpe", "Sortino", "Calmar", "RSI", "MACD"];
     if NAMES.iter().any(|n| label.starts_with(n)) || Measure::all().all(|m| m.label() != label) {
         label.to_owned()
     } else {
@@ -884,183 +979,524 @@ pub(crate) fn count(n: usize) -> String {
     money_places(n as f64, 0)
 }
 
+/// A step of the funnel: what it keeps, how many securities are left after it and, for a rule,
+/// how many pass it on its own and how many have no value for it.
+pub(crate) struct Step {
+    pub(crate) words: String,
+    pub(crate) left: usize,
+    pub(crate) alone: Option<usize>,
+    pub(crate) lacking: Option<String>,
+}
+
+/// The scale of a threshold strip, in the units the report shows the values in.
+pub(crate) struct Scale {
+    pub(crate) lo: f64,
+    pub(crate) hi: f64,
+    /// The thresholds of the strip's rules.
+    pub(crate) limits: Vec<f64>,
+    /// From where to where the values pass every rule of the strip; none when no value can.
+    pub(crate) zone: Option<(f64, f64)>,
+}
+
+impl Scale {
+    /// Where `x` falls between the ends of the scale, from 0 to 1, held to the ends.
+    pub(crate) fn at(&self, x: f64) -> f64 {
+        (x.clamp(self.lo, self.hi) - self.lo) / (self.hi - self.lo)
+    }
+}
+
+/// The note under the matches on the mark beside a value close to a threshold.
+pub(crate) const CLOSE_NOTE: &str = "close to a rule's limit: within 10% of it (for a limit of \
+                                     0, within 10% of a typical value).";
+
+/// The measures the table of every measure leaves out: they describe the data rather than the
+/// securities.
+const DATA_MEASURES: [&str; 3] = ["observations", "last_price", "stale"];
+
+/// The most identifiers a sentence names.
+const NAMED_IDS: usize = 8;
+
+/// Identifiers in a sentence: the first eight, and how many more.
+fn id_list(ids: &[String]) -> String {
+    let shown = ids
+        .iter()
+        .take(NAMED_IDS)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    if ids.len() > NAMED_IDS {
+        format!("{shown} and {} more", ids.len() - NAMED_IDS)
+    } else {
+        shown
+    }
+}
+
+/// A sentence from words: its first letter a capital, with a full stop.
+fn sentence(words: &str) -> String {
+    let words = words.trim().trim_end_matches('.');
+    let mut chars = words.chars();
+    match chars.next() {
+        Some(first) => format!("{}{}.", first.to_uppercase(), chars.as_str()),
+        None => String::new(),
+    }
+}
+
 impl ScreenReport {
-    /// The title: the report's name, or what the screen kept.
-    pub(crate) fn title(&self, name: Option<&str>) -> String {
-        match name.or(self.name.as_deref()) {
-            Some(n) => n.to_owned(),
-            None => format!(
-                "Screen of {} {}",
-                count(self.context.securities),
-                if self.context.securities == 1 {
-                    "security"
-                } else {
-                    "securities"
-                }
-            ),
-        }
-    }
-
-    /// What was screened, in parts joined by " · ".
-    pub(crate) fn parts(&self) -> Vec<String> {
-        let c = &self.context;
-        let mut parts = Vec::new();
-        if let Some(b) = &c.benchmark {
-            parts.push(format!("against {b}"));
-        }
-        parts.push(format!(
-            "risk-free {}",
-            threshold(c.risk_free_rate, Some(MeasureUnit::Fraction))
-        ));
-        parts.push(match self.rules.len() {
-            0 => "no rules".to_owned(),
-            1 => "1 rule".to_owned(),
-            n => format!("{n} rules"),
-        });
-        if let Some(s) = &c.sort {
-            parts.push(format!("sorted {}", sort_words(s)));
-        }
-        if let Some(l) = c.limit {
-            parts.push(format!("top {}", count(l)));
-        }
-        parts
-    }
-
-    /// What is too short and what is stale, in a sentence or two.
-    pub(crate) fn coverage_note(&self) -> String {
-        let c = &self.context;
-        let needs = if self.rules.is_empty() && c.sort.is_none() {
-            "fewer than two closes"
+    /// What the screen kept, as a headline: "10 matches among 56 securities".
+    pub(crate) fn headline(&self) -> String {
+        let m = self.coverage.matched;
+        let matches = if m == 0 {
+            "No matches".to_owned()
         } else {
-            "fewer than two closes, or less history than a rule or the sort needs"
+            counted(m, "match", "matches")
         };
         format!(
-            "Too short: {needs}. Stale: no close in the {} days to {}; listed, but not measured.",
-            c.max_carry_days,
-            crate::text::date(c.as_of)
+            "{matches} among {}",
+            counted(self.context.securities, "security", "securities")
         )
     }
 
-    /// The rows of the spread shown: those of the measures and fields some security has.
-    pub(crate) fn spread_shown(&self) -> Vec<&MeasureSpread> {
-        self.spread.iter().filter(|s| s.count > 0).collect()
+    /// The title: the report's name, or its headline.
+    pub(crate) fn title(&self, name: Option<&str>) -> String {
+        name.or(self.name.as_deref())
+            .map_or_else(|| self.headline(), str::to_owned)
     }
 
-    /// What the spread leaves out, in a line under it: the measures no security has, such as
-    /// "Not computed, for want of history: return 3y a year and return 5y a year."
-    pub(crate) fn spread_absent(&self) -> Option<String> {
+    /// The securities that are not stale.
+    pub(crate) fn live(&self) -> usize {
+        self.coverage.securities - self.coverage.stale
+    }
+
+    /// What the matches are sorted by, inside a sentence: "3-year Sharpe ratio".
+    pub(crate) fn sort_label(&self) -> Option<String> {
+        self.context
+            .sort
+            .as_ref()
+            .map(|s| match s.field.as_deref() {
+                Some(f) => f.replace('_', " "),
+                None => lower(&label_of(s.name(), false)),
+            })
+    }
+
+    /// The place in `columns` of the measure or field `name`.
+    pub(crate) fn column_of(&self, name: &str, field: bool) -> Option<usize> {
+        self.columns
+            .iter()
+            .position(|c| c.name == name && c.field == field)
+    }
+
+    /// The place in `columns` of what the matches are sorted by.
+    pub(crate) fn sort_column(&self) -> Option<usize> {
+        let s = self.context.sort.as_ref()?;
+        self.column_of(s.name(), s.field.is_some())
+    }
+
+    /// Two sentences on what the screen found: "13 of 56 securities pass all 6 rules. The 10
+    /// with the highest 3-year Sharpe ratio are shown."
+    pub(crate) fn summary(&self) -> String {
+        let c = &self.coverage;
+        let securities = counted(c.securities, "security", "securities");
+        let mut text = match self.rules.len() {
+            0 if c.stale == 0 => format!("With no rules, all {securities} pass."),
+            0 => format!(
+                "With no rules, the {} with recent prices pass.",
+                counted(c.passed, "security", "securities")
+            ),
+            n => {
+                let rules = match n {
+                    1 => "the rule".to_owned(),
+                    2 => "both rules".to_owned(),
+                    _ => format!("all {n} rules"),
+                };
+                match c.passed {
+                    0 => format!("None of the {securities} passes {rules}."),
+                    1 => format!("1 of {securities} passes {rules}."),
+                    p => format!("{} of {securities} pass {rules}.", count(p)),
+                }
+            }
+        };
+        if c.matched < c.passed {
+            let m = c.matched;
+            let kept = match (&self.context.sort, self.sort_label()) {
+                (Some(s), Some(label)) => {
+                    let how = match s.order {
+                        Order::Descending => "highest",
+                        Order::Ascending => "lowest",
+                    };
+                    if m == 1 {
+                        format!("The one with the {how} {label} is shown.")
+                    } else {
+                        format!("The {} with the {how} {label} are shown.", count(m))
+                    }
+                }
+                _ if m == 1 => "The first is shown.".to_owned(),
+                _ => format!("The first {} are shown.", count(m)),
+            };
+            text.push(' ');
+            text.push_str(&kept);
+        }
+        text
+    }
+
+    /// The tiles under the summary: a label, a value and a line under it.
+    pub(crate) fn tiles(&self) -> Vec<(String, String, Option<String>)> {
+        let c = &self.coverage;
+        let x = &self.context;
+        vec![
+            (
+                "Securities".to_owned(),
+                count(c.securities),
+                x.first_date
+                    .map(|d| format!("prices from {}", crate::text::date(d))),
+            ),
+            (
+                "Matches".to_owned(),
+                count(c.matched),
+                Some(if self.rules.is_empty() {
+                    format!("of {} measured", count(c.passed))
+                } else {
+                    format!("of {} that pass every rule", count(c.passed))
+                }),
+            ),
+            (
+                "Rules".to_owned(),
+                count(self.rules.len()),
+                self.sort_label().map(|s| format!("sorted by {s}")),
+            ),
+            (
+                "Prices to".to_owned(),
+                crate::text::date(x.as_of),
+                Some("the date measured to".to_owned()),
+            ),
+        ]
+    }
+
+    /// The steps of the funnel: every security, those with recent prices when some are stale,
+    /// those left after each rule and, when the limit leaves some out, the matches kept.
+    pub(crate) fn steps(&self) -> Vec<Step> {
+        let c = &self.coverage;
+        let step = |words: String, left: usize| Step {
+            words,
+            left,
+            alone: None,
+            lacking: None,
+        };
+        let mut steps = vec![step("All securities".to_owned(), c.securities)];
+        if c.stale > 0 {
+            steps.push(step(
+                format!(
+                    "With a price in the {} days to {}",
+                    self.context.max_carry_days,
+                    crate::text::date(self.context.as_of)
+                ),
+                self.live(),
+            ));
+        }
+        for r in &self.rules {
+            let lacking = (r.lacking > 0).then(|| match r.rule.field.as_deref() {
+                Some(f) => format!(
+                    "{} {} no {}",
+                    count(r.lacking),
+                    if r.lacking == 1 { "has" } else { "have" },
+                    f.replace('_', " ")
+                ),
+                None => format!("{} without a value", count(r.lacking)),
+            });
+            steps.push(Step {
+                words: rule_words(&r.rule),
+                left: r.remaining,
+                alone: Some(r.passed),
+                lacking,
+            });
+        }
+        if c.matched < c.passed {
+            let words = match (&self.context.sort, self.sort_label()) {
+                (Some(s), Some(label)) if s.order == Order::Ascending => {
+                    format!("Top {} by {label}, lowest first", count(c.matched))
+                }
+                (Some(_), Some(label)) => format!("Top {} by {label}", count(c.matched)),
+                _ => format!("The first {}", count(c.matched)),
+            };
+            steps.push(step(words, c.matched));
+        }
+        steps
+    }
+
+    /// What a near miss fails, in words: "RSI (14 days) 70.1, needs 30 to 70".
+    pub(crate) fn miss_words(&self, m: &NearMiss) -> String {
+        let Some(rule) = self.rules.get(m.rule).map(|r| &r.rule) else {
+            return String::new();
+        };
+        let (name, field) = (rule.name(), rule.field.is_some());
+        let value = self
+            .column_of(name, field)
+            .and_then(|j| m.values.get(j).cloned().flatten());
+        let words = name.replace('_', " ");
+        match value {
+            Some(FieldValue::Text(x)) if rule.op == Op::NotIn => {
+                format!("In {x}, {} {words} the rules leave out", article(&words))
+            }
+            Some(FieldValue::Text(x)) => {
+                format!(
+                    "In {x}, {} {words} the rules do not include",
+                    article(&words)
+                )
+            }
+            Some(FieldValue::Number(x)) if !rule.op.is_text() => {
+                let unit = unit_of(rule);
+                format!(
+                    "{} {}, {}",
+                    label_of(name, field),
+                    if field {
+                        shown(Some(x), None)
+                    } else {
+                        value_text(name, unit, Some(x))
+                    },
+                    needs_words(rule)
+                )
+            }
+            _ if field => format!("No {words} given"),
+            _ => format!("{}: no value", label_of(name, field)),
+        }
+    }
+
+    /// The securities that pass every rule beyond the limit, in a sentence, with their value of
+    /// what the matches are sorted by: "Also pass every rule, outside the top 10: EQIX (0.51)."
+    pub(crate) fn also_words(&self) -> Option<String> {
+        if self.also_passed.is_empty() {
+            return None;
+        }
+        let sort = self.sort_column();
+        let names: Vec<String> = self
+            .also_passed
+            .iter()
+            .map(|m| match sort {
+                Some(j) => format!("{} ({})", m.id, column_text(&self.columns[j], &m.values[j])),
+                None => m.id.clone(),
+            })
+            .collect();
+        let more = self.coverage.passed - self.coverage.matched - self.also_passed.len();
+        let mut text = format!(
+            "Also pass every rule, {} {}: {}",
+            if sort.is_some() {
+                "outside the top"
+            } else {
+                "beyond the first"
+            },
+            count(self.coverage.matched),
+            names.join(", ")
+        );
+        if more > 0 {
+            text.push_str(&format!(" and {} more", count(more)));
+        }
+        text.push('.');
+        Some(text)
+    }
+
+    /// A strip's rules in words, joined by "and".
+    pub(crate) fn strip_words(&self, s: &ThresholdStrip) -> String {
+        s.rules
+            .iter()
+            .filter_map(|k| self.rules.get(*k))
+            .map(|r| rule_words(&r.rule))
+            .collect::<Vec<_>>()
+            .join(" and ")
+    }
+
+    /// Whether the value `x` passes every rule of the strip.
+    pub(crate) fn strip_passes(&self, s: &ThresholdStrip, x: f64) -> bool {
+        s.rules
+            .iter()
+            .filter_map(|k| self.rules.get(*k))
+            .all(|r| passes(&r.rule, x))
+    }
+
+    /// The scale a strip is drawn on: from about the second to the ninety-eighth percentile of
+    /// its values, widened to take in every threshold, with a little room at each end. Values
+    /// beyond it are drawn at its ends.
+    pub(crate) fn strip_scale(&self, s: &ThresholdStrip) -> Option<Scale> {
+        let xs: Vec<f64> = s
+            .points
+            .iter()
+            .map(|p| on_scale(&s.name, p.value))
+            .collect();
+        let n = xs.len();
+        if n == 0 {
+            return None;
+        }
+        let at = |share: f64| xs[((n as f64 * share) as usize).min(n - 1)];
+        let mut limits: Vec<f64> = Vec::new();
+        let mut zone = Some((f64::NEG_INFINITY, f64::INFINITY));
+        for r in s.rules.iter().filter_map(|k| self.rules.get(*k)) {
+            let ts: Vec<f64> = thresholds(&r.rule)
+                .into_iter()
+                .map(|t| on_scale(&s.name, t))
+                .collect();
+            let (from, to) = match (r.rule.op, ts.as_slice()) {
+                (Op::Above | Op::AtLeast, [t]) => (*t, f64::INFINITY),
+                (Op::Below | Op::AtMost, [t]) => (f64::NEG_INFINITY, *t),
+                (Op::Between, [a, b]) => (*a, *b),
+                _ => (f64::NEG_INFINITY, f64::INFINITY),
+            };
+            zone = zone
+                .map(|(a, b)| (a.max(from), b.min(to)))
+                .filter(|(a, b)| a <= b);
+            limits.extend(ts);
+        }
+        let lo = limits.iter().copied().fold(at(0.02), f64::min);
+        let hi = limits.iter().copied().fold(at(0.98), f64::max);
+        let pad = if hi > lo {
+            (hi - lo) * 0.04
+        } else if lo != 0.0 {
+            lo.abs() * 0.1
+        } else {
+            1.0
+        };
+        Some(Scale {
+            lo: lo - pad,
+            hi: hi + pad,
+            limits,
+            zone,
+        })
+    }
+
+    /// The rows of the table of every measure: those some security has, without the measures
+    /// of the data.
+    pub(crate) fn measure_rows(&self) -> Vec<&MeasureSpread> {
+        self.spread
+            .iter()
+            .filter(|s| s.count > 0 && !DATA_MEASURES.contains(&s.name.as_str()))
+            .collect()
+    }
+
+    /// The note under the table of every measure: what the columns are, the measures some
+    /// securities lack and those none has.
+    pub(crate) fn measures_note(&self) -> String {
+        let mut text = "Over the securities that are not stale. A quarter of them are below the \
+                        25% column and a quarter above the 75% column."
+            .to_owned();
+        let rows = self.measure_rows();
+        let lacking: Vec<String> = rows
+            .iter()
+            .filter(|s| s.lacking > 0)
+            .map(|s| {
+                format!(
+                    "{}: {} of {} have a value",
+                    s.label,
+                    count(s.count),
+                    count(s.count + s.lacking)
+                )
+            })
+            .collect();
+        if !lacking.is_empty() {
+            let shown = lacking.len().min(NAMED_IDS);
+            text.push(' ');
+            text.push_str(&lacking[..shown].join("; "));
+            if lacking.len() > shown {
+                text.push_str(&format!("; and {} more measures", lacking.len() - shown));
+            }
+            text.push('.');
+        }
         let absent = |history: bool| -> Vec<String> {
             self.spread
                 .iter()
                 .filter(|s| s.count == 0 && s.lacking > 0)
                 .filter(|s| (s.lacking_history == s.lacking) == history)
+                .filter(|s| !DATA_MEASURES.contains(&s.name.as_str()))
                 .map(|s| lower(&s.label))
                 .collect()
         };
-        let mut parts = Vec::new();
         let short = absent(true);
         if !short.is_empty() {
-            parts.push(format!(
-                "Not computed, for want of history: {}.",
+            text.push_str(&format!(
+                " Not computed, as no history is long enough: {}.",
                 either(&short, "and")
             ));
         }
         let other = absent(false);
         if !other.is_empty() {
-            parts.push(format!(
-                "No security has a value of {}.",
+            text.push_str(&format!(
+                " No security has a value of {}.",
                 either(&other, "or")
             ));
         }
-        (!parts.is_empty()).then(|| parts.join(" "))
+        text
     }
 
-    /// The notes on how every figure was measured: a term and its text.
-    pub(crate) fn method_notes(&self) -> Vec<(String, String)> {
-        let c = &self.context;
-        let as_of = crate::text::date(c.as_of);
-        let has = |m: Measure| c.measures.contains(&m);
-        let mut notes = vec![
-            (
-                "As of".to_owned(),
+    /// One line on the data that names only what is out of the ordinary: late, stale and short
+    /// histories, and the screen's warnings.
+    pub(crate) fn data_line(&self) -> String {
+        let c = &self.coverage;
+        let x = &self.exceptions;
+        let as_of = crate::text::date(self.context.as_of);
+        let days = self.context.max_carry_days;
+        let mut parts: Vec<String> = Vec::new();
+        if x.late.is_empty() && x.stale.is_empty() && x.too_short.is_empty() {
+            parts.push(format!(
+                "{} {} prices to {as_of}. None is stale or too short.",
+                if c.securities == 1 { "The" } else { "All" },
+                counted(c.securities, "security has", "securities have")
+            ));
+        } else {
+            parts.push(format!(
+                "{} of {} {}.",
+                count(c.measured),
+                counted(c.securities, "security has", "securities have"),
+                if self.rules.is_empty() && self.context.sort.is_none() {
+                    "at least two prices"
+                } else {
+                    "the prices every rule needs"
+                }
+            ));
+            let one = |ids: &[String], single: &str, many: &str| -> String {
                 format!(
-                    "Each security is measured on its own closes up to {as_of}, with no \
-                     alignment between them; one whose last close is more than {} days \
-                     earlier is stale, and listed but not measured.",
-                    c.max_carry_days
-                ),
-            ),
-            (
-                "Windows".to_owned(),
-                format!(
-                    "Returns and risk are over trailing calendar windows ending on {as_of}, each \
-                     from the last close on or before its first day: a week, one, three and six \
-                     months, the year to date and one, three and five years. A window longer \
-                     than a security's history gives no value. Returns over three and five years \
-                     are a year."
-                ),
-            ),
-            (
-                "Risk".to_owned(),
-                format!(
-                    "Volatility, downside deviation and the Sharpe and Sortino ratios are of \
-                     daily returns, annualised with 252 days a year, against a risk-free rate of \
-                     {} a year; drawdowns are falls from the highest close. Value at risk is the \
-                     loss of the worst day in twenty over the last year, from history.",
-                    pct(Some(c.risk_free_rate), 1, false)
-                ),
-            ),
-        ];
-        notes.push((
-            "Benchmark".to_owned(),
-            match &c.benchmark {
-                Some(b) => format!(
-                    "{b}: beta and correlation are of the daily returns between the dates both \
-                     have a close, over the last year; a relative return is the return less \
-                     {b}'s over the same window."
-                ),
-                None => "None given, so the measures against a benchmark are left out.".to_owned(),
-            },
-        ));
-        notes.push((
-            "Technicals".to_owned(),
-            "Moving averages of the last 20, 50 and 200 closes; RSI of the last 14 changes with \
-             Wilder's smoothing; MACD of exponential averages of 12, 26 and 9 closes, each \
-             started at the first; the 52-week range of the last year's closes."
-                .to_owned(),
-        ));
-        let mut income = Vec::new();
-        if has(Measure::DividendYield) {
-            income.push(
-                "the dividend yield is the last year's dividends over the last close".to_owned(),
-            );
-        }
-        if has(Measure::AverageVolume20d)
-            || has(Measure::VolumeRatio)
-            || has(Measure::DollarVolume20d)
-        {
-            income.push("volumes are over the last 20 days".to_owned());
-        }
-        if !income.is_empty() {
-            let mut text = income.join("; ");
-            if let Some(first) = text.get(..1) {
-                text = first.to_uppercase() + &text[1..];
+                    "{} {}",
+                    count(ids.len()),
+                    if ids.len() == 1 { single } else { many }
+                )
+            };
+            if !x.late.is_empty() {
+                parts.push(format!(
+                    "{} before {as_of}, within {days} days: {}.",
+                    one(&x.late, "has its last price", "have their last price"),
+                    id_list(&x.late)
+                ));
             }
-            notes.push(("Income and volume".to_owned(), format!("{text}.")));
+            if !x.stale.is_empty() {
+                parts.push(format!(
+                    "{} in the {days} days to {as_of} and {}: {}.",
+                    one(&x.stale, "has no price", "have no price"),
+                    if x.stale.len() == 1 {
+                        "is left out"
+                    } else {
+                        "are left out"
+                    },
+                    id_list(&x.stale)
+                ));
+            }
+            if !x.too_short.is_empty() {
+                parts.push(format!(
+                    "{}: {}.",
+                    one(
+                        &x.too_short,
+                        "has too little history for a rule",
+                        "have too little history for a rule"
+                    ),
+                    id_list(&x.too_short)
+                ));
+            }
         }
-        notes.push((
-            "Rules".to_owned(),
-            if self.rules.is_empty() {
-                "None: every security that is not stale is kept.".to_owned()
-            } else {
-                "A match meets every rule; a security without the value a rule tests fails it. \
-                 Each rule's count is of the securities that are not stale."
-                    .to_owned()
-            },
-        ));
-        notes
+        if let Some(d) = x.common_start {
+            parts.push(format!("Every history starts on {}.", crate::text::date(d)));
+        }
+        for issue in self.context.warnings.issues() {
+            parts.push(sentence(&issue.message));
+        }
+        parts.join(" ")
     }
+}
 
+impl ScreenReport {
     /// The report as labelled tables for export: the coverage, the rules, the matches, the near
     /// misses and the spread of every measure.
     pub fn tables(&self) -> Vec<ReportTable> {
@@ -1255,19 +1691,48 @@ mod tests {
         assert_eq!(shown(None, Some(MeasureUnit::Ratio)), "–");
         assert_eq!(shown(Some(18.4), None), "18.4");
         let rule = Rule::between("rsi_14", 30.0, 70.0);
-        assert_eq!(rule_words(&rule), "RSI (14 days) from 30 to 70");
+        assert_eq!(rule_words(&rule), "RSI (14 days) between 30 and 70");
+        assert_eq!(needs_words(&rule), "needs 30 to 70");
         let rule = Rule::one_of("sector", ["Energy", "Utilities", "Materials"]);
         assert_eq!(
             rule_words(&rule),
-            "sector is Energy, Utilities or Materials"
+            "Sector is Energy, Utilities or Materials"
         );
         assert_eq!(
             rule_words(&Rule::above("return_1y", 0.0)),
             "1-year return above 0%"
         );
+        // A price against its average is shown as the difference.
+        let rule = Rule::above("price_to_sma_200", 1.0);
+        assert_eq!(rule_words(&rule), "Price above its 200-day average");
+        assert_eq!(needs_words(&rule), "needs above its average");
         assert_eq!(
-            sort_words(&Sort::by("sharpe_ratio", Order::Descending)),
-            "by 1-year Sharpe ratio, highest first"
+            rule_words(&Rule::at_least("price_to_sma_50", 1.05)),
+            "Price vs 50-day average at least +5%"
         );
+        assert_eq!(
+            value_text("price_to_sma_200", Some(MeasureUnit::Ratio), Some(0.983)),
+            "−1.7%"
+        );
+        // A fall is better above its threshold.
+        let rule = Rule::above("max_drawdown_3y", -0.3);
+        assert_eq!(rule_words(&rule), "3-year max drawdown better than −30%");
+        assert_eq!(needs_words(&rule), "needs better than −30%");
+        assert_eq!(
+            rule_words(&Rule::at_most("pe_ratio", 25.0)),
+            "Pe ratio at most 25"
+        );
+        assert_eq!(
+            either(
+                &["3-year return, per year".to_owned(), "Beta".to_owned()],
+                "and"
+            ),
+            "3-year return, per year; Beta"
+        );
+        // Close to a threshold: within 10% of it, or of the typical size for a threshold of 0.
+        assert!(gap("rsi_14", 68.9, 70.0, 0.0) <= NEAR);
+        assert!(gap("rsi_14", 62.7, 70.0, 0.0) > NEAR);
+        assert!(gap("price_to_sma_200", 1.004, 1.0, 0.05) <= NEAR);
+        assert_eq!(typical("return_1y", [-0.3, 0.1, 0.2].into_iter()), 0.2);
     }
 }
