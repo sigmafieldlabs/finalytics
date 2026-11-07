@@ -1110,6 +1110,10 @@ pub struct Coverage {
     /// For each measure of the results' `measures`, how many securities that are not stale
     /// have no value of it.
     pub lacking: Vec<usize>,
+    /// For each measure, how many of those without a value have too short a history for it,
+    /// such as two years of closes for the 3-year return.
+    #[serde(default)]
+    pub lacking_history: Vec<usize>,
 }
 
 /// A rule, with how many securities met it.
@@ -1646,6 +1650,8 @@ fn plan(
 /// One security measured, judged on every rule.
 struct Row {
     values: Vec<Option<f64>>,
+    /// For each measure, whether it has no value for want of history.
+    short: Vec<bool>,
     status: Status,
     first_day: Option<i32>,
     last_day: Option<i32>,
@@ -1732,6 +1738,14 @@ pub fn screen(
         } else {
             Status::Measured
         };
+        let short = plan
+            .measures
+            .iter()
+            .zip(&measured.values)
+            .map(|(m, v)| {
+                v.is_none() && !measures::covers(*m, &prices, measured.observations, &starts)
+            })
+            .collect();
         let verdicts = plan
             .rules
             .iter()
@@ -1772,6 +1786,7 @@ pub fn screen(
             .collect();
         Row {
             values: measured.values,
+            short,
             status,
             first_day: measured.first_day,
             last_day: measured.last_day,
@@ -1811,6 +1826,7 @@ pub fn screen(
     }
 
     let mut lacking = vec![0usize; plan.measures.len()];
+    let mut lacking_history = vec![0usize; plan.measures.len()];
     let mut rule_results: Vec<RuleResult> = options
         .rules
         .iter()
@@ -1833,6 +1849,11 @@ pub fn screen(
         }
         for (count, v) in lacking.iter_mut().zip(&row.values) {
             if v.is_none() {
+                *count += 1;
+            }
+        }
+        for (count, short) in lacking_history.iter_mut().zip(&row.short) {
+            if *short {
                 *count += 1;
             }
         }
@@ -1903,6 +1924,7 @@ pub fn screen(
         passed: passed.iter().filter(|p| **p).count(),
         matched: order.len(),
         lacking,
+        lacking_history,
     };
     Ok(ScreenResults {
         as_of: plan.as_of,

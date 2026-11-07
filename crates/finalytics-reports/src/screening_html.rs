@@ -89,15 +89,18 @@ impl ScreenReport {
                 if cov.matched == 1 { "match" } else { "matches" }
             ))
         );
+        let spread_rows = self.spread_shown();
+        let absent = self.spread_absent();
+        let has_spread = !spread_rows.is_empty() || absent.is_some();
         let mut nav: Vec<(&str, &str)> = vec![("summary", "Summary")];
         if !self.rules.is_empty() {
             nav.push(("rules", "Rules"));
         }
-        nav.extend([
-            ("matches", "Matches"),
-            ("spread", "Spread"),
-            ("method", "How it was measured"),
-        ]);
+        nav.push(("matches", "Matches"));
+        if has_spread {
+            nav.push(("spread", "Spread"));
+        }
+        nav.push(("method", "How it was measured"));
         let mut body = String::new();
 
         // The summary.
@@ -269,57 +272,64 @@ impl ScreenReport {
             ),
         ));
 
-        // The spread.
-        let mut spread = String::from(
-            r#"<div class="tw"><table class="sp"><thead><tr><th>Measure</th><th class="r">Have</th><th class="r">Lacking</th><th class="r">Lowest</th><th class="r">25%</th><th class="r">Median</th><th class="r">75%</th><th class="r">Highest</th><th>Spread</th></tr></thead><tbody>"#,
-        );
-        let mut group = "";
-        for s in &self.spread {
-            if s.group != group {
-                group = &s.group;
-                let _ = write!(
-                    spread,
-                    r#"<tr class="grp"><th colspan="9">{}</th></tr>"#,
-                    esc(group)
+        // The spread, without the measures no security has.
+        if has_spread {
+            let mut spread = String::new();
+            if !spread_rows.is_empty() {
+                spread.push_str(
+                    r#"<div class="tw"><table class="sp"><thead><tr><th>Measure</th><th class="r">Have</th><th class="r">Lacking</th><th class="r">Lowest</th><th class="r">25%</th><th class="r">Median</th><th class="r">75%</th><th class="r">Highest</th><th>Spread</th></tr></thead><tbody>"#,
+                );
+                let mut group = "";
+                for s in &spread_rows {
+                    if s.group != group {
+                        group = &s.group;
+                        let _ = write!(
+                            spread,
+                            r#"<tr class="grp"><th colspan="9">{}</th></tr>"#,
+                            esc(group)
+                        );
+                    }
+                    let label = if s.thresholds.is_empty() {
+                        esc(&s.label)
+                    } else {
+                        format!(
+                            r#"{} <span class="rl" title="A rule tests it">•</span>"#,
+                            esc(&s.label)
+                        )
+                    };
+                    let _ = write!(
+                        spread,
+                        r#"<tr><td title="{}">{label}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="bx">{}</td></tr>"#,
+                        esc(&s.name),
+                        count(s.count),
+                        count(s.lacking),
+                        esc(&shown(s.min, s.unit)),
+                        esc(&shown(s.lower_quartile, s.unit)),
+                        esc(&shown(s.median, s.unit)),
+                        esc(&shown(s.upper_quartile, s.unit)),
+                        esc(&shown(s.max, s.unit)),
+                        box_plot(s)
+                    );
+                }
+                spread.push_str("</tbody></table></div>");
+                spread.push_str(
+                    r#"<p class="note">The box runs from the lower to the upper quartile, with the median as a line and the whiskers to the lowest and highest values; a mark in the second colour is a value a rule compares with.</p>"#,
                 );
             }
-            let label = if s.thresholds.is_empty() {
-                esc(&s.label)
-            } else {
-                format!(
-                    r#"{} <span class="rl" title="A rule tests it">•</span>"#,
-                    esc(&s.label)
-                )
-            };
-            let _ = write!(
-                spread,
-                r#"<tr><td title="{}">{label}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="r">{}</td><td class="bx">{}</td></tr>"#,
-                esc(&s.name),
-                count(s.count),
-                count(s.lacking),
-                esc(&shown(s.min, s.unit)),
-                esc(&shown(s.lower_quartile, s.unit)),
-                esc(&shown(s.median, s.unit)),
-                esc(&shown(s.upper_quartile, s.unit)),
-                esc(&shown(s.max, s.unit)),
-                box_plot(s)
-            );
-        }
-        spread.push_str("</tbody></table></div>");
-        body.push_str(&section(
-            "spread",
-            "Spread across the universe",
-            "Where each measure falls, so that a threshold can be set where it bites",
-            &card(
-                "Each measure over the securities that are not stale",
-                &spread,
-                Some(
-                    "The box runs from the lower to the upper quartile, with the median as a \
-                     line and the whiskers to the lowest and highest values; a mark in the \
-                     second colour is a value a rule compares with.",
+            if let Some(absent) = &absent {
+                let _ = write!(spread, r#"<p class="note">{}</p>"#, esc(absent));
+            }
+            body.push_str(&section(
+                "spread",
+                "Spread across the universe",
+                "Where each measure falls, so that a threshold can be set where it bites",
+                &card(
+                    "Each measure over the securities that are not stale",
+                    &spread,
+                    None,
                 ),
-            ),
-        ));
+            ));
+        }
 
         // How it was measured.
         let notes = self.method_notes();

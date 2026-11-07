@@ -95,6 +95,9 @@ pub struct MeasureSpread {
     pub count: usize,
     /// How many that are not stale have none.
     pub lacking: usize,
+    /// How many of those without a value have too short a history for it; none for a field.
+    #[serde(default)]
+    pub lacking_history: usize,
     /// The smallest value.
     pub min: Option<f64>,
     /// The lower quartile, interpolated linearly between values.
@@ -232,7 +235,8 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
                      label: String,
                      group: String,
                      unit: Option<MeasureUnit>,
-                     values: Vec<Option<f64>>|
+                     values: Vec<Option<f64>>,
+                     lacking_history: usize|
      -> MeasureSpread {
         let mut have: Vec<f64> = values.iter().flatten().copied().collect();
         have.sort_by(f64::total_cmp);
@@ -245,6 +249,7 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
             unit,
             count: have.len(),
             lacking: values.len() - have.len(),
+            lacking_history,
             min: have.first().copied(),
             lower_quartile: q(0.25),
             median: q(0.5),
@@ -265,6 +270,12 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
                 live.iter()
                     .map(|i| results.securities[*i].values[k])
                     .collect(),
+                results
+                    .coverage
+                    .lacking_history
+                    .get(k)
+                    .copied()
+                    .unwrap_or(0),
             )
         })
         .collect();
@@ -288,6 +299,7 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
             "Fields".to_owned(),
             None,
             values,
+            0,
         ));
     }
 
@@ -579,6 +591,40 @@ impl ScreenReport {
             c.max_carry_days,
             crate::text::date(c.as_of)
         )
+    }
+
+    /// The rows of the spread shown: those of the measures and fields some security has.
+    pub(crate) fn spread_shown(&self) -> Vec<&MeasureSpread> {
+        self.spread.iter().filter(|s| s.count > 0).collect()
+    }
+
+    /// What the spread leaves out, in a line under it: the measures no security has, such as
+    /// "Not computed, for want of history: return 3y a year and return 5y a year."
+    pub(crate) fn spread_absent(&self) -> Option<String> {
+        let absent = |history: bool| -> Vec<String> {
+            self.spread
+                .iter()
+                .filter(|s| s.count == 0 && s.lacking > 0)
+                .filter(|s| (s.lacking_history == s.lacking) == history)
+                .map(|s| lower(&s.label))
+                .collect()
+        };
+        let mut parts = Vec::new();
+        let short = absent(true);
+        if !short.is_empty() {
+            parts.push(format!(
+                "Not computed, for want of history: {}.",
+                either(&short, "and")
+            ));
+        }
+        let other = absent(false);
+        if !other.is_empty() {
+            parts.push(format!(
+                "No security has a value of {}.",
+                either(&other, "or")
+            ));
+        }
+        (!parts.is_empty()).then(|| parts.join(" "))
     }
 
     /// The notes on how every figure was measured: a term and its text.

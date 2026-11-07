@@ -171,13 +171,20 @@ fn screens_match_the_reference() {
         let expected = ["measured", "too_short", "stale", "passed", "matched"]
             .map(|key| c[key].as_u64().unwrap() as usize);
         assert_eq!(coverage, expected, "{name}: coverage");
-        let lacking: Vec<usize> = c["lacking"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|n| n.as_u64().unwrap() as usize)
-            .collect();
-        assert_eq!(r.coverage.lacking, lacking, "{name}: lacking");
+        let counts = |key: &str| -> Vec<usize> {
+            c[key]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|n| n.as_u64().unwrap() as usize)
+                .collect()
+        };
+        assert_eq!(r.coverage.lacking, counts("lacking"), "{name}: lacking");
+        assert_eq!(
+            r.coverage.lacking_history,
+            counts("lacking_history"),
+            "{name}: lacking for want of history"
+        );
         let rows = case["securities"].as_array().unwrap();
         assert_eq!(r.securities.len(), rows.len(), "{name}: securities");
         let mut compared = 0;

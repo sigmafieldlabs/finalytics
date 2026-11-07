@@ -89,6 +89,10 @@ test("a screen from typed arrays matches the reference", () => {
       r.rules.map((x) => [x.passed, x.lacking, x.remaining]),
       c.rules.map((x) => [x.passed, x.lacking, x.remaining]),
     );
+    assert.deepEqual(
+      [r.coverage.lacking, r.coverage.lacking_history],
+      [c.coverage.lacking, c.coverage.lacking_history],
+    );
     c.securities.forEach((e, i) => {
       assert.equal(r.ids[i], e.id);
       assert.equal(r.status[i], e.status, `${c.name}: ${e.id}`);

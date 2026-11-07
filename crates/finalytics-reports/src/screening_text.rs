@@ -142,12 +142,15 @@ impl ScreenReport {
             self.matches_table(&mut page);
         }
 
-        // The spread.
-        if !self.spread.is_empty() {
+        // The spread, without the measures no security has.
+        let spread = self.spread_shown();
+        let absent = self.spread_absent();
+        if !spread.is_empty() || absent.is_some() {
             page.section("Spread across the universe");
+        }
+        if !spread.is_empty() {
             let tested: Vec<&str> = self.rules.iter().map(|r| r.rule.name()).collect();
-            let rows: Vec<Vec<String>> = self
-                .spread
+            let rows: Vec<Vec<String>> = spread
                 .iter()
                 .map(|s| {
                     let label = if tested.contains(&s.name.as_str()) {
@@ -181,6 +184,9 @@ impl ScreenReport {
                 note.push_str(" * A rule tests it.");
             }
             page.note(&note);
+        }
+        if let Some(absent) = &absent {
+            page.note(absent);
         }
 
         // How it was measured.

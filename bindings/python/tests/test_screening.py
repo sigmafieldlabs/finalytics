@@ -81,6 +81,8 @@ def test_a_screen_matches_the_reference(universe):
         assert [(x.passed, x.lacking, x.remaining) for x in r.rules] == [
             (x["passed"], x["lacking"], x["remaining"]) for x in case["rules"]
         ]
+        c = case["coverage"]
+        assert (r.coverage.lacking, r.coverage.lacking_history) == (c["lacking"], c["lacking_history"])
         by_id = {s.id: s for s in r.securities}
         for e in case["securities"]:
             s = by_id[e["id"]]

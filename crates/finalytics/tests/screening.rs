@@ -75,6 +75,72 @@ fn the_report_prints_in_80_columns_and_shows_every_match() {
     assert_eq!(printed, screen.results.to_string());
 }
 
+/// The words of a report, whatever the line breaks.
+fn words(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn the_spread_leaves_out_the_measures_no_security_has() {
+    // Two and a half years into the prices, no company has three years of closes.
+    let screen = universe().screen().as_of("2007-06-29").build().unwrap();
+    let r = &screen.results;
+    let k = r
+        .measures
+        .iter()
+        .position(|m| *m == Measure::Return3y)
+        .unwrap();
+    assert_eq!(r.coverage.lacking[k], 56);
+    assert_eq!(r.coverage.lacking_history[k], 56);
+    let spread = screen.report.spread.iter().find(|s| s.name == "return_3y");
+    assert_eq!(spread.map(|s| (s.count, s.lacking_history)), Some((0, 56)));
+    let text = screen.to_string();
+    assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
+    assert!(
+        words(&text).contains(
+            "Not computed, for want of history: return 3y a year, return 5y a year, \
+             volatility 3y, max drawdown 3y, Sharpe ratio 3y and Calmar ratio."
+        ),
+        "{text}"
+    );
+    let section = &text[text.find("Spread across the universe").unwrap()..];
+    let row = |label: &str| section.lines().any(|l| l.trim_start().starts_with(label));
+    assert!(!row("Return 3y") && row("Return 1y"));
+    let html = screen.report.to_html(None);
+    assert!(html.contains(
+        r#"<p class="note">Not computed, for want of history: return 3y a year, return 5y a year"#
+    ));
+    assert!(!html.contains(r#"<td title="return_3y">"#));
+    assert!(html.contains(r#"<td title="return_1y">"#));
+
+    // A benchmark with no close in the last four months leaves the measures against it with no
+    // value, for want of the benchmark rather than of history.
+    let prices: String = include_str!("../../../tests/sp500/prices.csv")
+        .lines()
+        .map(|line| match line.split_once(',') {
+            Some((date, _)) if date > "2026-06-30" && date.starts_with("20") => {
+                format!("{},\n", line.rsplit_once(',').unwrap().0)
+            }
+            _ => format!("{line}\n"),
+        })
+        .collect();
+    let u = Universe::builder()
+        .prices_csv(&prices)
+        .benchmark("T-Bills")
+        .build()
+        .unwrap();
+    let screen = u.screen().build().unwrap();
+    let text = words(&screen.to_string());
+    assert!(
+        text.contains(
+            "No security has a value of beta, correlation, relative return 6m or relative \
+             return 1y."
+        ),
+        "{text}"
+    );
+    assert!(!text.contains("for want of history"), "{text}");
+}
+
 #[test]
 fn columns_give_the_same_universe_as_series() {
     let u = universe();

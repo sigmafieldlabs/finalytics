@@ -2218,6 +2218,16 @@
             "minimum": 0
           },
           "description": "For each measure of the results' `measures`, how many securities that are not stale\nhave no value of it."
+        },
+        "lacking_history": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "description": "For each measure, how many of those without a value have too short a history for it,\nsuch as two years of closes for the 3-year return.",
+          "default": []
         }
       },
       "required": [
@@ -5379,6 +5389,13 @@
           "format": "uint",
           "minimum": 0,
           "description": "How many that are not stale have none."
+        },
+        "lacking_history": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many of those without a value have too short a history for it; none for a field.",
+          "default": 0
         },
         "min": {
           "type": [

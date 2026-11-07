@@ -121,10 +121,13 @@ columns, one `Float64Array` per measure with NaN for no value; in Python,
 
 The screening report gives the coverage; each rule in words with its counts; the matches, in
 order, with the measure or field sorted by, those the rules test and a few of the main measures
-(the top 50 in text, every match on the page); and the spread of every measure across the
-securities that are not stale: the lowest and highest values and the quartiles, interpolated
-linearly between values, with the rules' thresholds marked on a box plot. The page shows them in
-the reader's light or dark theme; the text keeps to 80 columns.
+(the top 50 in text, every match on the page); and the spread of every measure some security
+has, across the securities that are not stale: the lowest and highest values and the quartiles,
+interpolated linearly between values, with the rules' thresholds marked on a box plot. A line
+under the spread names the measures none has, such as those whose windows are longer than every
+history ("Not computed, for want of history: return 5y a year"); the coverage counts, for each
+measure, the securities without a value and those of them whose history is too short. The page
+shows them in the reader's light or dark theme; the text keeps to 80 columns.
 
 ## Example
 

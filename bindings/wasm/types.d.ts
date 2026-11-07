@@ -876,6 +876,11 @@ export interface Coverage {
    * have no value of it.
    */
   lacking: number[];
+  /**
+   * For each measure, how many of those without a value have too short a history for it,
+   * such as two years of closes for the 3-year return.
+   */
+  lacking_history?: number[];
 }
 
 /** The worst run of twelve months in the history, for the plan's weights. */
@@ -1996,6 +2001,8 @@ export interface MeasureSpread {
   count: number;
   /** How many that are not stale have none. */
   lacking: number;
+  /** How many of those without a value have too short a history for it; none for a field. */
+  lacking_history?: number;
   /** The smallest value. */
   min?: number | null;
   /** The lower quartile, interpolated linearly between values. */

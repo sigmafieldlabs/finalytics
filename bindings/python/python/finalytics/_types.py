@@ -1349,6 +1349,11 @@ class Coverage:
     value of it.
     """
 
+    lacking_history: list[int] = field(default_factory=list)
+    """For each measure, how many of those without a value have too short a history for it, such as
+    two years of closes for the 3-year return.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class CrashWindow:
@@ -2812,6 +2817,9 @@ class MeasureSpread:
 
     lacking: int
     """How many that are not stale have none."""
+
+    lacking_history: int = 0
+    """How many of those without a value have too short a history for it; none for a field."""
 
     min: float | None = None
     """The smallest value."""

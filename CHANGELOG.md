@@ -25,7 +25,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   security without the value a rule tests fails it, and every problem with a screen is reported
   together. The matches are sorted and limited. Like every verb, it returns the screening report,
   which gives the coverage, each rule with how many securities met it, the matches and the
-  quartiles of each measure with the rules' thresholds marked, as a page, in 80 columns of text
+  quartiles of each measure some security has, with the rules' thresholds marked and the measures
+  none has named, such as those longer than every history, as a page, in 80 columns of text
   and as tables, and the raw results, one row per security. Python takes a long DataFrame, a
   mapping of Series or CSV, and `finalytics.pandas.securities` turns the results into a
   DataFrame; JavaScript adds `Universe.fromColumns` for flat typed arrays and returns the results

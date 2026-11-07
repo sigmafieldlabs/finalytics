@@ -400,6 +400,10 @@ def case(name: str, options: dict) -> dict:
             "passed": sum(passed),
             "matched": len(order),
             "lacking": [sum(r["found"]["values"][m] is None for r in live) for m in measures],
+            "lacking_history": [
+                sum(r["found"]["values"][m] is None and not covers(m, r["found"], as_of) for r in live)
+                for m in measures
+            ],
         },
         "securities": [
             {
