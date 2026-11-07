@@ -1,6 +1,7 @@
 """Runs the package README's examples in order, as a reader would, in a folder that holds the
-portfolio dataset's files. Each example that ends in ``show()`` must open one page, and each
-that the README follows with a text block must print that text."""
+portfolio dataset's files and, in ``tests/sp500``, the S&P 500 prices. Each example that ends in
+``show()`` must open one page, and each that the README follows with a text block must print that
+text."""
 
 import contextlib
 import io
@@ -13,6 +14,7 @@ from conftest import NO_BROWSER, ROOT, page_path
 
 README = ROOT / "bindings" / "python" / "README.md"
 DATASET = ROOT / "crates" / "finalytics" / "data" / "portfolio"
+SP500 = ROOT / "tests" / "sp500"
 BLOCK = re.compile(r"```(\w+)\n(.*?)```", re.DOTALL)
 
 
@@ -33,6 +35,7 @@ def test_the_examples_run_and_show_their_reports(tmp_path, monkeypatch):
     assert len(blocks) >= 5
     for source in DATASET.glob("*.csv"):
         shutil.copy(source, tmp_path / source.name)
+    shutil.copytree(SP500, tmp_path / "tests" / "sp500")
     opened: list[str] = []
     monkeypatch.setattr(webbrowser, "open", lambda url, *args, **kwargs: opened.append(url) or True)
     namespace: dict = {}

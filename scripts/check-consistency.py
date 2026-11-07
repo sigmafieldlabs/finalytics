@@ -4,7 +4,8 @@ code fits 80 columns, and that the Rust code in README.md is the crate's example
 each program is an example, and each part of a program is in one.
 
 With --run-examples, also run every example, in a folder that holds the portfolio dataset's
-files, and check that each program followed by output in README.md prints that output.
+files and, in tests/sp500, the S&P 500 prices, and check that each program followed by output in
+README.md prints that output.
 """
 
 import json
@@ -22,6 +23,7 @@ READMES = ["README.md", "bindings/python/README.md", "bindings/wasm/README.md"]
 BLOCK = re.compile(r"```([\w,]*)\n(.*?)```", re.DOTALL)
 EXAMPLES = ROOT / "crates/finalytics/examples"
 DATA = ROOT / "crates/finalytics/data/portfolio"
+SP500 = ROOT / "tests/sp500"
 
 
 def rust_examples(readme: str) -> list[tuple[str, str | None]]:
@@ -65,13 +67,15 @@ def readme_problems(run_examples: bool) -> list[str]:
             continue
     if not run_examples:
         return problems
-    # Every example runs, in a folder that holds the portfolio dataset's files, with a browser
-    # that opens nothing; a program followed by output in README.md prints that output.
+    # Every example runs, in a folder that holds the portfolio dataset's files and the S&P 500
+    # prices, as at the root of the repository, with a browser that opens nothing; a program
+    # followed by output in README.md prints that output.
     shown = dict(rust_examples(readme))
     for code, path in examples.items():
         with tempfile.TemporaryDirectory() as here:
             for data in DATA.glob("*.csv"):
                 shutil.copy(data, here)
+            shutil.copytree(SP500, Path(here) / "tests/sp500")
             found = subprocess.run(
                 ["cargo", "run", "--quiet", "--manifest-path", str(ROOT / "Cargo.toml"), "-p", "finalytics",
                  "--example", path.stem],

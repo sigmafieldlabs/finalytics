@@ -1,7 +1,8 @@
 // Runs the JavaScript programs in the package's README as a user would, importing "finalytics"
-// from node_modules in a folder that holds the portfolio dataset's files. A block that starts
-// with an import starts a new program; the blocks after it continue that program. Each program
-// must run, and each that the README follows with a text block must print that text.
+// from node_modules in a folder that holds the portfolio dataset's files and, in tests/sp500, the
+// S&P 500 prices. A block that starts with an import starts a new program; the blocks after it
+// continue that program. Each program must run, and each that the README follows with a text
+// block must print that text.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
@@ -14,6 +15,7 @@ import { promisify } from "node:util";
 const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
 const pkg = fileURLToPath(new URL("../pkg", import.meta.url));
 const dataset = fileURLToPath(new URL("../../../crates/finalytics/data/portfolio", import.meta.url));
+const sp500 = fileURLToPath(new URL("../../../tests/sp500", import.meta.url));
 
 const blocks = [...readme.matchAll(/```(\w*)\n([\s\S]*?)```/g)].map(([, language, body]) => ({
   language,
@@ -47,6 +49,10 @@ test("the README's programs run and print what it shows", async () => {
     await symlink(pkg, join(dir, "node_modules", "finalytics"), "junction");
     for (const file of await readdir(dataset)) {
       if (file.endsWith(".csv")) await copyFile(join(dataset, file), join(dir, file));
+    }
+    await mkdir(join(dir, "tests", "sp500"), { recursive: true });
+    for (const file of await readdir(sp500)) {
+      if (file.endsWith(".csv")) await copyFile(join(sp500, file), join(dir, "tests", "sp500", file));
     }
     for (const [k, { code, output }] of found.entries()) {
       const file = join(dir, `program-${k + 1}.mjs`);

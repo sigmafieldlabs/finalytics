@@ -29,7 +29,8 @@ pre-release with `pip install --pre finalytics`. The
 [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) explains what
 replaces each part of 0.9.
 
-**Sample reports**, built by the programs below from the bundled datasets:
+**Sample reports**, built by the programs below from the bundled datasets and,
+for screening, the S&P 500 prices in `tests/sp500`:
 [comparison](https://sigmafieldlabs.github.io/finalytics/reports/comparison.html) ·
 [backtest](https://sigmafieldlabs.github.io/finalytics/reports/backtest.html) ·
 [optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
@@ -250,28 +251,31 @@ by month, a price index of one column, such as a consumer price index,
 
 ## Screening
 
-Screen many securities, each on its own history: returns over calendar
-windows, risk, measures against a benchmark, technical indicators, income and
-volume, with rules on the measures and on fields given with the securities,
-such as a sector or a price-to-earnings ratio.
+Screen many securities at once, each measured on its own history: returns over
+calendar windows, risk, measures against a benchmark, technical indicators,
+income and volume. Rules test the measures and any fields given with the
+securities, such as a sector or a price-to-earnings ratio.
 
 ```python
 import finalytics as fl
 
 universe = fl.Universe(
-    "prices.csv",
-    fields="instruments.csv",
-    benchmark="BENCH",
+    "tests/sp500/prices.csv",
+    fields="tests/sp500/companies.csv",
     risk_free_rate=0.04,
 )
 
 screen = universe.screen(
     rules=[
         ("return_1y", ">", 0.0),
-        ("volatility", "<", 0.20),
-        ("class.asset_class", "in", ["Equity", "Real assets"]),
+        ("volatility", "<", 0.30),
+        ("price_to_sma_200", ">", 1.0),
+        ("rsi_14", "between", (30, 70)),
+        ("max_drawdown_3y", ">", -0.30),
+        ("sector", "not_in", ["Utilities"]),
     ],
-    sort=("sharpe_ratio", "descending"),
+    sort=("sharpe_ratio_3y", "descending"),
+    limit=10,
 )
 
 screen.show()
@@ -282,21 +286,26 @@ screen.show()
   <img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how many securities were measured, each rule with how many met it, and the matches in order" width="760">
 </picture></a>
 
-The report gives how many securities were measured, each rule with how many
-met it, the matches in order and the spread of every measure across the
-universe, with each rule's threshold marked, so that a threshold can be set
-where it bites. A measure whose window is longer than a security's history has
-no value, and a security whose last close is more than five days old is listed
-but not measured. `screen.results` holds every measure of every security.
+The report shows how many securities were measured, how many met each rule,
+the matches in order and where every measure falls across the universe, with
+each rule's threshold marked, so that a threshold can be set where it bites. A
+measure whose window is longer than a security's history has no value, and a
+security whose last close is more than five days old is listed but not
+measured. `screen.results` holds every measure of every security, and
 `finalytics.pandas.securities(screen.results)` turns them into a DataFrame,
 one row per security.
 
-Here the universe is the portfolio dataset's five funds and `BENCH`, from the
-same `prices.csv`, with each fund's asset class from `instruments.csv` as a
-field. For thousands of securities, give a long DataFrame of `id`, `date` and
-`close` columns, with `volume` and `dividends` if known, or a dict of Series,
-and fields as a DataFrame indexed by security. Name the measures to compute
-with `measures=[...]`; by default every one the data allows is computed.
+Here the universe is the repository's `tests/sp500/prices.csv`: daily closes
+since 2005 of 55 S&P 500 companies, the five largest in each sector, and of a
+Treasury bill index. Each company's name, sector and industry come from
+`companies.csv` as fields; the bill index has none, so it fails the sector
+rule. Without a benchmark, the measures against one, such as beta, are left
+out; `benchmark="ID"` names one of the securities as the benchmark.
+
+For thousands of securities, give a long DataFrame of `id`, `date` and `close`
+columns, with `volume` and `dividends` if known, or a dict of Series, and
+fields as a DataFrame indexed by security. Name the measures to compute with
+`measures=[...]`; by default every one the data allows is computed.
 
 ## What is included
 

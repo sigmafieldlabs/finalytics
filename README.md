@@ -30,7 +30,8 @@ or `npm install finalytics@next`. The
 [migration guide](docs/migrating-from-0.9.md) explains what replaces each part
 of 0.9.
 
-**Sample reports**, built by the programs below from the bundled datasets:
+**Sample reports**, built by the programs below from the bundled datasets and,
+for screening, the S&P 500 prices in `tests/sp500`:
 [comparison](https://sigmafieldlabs.github.io/finalytics/reports/comparison.html) ·
 [backtest](https://sigmafieldlabs.github.io/finalytics/reports/backtest.html) ·
 [optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
@@ -266,31 +267,34 @@ index, `.inflation_index(index)`.
 
 ## Screening
 
-Screen many securities, each on its own history: returns over calendar
-windows, risk, measures against a benchmark, technical indicators, income and
-volume, with rules on the measures and on fields given with the securities,
-such as a sector or a price-to-earnings ratio.
+Screen many securities at once, each measured on its own history: returns over
+calendar windows, risk, measures against a benchmark, technical indicators,
+income and volume. Rules test the measures and any fields given with the
+securities, such as a sector or a price-to-earnings ratio.
 
 ```rust
-//! The portfolio dataset's funds screened against their benchmark. Run it in a
-//! folder that holds the files.
+//! The 55 S&P 500 companies of tests/sp500 screened on return, risk, trend and
+//! sector. Run it at the root of the repository.
 
 use finalytics::prelude::*;
 
 fn main() -> Result<()> {
     let universe = Universe::builder()
-        .prices_file("prices.csv")
-        .fields_file("instruments.csv")
-        .benchmark("BENCH")
+        .prices_file("tests/sp500/prices.csv")
+        .fields_file("tests/sp500/companies.csv")
         .risk_free_rate(0.04)
         .build()?;
 
     let screen = universe
         .screen()
         .above("return_1y", 0.0)
-        .below("volatility", 0.20)
-        .one_of("class.asset_class", ["Equity", "Real assets"])
-        .sort("sharpe_ratio", Order::Descending)
+        .below("volatility", 0.30)
+        .above("price_to_sma_200", 1.0)
+        .between("rsi_14", 30.0, 70.0)
+        .above("max_drawdown_3y", -0.30)
+        .none_of("sector", ["Utilities"])
+        .sort("sharpe_ratio_3y", Order::Descending)
+        .limit(10)
         .build()?;
 
     screen.show()?;
@@ -300,19 +304,24 @@ fn main() -> Result<()> {
 
 <a href="https://sigmafieldlabs.github.io/finalytics/reports/screening.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how many securities were measured, each rule with how many met it, and the matches in order" width="760"></a>
 
-The report gives how many securities were measured, each rule with how many
-met it, the matches in order and the spread of every measure across the
-universe, with each rule's threshold marked, so that a threshold can be set
-where it bites. A measure whose window is longer than a security's history has
-no value, and a security whose last close is more than five days old is listed
-but not measured. `screen.results` holds every measure of every security.
+The report shows how many securities were measured, how many met each rule,
+the matches in order and where every measure falls across the universe, with
+each rule's threshold marked, so that a threshold can be set where it bites. A
+measure whose window is longer than a security's history has no value, and a
+security whose last close is more than five days old is listed but not
+measured. `screen.results` holds every measure of every security.
 
-Here the universe is the portfolio dataset's five funds and `BENCH`, from the
-same `prices.csv`, with each fund's asset class from `instruments.csv` as a
-field. For thousands of securities, give prices in the long layout of `id`,
-`date` and `close` columns, with `volume` and `dividends` if known, or build
-`Series` in code with `Universe::from_series`. Name the measures to compute
-with `.measures([...])`; by default every one the data allows is computed.
+Here the universe is the repository's `tests/sp500/prices.csv`: daily closes
+since 2005 of 55 S&P 500 companies, the five largest in each sector, and of a
+Treasury bill index. Each company's name, sector and industry come from
+`companies.csv` as fields; the bill index has none, so it fails the sector
+rule. Without a benchmark, the measures against one, such as beta, are left
+out; `.benchmark("ID")` names one of the securities as the benchmark.
+
+For thousands of securities, give prices in the long layout of `id`, `date`
+and `close` columns, with `volume` and `dividends` if known, or build `Series`
+in code with `Universe::from_series`. Name the measures to compute with
+`.measures([...])`; by default every one the data allows is computed.
 
 ## What is included
 

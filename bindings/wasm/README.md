@@ -28,7 +28,8 @@ replaces each part of 0.9. In Node.js the engine is ready on import; in a
 browser, import the default export too and `await init()` once before the first
 call.
 
-**Sample reports**, built by the programs below from the bundled datasets:
+**Sample reports**, built by the programs below from the bundled datasets and,
+for screening, the S&P 500 prices in `tests/sp500`:
 [comparison](https://sigmafieldlabs.github.io/finalytics/reports/comparison.html) ·
 [backtest](https://sigmafieldlabs.github.io/finalytics/reports/backtest.html) ·
 [optimisation](https://sigmafieldlabs.github.io/finalytics/reports/optimisation.html) ·
@@ -265,29 +266,32 @@ such as a consumer price index, `inflation: index`.
 
 ## Screening
 
-Screen many securities, each on its own history: returns over calendar
-windows, risk, measures against a benchmark, technical indicators, income and
-volume, with rules on the measures and on fields given with the securities,
-such as a sector or a price-to-earnings ratio.
+Screen many securities at once, each measured on its own history: returns over
+calendar windows, risk, measures against a benchmark, technical indicators,
+income and volume. Rules test the measures and any fields given with the
+securities, such as a sector or a price-to-earnings ratio.
 
 ```js
 import { readFile } from "node:fs/promises";
 import { Universe } from "finalytics";
 
 const read = (file) => readFile(file, "utf8");
-const universe = Universe.fromCsv(await read("prices.csv"), {
-  fields: await read("instruments.csv"),
-  benchmark: "BENCH",
+const universe = Universe.fromCsv(await read("tests/sp500/prices.csv"), {
+  fields: await read("tests/sp500/companies.csv"),
   risk_free_rate: 0.04,
 });
 
 const screen = universe.screen({
   rules: [
     { measure: "return_1y", op: ">", value: 0 },
-    { measure: "volatility", op: "<", value: 0.2 },
-    { field: "class.asset_class", op: "in", values: ["Equity", "Real assets"] },
+    { measure: "volatility", op: "<", value: 0.3 },
+    { measure: "price_to_sma_200", op: ">", value: 1 },
+    { measure: "rsi_14", op: "between", value: [30, 70] },
+    { measure: "max_drawdown_3y", op: ">", value: -0.3 },
+    { field: "sector", op: "not_in", values: ["Utilities"] },
   ],
-  sort: { measure: "sharpe_ratio", order: "descending" },
+  sort: { measure: "sharpe_ratio_3y", order: "descending" },
+  limit: 10,
 });
 
 screen.show();
@@ -298,21 +302,27 @@ screen.show();
   <img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how many securities were measured, each rule with how many met it, and the matches in order" width="760">
 </picture></a>
 
-The report gives how many securities were measured, each rule with how many
-met it, the matches in order and the spread of every measure across the
-universe, with each rule's threshold marked, so that a threshold can be set
-where it bites. A measure whose window is longer than a security's history has
-no value, and a security whose last close is more than five days old is listed
-but not measured. `screen.results` holds every measure of every security as
+The report shows how many securities were measured, how many met each rule,
+the matches in order and where every measure falls across the universe, with
+each rule's threshold marked, so that a threshold can be set where it bites. A
+measure whose window is longer than a security's history has no value, and a
+security whose last close is more than five days old is listed but not
+measured. `screen.results` holds every measure of every security as
 columns: one `Float64Array` per measure, NaN where a security has no value.
 
-Here the universe is the portfolio dataset's five funds and `BENCH`, from the
-same `prices.csv`, with each fund's asset class from `instruments.csv` as a
-field. For thousands of securities, `Universe.fromColumns` takes flat typed
-arrays, `{ ids, starts, dates, close, volume, dividends, fields }`, so that the
-histories cross to the engine, or to a worker, without thousands of objects:
+Here the universe is the repository's `tests/sp500/prices.csv`: daily closes
+since 2005 of 55 S&P 500 companies, the five largest in each sector, and of a
+Treasury bill index. Each company's name, sector and industry come from
+`companies.csv` as fields; the bill index has none, so it fails the sector
+rule. Without a benchmark, the measures against one, such as beta, are left
+out; `benchmark: "ID"` names one of the securities as the benchmark.
+
+For thousands of securities, `Universe.fromColumns` takes flat typed arrays,
+`{ ids, starts, dates, close, volume, dividends, fields }`, so that the
+histories reach the engine, or a worker, without thousands of objects:
 `starts` is the row each security starts at, and `dates` may be days since
-1970-01-01 in an `Int32Array`.
+1970-01-01 in an `Int32Array`. Name the measures to compute with
+`measures: [...]`; by default every one the data allows is computed.
 
 ## What is included
 
