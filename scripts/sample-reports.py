@@ -1,6 +1,7 @@
 """Builds the sample reports that the READMEs show and link to: the seven reports the READMEs'
-programs build from the bundled datasets, as HTML pages, with an index page and, with
---screenshots, the top of each page in light and dark for the READMEs' images.
+programs build from the bundled datasets and, for screening, the S&P 500 prices in tests/sp500,
+as HTML pages, with an index page and, with --screenshots, the top of each page in light and dark
+for the READMEs' images.
 
     python scripts/sample-reports.py site --screenshots
 
@@ -22,8 +23,10 @@ REPORTS = [
     ("portfolio", "Portfolio report", "A household's two accounts: holdings, performance, risk, attribution and scenarios."),
     ("rebalance", "Rebalance report", "The trades that move both accounts to the least risky mix of their funds, tax-aware."),
     ("planning", "Planning report", "A retirement income's chance of lasting 30 years, what would change it, and when markets do worse."),
-    ("screening", "Screening report", "Five funds and their benchmark screened by return, volatility and asset class, with the spread of every measure."),
+    ("screening", "Screening report", "55 S&P 500 companies screened on return, risk, trend and sector, with the spread of every measure."),
 ]
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # The size of the screenshots: the top of each page.
 WIDTH, HEIGHT = 1200, 760
@@ -77,19 +80,22 @@ def build() -> dict[str, object]:
         fee=0.0025,
         currency="USD",
     )
-    files = fl.datasets.file
+    sp500 = ROOT / "tests/sp500"
     screen = fl.Universe(
-        files("portfolio/prices.csv"),
-        fields=files("portfolio/instruments.csv"),
-        benchmark="BENCH",
+        str(sp500 / "prices.csv"),
+        fields=str(sp500 / "companies.csv"),
         risk_free_rate=0.04,
     ).screen(
         rules=[
             ("return_1y", ">", 0.0),
-            ("volatility", "<", 0.20),
-            ("class.asset_class", "in", ["Equity", "Real assets"]),
+            ("volatility", "<", 0.30),
+            ("price_to_sma_200", ">", 1.0),
+            ("rsi_14", "between", (30, 70)),
+            ("max_drawdown_3y", ">", -0.30),
+            ("sector", "not_in", ["Utilities"]),
         ],
-        sort=("sharpe_ratio", "descending"),
+        sort=("sharpe_ratio_3y", "descending"),
+        limit=10,
     )
     return {
         "comparison": comparison,
