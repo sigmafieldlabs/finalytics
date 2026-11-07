@@ -1,7 +1,7 @@
 //! Risk analytics: return statistics, drawdowns, value at risk and expected shortfall,
 //! covariance estimation, factor models, the decomposition of a portfolio's risk by holding, by
-//! group and by factor, and scenarios: shocks and historical replays, with their effect on value
-//! and risk.
+//! group and by factor, scenarios: shocks and historical replays, with their effect on value
+//! and risk, and [`screening`]: measures and rules on many securities, each on its own history.
 //!
 //! The statistics take returns as plain slices, one per period, so they serve both a portfolio's
 //! returns from [`finalytics_perf`](https://docs.rs/finalytics-perf) and returns supplied
@@ -26,6 +26,7 @@ mod means;
 mod prices;
 mod rolling;
 mod scenario;
+pub mod screening;
 mod statistics;
 mod tail;
 

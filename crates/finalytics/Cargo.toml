@@ -20,10 +20,11 @@ default = ["io", "parallel"]
 # Reading portfolios and prices from files by path, and showing reports in a browser. The
 # engine itself performs no input or output; the WebAssembly package leaves this out.
 io = []
-# Comparisons, walk-forward fits, resampling, frontiers and plans spread over threads with rayon,
-# with the same results on any number of threads. The WebAssembly package leaves this out.
+# Comparisons, walk-forward fits, resampling, frontiers, plans and screens spread over threads
+# with rayon, with the same results on any number of threads. The WebAssembly package leaves this out.
 parallel = [
     "finalytics-core/parallel",
+    "finalytics-risk/parallel",
     "finalytics-opt/parallel",
     "finalytics-backtest/parallel",
     "finalytics-plan/parallel",

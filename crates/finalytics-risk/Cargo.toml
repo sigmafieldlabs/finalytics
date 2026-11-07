@@ -15,6 +15,8 @@ readme = "../../README.md"
 [features]
 # JSON Schema descriptions of the public types, for the bindings and documentation.
 schema = ["dep:schemars", "finalytics-core/schema", "finalytics-ledger/schema"]
+# Screens measure securities on several threads with rayon; off for WebAssembly.
+parallel = ["finalytics-core/parallel"]
 
 [dependencies]
 finalytics-core = { workspace = true }
