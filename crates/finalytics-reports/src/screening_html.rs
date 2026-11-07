@@ -118,13 +118,14 @@ impl ScreenReport {
             body.push_str(&block("measures", "Measures", "", &measures));
         } else {
             let mut strips = self.strips_html();
+            let how = if strips.contains(r#"class="hb"#) {
+                "Each dot is a security, and each column counts the securities in it. The shaded \
+                 side of the line passes the rule."
+            } else {
+                "Each dot is a security. The shaded side of the line passes the rule."
+            };
             strips.push_str(&measures);
-            body.push_str(&block(
-                "limits",
-                "Where the limits fall",
-                "Each dot is a security. The shaded side of the line passes the rule.",
-                &strips,
-            ));
+            body.push_str(&block("limits", "Where the limits fall", how, &strips));
         }
         body.push_str(&block(
             "data",
