@@ -640,6 +640,18 @@ impl Securities {
         Ok(self)
     }
 
+    /// The same securities with the fields named in `names` in that order, after any others,
+    /// such as the order of a file's columns.
+    pub fn with_field_order<S: AsRef<str>>(mut self, names: &[S]) -> Securities {
+        self.fields.sort_by_key(|f| {
+            names
+                .iter()
+                .position(|n| n.as_ref() == f.name)
+                .map_or((0, 0), |k| (1, k))
+        });
+        self
+    }
+
     /// The number of securities.
     pub fn len(&self) -> usize {
         self.ids.len()

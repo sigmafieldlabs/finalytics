@@ -163,10 +163,11 @@ impl Universe {
     }
 
     /// The same universe with fields from CSV text: an `id` column and one column per field,
-    /// such as `id,sector,pe_ratio`. A column whose every value is a number holds numbers; any
+    /// such as `id,sector,pe_ratio`, in the order of the columns. A column whose every value is a number holds numbers; any
     /// other holds text, and an empty cell is no value.
     pub fn with_fields_csv(self, text: &str) -> Result<Universe> {
         let table = fields_from_csv(text, CsvOptions::default()).map_err(|e| under("fields", e))?;
+        let order: Vec<String> = table.fields.iter().map(|(name, _)| name.clone()).collect();
         let mut fields: BTreeMap<String, BTreeMap<String, FieldValue>> = BTreeMap::new();
         for (name, cells) in table.fields {
             for (k, id) in table.ids.iter().enumerate() {
@@ -183,7 +184,9 @@ impl Universe {
                 }
             }
         }
-        self.with_fields(fields)
+        let mut universe = self.with_fields(fields)?;
+        universe.securities = universe.securities.with_field_order(&order);
+        Ok(universe)
     }
 
     /// The securities' identifiers, in order.
