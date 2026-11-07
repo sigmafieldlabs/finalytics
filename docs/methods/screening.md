@@ -2,9 +2,10 @@
 
 A screen measures many securities, each on its own history, and keeps those that meet rules on
 the measures and on fields given with them. `Universe` holds the securities and
-`universe.screen(...)` screens them; the screening report gives how many were measured, each rule
-with how many securities met it, the matches in order, and the spread of every measure across the
-universe, so that a threshold can be set where it bites.
+`universe.screen(...)` screens them; the screening report shows how the rules narrow the universe
+to the matches, the matches in order, the securities that fail just one rule, and where each
+rule's threshold falls among the securities' values, so that a threshold can be set with the
+universe in view.
 
 ## The universe
 
@@ -119,15 +120,47 @@ measure computed (none where it has none) and its fields. In JavaScript the same
 columns, one `Float64Array` per measure with NaN for no value; in Python,
 `finalytics.pandas.securities` turns them into a DataFrame.
 
-The screening report gives the coverage; each rule in words with its counts; the matches, in
-order, with the measure or field sorted by, those the rules test and a few of the main measures
-(the top 50 in text, every match on the page); and the spread of every measure some security
-has, across the securities that are not stale: the lowest and highest values and the quartiles,
-interpolated linearly between values, with the rules' thresholds marked on a box plot. A line
-under the spread names the measures none has, such as those whose windows are longer than every
-history ("Not computed, for want of history: return 5y a year"); the coverage counts, for each
-measure, the securities without a value and those of them whose history is too short. The page
-shows them in the reader's light or dark theme; the text keeps to 80 columns.
+The screening report reads from the top, in the page and in 80 columns of text alike:
+
+- **A headline and a summary**: how many matches among how many securities, how many pass every
+  rule and which are shown, with the securities, the matches, the rules and the date measured
+  to.
+- **How the rules narrow the list**: every security, those with a price within
+  `max_carry_days` of the date measured to when some are stale, those left after each rule and
+  the ones before it, and the matches kept when the limit leaves some out. Each rule also gives
+  how many pass it on its own, and how many have no value for it.
+- **The matches**, in order (the top 50 in text, every match on the page), with the security's
+  `name` and `sector` fields when given, the measure or field sorted by and those the rules
+  test. A value is marked as close to a rule's threshold when it is within 10% of it; for a
+  threshold of zero, such as a return above 0% or a price above its average, within 10% of the
+  measure's typical size, the median of its size across the securities that are not stale. The
+  first ten securities that pass every rule beyond the limit follow, with their value of what
+  is sorted by.
+- **The near misses**: the securities that fail just one rule, with the value against the
+  threshold, closest to passing first by the same distance as a share of the threshold (or of
+  the typical size); those that fail a rule on text, or have no value for it, come last (the
+  first 20 in text, 100 on the page).
+- **Where the limits fall**: for each measure or numeric field a rule compares with a number,
+  every security's value against the rules' thresholds, with the side that passes shaded: a
+  dot for each security on the page (a column of counts when there are too many for dots), a
+  column of counts in text. The scale runs from about the 2nd to the 98th percentile of the
+  values, widened to take in each threshold; values beyond it are drawn at its ends.
+- **Every measure** some security has (folded away on the page; not in the text): the lowest
+  and highest values and the quartiles across the securities that are not stale, interpolated
+  linearly between values, and, for a measure that is yes or no, how many have yes. The number
+  of prices, the last price and whether a security is stale are left out, as they describe the
+  data. A note names the measures some securities lack and those none has, such as those whose
+  windows are longer than every history ("Not computed, as no history is long enough: 5-year
+  return, per year").
+- **The data**, in one line that names only what is out of the ordinary: securities measured on
+  a last price before the date measured to, stale ones, those too short for a rule, and the
+  screen's warnings.
+
+Measures are named as people say them ("3-year Sharpe ratio", "RSI (14 days)"), and a price
+against its moving average is shown as the difference: a `price_to_sma_200` of 1.08 is +8.0%.
+The page shows the report in the reader's light or dark theme. As tables, the report gives the
+coverage, the rules with their counts, the matches, the near misses and the spread of every
+measure.
 
 ## Example
 

@@ -23,7 +23,7 @@ REPORTS = [
     ("portfolio", "Portfolio report", "A household's two accounts: holdings, performance, risk, attribution and scenarios."),
     ("rebalance", "Rebalance report", "The trades that move both accounts to the least risky mix of their funds, tax-aware."),
     ("planning", "Planning report", "A retirement income's chance of lasting 30 years, what would change it, and when markets do worse."),
-    ("screening", "Screening report", "55 S&P 500 companies screened on return, risk, trend and sector, with the spread of every measure."),
+    ("screening", "Screening report", "55 S&P 500 companies screened on return, risk, trend and sector, with the near misses and where each threshold falls."),
 ]
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent

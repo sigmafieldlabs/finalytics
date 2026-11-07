@@ -302,10 +302,10 @@ fn main() -> Result<()> {
 }
 ```
 
-<a href="https://sigmafieldlabs.github.io/finalytics/reports/screening.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how many securities were measured, each rule with how many met it, and the matches in order" width="760"></a>
+<a href="https://sigmafieldlabs.github.io/finalytics/reports/screening.html"><img src="https://sigmafieldlabs.github.io/finalytics/images/screening-light.png" alt="The screening report: how the rules narrow the list, the matches in order and the near misses" width="760"></a>
 
-The report shows how many securities were measured, how many met each rule,
-the matches in order and where every measure falls across the universe.
+The report shows how the rules narrow the list, the matches in order, the
+near misses and where each rule's threshold falls across the universe.
 
 ## What is included
 
