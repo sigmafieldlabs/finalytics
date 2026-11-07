@@ -134,7 +134,7 @@ test("a screen prints, lays out as a page and turns into tables", () => {
   assert.ok(JSON.stringify(screen.report).length > 0);
 });
 
-test("a universe from series and from CSV, with fields", () => {
+test("a universe from series and from CSV, with fields in the options", () => {
   const dates = prices.dates.slice(-300);
   const series = ["AAPL", "MSFT"].map((id) => ({
     id,
@@ -142,18 +142,21 @@ test("a universe from series and from CSV, with fields", () => {
     close: Float64Array.from(prices.columns[prices.labels.indexOf(id)].slice(-300)),
     fields: { sector: sectors[id] },
   }));
-  const u = new Universe(series, { risk_free_rate: 0.02 });
+  const u = new Universe(series, { risk_free_rate: 0.02, fields: { AAPL: { pe_ratio: 31.2, rating: "A" } } });
   assert.deepEqual(u.ids, ["AAPL", "MSFT"]);
   assert.equal(u.riskFreeRate, 0.02);
   assert.equal(u.latestDate, "2026-10-30");
-  const withFields = u.withFields({ AAPL: { pe_ratio: 31.2 } });
-  assert.deepEqual(withFields.fields, ["sector", "pe_ratio"]);
+  assert.deepEqual(u.fields, ["sector", "pe_ratio", "rating"]);
+  assert.equal(u.withFields, undefined);
+  assert.equal(u.withFieldsCsv, undefined);
   const csv = "id,date,close\nA,2026-10-28,10\nA,2026-10-29,10.5\nB,2026-10-28,19\nB,2026-10-29,20\nA,2026-10-30,11\n";
-  const fromCsv = Universe.fromCsv(csv, { benchmark: "A" }).withFieldsCsv("id,sector\nA,Energy\nB,Utilities\n");
+  const fromCsv = Universe.fromCsv(csv, { benchmark: "A", fields: "id,sector,pe_ratio\nA,Energy,12\nB,Utilities,\n" });
   assert.equal(fromCsv.benchmark, "A");
+  assert.deepEqual(fromCsv.fields, ["sector", "pe_ratio"]);
   const screen = fromCsv.screen({ rules: [{ field: "sector", op: "in", values: ["Energy"] }] });
   assert.deepEqual(screen.results.matches, ["A"]);
   assert.deepEqual(screen.results.status, ["measured", "measured"]);
+  assert.deepEqual(Array.from(screen.results.fields.pe_ratio), [12, NaN]);
 });
 
 test("every problem is reported together", () => {
@@ -179,6 +182,23 @@ test("every problem is reported together", () => {
     },
   );
   assert.throws(() => universe.screen({ colour: "red" }), /options.colour/);
+  // The options' problems and the fields' are reported together.
+  assert.throws(
+    () => Universe.fromCsv("id,date,close\nA,2026-10-30,1\n", { benchmark: "SPY", risk_free_rate: -2, fields: "id,rsi_14\nA,1\n" }),
+    (error) => {
+      assert.deepEqual(
+        error.issues.map((i) => i.path),
+        ["risk_free_rate", "benchmark", "fields.A.rsi_14"],
+      );
+      return true;
+    },
+  );
+  assert.throws(() => Universe.fromCsv("id,date,close\nA,2026-10-30,1\n", { fields: 3 }), /options.fields/);
+  assert.throws(() => Universe.fromCsv("id,date,close\nA,2026-10-30,1\n", { colour: "red" }), /options.colour/);
+  assert.throws(
+    () => Universe.fromColumns({ ids: ["A"], starts: [0], dates: ["2026-10-30"], close: [1] }, { fields: "id,x\nA,1\n" }),
+    /columns.fields/,
+  );
   assert.throws(
     () => Universe.fromColumns({ ids: ["A"], starts: [0, 1], dates: ["2026-10-30"], close: new Float64Array([1]) }),
     { name: "ValidationError" },

@@ -276,9 +276,10 @@ import { Universe } from "finalytics";
 
 const read = (file) => readFile(file, "utf8");
 const universe = Universe.fromCsv(await read("prices.csv"), {
+  fields: await read("instruments.csv"),
   benchmark: "BENCH",
   risk_free_rate: 0.04,
-}).withFieldsCsv(await read("instruments.csv"));
+});
 
 const screen = universe.screen({
   rules: [

@@ -159,13 +159,18 @@ export async function example(worker: Worker): Promise<void> {
   const columns: ScreenColumns = screen.results;
   const oneYear: Float64Array | undefined = columns.measures.return_1y;
   const screenText: string = `${screen}` + screen.results.toText() + screen.toHtml("Named");
-  const fromSeries = new Universe([{ id: "A", dates: ["2026-10-29", "2026-10-30"], close: [10, 11], fields: { sector: "Energy" } }]);
-  const withFields: Universe = fromSeries.withFields({ A: { pe_ratio: 12 } }).withFieldsCsv("id,industry\nA,Oil\n");
+  const withFields = new Universe([{ id: "A", dates: ["2026-10-29", "2026-10-30"], close: [10, 11], fields: { sector: "Energy" } }], {
+    fields: { A: { pe_ratio: 12 } },
+    benchmark: "A",
+  });
+  const fromCsv: Universe = Universe.fromCsv("id,date,close\nA,2026-10-30,1\n", { fields: "id,industry\nA,Oil\n" });
+  // @ts-expect-error: the columns carry their own fields.
+  Universe.fromColumns({ ids: ["A"], starts: [0], dates: ["2026-10-30"], close: new Float64Array([1]) }, { fields: "id,x\nA,1\n" });
   // @ts-expect-error: an unknown measure is rejected.
   universe.screen({ measures: ["return_2y"] });
   // @ts-expect-error: an unknown comparison is rejected.
   universe.screen({ rules: [{ measure: "return_1y", op: "=", value: 0 }] });
-  console.log(screenReport, oneYear, screenText, withFields);
+  console.log(screenReport, oneYear, screenText, withFields, fromCsv);
 
   // @ts-expect-error: an unknown objective is rejected.
   const unknown: Objective = { type: "maximum_profit" };

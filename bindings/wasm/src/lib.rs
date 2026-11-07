@@ -361,12 +361,22 @@ export interface UniverseColumns {
   fields?: Record<string, Float64Array | (number | null)[] | (string | null)[]>;
 }
 
-/** The settings of a `Universe`, all optional. */
-export interface UniverseOptions {
+/** The settings of a `Universe`, all optional: those of `Universe.fromColumns`. */
+export interface UniverseSettings {
   /** One of the securities, such as an index, for beta, correlation and relative returns. */
   benchmark?: string;
   /** The annual risk-free rate of the Sharpe and Sortino ratios; 0 by default. */
   risk_free_rate?: number;
+}
+
+/** The options of `new Universe` and `Universe.fromCsv`, all optional. */
+export interface UniverseOptions extends UniverseSettings {
+  /**
+   * Values the library does not compute, such as a sector or a price-to-earnings ratio: CSV text
+   * with an `id` column and one column per field, or values by security and then by name, such as
+   * `{ AAPL: { sector: "Technology", pe_ratio: 31.2 } }`.
+   */
+  fields?: string | Record<string, Record<string, FieldValue>>;
 }
 
 /** The options of `Universe.screen`: those of `ScreenOptions`, with the report's title. */
@@ -1839,7 +1849,8 @@ impl Universe {
     /// A universe from series, one per security, each on its own dates: `{ id, dates, close }`,
     /// with `volume`, `dividends` and `fields` if known. Dates are ISO strings or days since
     /// 1970-01-01 in an `Int32Array`; closes, volumes and dividends are `Float64Array`s or arrays
-    /// of numbers. A close that is not a number is no close: its date is left out.
+    /// of numbers. A close that is not a number is no close: its date is left out. The options
+    /// give the benchmark, the risk-free rate and more fields, as CSV text or by security.
     #[wasm_bindgen(constructor)]
     pub fn new(
         #[wasm_bindgen(unchecked_param_type = "SeriesInput[]")] series: JsValue,
@@ -1875,18 +1886,19 @@ impl Universe {
             list.push(one);
         }
         let universe = finalytics::Universe::from_series(list).map_err(error)?;
-        Universe::settle(universe, options)
+        Universe::settle(universe, options, true)
     }
 
     /// A universe from flat columns, for large universes: every security's rows one after
     /// another, `starts` giving the row each security starts at, `dates` as days since 1970-01-01
     /// in an `Int32Array` (or ISO strings), and `close`, `volume` and `dividends` as
     /// `Float64Array`s, NaN where there is no value. `fields` gives each field's values in the
-    /// order of `ids`: a `Float64Array` or an array of numbers, or an array of text.
+    /// order of `ids`: a `Float64Array` or an array of numbers, or an array of text. The options
+    /// give the benchmark and the risk-free rate.
     #[wasm_bindgen(js_name = fromColumns)]
     pub fn from_columns(
         #[wasm_bindgen(unchecked_param_type = "UniverseColumns")] columns: JsValue,
-        #[wasm_bindgen(unchecked_optional_param_type = "UniverseOptions")] options: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "UniverseSettings")] options: JsValue,
     ) -> Result<Universe, JsValue> {
         if !columns.is_object() {
             return Err(invalid("columns", "must be an object of columns"));
@@ -1958,40 +1970,20 @@ impl Universe {
                 .map_err(error)?
                 .with_field_order(&order);
         }
-        Universe::settle(universe, options)
+        Universe::settle(universe, options, false)
     }
 
     /// A universe from prices in CSV text: the long layout of `id`, `date` and `close` columns,
     /// with `volume` and `dividends` if known, or a `date` column and one column per security.
+    /// The options give the fields, as CSV text or by security, the benchmark and the risk-free
+    /// rate.
     #[wasm_bindgen(js_name = fromCsv)]
     pub fn from_csv(
         text: &str,
         #[wasm_bindgen(unchecked_optional_param_type = "UniverseOptions")] options: JsValue,
     ) -> Result<Universe, JsValue> {
         let universe = finalytics::Universe::from_csv(text).map_err(error)?;
-        Universe::settle(universe, options)
-    }
-
-    /// The same universe with fields by security and then by name, such as
-    /// `{ AAPL: { sector: "Technology", pe_ratio: 31.2 } }`.
-    #[wasm_bindgen(js_name = withFields)]
-    pub fn with_fields(
-        &self,
-        #[wasm_bindgen(unchecked_param_type = "Record<string, Record<string, FieldValue>>")]
-        fields: JsValue,
-    ) -> Result<Universe, JsValue> {
-        let fields = from_js(fields, "fields")?;
-        Ok(Universe {
-            inner: self.inner.clone().with_fields(fields).map_err(error)?,
-        })
-    }
-
-    /// The same universe with fields from CSV text: an `id` column and one column per field.
-    #[wasm_bindgen(js_name = withFieldsCsv)]
-    pub fn with_fields_csv(&self, text: &str) -> Result<Universe, JsValue> {
-        Ok(Universe {
-            inner: self.inner.clone().with_fields_csv(text).map_err(error)?,
-        })
+        Universe::settle(universe, options, true)
     }
 
     /// The securities, in order.
@@ -2065,8 +2057,87 @@ impl Universe {
         Ok(value.into())
     }
 
-    fn settle(universe: finalytics::Universe, options: JsValue) -> Result<Universe, JsValue> {
-        let settings: finalytics::UniverseSettings = optional(options, "options")?;
+    /// `universe` with the options: the benchmark and the risk-free rate, and, where `fields`
+    /// may be given, the fields as CSV text or by security. Every problem is reported together.
+    fn settle(
+        universe: finalytics::Universe,
+        options: JsValue,
+        fields_allowed: bool,
+    ) -> Result<Universe, JsValue> {
+        if options.is_undefined() || options.is_null() {
+            return Ok(Universe { inner: universe });
+        }
+        let fields = if options.is_object() {
+            property(&options, "fields")?
+        } else {
+            JsValue::UNDEFINED
+        };
+        let mut allowed = vec!["benchmark".to_owned(), "risk_free_rate".to_owned()];
+        if fields_allowed {
+            allowed.push("fields".to_owned());
+        } else if !fields.is_undefined() {
+            return Err(invalid(
+                "options.fields",
+                "give the fields with the columns, as columns.fields",
+            ));
+        }
+        let mut choices = object(options, &allowed)?;
+        choices.remove("fields");
+        let settings: finalytics::UniverseSettings = finalytics::formats::from_json(
+            &serde_json::Value::Object(choices).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        let mut report = ValidationReport::new();
+        settings.check(&mut report);
+        if let Some(id) = &settings.benchmark
+            && !universe.ids().iter().any(|i| i == id)
+        {
+            report.error(
+                "benchmark",
+                format!("{id} is not one of the universe's securities"),
+            );
+        }
+        let with_fields = if fields.is_undefined() || fields.is_null() {
+            Ok(universe)
+        } else if let Some(text) = fields.as_string() {
+            universe.with_fields_csv(&text)
+        } else if fields.is_object() {
+            // The fields in the order they are first given.
+            let mut order: Vec<String> = Vec::new();
+            for entry in js_sys::Object::entries(fields.unchecked_ref()).iter() {
+                let values = js_sys::Array::from(&entry).get(1);
+                if values.is_object() {
+                    for key in js_sys::Object::keys(values.unchecked_ref::<js_sys::Object>()).iter()
+                    {
+                        if let Some(name) = key.as_string().filter(|n| !order.contains(n)) {
+                            order.push(name);
+                        }
+                    }
+                }
+            }
+            let by_id = from_js(fields, "fields")?;
+            universe
+                .with_fields(by_id)
+                .map(|u| u.with_field_order(&order))
+        } else {
+            return Err(invalid(
+                "options.fields",
+                "must be CSV text or fields by security, such as { AAPL: { sector: \"Technology\" } }",
+            ));
+        };
+        let universe = match with_fields {
+            Ok(u) => Some(u),
+            Err(Error::Validation(found)) => {
+                report.merge("", found);
+                None
+            }
+            Err(e) => return Err(error(e)),
+        };
+        report.into_result(()).map_err(error)?;
+        let Some(universe) = universe else {
+            return Err(invalid("options.fields", "could not be read"));
+        };
         Ok(Universe {
             inner: settings.apply(universe).map_err(error)?,
         })
