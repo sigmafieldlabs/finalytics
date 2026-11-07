@@ -857,6 +857,27 @@ export type CovarianceMethod =
     type: "nonlinear_shrinkage";
   };
 
+/** How many securities were measured and how many matched. */
+export interface Coverage {
+  /** The securities in the universe. */
+  securities: number;
+  /** Those measured with the history the rules and the sort need. */
+  measured: number;
+  /** Those measured with too short a history. */
+  too_short: number;
+  /** Those whose last close is too old: listed, but not measured. */
+  stale: number;
+  /** Those that meet every rule. */
+  passed: number;
+  /** The matches kept: those that passed, within the limit. */
+  matched: number;
+  /**
+   * For each measure of the results' `measures`, how many securities that are not stale
+   * have no value of it.
+   */
+  lacking: number[];
+}
+
 /** The worst run of twelve months in the history, for the plan's weights. */
 export interface CrashWindow {
   /** Its first month. */
@@ -1234,6 +1255,12 @@ export interface Fees {
   /** The smallest fee a trade pays. */
   minimum?: Decimal;
 }
+
+/**
+ * A value given with a security that the library does not compute: a number, such as a
+ * price-to-earnings ratio, or text, such as a sector.
+ */
+export type FieldValue = number | string;
 
 /** Value entering (positive) or leaving (negative) the portfolio, in `currency`. */
 export interface Flow {
@@ -1946,6 +1973,50 @@ export type MeanMethod =
   };
 
 /**
+ * A measure a screen computes for each security, from its own prices up to the date measured
+ * to. Each is named in options and results by its snake-case name, such as `"return_1y"`.
+ */
+export type Measure = "return_1w" | "return_1m" | "return_3m" | "return_6m" | "return_ytd" | "return_1y" | "return_3y" | "return_5y" | "volatility" | "volatility_3y" | "downside_deviation" | "max_drawdown" | "max_drawdown_3y" | "drawdown" | "sharpe_ratio" | "sharpe_ratio_3y" | "sortino_ratio" | "calmar_ratio" | "value_at_risk" | "beta" | "correlation" | "relative_return_6m" | "relative_return_1y" | "price_to_sma_20" | "price_to_sma_50" | "price_to_sma_200" | "sma_50_above_200" | "rsi_14" | "macd_histogram" | "from_52w_high" | "from_52w_low" | "volatility_20d" | "dividend_yield" | "average_volume_20d" | "volume_ratio" | "dollar_volume_20d" | "observations" | "last_price" | "stale";
+
+/**
+ * The spread of one measure, or of a numeric field a rule tests, across the securities that
+ * are not stale: the smallest and largest values and the quartiles, with the values the rules
+ * compare it with.
+ */
+export interface MeasureSpread {
+  /** The measure's or the field's name. */
+  name: string;
+  /** Its label, such as "Return 1y". */
+  label: string;
+  /** Its group, such as "Returns", or "Fields". */
+  group: string;
+  /** How a measure is shown; absent for a field. */
+  unit?: MeasureUnit | null;
+  /** How many securities have a value. */
+  count: number;
+  /** How many that are not stale have none. */
+  lacking: number;
+  /** The smallest value. */
+  min?: number | null;
+  /** The lower quartile, interpolated linearly between values. */
+  lower_quartile?: number | null;
+  /** The median. */
+  median?: number | null;
+  /** The upper quartile. */
+  upper_quartile?: number | null;
+  /** The largest value. */
+  max?: number | null;
+  /** The values the rules compare it with. */
+  thresholds: number[];
+}
+
+/**
+ * How a measure is shown: as a percentage, a ratio, a price, an index from 0 to 100, a count or
+ * a yes or no.
+ */
+export type MeasureUnit = "fraction" | "ratio" | "price" | "index" | "count" | "flag";
+
+/**
  * An optimisation method, by name. The parameters some methods need are given beside it, in
  * `OptimiseOptions` or with the builder's methods.
  */
@@ -2149,6 +2220,9 @@ export type Objective =
     /** How clusters are joined. */
     linkage?: Linkage;
   };
+
+/** How a rule compares a security's value: with a number, a range or a list of text values. */
+export type Op = "<" | "<=" | ">" | ">=" | "between" | "in" | "not_in";
 
 /**
  * An optimisation: the optimisation report on the weights chosen, and the raw results.
@@ -2387,6 +2461,9 @@ export interface OptimiseOptions {
    */
   frontier?: boolean;
 }
+
+/** Which way matches are sorted. */
+export type Order = "ascending" | "descending";
 
 /** The outcome of the plan, or of one of its tests. */
 export interface Outcome {
@@ -3601,6 +3678,39 @@ export interface RiskReturn {
   expected_return: number;
 }
 
+/**
+ * A rule every match must meet: a measure or a numeric field compared with a number (`<`,
+ * `<=`, `>`, `>=`) or a range (`between`), or a text field that is (`in`) or is not (`not_in`)
+ * one of a list of values. A security without the value a rule tests fails it.
+ */
+export interface Rule {
+  /** The measure the rule tests, such as `"return_1y"`; or give `field`. */
+  measure?: Measure | null;
+  /** The field the rule tests, such as `"sector"` or `"pe_ratio"`; or give `measure`. */
+  field?: string | null;
+  /** How the value is compared. */
+  op: Op;
+  /** The number compared with, or `[low, high]` for `between`. */
+  value?: RuleValue | null;
+  /** The text values of `in` and `not_in`. */
+  values?: string[] | null;
+}
+
+/** A rule, with how many securities met it. */
+export interface RuleResult {
+  /** The rule. */
+  rule: Rule;
+  /** How many securities that are not stale meet it. */
+  passed: number;
+  /** How many that are not stale have no value of what it tests, and so fail it. */
+  lacking: number;
+  /** How many meet it and every rule before it. */
+  remaining: number;
+}
+
+/** The number a numeric rule compares with, or the `[low, high]` range of `between`. */
+export type RuleValue = number | number[];
+
 /** A strategy held over a run of periods, rebalanced on the schedule, net of trading costs. */
 export interface Run {
   /** The date each period ends on. */
@@ -3862,6 +3972,219 @@ export interface SchemeRisk {
 }
 
 /**
+ * A screen: the screening report and the raw results. Printing it prints the report, and
+ * showing it shows the report as a page.
+ */
+export interface Screen {
+  /**
+   * The screening report: how many securities were measured, each rule with how many met
+   * it, the matches in order and the spread of each measure.
+   */
+  report: ScreenReport;
+  /**
+   * The raw results: one row per security, with each measure's value, its fields and
+   * whether it matched.
+   */
+  results: ScreenResults;
+}
+
+/** A column of the matches: a measure or a field. */
+export interface ScreenColumn {
+  /** The measure's or the field's name, such as `"return_1y"` or `"sector"`. */
+  name: string;
+  /** Its heading, such as "Return 1y". */
+  label: string;
+  /** How a measure is shown; absent for a field. */
+  unit?: MeasureUnit | null;
+  /** Whether it is a field rather than a measure. */
+  field: boolean;
+}
+
+/** What a screen measured, beside its figures: what the report needs to describe it. */
+export interface ScreenContext {
+  /** The engine's version. */
+  version: string;
+  /**
+   * A SHA-256 digest, in hexadecimal, of the options and of what the screen found for each
+   * security: the same inputs give the same report.
+   */
+  digest: string;
+  /** The date measured to. */
+  as_of: Date;
+  /** The securities in the universe. */
+  securities: number;
+  /** The earliest close of any security. */
+  first_date?: Date | null;
+  /** The benchmark, if any. */
+  benchmark?: string | null;
+  /** The annual risk-free rate. */
+  risk_free_rate: number;
+  /** The most days a last close could be before the date measured to without being stale. */
+  max_carry_days: number;
+  /** The measures computed. */
+  measures: Measure[];
+  /** The names of the fields given. */
+  fields: string[];
+  /** How the matches are sorted. */
+  sort?: Sort | null;
+  /** The most matches kept. */
+  limit?: number | null;
+  /** Problems that did not stop the screen. */
+  warnings: ValidationReport;
+}
+
+/** One match, with its value in each of the report's columns. */
+export interface ScreenMatch {
+  /** Its place among the matches, from 1. */
+  rank: number;
+  /** The security. */
+  id: string;
+  /** Its value in each column, in the order of the report's `columns`. */
+  values: (FieldValue | null)[];
+}
+
+/**
+ * What a screen measures and keeps. Everything is optional: by default every measure the
+ * universe allows, on its latest date, with no rules.
+ */
+export interface ScreenOptions {
+  /** The date measured to: the latest date in the universe by default. */
+  as_of?: Date | null;
+  /**
+   * The most days a security's last close may be before `as_of`; a security whose last close
+   * is older is stale: listed, but not measured. 5 by default.
+   */
+  max_carry_days?: number;
+  /**
+   * The measures to compute, by name, such as `["return_1y", "rsi_14"]`: by default every
+   * measure the universe allows (those against a benchmark need one, and those of volumes
+   * and dividends need them). The measures the rules and the sort use are computed too.
+   */
+  measures?: Measure[] | null;
+  /** The rules a security must all meet to match. */
+  rules?: Rule[];
+  /** How the matches are sorted; in the universe's order by default. */
+  sort?: Sort | null;
+  /** The most matches to keep, after sorting. */
+  limit?: number | null;
+}
+
+/** The screening report: what one screen of a universe found. */
+export interface ScreenReport {
+  /** What was measured and how. */
+  context: ScreenContext;
+  /** How many securities were measured, passed and matched. */
+  coverage: Coverage;
+  /** Each rule, with how many met it. */
+  rules: RuleResult[];
+  /**
+   * The columns of the matches: the measure or field sorted by, those the rules test, and a
+   * few of the main measures.
+   */
+  columns: ScreenColumn[];
+  /** Every match, in order. */
+  matches: ScreenMatch[];
+  /** The spread of each measure across the universe. */
+  spread: MeasureSpread[];
+  /**
+   * The report's title, such as "Quality at a fair price": shown when it is printed or laid
+   * out as a page.
+   */
+  name?: string | null;
+}
+
+/**
+ * The raw results of a screen: one row per security, in the universe's order, with each
+ * measure's value, its fields and whether it matched; the matches in order; each rule with how
+ * many met it; and how many were measured.
+ */
+export interface ScreenResults {
+  /** The date measured to. */
+  as_of: Date;
+  /** The most days a last close could be before `as_of` without being stale. */
+  max_carry_days: number;
+  /** The benchmark, if any. */
+  benchmark?: string | null;
+  /** The annual risk-free rate of the Sharpe and Sortino ratios. */
+  risk_free_rate: number;
+  /** The measures computed, in the order of each security's `values`. */
+  measures: Measure[];
+  /** The names of the fields given. */
+  fields: string[];
+  /** Each rule, with how many met it. */
+  rules: RuleResult[];
+  /** How the matches are sorted. */
+  sort?: Sort | null;
+  /** The most matches kept. */
+  limit?: number | null;
+  /** The matches kept, in order. */
+  matches: string[];
+  /** How many securities were measured, passed and matched, and how many lacked each measure. */
+  coverage: Coverage;
+  /** One row per security, in the universe's order. */
+  securities: SecurityScreen[];
+  /** Problems that did not stop the screen, such as closes left out. */
+  warnings: ValidationReport;
+}
+
+/** Whether a security was measured. */
+export type ScreenStatus = "measured" | "too_short" | "stale";
+
+/** One security's row of a screen: its measures, its fields and whether it matched. */
+export interface SecurityScreen {
+  /** The security. */
+  id: string;
+  /** Whether it was measured. */
+  status: ScreenStatus;
+  /** Whether it meets every rule. */
+  passed: boolean;
+  /** Whether it is one of the matches kept: it passed, and is within the limit. */
+  matched: boolean;
+  /** Its place among the matches kept, from 1. */
+  rank?: number | null;
+  /** The date of its first close. */
+  first_date?: Date | null;
+  /** The date of its last close on or before the date measured to. */
+  last_date?: Date | null;
+  /**
+   * Its value of each measure of the results' `measures`, in their order; absent where it
+   * has none.
+   */
+  values: (number | null)[];
+  /** Its fields, by name. */
+  fields?: Record<string, FieldValue>;
+}
+
+/**
+ * One security's prices on its own dates: a close on each date, and its volume, dividends and
+ * fields if known.
+ */
+export interface SecuritySeries {
+  /** The security's identifier, such as `"AAPL"`. */
+  id: string;
+  /** The dates of its closes, in increasing order. */
+  dates: Date[];
+  /**
+   * Its close on each date. Adjusted closes, which include dividends and splits, give total
+   * returns. A close that is not a number (NaN, or `null` in JSON) is no close: that date is
+   * left out.
+   */
+  close: (number | null)[];
+  /** The volume traded on each date, if known; NaN (`null`) where not. */
+  volume?: (number | null)[] | null;
+  /**
+   * The dividend per share paid on each date, its ex-date, and zero on the others, if known;
+   * NaN (`null`) where not known, which counts as none paid unless every one is unknown.
+   */
+  dividends?: (number | null)[] | null;
+  /**
+   * Values the library does not compute, by name, such as `{"sector": "Technology",
+   * "pe_ratio": 18.4}`: numbers or text, for rules and results.
+   */
+  fields?: Record<string, FieldValue>;
+}
+
+/**
  * A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a
  * region or any other grouping.
  */
@@ -4062,6 +4385,19 @@ export type SolveMethod = "interior_point" | "newton" | "recursive_bisection" | 
 
 /** How an optimisation ended. */
 export type SolveStatus = "optimal" | "nearly_optimal" | "infeasible" | "unbounded" | "iteration_limit" | "numerical_difficulty";
+
+/**
+ * How matches are sorted: by a measure or a numeric field, one way or the other. Securities
+ * without a value come last.
+ */
+export interface Sort {
+  /** The measure sorted by; or give `field`. */
+  measure?: Measure | null;
+  /** The numeric field sorted by; or give `measure`. */
+  field?: string | null;
+  /** The largest first (`descending`) or the smallest first (`ascending`). */
+  order: Order;
+}
 
 /**
  * What a report was computed from: a digest of the portfolio document and market data, and

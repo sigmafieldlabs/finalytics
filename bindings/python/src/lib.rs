@@ -29,7 +29,7 @@ use finalytics::risk::{
 use finalytics::{
     Assets, Currency, Date, Decimal, Error, HoldingKey, HoldingSeries, InstrumentId, LotMethod,
     MarketData, Observation, OptimiseOptions, PlanOptions, Portfolio, PortfolioCsv, PortfolioData,
-    PriceTable, TimeSeries, ValidationReport, datasets,
+    PriceTable, TimeSeries, Universe, ValidationReport, datasets,
 };
 
 create_exception!(
@@ -817,6 +817,130 @@ impl NativeAssets {
     }
 }
 
+/// Many securities, each on its own dates, with the benchmark and risk-free rate a screen
+/// measures them against. Each change returns a new object.
+#[pyclass(module = "finalytics._finalytics", frozen)]
+struct NativeUniverse {
+    inner: Universe,
+}
+
+/// Whole numbers from a buffer of little-endian `int64` values.
+fn rows(bytes: &[u8], name: &str) -> PyResult<Vec<usize>> {
+    if !bytes.len().is_multiple_of(8) {
+        return Err(invalid(name, "must be a buffer of int64 values"));
+    }
+    let (chunks, _) = bytes.as_chunks::<8>();
+    chunks
+        .iter()
+        .map(|c| {
+            usize::try_from(i64::from_le_bytes(*c))
+                .map_err(|_| invalid(name, "must be rows of zero or more"))
+        })
+        .collect()
+}
+
+#[pymethods]
+impl NativeUniverse {
+    #[staticmethod]
+    fn from_csv(py: Python<'_>, text: &str) -> PyResult<NativeUniverse> {
+        Ok(NativeUniverse {
+            inner: released(py, || Universe::from_csv(text)).map_err(engine)?,
+        })
+    }
+
+    #[staticmethod]
+    fn from_series(py: Python<'_>, series: &str) -> PyResult<NativeUniverse> {
+        let series: Vec<finalytics::screening::Series> = from_json(series, "series")?;
+        Ok(NativeUniverse {
+            inner: released(py, || Universe::from_series(series)).map_err(engine)?,
+        })
+    }
+
+    /// A universe from flat columns: the identifiers as JSON, each security's first row as
+    /// `int64`, each row's date as `int32` days and its close, volume and dividend as `float64`.
+    #[staticmethod]
+    #[pyo3(signature = (ids, starts, dates_buffer, close, volume=None, dividends=None))]
+    fn from_columns(
+        py: Python<'_>,
+        ids: &str,
+        starts: &[u8],
+        dates_buffer: &[u8],
+        close: &[u8],
+        volume: Option<&[u8]>,
+        dividends: Option<&[u8]>,
+    ) -> PyResult<NativeUniverse> {
+        let ids: Vec<String> = from_json(ids, "ids")?;
+        if !dates_buffer.len().is_multiple_of(4) {
+            return Err(invalid("dates", "must be a buffer of int32 day numbers"));
+        }
+        let (chunks, _) = dates_buffer.as_chunks::<4>();
+        let days = chunks.iter().map(|c| i32::from_le_bytes(*c)).collect();
+        let mut columns = finalytics::screening::Columns::new(
+            ids,
+            rows(starts, "starts")?,
+            days,
+            floats(close, "close")?,
+        );
+        columns.volume = volume.map(|v| floats(v, "volume")).transpose()?;
+        columns.dividends = dividends.map(|d| floats(d, "dividends")).transpose()?;
+        Ok(NativeUniverse {
+            inner: released(py, || Universe::from_columns(columns)).map_err(engine)?,
+        })
+    }
+
+    fn with_fields(&self, py: Python<'_>, fields: &str) -> PyResult<NativeUniverse> {
+        let fields = from_json(fields, "fields")?;
+        Ok(NativeUniverse {
+            inner: released(py, || self.inner.clone().with_fields(fields)).map_err(engine)?,
+        })
+    }
+
+    fn with_fields_csv(&self, py: Python<'_>, text: &str) -> PyResult<NativeUniverse> {
+        Ok(NativeUniverse {
+            inner: released(py, || self.inner.clone().with_fields_csv(text)).map_err(engine)?,
+        })
+    }
+
+    /// The same universe with `settings` (JSON): the benchmark and the risk-free rate.
+    fn with_settings(&self, settings: &str) -> PyResult<NativeUniverse> {
+        let settings: finalytics::UniverseSettings = from_json(settings, "settings")?;
+        Ok(NativeUniverse {
+            inner: settings.apply(self.inner.clone()).map_err(engine)?,
+        })
+    }
+
+    fn ids(&self) -> Vec<String> {
+        self.inner.ids().to_vec()
+    }
+
+    fn benchmark(&self) -> Option<String> {
+        self.inner.benchmark().map(str::to_owned)
+    }
+
+    fn risk_free_rate(&self) -> f64 {
+        self.inner.risk_free_rate()
+    }
+
+    fn fields(&self) -> Vec<String> {
+        self.inner.fields().into_iter().map(str::to_owned).collect()
+    }
+
+    fn latest_date(&self) -> Option<String> {
+        self.inner.latest_date().map(|d| d.to_string())
+    }
+
+    fn warnings(&self) -> PyResult<String> {
+        to_json(self.inner.warnings())
+    }
+
+    fn screen(&self, py: Python<'_>, options: &str) -> PyResult<String> {
+        let options: finalytics::ScreenOptions = from_json(options, "options")?;
+        released(py, || {
+            to_json(&self.inner.screen_with(&options).map_err(engine)?)
+        })
+    }
+}
+
 #[pyfunction]
 fn dataset_file(name: &str) -> PyResult<&'static str> {
     datasets::file(name).ok_or_else(|| {
@@ -1378,6 +1502,7 @@ fn _finalytics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Market>()?;
     m.add_class::<NativePortfolio>()?;
     m.add_class::<NativeAssets>()?;
+    m.add_class::<NativeUniverse>()?;
     m.add_function(wrap_pyfunction!(dataset_file, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_files, m)?)?;
     m.add_function(wrap_pyfunction!(dataset_asset_class_prices, m)?)?;

@@ -1,7 +1,8 @@
 """The six reports on a portfolio (overview, holdings, performance, risk, attribution and
 scenarios); the three reports on assets: the optimisation report of :meth:`Assets.optimise`,
 the comparison report of :meth:`Assets.compare` and the backtest report of
-:meth:`Assets.backtest`; and the rebalance report of :meth:`Portfolio.rebalance`.
+:meth:`Assets.backtest`; the rebalance report of :meth:`Portfolio.rebalance`; the planning
+report of :meth:`Assets.plan`; and the screening report of :meth:`Universe.screen`.
 
 Each report is computed in one call, by :meth:`Portfolio.report` (all six) or by a method such
 as :meth:`Portfolio.performance_report`, and carries everything a screen draws and exports:
@@ -50,6 +51,7 @@ from finalytics._types import (
     ReportTable,
     RiskReport,
     ScenariosReport,
+    ScreenReport,
     Source,
 )
 
@@ -73,6 +75,7 @@ __all__ = [
     "ReportTable",
     "RiskReport",
     "ScenariosReport",
+    "ScreenReport",
     "Source",
     "source",
     "tables",
@@ -90,6 +93,7 @@ _KINDS = {
     BacktestReport: "backtest",
     RebalanceReport: "rebalance",
     PlanReport: "planning",
+    ScreenReport: "screening",
 }
 
 

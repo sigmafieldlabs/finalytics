@@ -101,6 +101,7 @@ fn optional_nullable_floats<'de, D: Deserializer<'de>>(
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schema", schemars(rename = "SecuritySeries"))]
 #[non_exhaustive]
 pub struct Series {
     /// The security's identifier, such as `"AAPL"`.
@@ -1049,6 +1050,7 @@ impl Default for ScreenOptions {
 /// Whether a security was measured.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "schema", schemars(rename = "ScreenStatus"))]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Status {

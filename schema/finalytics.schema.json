@@ -2171,6 +2171,66 @@
       ],
       "description": "How a covariance matrix is estimated from returns.\n\nIn JSON it is an object with a `type`, such as `{\"type\": \"ewma\", \"decay\": 0.97}`, or the\ntype's name alone, such as `\"ledoit_wolf\"`; an exponentially weighted covariance without a\ndecay has 0.94."
     },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "securities": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The securities in the universe."
+        },
+        "measured": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "Those measured with the history the rules and the sort need."
+        },
+        "too_short": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "Those measured with too short a history."
+        },
+        "stale": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "Those whose last close is too old: listed, but not measured."
+        },
+        "passed": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "Those that meet every rule."
+        },
+        "matched": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The matches kept: those that passed, within the limit."
+        },
+        "lacking": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "description": "For each measure of the results' `measures`, how many securities that are not stale\nhave no value of it."
+        }
+      },
+      "required": [
+        "securities",
+        "measured",
+        "too_short",
+        "stale",
+        "passed",
+        "matched",
+        "lacking"
+      ],
+      "description": "How many securities were measured and how many matched."
+    },
     "CrashWindow": {
       "type": "object",
       "properties": {
@@ -3134,6 +3194,20 @@
         }
       },
       "description": "The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,\nrounded to the currency's minor units. Purchases are sized so that the purchase and its fee\nfit the target; sales pay the fee from their proceeds."
+    },
+    "FieldValue": {
+      "anyOf": [
+        {
+          "type": "number",
+          "format": "double",
+          "description": "A number."
+        },
+        {
+          "type": "string",
+          "description": "Text."
+        }
+      ],
+      "description": "A value given with a security that the library does not compute: a number, such as a\nprice-to-earnings ratio, or text, such as a sector."
     },
     "Flow": {
       "type": "object",
@@ -5068,6 +5142,338 @@
       ],
       "description": "How the assets' mean returns are estimated from their returns.\n\nIn JSON it is an object with a `type`, such as `{\"type\": \"ewma\", \"decay\": 0.97}`, or the\ntype's name alone, such as `\"james_stein\"`; an exponentially weighted mean without a decay\nhas 0.94."
     },
+    "Measure": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "return_1w",
+          "description": "The return over the last week (7 days)."
+        },
+        {
+          "type": "string",
+          "const": "return_1m",
+          "description": "The return over the last month."
+        },
+        {
+          "type": "string",
+          "const": "return_3m",
+          "description": "The return over the last three months."
+        },
+        {
+          "type": "string",
+          "const": "return_6m",
+          "description": "The return over the last six months."
+        },
+        {
+          "type": "string",
+          "const": "return_ytd",
+          "description": "The return since the last day of the previous year."
+        },
+        {
+          "type": "string",
+          "const": "return_1y",
+          "description": "The return over the last year."
+        },
+        {
+          "type": "string",
+          "const": "return_3y",
+          "description": "The return over the last three years, a year: `(1 + r)^(1/3) - 1`."
+        },
+        {
+          "type": "string",
+          "const": "return_5y",
+          "description": "The return over the last five years, a year: `(1 + r)^(1/5) - 1`."
+        },
+        {
+          "type": "string",
+          "const": "volatility",
+          "description": "The annualised standard deviation of the daily returns over the last year."
+        },
+        {
+          "type": "string",
+          "const": "volatility_3y",
+          "description": "The annualised standard deviation of the daily returns over the last three years."
+        },
+        {
+          "type": "string",
+          "const": "downside_deviation",
+          "description": "The annualised root mean square of the daily returns' shortfalls below the risk-free\nrate over the last year."
+        },
+        {
+          "type": "string",
+          "const": "max_drawdown",
+          "description": "The largest fall from a peak over the last year, as a negative return."
+        },
+        {
+          "type": "string",
+          "const": "max_drawdown_3y",
+          "description": "The largest fall from a peak over the last three years, as a negative return."
+        },
+        {
+          "type": "string",
+          "const": "drawdown",
+          "description": "The fall from the highest close of the whole history to the last, as a negative return."
+        },
+        {
+          "type": "string",
+          "const": "sharpe_ratio",
+          "description": "The mean daily return in excess of the risk-free rate over its standard deviation,\nannualised, over the last year."
+        },
+        {
+          "type": "string",
+          "const": "sharpe_ratio_3y",
+          "description": "The Sharpe ratio over the last three years."
+        },
+        {
+          "type": "string",
+          "const": "sortino_ratio",
+          "description": "The annualised mean daily return in excess of the risk-free rate over the downside\ndeviation, over the last year."
+        },
+        {
+          "type": "string",
+          "const": "calmar_ratio",
+          "description": "The three-year return a year over the size of the three-year maximum drawdown."
+        },
+        {
+          "type": "string",
+          "const": "value_at_risk",
+          "description": "The loss of one day exceeded on one day in twenty, from the daily returns of the last\nyear (historical, 95%), as a positive return."
+        },
+        {
+          "type": "string",
+          "const": "beta",
+          "description": "The covariance of the daily returns with the benchmark's over the benchmark's variance,\nover the last year."
+        },
+        {
+          "type": "string",
+          "const": "correlation",
+          "description": "The correlation of the daily returns with the benchmark's over the last year."
+        },
+        {
+          "type": "string",
+          "const": "relative_return_6m",
+          "description": "The return over the last six months less the benchmark's."
+        },
+        {
+          "type": "string",
+          "const": "relative_return_1y",
+          "description": "The return over the last year less the benchmark's."
+        },
+        {
+          "type": "string",
+          "const": "price_to_sma_20",
+          "description": "The last close over the average of the last 20."
+        },
+        {
+          "type": "string",
+          "const": "price_to_sma_50",
+          "description": "The last close over the average of the last 50."
+        },
+        {
+          "type": "string",
+          "const": "price_to_sma_200",
+          "description": "The last close over the average of the last 200."
+        },
+        {
+          "type": "string",
+          "const": "sma_50_above_200",
+          "description": "1 when the average of the last 50 closes is above the average of the last 200, else 0."
+        },
+        {
+          "type": "string",
+          "const": "rsi_14",
+          "description": "The relative strength index of the last 14 changes, with Wilder's smoothing, from 0 to\n100."
+        },
+        {
+          "type": "string",
+          "const": "macd_histogram",
+          "description": "The MACD line (the 12-day less the 26-day exponential average of the closes) less its\n9-day exponential average, in the units of the price."
+        },
+        {
+          "type": "string",
+          "const": "from_52w_high",
+          "description": "The last close over the highest close of the last year, less one: zero or negative."
+        },
+        {
+          "type": "string",
+          "const": "from_52w_low",
+          "description": "The last close over the lowest close of the last year, less one: zero or positive."
+        },
+        {
+          "type": "string",
+          "const": "volatility_20d",
+          "description": "The annualised standard deviation of the last 20 daily returns."
+        },
+        {
+          "type": "string",
+          "const": "dividend_yield",
+          "description": "The dividends paid over the last year over the last close."
+        },
+        {
+          "type": "string",
+          "const": "average_volume_20d",
+          "description": "The average volume of the last 20 days."
+        },
+        {
+          "type": "string",
+          "const": "volume_ratio",
+          "description": "The last day's volume over the average of the last 20 days."
+        },
+        {
+          "type": "string",
+          "const": "dollar_volume_20d",
+          "description": "The average of the last 20 days' close times volume."
+        },
+        {
+          "type": "string",
+          "const": "observations",
+          "description": "The number of closes up to the date measured to."
+        },
+        {
+          "type": "string",
+          "const": "last_price",
+          "description": "The last close on or before the date measured to."
+        },
+        {
+          "type": "string",
+          "const": "stale",
+          "description": "1 when the last close is more than the days allowed before the date measured to, else 0."
+        }
+      ],
+      "description": "A measure a screen computes for each security, from its own prices up to the date measured\nto. Each is named in options and results by its snake-case name, such as `\"return_1y\"`."
+    },
+    "MeasureSpread": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The measure's or the field's name."
+        },
+        "label": {
+          "type": "string",
+          "description": "Its label, such as \"Return 1y\"."
+        },
+        "group": {
+          "type": "string",
+          "description": "Its group, such as \"Returns\", or \"Fields\"."
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeasureUnit"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How a measure is shown; absent for a field."
+        },
+        "count": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many securities have a value."
+        },
+        "lacking": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many that are not stale have none."
+        },
+        "min": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest value."
+        },
+        "lower_quartile": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The lower quartile, interpolated linearly between values."
+        },
+        "median": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The median."
+        },
+        "upper_quartile": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The upper quartile."
+        },
+        "max": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The largest value."
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The values the rules compare it with."
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "group",
+        "count",
+        "lacking",
+        "thresholds"
+      ],
+      "description": "The spread of one measure, or of a numeric field a rule tests, across the securities that\nare not stale: the smallest and largest values and the quartiles, with the values the rules\ncompare it with."
+    },
+    "MeasureUnit": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "fraction",
+          "description": "A fraction shown as a percentage: 0.12 is 12%."
+        },
+        {
+          "type": "string",
+          "const": "ratio",
+          "description": "A ratio, such as a Sharpe ratio or a beta."
+        },
+        {
+          "type": "string",
+          "const": "price",
+          "description": "An amount in the units of the price."
+        },
+        {
+          "type": "string",
+          "const": "index",
+          "description": "An index from 0 to 100."
+        },
+        {
+          "type": "string",
+          "const": "count",
+          "description": "A count, such as shares traded."
+        },
+        {
+          "type": "string",
+          "const": "flag",
+          "description": "1 for yes and 0 for no."
+        }
+      ],
+      "description": "How a measure is shown: as a percentage, a ratio, a price, an index from 0 to 100, a count or\na yes or no."
+    },
     "Method": {
       "oneOf": [
         {
@@ -5770,6 +6176,46 @@
       ],
       "description": "What an optimisation seeks."
     },
+    "Op": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "<",
+          "description": "Below the value."
+        },
+        {
+          "type": "string",
+          "const": "<=",
+          "description": "At most the value."
+        },
+        {
+          "type": "string",
+          "const": ">",
+          "description": "Above the value."
+        },
+        {
+          "type": "string",
+          "const": ">=",
+          "description": "At least the value."
+        },
+        {
+          "type": "string",
+          "const": "between",
+          "description": "From the first value of `[low, high]` to the second, both included."
+        },
+        {
+          "type": "string",
+          "const": "in",
+          "description": "One of the text values."
+        },
+        {
+          "type": "string",
+          "const": "not_in",
+          "description": "None of the text values."
+        }
+      ],
+      "description": "How a rule compares a security's value: with a number, a range or a list of text values."
+    },
     "Optimisation": {
       "type": "object",
       "properties": {
@@ -6316,6 +6762,21 @@
         }
       },
       "description": "The method, its parameters and the limits on the weights. Everything is optional: by default\nthe portfolio with the largest Sharpe ratio, fully invested and long only."
+    },
+    "Order": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "ascending",
+          "description": "The smallest first."
+        },
+        {
+          "type": "string",
+          "const": "descending",
+          "description": "The largest first."
+        }
+      ],
+      "description": "Which way matches are sorted."
     },
     "Outcome": {
       "type": "object",
@@ -9655,6 +10116,112 @@
       ],
       "description": "A portfolio's volatility and expected return, a year."
     },
+    "Rule": {
+      "type": "object",
+      "properties": {
+        "measure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Measure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The measure the rule tests, such as `\"return_1y\"`; or give `field`."
+        },
+        "field": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The field the rule tests, such as `\"sector\"` or `\"pe_ratio\"`; or give `measure`."
+        },
+        "op": {
+          "$ref": "#/$defs/Op",
+          "description": "How the value is compared."
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The number compared with, or `[low, high]` for `between`."
+        },
+        "values": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The text values of `in` and `not_in`."
+        }
+      },
+      "required": [
+        "op"
+      ],
+      "description": "A rule every match must meet: a measure or a numeric field compared with a number (`<`,\n`<=`, `>`, `>=`) or a range (`between`), or a text field that is (`in`) or is not (`not_in`)\none of a list of values. A security without the value a rule tests fails it."
+    },
+    "RuleResult": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/Rule",
+          "description": "The rule."
+        },
+        "passed": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many securities that are not stale meet it."
+        },
+        "lacking": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many that are not stale have no value of what it tests, and so fail it."
+        },
+        "remaining": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many meet it and every rule before it."
+        }
+      },
+      "required": [
+        "rule",
+        "passed",
+        "lacking",
+        "remaining"
+      ],
+      "description": "A rule, with how many securities met it."
+    },
+    "RuleValue": {
+      "anyOf": [
+        {
+          "type": "number",
+          "format": "double",
+          "description": "One number."
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "A range: the lowest and the highest values."
+        }
+      ],
+      "description": "The number a numeric rule compares with, or the `[low, high]` range of `between`."
+    },
     "Run": {
       "type": "object",
       "properties": {
@@ -10378,6 +10945,588 @@
       ],
       "description": "Risk by the groups of one classification scheme."
     },
+    "Screen": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/ScreenReport",
+          "description": "The screening report: how many securities were measured, each rule with how many met\nit, the matches in order and the spread of each measure."
+        },
+        "results": {
+          "$ref": "#/$defs/ScreenResults",
+          "description": "The raw results: one row per security, with each measure's value, its fields and\nwhether it matched."
+        }
+      },
+      "required": [
+        "report",
+        "results"
+      ],
+      "description": "A screen: the screening report and the raw results. Printing it prints the report, and\nshowing it shows the report as a page."
+    },
+    "ScreenColumn": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The measure's or the field's name, such as `\"return_1y\"` or `\"sector\"`."
+        },
+        "label": {
+          "type": "string",
+          "description": "Its heading, such as \"Return 1y\"."
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeasureUnit"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How a measure is shown; absent for a field."
+        },
+        "field": {
+          "type": "boolean",
+          "description": "Whether it is a field rather than a measure."
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "field"
+      ],
+      "description": "A column of the matches: a measure or a field."
+    },
+    "ScreenContext": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "The engine's version."
+        },
+        "digest": {
+          "type": "string",
+          "description": "A SHA-256 digest, in hexadecimal, of the options and of what the screen found for each\nsecurity: the same inputs give the same report."
+        },
+        "as_of": {
+          "$ref": "#/$defs/Date",
+          "description": "The date measured to."
+        },
+        "securities": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The securities in the universe."
+        },
+        "first_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The earliest close of any security."
+        },
+        "benchmark": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The benchmark, if any."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free rate."
+        },
+        "max_carry_days": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0,
+          "description": "The most days a last close could be before the date measured to without being stale."
+        },
+        "measures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "description": "The measures computed."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The names of the fields given."
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sort"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the matches are sorted."
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most matches kept."
+        },
+        "warnings": {
+          "$ref": "#/$defs/ValidationReport",
+          "description": "Problems that did not stop the screen."
+        }
+      },
+      "required": [
+        "version",
+        "digest",
+        "as_of",
+        "securities",
+        "risk_free_rate",
+        "max_carry_days",
+        "measures",
+        "fields",
+        "warnings"
+      ],
+      "description": "What a screen measured, beside its figures: what the report needs to describe it."
+    },
+    "ScreenMatch": {
+      "type": "object",
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "Its place among the matches, from 1."
+        },
+        "id": {
+          "type": "string",
+          "description": "The security."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/FieldValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Its value in each column, in the order of the report's `columns`."
+        }
+      },
+      "required": [
+        "rank",
+        "id",
+        "values"
+      ],
+      "description": "One match, with its value in each of the report's columns."
+    },
+    "ScreenOptions": {
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The date measured to: the latest date in the universe by default.",
+          "default": null
+        },
+        "max_carry_days": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0,
+          "description": "The most days a security's last close may be before `as_of`; a security whose last close\nis older is stale: listed, but not measured. 5 by default.",
+          "default": 5
+        },
+        "measures": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "description": "The measures to compute, by name, such as `[\"return_1y\", \"rsi_14\"]`: by default every\nmeasure the universe allows (those against a benchmark need one, and those of volumes\nand dividends need them). The measures the rules and the sort use are computed too.",
+          "default": null
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "description": "The rules a security must all meet to match.",
+          "default": []
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sort"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the matches are sorted; in the universe's order by default.",
+          "default": null
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most matches to keep, after sorting.",
+          "default": null
+        }
+      },
+      "description": "What a screen measures and keeps. Everything is optional: by default every measure the\nuniverse allows, on its latest date, with no rules."
+    },
+    "ScreenReport": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/ScreenContext",
+          "description": "What was measured and how."
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage",
+          "description": "How many securities were measured, passed and matched."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleResult"
+          },
+          "description": "Each rule, with how many met it."
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScreenColumn"
+          },
+          "description": "The columns of the matches: the measure or field sorted by, those the rules test, and a\nfew of the main measures."
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScreenMatch"
+          },
+          "description": "Every match, in order."
+        },
+        "spread": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MeasureSpread"
+          },
+          "description": "The spread of each measure across the universe."
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The report's title, such as \"Quality at a fair price\": shown when it is printed or laid\nout as a page.",
+          "default": null
+        }
+      },
+      "required": [
+        "context",
+        "coverage",
+        "rules",
+        "columns",
+        "matches",
+        "spread"
+      ],
+      "description": "The screening report: what one screen of a universe found."
+    },
+    "ScreenResults": {
+      "type": "object",
+      "properties": {
+        "as_of": {
+          "$ref": "#/$defs/Date",
+          "description": "The date measured to."
+        },
+        "max_carry_days": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0,
+          "description": "The most days a last close could be before `as_of` without being stale."
+        },
+        "benchmark": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The benchmark, if any."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free rate of the Sharpe and Sortino ratios."
+        },
+        "measures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "description": "The measures computed, in the order of each security's `values`."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The names of the fields given."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleResult"
+          },
+          "description": "Each rule, with how many met it."
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sort"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the matches are sorted."
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most matches kept."
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The matches kept, in order."
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage",
+          "description": "How many securities were measured, passed and matched, and how many lacked each measure."
+        },
+        "securities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SecurityScreen"
+          },
+          "description": "One row per security, in the universe's order."
+        },
+        "warnings": {
+          "$ref": "#/$defs/ValidationReport",
+          "description": "Problems that did not stop the screen, such as closes left out."
+        }
+      },
+      "required": [
+        "as_of",
+        "max_carry_days",
+        "risk_free_rate",
+        "measures",
+        "fields",
+        "rules",
+        "matches",
+        "coverage",
+        "securities",
+        "warnings"
+      ],
+      "description": "The raw results of a screen: one row per security, in the universe's order, with each\nmeasure's value, its fields and whether it matched; the matches in order; each rule with how\nmany met it; and how many were measured."
+    },
+    "ScreenStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "measured",
+          "description": "Measured, with the history every rule and the sort need."
+        },
+        {
+          "type": "string",
+          "const": "too_short",
+          "description": "Measured, but with fewer than two closes up to the date measured to, or without the\nhistory a rule or the sort needs: it fails the rules it cannot be judged on."
+        },
+        {
+          "type": "string",
+          "const": "stale",
+          "description": "Its last close is too long before the date measured to: listed, but not measured."
+        }
+      ],
+      "description": "Whether a security was measured."
+    },
+    "SecurityScreen": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The security."
+        },
+        "status": {
+          "$ref": "#/$defs/ScreenStatus",
+          "description": "Whether it was measured."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether it meets every rule."
+        },
+        "matched": {
+          "type": "boolean",
+          "description": "Whether it is one of the matches kept: it passed, and is within the limit."
+        },
+        "rank": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "Its place among the matches kept, from 1."
+        },
+        "first_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The date of its first close."
+        },
+        "last_date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The date of its last close on or before the date measured to."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "description": "Its value of each measure of the results' `measures`, in their order; absent where it\nhas none."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldValue"
+          },
+          "description": "Its fields, by name."
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "passed",
+        "matched",
+        "values"
+      ],
+      "description": "One security's row of a screen: its measures, its fields and whether it matched."
+    },
+    "SecuritySeries": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The security's identifier, such as `\"AAPL\"`."
+        },
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The dates of its closes, in increasing order."
+        },
+        "close": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "description": "Its close on each date. Adjusted closes, which include dividends and splits, give total\nreturns. A close that is not a number (NaN, or `null` in JSON) is no close: that date is\nleft out."
+        },
+        "volume": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "description": "The volume traded on each date, if known; NaN (`null`) where not."
+        },
+        "dividends": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "description": "The dividend per share paid on each date, its ex-date, and zero on the others, if known;\nNaN (`null`) where not known, which counts as none paid unless every one is unknown."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldValue"
+          },
+          "description": "Values the library does not compute, by name, such as `{\"sector\": \"Technology\",\n\"pe_ratio\": 18.4}`: numbers or text, for rules and results."
+        }
+      },
+      "required": [
+        "id",
+        "dates",
+        "close"
+      ],
+      "description": "One security's prices on its own dates: a close on each date, and its volume, dividends and\nfields if known."
+    },
     "Segment": {
       "type": "object",
       "properties": {
@@ -10925,6 +12074,37 @@
         }
       ],
       "description": "How an optimisation ended."
+    },
+    "Sort": {
+      "type": "object",
+      "properties": {
+        "measure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Measure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The measure sorted by; or give `field`."
+        },
+        "field": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The numeric field sorted by; or give `measure`."
+        },
+        "order": {
+          "$ref": "#/$defs/Order",
+          "description": "The largest first (`descending`) or the smallest first (`ascending`)."
+        }
+      },
+      "required": [
+        "order"
+      ],
+      "description": "How matches are sorted: by a measure or a numeric field, one way or the other. Securities\nwithout a value come last."
     },
     "Source": {
       "type": "object",

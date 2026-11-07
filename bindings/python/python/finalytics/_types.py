@@ -70,13 +70,32 @@ of them.
 LotMethod = Literal["fifo", "lifo", "highest_cost", "lowest_cost", "average_cost", "specific_id"]
 """How sales choose which tax lots to close."""
 
+Measure = Literal["return_1w", "return_1m", "return_3m", "return_6m", "return_ytd", "return_1y", "return_3y", "return_5y", "volatility", "volatility_3y", "downside_deviation", "max_drawdown", "max_drawdown_3y", "drawdown", "sharpe_ratio", "sharpe_ratio_3y", "sortino_ratio", "calmar_ratio", "value_at_risk", "beta", "correlation", "relative_return_6m", "relative_return_1y", "price_to_sma_20", "price_to_sma_50", "price_to_sma_200", "sma_50_above_200", "rsi_14", "macd_histogram", "from_52w_high", "from_52w_low", "volatility_20d", "dividend_yield", "average_volume_20d", "volume_ratio", "dollar_volume_20d", "observations", "last_price", "stale"]
+"""A measure a screen computes for each security, from its own prices up to the date measured to.
+Each is named in options and results by its snake-case name, such as `"return_1y"`.
+"""
+
+MeasureUnit = Literal["fraction", "ratio", "price", "index", "count", "flag"]
+"""How a measure is shown: as a percentage, a ratio, a price, an index from 0 to 100, a count or a
+yes or no.
+"""
+
 Method = Literal["minimum_variance", "mean_variance", "robust_mean_variance", "target_return", "target_volatility", "maximum_sharpe", "maximum_diversification", "minimum_cvar", "minimum_semivariance", "minimum_cdar", "equal_weight", "inverse_volatility", "risk_parity", "risk_budgeting", "hierarchical_risk_parity"]
 """An optimisation method, by name. The parameters some methods need are given beside it, in
 `OptimiseOptions` or with the builder's methods.
 """
 
+Op = Literal["<", "<=", ">", ">=", "between", "in", "not_in"]
+"""How a rule compares a security's value: with a number, a range or a list of text values."""
+
+Order = Literal["ascending", "descending"]
+"""Which way matches are sorted."""
+
 ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
 """Which report a report is."""
+
+ScreenStatus = Literal["measured", "too_short", "stale"]
+"""Whether a security was measured."""
 
 Severity = Literal["warning", "error"]
 """How serious a validation issue is."""
@@ -1304,6 +1323,34 @@ name alone, such as `"ledoit_wolf"`; an exponentially weighted covariance withou
 
 
 @dataclass(frozen=True, kw_only=True)
+class Coverage:
+    """How many securities were measured and how many matched."""
+
+    securities: int
+    """The securities in the universe."""
+
+    measured: int
+    """Those measured with the history the rules and the sort need."""
+
+    too_short: int
+    """Those measured with too short a history."""
+
+    stale: int
+    """Those whose last close is too old: listed, but not measured."""
+
+    passed: int
+    """Those that meet every rule."""
+
+    matched: int
+    """The matches kept: those that passed, within the limit."""
+
+    lacking: list[int]
+    """For each measure of the results' `measures`, how many securities that are not stale have no
+    value of it.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class CrashWindow:
     """The worst run of twelve months in the history, for the plan's weights."""
 
@@ -1797,6 +1844,12 @@ class Fees:
 
     minimum: decimal.Decimal = field(default_factory=lambda: decimal.Decimal("0"))
     """The smallest fee a trade pays."""
+
+
+FieldValue = Union[float, str]
+"""A value given with a security that the library does not compute: a number, such as a
+price-to-earnings ratio, or text, such as a sector.
+"""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -2733,6 +2786,50 @@ MeanMethod = Union[HistoricalMean, JamesSteinMean, EwmaMean]
 In JSON it is an object with a `type`, such as `{"type": "ewma", "decay": 0.97}`, or the type's
 name alone, such as `"james_stein"`; an exponentially weighted mean without a decay has 0.94.
 """
+
+
+@dataclass(frozen=True, kw_only=True)
+class MeasureSpread:
+    """The spread of one measure, or of a numeric field a rule tests, across the securities that are
+    not stale: the smallest and largest values and the quartiles, with the values the rules
+    compare it with.
+    """
+
+    name: str
+    """The measure's or the field's name."""
+
+    label: str
+    """Its label, such as "Return 1y"."""
+
+    group: str
+    """Its group, such as "Returns", or "Fields"."""
+
+    unit: MeasureUnit | None = None
+    """How a measure is shown; absent for a field."""
+
+    count: int
+    """How many securities have a value."""
+
+    lacking: int
+    """How many that are not stale have none."""
+
+    min: float | None = None
+    """The smallest value."""
+
+    lower_quartile: float | None = None
+    """The lower quartile, interpolated linearly between values."""
+
+    median: float | None = None
+    """The median."""
+
+    upper_quartile: float | None = None
+    """The upper quartile."""
+
+    max: float | None = None
+    """The largest value."""
+
+    thresholds: list[float]
+    """The values the rules compare it with."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -5035,6 +5132,50 @@ class RiskReturn:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Rule:
+    """A rule every match must meet: a measure or a numeric field compared with a number (`<`, `<=`,
+    `>`, `>=`) or a range (`between`), or a text field that is (`in`) or is not (`not_in`) one of
+    a list of values. A security without the value a rule tests fails it.
+    """
+
+    measure: Measure | None = None
+    """The measure the rule tests, such as `"return_1y"`; or give `field`."""
+
+    field: str | None = None
+    """The field the rule tests, such as `"sector"` or `"pe_ratio"`; or give `measure`."""
+
+    op: Op
+    """How the value is compared."""
+
+    value: RuleValue | None = None
+    """The number compared with, or `[low, high]` for `between`."""
+
+    values: list[str] | None = None
+    """The text values of `in` and `not_in`."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class RuleResult:
+    """A rule, with how many securities met it."""
+
+    rule: Rule
+    """The rule."""
+
+    passed: int
+    """How many securities that are not stale meet it."""
+
+    lacking: int
+    """How many that are not stale have no value of what it tests, and so fail it."""
+
+    remaining: int
+    """How many meet it and every rule before it."""
+
+
+RuleValue = Union[float, list[float]]
+"""The number a numeric rule compares with, or the `[low, high]` range of `between`."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Run:
     """A strategy held over a run of periods, rebalanced on the schedule, net of trading costs."""
 
@@ -5384,6 +5525,273 @@ class SchemeRisk:
 
 
 @dataclass(frozen=True, kw_only=True)
+class Screen(Result):
+    """A screen: the screening report and the raw results. Printing it prints the report, and
+    showing it shows the report as a page.
+    """
+
+    report: ScreenReport
+    """The screening report: how many securities were measured, each rule with how many met it, the
+    matches in order and the spread of each measure.
+    """
+
+    results: ScreenResults
+    """The raw results: one row per security, with each measure's value, its fields and whether it
+    matched.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScreenColumn:
+    """A column of the matches: a measure or a field."""
+
+    name: str
+    """The measure's or the field's name, such as `"return_1y"` or `"sector"`."""
+
+    label: str
+    """Its heading, such as "Return 1y"."""
+
+    unit: MeasureUnit | None = None
+    """How a measure is shown; absent for a field."""
+
+    field: bool
+    """Whether it is a field rather than a measure."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScreenContext:
+    """What a screen measured, beside its figures: what the report needs to describe it."""
+
+    version: str
+    """The engine's version."""
+
+    digest: str
+    """A SHA-256 digest, in hexadecimal, of the options and of what the screen found for each
+    security: the same inputs give the same report.
+    """
+
+    as_of: datetime.date
+    """The date measured to."""
+
+    securities: int
+    """The securities in the universe."""
+
+    first_date: datetime.date | None = None
+    """The earliest close of any security."""
+
+    benchmark: str | None = None
+    """The benchmark, if any."""
+
+    risk_free_rate: float
+    """The annual risk-free rate."""
+
+    max_carry_days: int
+    """The most days a last close could be before the date measured to without being stale."""
+
+    measures: list[Measure]
+    """The measures computed."""
+
+    fields: list[str]
+    """The names of the fields given."""
+
+    sort: Sort | None = None
+    """How the matches are sorted."""
+
+    limit: int | None = None
+    """The most matches kept."""
+
+    warnings: ValidationReport
+    """Problems that did not stop the screen."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScreenMatch:
+    """One match, with its value in each of the report's columns."""
+
+    rank: int
+    """Its place among the matches, from 1."""
+
+    id: str
+    """The security."""
+
+    values: list[FieldValue | None]
+    """Its value in each column, in the order of the report's `columns`."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScreenOptions:
+    """What a screen measures and keeps. Everything is optional: by default every measure the
+    universe allows, on its latest date, with no rules.
+    """
+
+    as_of: datetime.date | None = None
+    """The date measured to: the latest date in the universe by default."""
+
+    max_carry_days: int = 5
+    """The most days a security's last close may be before `as_of`; a security whose last close is
+    older is stale: listed, but not measured. 5 by default.
+    """
+
+    measures: list[Measure] | None = None
+    """The measures to compute, by name, such as `["return_1y", "rsi_14"]`: by default every measure
+    the universe allows (those against a benchmark need one, and those of volumes and dividends
+    need them). The measures the rules and the sort use are computed too.
+    """
+
+    rules: list[Rule] = field(default_factory=list)
+    """The rules a security must all meet to match."""
+
+    sort: Sort | None = None
+    """How the matches are sorted; in the universe's order by default."""
+
+    limit: int | None = None
+    """The most matches to keep, after sorting."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScreenReport(ReportPage):
+    """The screening report: what one screen of a universe found."""
+
+    context: ScreenContext
+    """What was measured and how."""
+
+    coverage: Coverage
+    """How many securities were measured, passed and matched."""
+
+    rules: list[RuleResult]
+    """Each rule, with how many met it."""
+
+    columns: list[ScreenColumn]
+    """The columns of the matches: the measure or field sorted by, those the rules test, and a few
+    of the main measures.
+    """
+
+    matches: list[ScreenMatch]
+    """Every match, in order."""
+
+    spread: list[MeasureSpread]
+    """The spread of each measure across the universe."""
+
+    name: str | None = None
+    """The report's title, such as "Quality at a fair price": shown when it is printed or laid out
+    as a page.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class ScreenResults(PrintedResults):
+    """The raw results of a screen: one row per security, in the universe's order, with each
+    measure's value, its fields and whether it matched; the matches in order; each rule with how
+    many met it; and how many were measured.
+    """
+
+    as_of: datetime.date
+    """The date measured to."""
+
+    max_carry_days: int
+    """The most days a last close could be before `as_of` without being stale."""
+
+    benchmark: str | None = None
+    """The benchmark, if any."""
+
+    risk_free_rate: float
+    """The annual risk-free rate of the Sharpe and Sortino ratios."""
+
+    measures: list[Measure]
+    """The measures computed, in the order of each security's `values`."""
+
+    fields: list[str]
+    """The names of the fields given."""
+
+    rules: list[RuleResult]
+    """Each rule, with how many met it."""
+
+    sort: Sort | None = None
+    """How the matches are sorted."""
+
+    limit: int | None = None
+    """The most matches kept."""
+
+    matches: list[str]
+    """The matches kept, in order."""
+
+    coverage: Coverage
+    """How many securities were measured, passed and matched, and how many lacked each measure."""
+
+    securities: list[SecurityScreen]
+    """One row per security, in the universe's order."""
+
+    warnings: ValidationReport
+    """Problems that did not stop the screen, such as closes left out."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SecurityScreen:
+    """One security's row of a screen: its measures, its fields and whether it matched."""
+
+    id: str
+    """The security."""
+
+    status: ScreenStatus
+    """Whether it was measured."""
+
+    passed: bool
+    """Whether it meets every rule."""
+
+    matched: bool
+    """Whether it is one of the matches kept: it passed, and is within the limit."""
+
+    rank: int | None = None
+    """Its place among the matches kept, from 1."""
+
+    first_date: datetime.date | None = None
+    """The date of its first close."""
+
+    last_date: datetime.date | None = None
+    """The date of its last close on or before the date measured to."""
+
+    values: list[float | None]
+    """Its value of each measure of the results' `measures`, in their order; absent where it has
+    none.
+    """
+
+    fields: dict[str, FieldValue] = field(default_factory=dict)
+    """Its fields, by name."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class SecuritySeries:
+    """One security's prices on its own dates: a close on each date, and its volume, dividends and
+    fields if known.
+    """
+
+    id: str
+    """The security's identifier, such as `"AAPL"`."""
+
+    dates: list[datetime.date]
+    """The dates of its closes, in increasing order."""
+
+    close: list[float | None]
+    """Its close on each date. Adjusted closes, which include dividends and splits, give total
+    returns. A close that is not a number (NaN, or `null` in JSON) is no close: that date is left
+    out.
+    """
+
+    volume: list[float | None] | None = None
+    """The volume traded on each date, if known; NaN (`null`) where not."""
+
+    dividends: list[float | None] | None = None
+    """The dividend per share paid on each date, its ex-date, and zero on the others, if known; NaN
+    (`null`) where not known, which counts as none paid unless every one is unknown.
+    """
+
+    fields: dict[str, FieldValue] = field(default_factory=dict)
+    """Values the library does not compute, by name, such as `{"sector": "Technology", "pe_ratio":
+    18.4}`: numbers or text, for rules and results.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class Segment:
     """A segment of a portfolio and of its benchmark over one period: an asset class, a sector, a
     region or any other grouping.
@@ -5645,6 +6053,22 @@ class Solution:
 
     solve_time: float
     """The time taken, in seconds. It varies from run to run and is left out of comparisons."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class Sort:
+    """How matches are sorted: by a measure or a numeric field, one way or the other. Securities
+    without a value come last.
+    """
+
+    measure: Measure | None = None
+    """The measure sorted by; or give `field`."""
+
+    field: str | None = None
+    """The numeric field sorted by; or give `measure`."""
+
+    order: Order
+    """The largest first (`descending`) or the smallest first (`ascending`)."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -6712,6 +7136,7 @@ __all__ = [
     "CountUnit",
     "CovarianceEstimate",
     "CovarianceMethod",
+    "Coverage",
     "CrashWindow",
     "Currency",
     "CurrencyAttribution",
@@ -6750,6 +7175,7 @@ __all__ = [
     "Failure",
     "Fee",
     "Fees",
+    "FieldValue",
     "FixedMix",
     "FixedWeights",
     "Flow",
@@ -6830,6 +7256,9 @@ __all__ = [
     "MaximumSharpe",
     "MeanMethod",
     "MeanVariance",
+    "Measure",
+    "MeasureSpread",
+    "MeasureUnit",
     "Merger",
     "Method",
     "MinimumCdar",
@@ -6857,6 +7286,7 @@ __all__ = [
     "NumberColumn",
     "Oas",
     "Objective",
+    "Op",
     "Optimisation",
     "OptimisationContext",
     "OptimisationHistory",
@@ -6865,6 +7295,7 @@ __all__ = [
     "OptimisationSummary",
     "OptimiseOptions",
     "OptimisedStrategy",
+    "Order",
     "Outcome",
     "OverviewReport",
     "Payments",
@@ -6926,6 +7357,9 @@ __all__ = [
     "RiskReport",
     "RiskReturn",
     "RobustMeanVariance",
+    "Rule",
+    "RuleResult",
+    "RuleValue",
     "Run",
     "RunReport",
     "Sample",
@@ -6944,6 +7378,16 @@ __all__ = [
     "SchemeImpact",
     "SchemePerformance",
     "SchemeRisk",
+    "Screen",
+    "ScreenColumn",
+    "ScreenContext",
+    "ScreenMatch",
+    "ScreenOptions",
+    "ScreenReport",
+    "ScreenResults",
+    "ScreenStatus",
+    "SecurityScreen",
+    "SecuritySeries",
     "Segment",
     "SegmentEffects",
     "Sell",
@@ -6962,6 +7406,7 @@ __all__ = [
     "Solution",
     "SolveMethod",
     "SolveStatus",
+    "Sort",
     "Source",
     "Spending",
     "SpinOff",

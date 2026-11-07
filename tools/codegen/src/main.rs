@@ -128,6 +128,12 @@ fn api() -> Value {
     add::<finalytics::Plan>(&mut g);
     add::<finalytics::PlanReport>(&mut g);
     add::<finalytics::PlanResults>(&mut g);
+    // Screening.
+    add::<finalytics::screening::Series>(&mut g);
+    add::<finalytics::ScreenOptions>(&mut g);
+    add::<finalytics::Screen>(&mut g);
+    add::<finalytics::ScreenReport>(&mut g);
+    add::<finalytics::ScreenResults>(&mut g);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": format!("{BASE_URL}/finalytics.schema.json"),

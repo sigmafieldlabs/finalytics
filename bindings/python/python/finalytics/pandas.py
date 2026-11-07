@@ -6,6 +6,7 @@
 
     flpd.returns(performance)                  # a Series indexed by date
     flpd.frame(performance.contributions())   # a DataFrame, one row per holding
+    flpd.securities(screen.results)           # a DataFrame, one row per security
 """
 
 from __future__ import annotations
@@ -16,10 +17,11 @@ from typing import Any
 
 import pandas as pd
 
+from finalytics import _types
 from finalytics._convert import to_json
 from finalytics.performance import Performance
 
-__all__ = ["frame", "growth", "returns", "values"]
+__all__ = ["frame", "growth", "returns", "securities", "values"]
 
 
 def returns(performance: Performance) -> pd.Series:
@@ -48,3 +50,25 @@ def frame(records: Iterable[Any]) -> pd.DataFrame:
     and one column per field; nested records become JSON data."""
     rows = [{f.name: _cell(getattr(r, f.name)) for f in dataclasses.fields(r)} for r in records]
     return pd.DataFrame(rows)
+
+
+def securities(results: _types.ScreenResults | _types.Screen) -> pd.DataFrame:
+    """A screen's results as a DataFrame indexed by security, in the universe's order: its
+    status, whether it passed every rule and matched, its rank among the matches, its first and
+    last dates, one column per measure (NaN where it has no value) and one per field."""
+    if isinstance(results, _types.Screen):
+        results = results.results
+    rows = results.securities
+    data: dict[str, Any] = {
+        "status": [r.status for r in rows],
+        "passed": [r.passed for r in rows],
+        "matched": [r.matched for r in rows],
+        "rank": pd.array([r.rank for r in rows], dtype="Int64"),
+        "first_date": pd.to_datetime([r.first_date for r in rows]),
+        "last_date": pd.to_datetime([r.last_date for r in rows]),
+    }
+    for k, measure in enumerate(results.measures):
+        data[measure] = [float("nan") if r.values[k] is None else r.values[k] for r in rows]
+    for field in results.fields:
+        data[field] = [r.fields.get(field) for r in rows]
+    return pd.DataFrame(data, index=pd.Index([r.id for r in rows], name="id"))

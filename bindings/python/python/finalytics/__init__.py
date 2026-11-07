@@ -4,8 +4,9 @@ Finalytics keeps the books of a multi-currency portfolio from its transactions, 
 performance and risk, and optimises portfolios under real-world constraints. The engine is
 written in Rust; this package is a thin, typed layer over it.
 
-There are two front doors: :class:`Portfolio`, for a portfolio's transactions, and
-:class:`Assets`, for the prices or returns of things one might hold::
+There are three front doors: :class:`Portfolio`, for a portfolio's transactions,
+:class:`Assets`, for the prices or returns of things one might hold, and :class:`Universe`, for
+many securities to screen, each on its own dates::
 
     import finalytics as fl
 
@@ -28,6 +29,13 @@ There are two front doors: :class:`Portfolio`, for a portfolio's transactions, a
         flows=[fl.Saving(amount=2_350, every="month")],
         weights={"US Equity": 0.6, "Bonds": 0.4},
         inflation=0.025,
+    )
+
+    universe = fl.Universe(prices, fields=fundamentals, benchmark="SPY")
+    screen = universe.screen(
+        rules=[("return_1y", ">", 0.1), ("sector", "not_in", ["Utilities"])],
+        sort=("sharpe_ratio", "descending"),
+        limit=20,
     )
 """
 
@@ -65,6 +73,7 @@ from finalytics.portfolio import (
     read_document,
     write_document,
 )
+from finalytics.screening import Universe
 
 __version__: str = _distribution_version("finalytics")
 """The version of this package, in Python's version format (for example ``1.0.0``)."""
@@ -92,6 +101,7 @@ __all__ = [
     "Saving",
     "Spending",
     "Target",
+    "Universe",
     "ValidationError",
     "WalkForward",
     "__version__",

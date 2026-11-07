@@ -160,15 +160,18 @@ BASES = {
     "BacktestReport": "ReportPage",
     "RebalanceReport": "ReportPage",
     "PlanReport": "ReportPage",
+    "ScreenReport": "ReportPage",
     "Optimisation": "Result",
     "Comparison": "Result",
     "Backtest": "Result",
     "Rebalancing": "Result",
     "Plan": "Result",
+    "Screen": "Result",
     "OptimisationResult": "PrintedResults",
     "BacktestResults": "PrintedResults",
     "RebalanceResults": "PrintedResults",
     "PlanResults": "PrintedResults",
+    "ScreenResults": "PrintedResults",
 }
 
 
