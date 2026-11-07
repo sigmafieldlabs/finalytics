@@ -548,3 +548,27 @@ fn small_measures_are_exact() {
     assert_eq!(v(Measure::DownsideDeviation), 0.0);
     assert_eq!(r.value("UP", Measure::SortinoRatio), None);
 }
+
+#[test]
+fn dividends_that_are_all_unknown_are_none_given() {
+    let n = 300;
+    let days: Vec<i32> = weekdays("2026-10-30", n)
+        .iter()
+        .map(|d| d.days_since_epoch())
+        .collect();
+    let mut columns = Columns::new(
+        vec!["UNKNOWN".into(), "NONE".into(), "PAID".into()],
+        vec![0, n, 2 * n],
+        [days.clone(), days.clone(), days].concat(),
+        [closes(n, 0.0), closes(n, 0.0), closes(n, 0.0)].concat(),
+    );
+    let mut paid = vec![f64::NAN; n];
+    paid[n - 10] = 1.5;
+    columns.dividends = Some([vec![f64::NAN; n], vec![0.0; n], paid].concat());
+    let s = Securities::from_columns(columns).unwrap();
+    let r = run(&s, &ScreenOptions::default());
+    assert_eq!(r.value("UNKNOWN", Measure::DividendYield), None);
+    assert_eq!(r.value("NONE", Measure::DividendYield), Some(0.0));
+    let last = s.close(2)[n - 1];
+    assert_eq!(r.value("PAID", Measure::DividendYield), Some(1.5 / last));
+}

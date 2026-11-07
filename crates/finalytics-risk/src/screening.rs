@@ -121,7 +121,8 @@ pub struct Series {
     )]
     #[cfg_attr(feature = "schema", schemars(with = "Option<Vec<Option<f64>>>"))]
     pub volume: Option<Vec<f64>>,
-    /// The dividend per share paid on each date, its ex-date, and zero on the others, if known.
+    /// The dividend per share paid on each date, its ex-date, and zero on the others, if known;
+    /// NaN (`null`) where not known, which counts as none paid unless every one is unknown.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -184,7 +185,8 @@ pub struct Columns {
     pub close: Vec<f64>,
     /// Each row's volume, if known; NaN where not.
     pub volume: Option<Vec<f64>>,
-    /// Each row's dividend per share, if known; zero or NaN where none is paid.
+    /// Each row's dividend per share, if known: zero where none is paid, NaN where not known. A
+    /// security whose dividends are all unknown has none given.
     pub dividends: Option<Vec<f64>>,
 }
 
@@ -341,7 +343,7 @@ impl Securities {
                 fill(s.volume.as_ref(), out, f64::NAN);
             }
             if let Some(out) = dividends.as_mut() {
-                fill(s.dividends.as_ref(), out, 0.0);
+                fill(s.dividends.as_ref(), out, f64::NAN);
             }
             has_dividends.push(s.dividends.is_some());
             if !s.fields.is_empty() {
@@ -481,10 +483,20 @@ impl Securities {
         let report = problems.finish();
         report.into_result(())?;
 
-        if let Some(d) = c.dividends.as_mut() {
-            for x in d.iter_mut().filter(|x| x.is_nan()) {
-                *x = 0.0;
+        // A security has dividends when it was given them and at least one is a number; then a
+        // dividend that is not a number is none paid.
+        let mut has_dividends = has_dividends.unwrap_or_else(|| vec![true; c.ids.len()]);
+        match c.dividends.as_mut() {
+            Some(d) => {
+                for (i, has) in has_dividends.iter_mut().enumerate() {
+                    let rows = &mut d[offsets[i]..offsets[i + 1]];
+                    *has &= rows.iter().any(|x| !x.is_nan());
+                    for x in rows.iter_mut().filter(|x| x.is_nan()) {
+                        *x = 0.0;
+                    }
+                }
             }
+            None => has_dividends.iter_mut().for_each(|h| *h = false),
         }
         // A NaN close is no close: its rows are left out.
         let total: usize = dropped.iter().sum();
@@ -546,8 +558,6 @@ impl Securities {
                 format!("{} have no closes: {}", empty.len(), list(&empty)),
             );
         }
-        let has_dividends =
-            has_dividends.unwrap_or_else(|| vec![c.dividends.is_some(); c.ids.len()]);
         Ok(Securities {
             ids: c.ids,
             offsets,

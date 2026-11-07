@@ -1078,7 +1078,7 @@ pub struct Closes {
     pub close: Vec<f64>,
     /// Its volume on each date, NaN where the file gives none, if the file has a volume column.
     pub volume: Option<Vec<f64>>,
-    /// Its dividend per share on each date, zero where the file gives none, if the file has a
+    /// Its dividend per share on each date, NaN where the file gives none, if the file has a
     /// dividends column.
     pub dividends: Option<Vec<f64>>,
 }
@@ -1142,9 +1142,9 @@ pub fn closes_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Closes>> {
             };
             let dividend = if with_dividends {
                 row.optional("dividends", parse_float)
-                    .map(|v| v.unwrap_or(0.0))
+                    .map(|v| v.unwrap_or(f64::NAN))
             } else {
-                Some(0.0)
+                Some(f64::NAN)
             };
             if let (Some(id), Some(date), Some(close), Some(volume), Some(dividend)) =
                 (id, date, close, volume, dividend)
@@ -1193,7 +1193,7 @@ pub fn closes_from_csv(text: &str, options: CsvOptions) -> Result<Vec<Closes>> {
                 if let Some(close) = row.parse(id, &text.clone(), parse_float)
                     && let Some(entry) = points.get_mut(id)
                 {
-                    entry.push((date, close, f64::NAN, 0.0, *line));
+                    entry.push((date, close, f64::NAN, f64::NAN, *line));
                 }
             }
         }
