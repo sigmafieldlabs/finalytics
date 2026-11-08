@@ -154,9 +154,9 @@ The screening report reads from the top, in the page and in 80 columns of text a
   return, per year").
 - **The data**, in one line that names only what is out of the ordinary: securities measured on
   a last price before the date measured to, stale ones, those too short for a rule, and the
-  screen's warnings. A line under it names the benchmark and the risk-free rate, each when the
-  screen has one ("Benchmark: S&P 500 · risk-free rate: 4% a year"); a rate of zero, the
-  default, is none.
+  screen's warnings. A line under it names the benchmark, when the screen has one, and always
+  the risk-free rate the Sharpe and Sortino ratios use, the default 0% included ("Benchmark:
+  S&P 500 · risk-free rate: 4% a year").
 
 Measures are named as people say them ("3-year Sharpe ratio", "RSI (14 days)"), and a price
 against its moving average is shown as the difference: a `price_to_sma_200` of 1.08 is +8.0%.

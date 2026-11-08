@@ -1451,15 +1451,15 @@ impl ScreenReport {
     }
 
     /// What the relative and risk-adjusted measures are taken against, in a line: "Benchmark:
-    /// S&P 500 · risk-free rate: 4% a year", each part only when the screen has it. A rate of
-    /// zero, the default, is no rate.
+    /// S&P 500 · risk-free rate: 4% a year". The benchmark appears when the screen has one; the
+    /// rate always does, as the Sharpe and Sortino ratios use it even when it is the default 0%.
     pub(crate) fn basis_line(&self) -> Option<String> {
         let c = &self.context;
         let mut parts = Vec::new();
         if let Some(b) = &c.benchmark {
             parts.push(format!("benchmark: {b}"));
         }
-        if c.risk_free_rate != 0.0 && c.risk_free_rate.is_finite() {
+        if c.risk_free_rate.is_finite() {
             parts.push(format!(
                 "risk-free rate: {} a year",
                 threshold(c.risk_free_rate, Some(MeasureUnit::Fraction))

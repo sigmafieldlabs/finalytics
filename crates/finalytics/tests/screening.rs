@@ -153,7 +153,7 @@ fn the_measures_leave_out_those_no_security_has() {
 }
 
 #[test]
-fn the_data_names_the_benchmark_and_the_risk_free_rate_when_given() {
+fn the_data_names_the_benchmark_when_given_and_always_the_risk_free_rate() {
     let prices = include_str!("../../../tests/sp500/prices.csv");
     let data = |u: &Universe| {
         let screen = u.screen().measures(["return_1y"]).build().unwrap();
@@ -185,14 +185,15 @@ fn the_data_names_the_benchmark_and_the_risk_free_rate_when_given() {
         "{text}"
     );
     assert!(!text.contains("Benchmark") && !html.contains("Benchmark"));
-    // Neither: nothing more than the line on the data.
+    // Neither: the rate the ratios used, the default 0%, and no benchmark.
     let u = Universe::builder().prices_csv(prices).build().unwrap();
     let (text, html) = data(&u);
+    assert!(text.contains("\n  Risk-free rate: 0% a year.\n"), "{text}");
+    assert!(!text.contains("Benchmark") && !html.contains("Benchmark"));
     assert!(
-        !text.contains("Benchmark") && !text.contains("Risk-free"),
-        "{text}"
+        html.contains(r#"<p class="dline">Risk-free rate: 0% a year.</p>"#),
+        "{html}"
     );
-    assert_eq!(html.matches(r#"<p class="dline">"#).count(), 1, "{html}");
 }
 
 #[test]
