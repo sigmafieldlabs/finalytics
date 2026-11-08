@@ -101,6 +101,11 @@ pub fn report_tables(report: &str) -> Result<Vec<ReportTable>> {
         Some(Assets::Screen) => return Ok(read_report::<ScreenReport>(value)?.tables()),
         None => {}
     }
+    if value.get("provenance").is_none() && value.get("overview").is_some() {
+        let report: crate::PortfolioReport = serde_json::from_value(value)
+            .map_err(|e| invalid("report", format!("is not a full portfolio report: {e}")))?;
+        return Ok(report.tables());
+    }
     let kind: ReportKind = serde_json::from_value(value["provenance"]["report"].clone())
         .map_err(|_| invalid("report.provenance.report", "is not a report kind"))?;
     fn read<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> Result<T> {
@@ -384,6 +389,24 @@ fn years_table(strategies: &[&StrategyReport]) -> ReportTable {
     )
 }
 
+impl crate::PortfolioReport {
+    /// The tables of each of the six reports in turn, as one workbook would hold them: the
+    /// overview, holdings, performance, risk, attribution and scenarios reports'.
+    pub fn tables(&self) -> Vec<ReportTable> {
+        let mut out = self.overview.tables();
+        out.extend(self.holdings.tables());
+        out.extend(self.performance.tables());
+        out.extend(self.risk.tables());
+        if let Some(a) = &self.attribution {
+            out.extend(a.tables());
+        }
+        if let Some(s) = &self.scenarios {
+            out.extend(s.tables());
+        }
+        out
+    }
+}
+
 impl OptimisationReport {
     /// The report's tables: the weights, with each asset's expected return, volatility and
     /// share of risk, and the correlation.
@@ -579,7 +602,36 @@ fn money(currency: Currency) -> ColumnKind {
     ColumnKind::Money { currency }
 }
 
-fn table(name: &str, title: &str, columns: Vec<Column>, rows: Vec<Vec<Cell>>) -> ReportTable {
+/// Why `title` cannot be an Excel sheet name, if it cannot: Excel allows at most 31 characters,
+/// none of `[ ] : * ? / \`, and no apostrophe at either end. A workbook also needs each sheet's
+/// name to differ from the others' regardless of case, which the tests check per report.
+pub(crate) fn sheet_name_problem(title: &str) -> Option<String> {
+    if title.trim().is_empty() {
+        Some("is empty".to_owned())
+    } else if title.chars().count() > 31 {
+        Some(format!(
+            "has {} characters, more than 31",
+            title.chars().count()
+        ))
+    } else if let Some(c) = title.chars().find(|c| "[]:*?/\\".contains(*c)) {
+        Some(format!("contains {c:?}"))
+    } else if title.starts_with('\'') || title.ends_with('\'') {
+        Some("starts or ends with an apostrophe".to_owned())
+    } else {
+        None
+    }
+}
+
+pub(crate) fn table(
+    name: &str,
+    title: &str,
+    columns: Vec<Column>,
+    rows: Vec<Vec<Cell>>,
+) -> ReportTable {
+    debug_assert!(
+        sheet_name_problem(title).is_none(),
+        "the title of table {name}, {title:?}, is not an Excel sheet name"
+    );
     ReportTable {
         name: name.to_owned(),
         title: title.to_owned(),
@@ -958,7 +1010,7 @@ impl RiskReport {
         );
         let tail = table(
             "tail_risk",
-            "Value at risk and expected shortfall",
+            "VaR and expected shortfall",
             vec![
                 col("confidence", "Confidence", ColumnKind::Fraction),
                 col("method", "Method", ColumnKind::Text),
@@ -1079,7 +1131,7 @@ impl OverviewReport {
         );
         let holdings = table(
             "holdings_risk_return",
-            "Holdings: return and risk",
+            "Return and risk by holding",
             vec![
                 col("holding", "Holding", ColumnKind::Text),
                 col("weight", "Weight", ColumnKind::Fraction),

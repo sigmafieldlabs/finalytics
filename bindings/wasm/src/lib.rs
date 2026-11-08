@@ -2864,7 +2864,8 @@ fn report_options(value: JsValue) -> Result<finalytics::reports::ReportOptions, 
         .map_err(error)
 }
 
-/// Any report, as returned by the engine, as labelled tables for export.
+/// Any report, as returned by the engine, as labelled tables for export; the six reports of
+/// `Portfolio.report` give the tables of each in turn.
 #[wasm_bindgen(js_name = reportTables, unchecked_return_type = "ReportTable[]")]
 pub fn report_tables(
     #[wasm_bindgen(unchecked_param_type = "object")] report: JsValue,

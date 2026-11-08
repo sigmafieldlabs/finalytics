@@ -50,3 +50,19 @@ test("scenarios side by side", () => {
 test("a report without its inputs is an error", () => {
   assert.throws(() => books.attributionReport({}), (e) => e.name === "ValidationError" && e.issues[0].path === "options.attribution");
 });
+
+test("table titles are Excel sheet names, and a full report gives every table", () => {
+  const portfolio = fl.datasets.portfolio();
+  const report = portfolio.report(fl.datasets.reportOptions());
+  const tables = fl.reportTables(report);
+  const parts = ["overview", "holdings", "performance", "risk", "attribution", "scenarios"];
+  assert.equal(tables.length, parts.reduce((n, p) => n + fl.reportTables(report[p]).length, 0));
+  const seen = new Set();
+  for (const { title } of tables) {
+    assert.ok(title.length <= 31 && !/[[\]:*?/\\]/.test(title), title);
+    assert.ok(!title.startsWith("'") && !title.endsWith("'"), title);
+    assert.ok(!seen.has(title.toLowerCase()), title);
+    seen.add(title.toLowerCase());
+  }
+  assert.ok(tables.some((t) => t.title === "Return and risk by holding"));
+});

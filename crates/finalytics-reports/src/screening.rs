@@ -1554,13 +1554,7 @@ impl ScreenReport {
             label: label.to_owned(),
             kind,
         };
-        let table =
-            |name: &str, title: &str, columns: Vec<Column>, rows: Vec<Vec<Cell>>| ReportTable {
-                name: name.to_owned(),
-                title: title.to_owned(),
-                columns,
-                rows,
-            };
+        let table = crate::tables::table;
         let number = |x: Option<f64>| {
             x.filter(|x| x.is_finite())
                 .map_or(Cell::Missing, Cell::Number)

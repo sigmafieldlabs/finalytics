@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `PortfolioReport::tables()` in Rust, and `reportTables` of the six reports of
+  `Portfolio.report` in JavaScript, give the tables of each report in turn, as `tables()` does in
+  Python.
+
+### Fixed
+
+- Every report table's title is a valid Excel sheet name (at most 31 characters, none of
+  `[ ] : * ? / \`, and unique within the report), so that the tables of a report export to one
+  workbook: "Holdings: return and risk" is now "Return and risk by holding", "Value at risk and
+  expected shortfall" is "VaR and expected shortfall", and the planning report's changes are
+  "Changes that reach the chance" or "Changes that keep the chance". The tables' names are
+  unchanged.
+
 ## [1.0.0-rc.4] - 2026-11-08
 
 ### Added

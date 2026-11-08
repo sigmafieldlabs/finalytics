@@ -93,3 +93,25 @@ def test_options_are_checked(books):
     assert paths == ["options.confidences[0]", "options.benchmark"]
     with pytest.raises(TypeError):
         fl.reports.tables(books)
+
+
+def sheet_name_problems(tables):
+    """The titles that Excel would refuse as sheet names, with why."""
+    found, seen = [], set()
+    for t in tables:
+        title = t.title
+        if not title.strip() or len(title) > 31 or any(c in title for c in "[]:*?/\\"):
+            found.append(title)
+        elif title.startswith("'") or title.endswith("'") or title.lower() in seen:
+            found.append(title)
+        seen.add(title.lower())
+    return found
+
+
+def test_table_titles_are_excel_sheet_names():
+    portfolio = fl.datasets.portfolio()
+    report = portfolio.report(fl.datasets.report_options())
+    assert sheet_name_problems(fl.reports.tables(report)) == []
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+    optimisation = assets.optimise(method="minimum_variance", max_weight=0.4)
+    assert sheet_name_problems(fl.reports.tables(optimisation.report)) == []

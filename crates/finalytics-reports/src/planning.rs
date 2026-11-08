@@ -1335,12 +1335,7 @@ fn col(key: &str, label: &str, kind: ColumnKind) -> Column {
 }
 
 fn table(name: &str, title: &str, columns: Vec<Column>, rows: Vec<Vec<Cell>>) -> ReportTable {
-    ReportTable {
-        name: name.to_owned(),
-        title: title.to_owned(),
-        columns,
-        rows,
-    }
+    crate::tables::table(name, title, columns, rows)
 }
 
 fn number(x: f64) -> Cell {
@@ -1508,9 +1503,9 @@ impl PlanReport {
                 ]);
             }
             let title = if c.to_reach {
-                "Changes that reach the chance wanted"
+                "Changes that reach the chance"
             } else {
-                "Changes that keep the chance wanted"
+                "Changes that keep the chance"
             };
             out.push(table(
                 "changes",
