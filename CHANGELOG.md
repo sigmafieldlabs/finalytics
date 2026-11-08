@@ -15,6 +15,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- JavaScript: typed arrays, such as `Float64Array`, are read wherever an input holds arrays of
+  numbers: `Assets.fromReturns` took them by its types but refused them ("invalid type: map,
+  expected a sequence"), and so did returns tables, matrices and the other structured inputs. A
+  number that is not finite in one is reported at its index.
 - Every report table's title is a valid Excel sheet name (at most 31 characters, none of
   `[ ] : * ? / \`, and unique within the report), so that the tables of a report export to one
   workbook: "Holdings: return and risk" is now "Return and risk by holding", "Value at risk and

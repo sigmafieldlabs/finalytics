@@ -472,9 +472,13 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
     // JSON has no NaN or Infinity: written as JSON they would become null, read as absent.
     // Prices are the exception, where a missing price may be given as NaN.
     let mut found = Vec::new();
-    if !matches!(name, "prices" | "market") {
-        non_finite(&value, name, &mut found, 0);
-    }
+    let typed = if matches!(name, "prices" | "market") {
+        typed_arrays(&value, 0)
+    } else {
+        let mut typed = false;
+        non_finite(&value, name, &mut found, &mut typed, 0);
+        typed
+    };
     if !found.is_empty() {
         let mut report = ValidationReport::new();
         for (path, x) in found {
@@ -482,15 +486,37 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
         }
         return Err(error(Error::Validation(report)));
     }
-    let text: String = js_sys::JSON::stringify(&value)
+    // A typed array, such as a `Float64Array`, is written as JSON as an object keyed by index;
+    // it is written as the array of numbers it holds instead.
+    let text = if typed {
+        let replacer = Closure::<dyn FnMut(JsValue, JsValue) -> JsValue>::new(
+            |_key: JsValue, value: JsValue| {
+                if value.is_object() && js_sys::ArrayBuffer::is_view(&value) {
+                    js_sys::Array::from(&value).into()
+                } else {
+                    value
+                }
+            },
+        );
+        js_sys::JSON::stringify_with_replacer(&value, replacer.as_ref())
+    } else {
+        js_sys::JSON::stringify(&value)
+    };
+    let text: String = text
         .map_err(|_| invalid(name, "cannot be written as JSON"))?
         .into();
     finalytics::formats::from_json(&text, name).map_err(error)
 }
 
 /// The paths of the numbers in `value` that are not finite, with the numbers: at most 20, as
-/// one mistake tends to repeat.
-fn non_finite(value: &JsValue, path: &str, found: &mut Vec<(String, f64)>, depth: usize) {
+/// one mistake tends to repeat. `typed` is set when `value` holds a typed array.
+fn non_finite(
+    value: &JsValue,
+    path: &str,
+    found: &mut Vec<(String, f64)>,
+    typed: &mut bool,
+    depth: usize,
+) {
     if depth > 32 || found.len() >= 20 {
         return;
     }
@@ -500,15 +526,49 @@ fn non_finite(value: &JsValue, path: &str, found: &mut Vec<(String, f64)>, depth
         }
     } else if js_sys::Array::is_array(value) {
         for (i, item) in js_sys::Array::from(value).iter().enumerate() {
-            non_finite(&item, &format!("{path}[{i}]"), found, depth + 1);
+            non_finite(&item, &format!("{path}[{i}]"), found, typed, depth + 1);
+        }
+    } else if value.is_object() && js_sys::ArrayBuffer::is_view(value) {
+        *typed = true;
+        // Only arrays of floating-point numbers can hold NaN or infinities.
+        let numbers = if let Some(a) = value.dyn_ref::<js_sys::Float64Array>() {
+            a.to_vec()
+        } else if let Some(a) = value.dyn_ref::<js_sys::Float32Array>() {
+            a.to_vec().into_iter().map(f64::from).collect()
+        } else {
+            Vec::new()
+        };
+        for (i, x) in numbers.iter().enumerate() {
+            if !x.is_finite() && found.len() < 20 {
+                found.push((format!("{path}[{i}]"), *x));
+            }
         }
     } else if value.is_object() && !value.is_function() {
         for entry in js_sys::Object::entries(value.unchecked_ref()).iter() {
             let pair = js_sys::Array::from(&entry);
             let key = pair.get(0).as_string().unwrap_or_default();
-            non_finite(&pair.get(1), &format!("{path}.{key}"), found, depth + 1);
+            non_finite(&pair.get(1), &format!("{path}.{key}"), found, typed, depth + 1);
         }
     }
+}
+
+/// Whether `value` holds a typed array, looking into objects and into arrays of objects or
+/// arrays, but not along arrays of numbers, so that large price tables are not read twice.
+fn typed_arrays(value: &JsValue, depth: usize) -> bool {
+    if depth > 32 || !value.is_object() || value.is_function() {
+        return false;
+    }
+    if js_sys::ArrayBuffer::is_view(value) {
+        return true;
+    }
+    if js_sys::Array::is_array(value) {
+        let array = js_sys::Array::from(value);
+        let first = array.get(0);
+        return first.is_object() && array.iter().any(|item| typed_arrays(&item, depth + 1));
+    }
+    js_sys::Object::values(value.unchecked_ref())
+        .iter()
+        .any(|item| typed_arrays(&item, depth + 1))
 }
 
 fn optional<T: DeserializeOwned + Default>(value: JsValue, name: &str) -> Result<T, JsValue> {
