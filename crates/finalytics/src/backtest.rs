@@ -107,7 +107,8 @@ pub enum Strategy {
         #[serde(default)]
         options: Box<OptimiseOptions>,
     },
-    /// Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash.
+    /// Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash;
+    /// without one, `Cash` is cash at the risk-free rate.
     Weights {
         /// The name in the results: `Weights` by default.
         #[serde(default)]
@@ -276,7 +277,10 @@ impl Assets {
                                         .zip(held.iter().copied())
                                         .collect();
                                     let cash = 1.0 - held.iter().sum::<f64>();
-                                    if let Some(rf) = self.risk_free_asset()
+                                    let holds_cash = self
+                                        .risk_free_asset()
+                                        .or(options.cash.map(|_| crate::assets::CASH));
+                                    if let Some(rf) = holds_cash
                                         && cash > 1e-12
                                     {
                                         options.current_weights.insert(rf.to_owned(), cash);
@@ -405,7 +409,8 @@ impl Assets {
         .with_money(options.start_value, options.flows.clone())
     }
 
-    /// Fixed weights by asset as one weight per risky asset, the risk-free asset as cash.
+    /// Fixed weights by asset as one weight per risky asset, the risk-free asset as cash, or,
+    /// without one, `Cash`.
     fn fixed(
         &self,
         weights: &BTreeMap<String, f64>,
@@ -413,8 +418,9 @@ impl Assets {
         report: &mut ValidationReport,
     ) -> Vec<f64> {
         let risky = self.risky_assets();
+        let cash = self.risk_free_asset().unwrap_or(crate::assets::CASH);
         for asset in weights.keys() {
-            if !risky.contains(&asset.as_str()) && self.risk_free_asset() != Some(asset.as_str()) {
+            if !risky.contains(&asset.as_str()) && cash != asset.as_str() {
                 report.error(format!("{path}.{asset}"), format!("unknown asset {asset}"));
             }
         }
@@ -507,6 +513,9 @@ pub(crate) fn limits(options: &OptimiseOptions, refits: bool) -> Vec<String> {
             pct(g.min),
             pct(g.max)
         ));
+    }
+    if let Some(b) = options.cash {
+        out.push(format!("{} to {} in cash", pct(b.min), pct(b.max)));
     }
     if let Some(target) = options.target.filter(|_| options.method.uses_scenarios()) {
         out.push(format!("Expected return at least {} a year", pct(target)));
@@ -1042,6 +1051,14 @@ macro_rules! common_setters {
             /// every fit, such as 0.03.
             pub fn max_tracking_error(mut self, limit: f64) -> Self {
                 self.common.options.max_tracking_error = Some(limit);
+                self
+            }
+
+            /// Cash between `min` and `max` of the portfolio at every fit, such as 0 and 0.2:
+            /// riskless, held in the risk-free asset and earning its return, or, without one,
+            /// earning the risk-free rate.
+            pub fn cash(mut self, min: f64, max: f64) -> Self {
+                self.common.options.cash = Some(Bound { min, max });
                 self
             }
 

@@ -717,6 +717,7 @@ fn histogram(bins: &[Bin], period: &str) -> String {
 fn frontier_chart(
     points: &[FrontierPoint],
     current: &PortfolioPoint,
+    invested: Option<&PortfolioPoint>,
     holdings: &[HoldingRiskReturn],
 ) -> String {
     let (w, h, l, r, t, b) = (880.0, 272.0, 56.0, 120.0, 24.0, 34.0);
@@ -724,12 +725,14 @@ fn frontier_chart(
         .iter()
         .map(|p| p.volatility)
         .chain(std::iter::once(current.volatility))
+        .chain(invested.map(|p| p.volatility))
         .chain(holdings.iter().map(|x| x.volatility))
         .collect();
     let ys: Vec<f64> = points
         .iter()
         .map(|p| p.expected_return)
         .chain(std::iter::once(current.expected_return))
+        .chain(invested.map(|p| p.expected_return))
         .chain(holdings.iter().map(|x| x.expected_return))
         .collect();
     let xt = ticks(0.0, xs.iter().copied().fold(0.0, f64::max), 5);
@@ -797,6 +800,7 @@ fn frontier_chart(
             x(current.volatility),
             y(current.expected_return),
         )))
+        .chain(invested.map(|p| (x(p.volatility), y(p.expected_return))))
         .collect();
     let mut labels = Labels::new((l, t, w - 4.0, h - b), &centres, 6.0);
     let mut by_weight: Vec<&HoldingRiskReturn> = holdings.iter().collect();
@@ -819,6 +823,16 @@ fn frontier_chart(
             );
         }
     }
+    if let Some(p) = invested {
+        let _ = write!(
+            out,
+            r#"<g><title>Invested, cash aside: return {}, volatility {}</title><circle class="dot" cx="{:.1}" cy="{:.1}" r="6" style="fill:var(--s4)"/></g>"#,
+            signed(p.expected_return),
+            share(p.volatility),
+            x(p.volatility),
+            y(p.expected_return)
+        );
+    }
     let _ = write!(
         out,
         r#"<g><title>Current portfolio: return {}, volatility {}</title><circle class="dot" cx="{:.1}" cy="{:.1}" r="6" style="fill:var(--s2)"/></g></svg>"#,
@@ -827,11 +841,15 @@ fn frontier_chart(
         x(current.volatility),
         y(current.expected_return)
     );
-    legend(&[
+    let mut keys = vec![
         ("Efficient frontier".to_owned(), "var(--s1)"),
         ("Current portfolio".to_owned(), "var(--s2)"),
-        ("Holdings".to_owned(), "var(--s3)"),
-    ]) + &out
+    ];
+    if invested.is_some() {
+        keys.push(("Invested, cash aside".to_owned(), "var(--s4)"));
+    }
+    keys.push(("Holdings".to_owned(), "var(--s3)"));
+    legend(&keys) + &out
 }
 
 // ── Layout ───────────────────────────────────────────────────────────────────────────────────
@@ -1049,7 +1067,12 @@ fn overview(o: &OverviewReport) -> String {
         };
         body.push_str(&card(
             "Efficient frontier of the invested holdings",
-            &frontier_chart(frontier, current, &o.holdings),
+            &frontier_chart(
+                frontier,
+                current,
+                o.current_invested.as_ref().filter(|x| *x != current),
+                &o.holdings,
+            ),
             Some(&format!(
                 "Long only and fully invested in the holdings other than base-currency cash; \
                  {given}; {method}."

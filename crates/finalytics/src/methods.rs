@@ -374,6 +374,23 @@ impl Method {
         } else {
             Vec::new()
         };
+        // Cash at the risk-free rate leaves the Sharpe and diversification ratios as they are,
+        // so they take no limits on it.
+        if self.takes_limits()
+            && !matches!(self, Method::MaximumSharpe | Method::MaximumDiversification)
+        {
+            limits.push(
+                of_kind(
+                    "cash",
+                    ParameterKind::Bound,
+                    "The smallest and largest weight of cash, such as 0 and 0.2: riskless, held \
+                     in the risk-free asset and earning its return, or, without one, in Cash \
+                     earning the risk-free rate.",
+                )
+                .at_least(0.0)
+                .at_most(1.0),
+            );
+        }
         // The trade limits are met by leaving out trades one by one, which needs a unique
         // optimum: not those measured on the periods' returns.
         if self.takes_limits() && !self.uses_scenarios() {
@@ -444,6 +461,7 @@ pub(crate) fn given(options: &OptimiseOptions) -> Vec<&'static str> {
         ("max_trades", options.max_trades.is_some()),
         ("benchmark_weights", !options.benchmark_weights.is_empty()),
         ("max_tracking_error", options.max_tracking_error.is_some()),
+        ("cash", options.cash.is_some()),
     ];
     flags
         .into_iter()
@@ -475,6 +493,7 @@ pub(crate) fn without(options: &mut OptimiseOptions, name: &str) {
         "max_trades" => options.max_trades = None,
         "benchmark_weights" => options.benchmark_weights.clear(),
         "max_tracking_error" => options.max_tracking_error = None,
+        "cash" => options.cash = None,
         _ => {}
     }
 }
@@ -492,6 +511,7 @@ pub(crate) fn is_limit(name: &str) -> bool {
             | "min_trade"
             | "max_trades"
             | "max_tracking_error"
+            | "cash"
     )
 }
 

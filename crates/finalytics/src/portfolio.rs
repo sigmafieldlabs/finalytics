@@ -339,23 +339,60 @@ impl Portfolio {
         Performance::from_values(&self.value_series()?, FlowTiming::StartOfDay)
     }
 
-    /// The instruments held at the last price date, as [`Assets`]: their price returns in the
-    /// base currency on the portfolio's dates, for statistics and optimisation.
+    /// The holdings at the last price date, as [`Assets`]: their returns in the base currency on
+    /// the portfolio's dates, for statistics and optimisation. The instruments are the assets
+    /// optimisation chooses among; the cash is there too, so that the portfolio's own mix can be
+    /// valued on the same estimates: base-currency cash, such as `USD cash`, as the risk-free
+    /// asset, riskless and earning nothing, and cash in other currencies, such as `EUR cash`,
+    /// moving with its exchange rate. The returns start on the first date every instrument has
+    /// a price, as the overview report's estimates do.
     pub fn assets(&self) -> Result<Assets> {
-        let date = self.date_or_last(None)?;
-        let held: Vec<HoldingKey> = self
-            .books
-            .holdings_on(date)
+        self.assets_on(self.date_or_last(None)?, &[])
+    }
+
+    /// The holdings on `date`, with any of `also` not held then, as [`Assets`] on the
+    /// portfolio's dates up to `date`: see [`Portfolio::assets`].
+    fn assets_on(&self, date: Date, also: &[HoldingKey]) -> Result<Assets> {
+        let holdings = self.books.holdings_on(date);
+        let base = self.base_currency();
+        let mut instruments: BTreeSet<HoldingKey> = holdings
             .positions()
             .into_iter()
             .filter(|p| !p.quantity.is_zero())
             .map(|p| HoldingKey::Instrument(p.instrument))
-            .collect::<BTreeSet<_>>()
-            .into_iter()
             .collect();
-        let dates = self.dates();
+        let mut foreign: BTreeSet<HoldingKey> = holdings
+            .cash()
+            .filter(|(_, c, amount)| *c != base && !amount.is_zero())
+            .map(|(_, c, _)| HoldingKey::Cash(c))
+            .collect();
+        for key in also {
+            match key {
+                HoldingKey::Instrument(_) => instruments.insert(key.clone()),
+                HoldingKey::Cash(c) if *c != base => foreign.insert(key.clone()),
+                HoldingKey::Cash(_) => false,
+            };
+        }
+        let mut held: Vec<HoldingKey> = instruments.into_iter().collect();
+        held.extend(foreign.iter().cloned());
+        held.push(HoldingKey::Cash(base));
+        let start = held
+            .iter()
+            .filter_map(|key| match key {
+                HoldingKey::Instrument(id) => self.market.prices(id).and_then(|p| p.first()),
+                HoldingKey::Cash(_) => None,
+            })
+            .map(|(first, _)| first)
+            .max();
+        let dates: Vec<Date> = self
+            .dates()
+            .into_iter()
+            .filter(|d| *d <= date && start.is_none_or(|s| *d >= s))
+            .collect();
         let found = holding_returns(&self.books, &held, &dates, &self.market)?;
-        let mut assets = Assets::from_returns(found.dates, found.table)?;
+        let mut assets = Assets::from_returns(found.dates, found.table)?
+            .with_risk_free_asset(&HoldingKey::Cash(base).to_string())?
+            .with_held_cash(&foreign.iter().map(ToString::to_string).collect::<Vec<_>>());
         // The instruments' classifications, for group limits by class.
         let mut schemes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
         for key in &held {
@@ -445,20 +482,16 @@ impl Portfolio {
         let list: Vec<(HoldingKey, f64)> = targets.iter().map(|(k, w)| (k.clone(), *w)).collect();
         let results =
             rebalance_accounts(&self.books, &self.market, date, accounts, &list, options)?;
-        let instruments: Vec<HoldingKey> = results
+        // The estimates of the holdings before and after and the targets, made as
+        // `Portfolio::assets` makes them, so that an optimisation's target has its own figures.
+        let also: Vec<HoldingKey> = results
             .weights_before
             .keys()
             .chain(results.weights_after.keys())
             .chain(targets.keys())
-            .filter(|k| matches!(k, HoldingKey::Instrument(_)))
             .cloned()
-            .collect::<BTreeSet<_>>()
-            .into_iter()
             .collect();
-        let dates: Vec<Date> = self.dates().into_iter().filter(|d| *d <= date).collect();
-        let assets = holding_returns(&self.books, &instruments, &dates, &self.market)
-            .ok()
-            .and_then(|found| Assets::from_returns(found.dates, found.table).ok());
+        let assets = self.assets_on(date, &also).ok();
         let covariance = assets.as_ref().and_then(|a| a.covariance().ok());
         let means = assets.as_ref().map(Assets::mean_returns);
         let estimates = match (&assets, &covariance, &means) {

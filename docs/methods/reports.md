@@ -101,7 +101,10 @@ cash, fully invested in them (see [optimisation](optimisation.md)), with the exp
 given in the options or, for holdings without one, their annualised mean return over the same
 history; each holding says which it has. Riskless cash is left out because the frontier's least
 risky point would otherwise be all cash. The current portfolio, with its cash, is shown on the
-same axes.
+same axes, and so is the current mix with its base-currency cash set aside
+(`current_invested`): the invested holdings in the shares they have of each other, which the
+frontier, fully invested in them, can be compared with. `Portfolio.assets()` makes the same
+estimates, so the current weights valued on them give the current point.
 
 **Fees and taxes.** Fees and taxes charged to an account rather than to a holding, such as an
 advisory fee, are shown as their own line in contribution (`expenses`), not as a loss on the cash

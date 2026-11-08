@@ -107,7 +107,11 @@ def test_the_portfolio_dataset():
 def test_from_holdings_to_trades():
     portfolio = fl.datasets.portfolio()
     assets = portfolio.assets()
-    assert assets.labels == ["BND", "EXSA", "GLD", "VNQ", "VTI"] and assets.periods_per_year == 252
+    assert assets.labels == ["BND", "EXSA", "GLD", "VNQ", "VTI", "EUR cash", "USD cash"]
+    assert assets.periods_per_year == 252
+    # Optimisation chooses among the instruments; the cash is there to value the portfolio.
+    assert assets.risky_assets == ["BND", "EXSA", "GLD", "VNQ", "VTI"]
+    assert assets.cash_assets == ["USD cash", "EUR cash"] and assets.risk_free_asset == "USD cash"
     result = assets.optimise(method="minimum_variance", bounds=(0.05, 0.5))
     proposal = portfolio.rebalance(result)
     same = [portfolio.rebalance(result.results), portfolio.rebalance(result.results.weights)]
@@ -125,6 +129,20 @@ def test_from_holdings_to_trades():
         assert [(i.path, i.message) for i in caught.value.issues] == [
             ("targets", "the optimisation found no weights: no portfolio meets every limit")
         ]
+
+
+def test_limits_on_cash_let_optimisation_hold_it():
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+    result = assets.optimise(method="minimum_variance", cash=(0, 0.3))
+    assert result.results.weights["T-Bills"] == pytest.approx(0.3, abs=1e-6)
+    assert result.report.context.limits == ["0% to 30% in cash"]
+    # Without a risk-free asset, the cash earns the risk-free rate.
+    plain = fl.Assets(fl.datasets.asset_class_prices(), risk_free_rate=0.02)
+    held = plain.optimise(method="minimum_variance", cash=(0.1, 0.2)).results.weights
+    assert held["Cash"] == pytest.approx(0.2, abs=1e-6)
+    with pytest.raises(fl.ValidationError) as caught:
+        assets.optimise(method="maximum_sharpe", cash=(0, 0.2))
+    assert caught.value.issues[0].path == "options.cash"
 
 
 def test_a_portfolio_from_transactions_alone():

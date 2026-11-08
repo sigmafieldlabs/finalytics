@@ -150,9 +150,10 @@ that no asset has is refused, naming those there are.
 by asset, adding up to one with any cash on the risk-free asset; `max_turnover`, the one-way
 turnover from them; `min_trade` and `max_trades`, the trade limits above; and
 `benchmark_weights` with `max_tracking_error`, an annual limit on the tracking error against a
-benchmark. The turnover counts the cash: an optimisation invests all of it, so a weight $c$ held
-in cash takes $c/2$ of the turnover, and the assets' trades have $T - c/2$; a limit below $c/2$
-is refused. The report lists the trades from the current weights with the turnover, and gives the
+benchmark. The turnover counts the cash: without limits on cash, an optimisation invests all of
+it, so a weight $c$ held in cash takes $c/2$ of the turnover, and the assets' trades have
+$T - c/2$; a limit below $c/2$ is refused. With limits on cash (below), the cash is one of the
+choices and its change counts with the others'. The report lists the trades from the current weights with the turnover, and gives the
 tracking error against the benchmark weights whenever they are given, and the frontier is drawn
 under the same limits. The trade limits need a unique optimum, so they are not offered for the
 methods measured on the periods' returns.
@@ -171,6 +172,35 @@ only once, in sample or on a holdout.
 >>> result = assets.optimise(method="maximum_sharpe", current_weights=current, max_turnover=0.1)
 >>> round(result.report.trades.turnover, 4)
 0.1
+
+```
+
+### Cash
+
+`Assets.optimise` invests in the risky assets, all but the cash, unless `cash` limits allow some:
+`cash=(0, 0.2)` lets the weights hold up to 20% in cash, riskless (its variance and covariances
+are zero). The cash is the risk-free asset, earning its own mean return, or, for assets without
+one, an asset named `Cash` earning the risk-free rate. The frontier then includes the cash, from
+the least risky mix the limits allow. The Sharpe and diversification ratios are the same with any
+cash at the risk-free rate, so those methods take no limits on it. In a backtest, the cash is
+held between refits as the weights leave it, earning the risk-free return.
+
+`Portfolio.assets()` includes the portfolio's cash: base-currency cash, such as `USD cash`, as
+the risk-free asset, riskless and earning nothing, and cash in other currencies, such as `EUR
+cash`, which moves with its exchange rate and is estimated with the instruments. The estimates
+are those of the overview report, made over every holding but the base-currency cash on the
+same dates, so the portfolio's own weights valued on them give the overview's current point.
+Optimisation chooses among the instruments (`risky_assets`); the cash (`cash_assets`) is there
+to value the portfolio, and only the risk-free asset can be chosen, with `cash` limits.
+
+```python
+>>> import finalytics as fl
+>>> assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+>>> result = assets.optimise(method="minimum_variance", cash=(0, 0.2))
+>>> round(result.results.weights["T-Bills"], 4)
+0.2
+>>> fl.datasets.portfolio().assets().cash_assets
+['USD cash', 'EUR cash']
 
 ```
 
@@ -212,7 +242,7 @@ takes, naming them all. Fixed weights take no limits or parameters.
 >>> [(p.name, p.required, p.default) for p in cvar.parameters[:2]]
 [('confidence', False, 0.95), ('target', False, None)]
 >>> [p.name for p in cvar.limits]
-['max_weight', 'bounds', 'asset_bounds', 'groups', 'min_effective_assets', 'max_turnover', 'max_tracking_error']
+['max_weight', 'bounds', 'asset_bounds', 'groups', 'min_effective_assets', 'max_turnover', 'max_tracking_error', 'cash']
 >>> confidence = cvar.parameters[0]
 >>> confidence.min, confidence.min_exclusive, confidence.max, confidence.max_exclusive
 (0.0, True, 1.0, True)

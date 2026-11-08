@@ -106,6 +106,11 @@ pub struct OverviewReport {
     pub frontier: Option<Vec<FrontierPoint>>,
     /// The current portfolio on the same axes as the frontier.
     pub current: Option<PortfolioPoint>,
+    /// The current portfolio with its base-currency cash aside: the invested holdings in the
+    /// shares they have of each other, which the frontier, fully invested in them, can be
+    /// compared with. The same as `current` when no base-currency cash is held.
+    #[serde(default)]
+    pub current_invested: Option<PortfolioPoint>,
 }
 
 /// The overview on the report's date.
@@ -209,13 +214,14 @@ pub fn overview_report(
         allocation.push(breakdown(scheme, &|k| group_of(books, k, scheme)));
     }
 
-    let (risk, holdings, frontier, current) = match holdings_risk(&cx, &valuation) {
+    let (risk, holdings, frontier, current, current_invested) = match holdings_risk(&cx, &valuation)
+    {
         Err(e) => {
             warnings.warning(
                 "risk",
                 format!("the holdings' risk could not be estimated: {e}"),
             );
-            (None, Vec::new(), None, None)
+            (None, Vec::new(), None, None, None)
         }
         Ok(Estimated {
             risk,
@@ -259,6 +265,17 @@ pub fn overview_report(
                 .collect();
             let sub = |i: usize, j: usize| risk.covariance.get(invested[i], invested[j]);
             let m = invested.len();
+            // Base-currency cash is riskless and earns nothing, so setting it aside scales the
+            // current point by the share invested.
+            let share: f64 = invested.iter().map(|&i| weights[i]).sum();
+            let current_invested = if invested.len() == keys.len() {
+                Some(current)
+            } else {
+                (share > 0.0).then(|| PortfolioPoint {
+                    expected_return: current.expected_return / share,
+                    volatility: current.volatility / share,
+                })
+            };
             let problem = Matrix::new(
                 invested.iter().map(|&i| label(&keys[i])).collect(),
                 (0..m * m).map(|k| sub(k / m, k % m)).collect(),
@@ -289,7 +306,13 @@ pub fn overview_report(
                     None
                 }
             };
-            (Some(risk), holdings, frontier, Some(current))
+            (
+                Some(risk),
+                holdings,
+                frontier,
+                Some(current),
+                current_invested,
+            )
         }
     };
 
@@ -309,5 +332,6 @@ pub fn overview_report(
         holdings,
         frontier,
         current,
+        current_invested,
     })
 }

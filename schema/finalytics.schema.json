@@ -7065,6 +7065,18 @@
           "description": "The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03.",
           "default": null
         },
+        "cash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Bound"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may\nhold cash beside the risky assets, riskless, and the frontier includes it. The cash is\nthe risk-free asset, earning its return, or, without one, an asset named `Cash` earning\nthe risk-free rate. Without it, the weights are fully invested in the risky assets.",
+          "default": null
+        },
         "frontier": {
           "type": "boolean",
           "description": "Whether the optimisation report draws the efficient frontier under the same limits.\nOff by default: the frontier takes 30 more optimisations, so it adds time that grows with\nthe number of assets, to seconds for hundreds of assets. Only an optimisation reads it;\nbacktests leave it out.",
@@ -7196,6 +7208,18 @@
             }
           ],
           "description": "The current portfolio on the same axes as the frontier."
+        },
+        "current_invested": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PortfolioPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The current portfolio with its base-currency cash aside: the invested holdings in the\nshares they have of each other, which the frontier, fully invested in them, can be\ncompared with. The same as `current` when no base-currency cash is held.",
+          "default": null
         }
       },
       "required": [
@@ -12826,7 +12850,8 @@
                 "min_trade": null,
                 "max_trades": null,
                 "benchmark_weights": {},
-                "max_tracking_error": null
+                "max_tracking_error": null,
+                "cash": null
               }
             }
           },
@@ -12863,7 +12888,7 @@
             "type",
             "weights"
           ],
-          "description": "Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash."
+          "description": "Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash;\nwithout one, `Cash` is cash at the risk-free rate."
         }
       ],
       "description": "A strategy to backtest."

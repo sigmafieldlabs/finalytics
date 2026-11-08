@@ -3637,6 +3637,13 @@ class OptimiseOptions:
     max_tracking_error: float | None = None
     """The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03."""
 
+    cash: Bound | None = None
+    """The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may hold
+    cash beside the risky assets, riskless, and the frontier includes it. The cash is the
+    risk-free asset, earning its return, or, without one, an asset named `Cash` earning the
+    risk-free rate. Without it, the weights are fully invested in the risky assets.
+    """
+
     frontier: bool = False
     """Whether the optimisation report draws the efficient frontier under the same limits. Off by
     default: the frontier takes 30 more optimisations, so it adds time that grows with the number
@@ -3696,6 +3703,12 @@ class OverviewReport(PrintedReport):
 
     current: PortfolioPoint | None = None
     """The current portfolio on the same axes as the frontier."""
+
+    current_invested: PortfolioPoint | None = None
+    """The current portfolio with its base-currency cash aside: the invested holdings in the shares
+    they have of each other, which the frontier, fully invested in them, can be compared with.
+    The same as `current` when no base-currency cash is held.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -6425,13 +6438,15 @@ class OptimisedStrategy:
     name: str | None = None
     """The name in the results; the method's own by default, such as `Maximum Sharpe`."""
 
-    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}, current_weights={}, max_turnover=None, min_trade=None, max_trades=None, benchmark_weights={}, max_tracking_error=None))
+    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}, current_weights={}, max_turnover=None, min_trade=None, max_trades=None, benchmark_weights={}, max_tracking_error=None, cash=None))
     """The method, its parameters and the limits on the weights."""
 
 
 @dataclass(frozen=True, kw_only=True)
 class FixedWeights:
-    """Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash."""
+    """Fixed weights by asset, adding up to one. The risk-free asset, if named, is held as cash;
+    without one, `Cash` is cash at the risk-free rate.
+    """
 
     TYPE: ClassVar[str] = "weights"
     """The value of the `type` tag that identifies this variant."""

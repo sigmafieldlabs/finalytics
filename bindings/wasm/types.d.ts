@@ -2578,6 +2578,13 @@ export interface OptimiseOptions {
   /** The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03. */
   max_tracking_error?: number | null;
   /**
+   * The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may
+   * hold cash beside the risky assets, riskless, and the frontier includes it. The cash is
+   * the risk-free asset, earning its return, or, without one, an asset named `Cash` earning
+   * the risk-free rate. Without it, the weights are fully invested in the risky assets.
+   */
+  cash?: Bound | null;
+  /**
    * Whether the optimisation report draws the efficient frontier under the same limits.
    * Off by default: the frontier takes 30 more optimisations, so it adds time that grows with
    * the number of assets, to seconds for hundreds of assets. Only an optimisation reads it;
@@ -2626,6 +2633,12 @@ export interface OverviewReport {
   frontier?: FrontierPoint[] | null;
   /** The current portfolio on the same axes as the frontier. */
   current?: PortfolioPoint | null;
+  /**
+   * The current portfolio with its base-currency cash aside: the invested holdings in the
+   * shares they have of each other, which the frontier, fully invested in them, can be
+   * compared with. The same as `current` when no base-currency cash is held.
+   */
+  current_invested?: PortfolioPoint | null;
 }
 
 /** The kind of value an option takes. */

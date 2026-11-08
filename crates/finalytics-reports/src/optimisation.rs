@@ -296,6 +296,9 @@ pub struct OptimisationInputs<'a> {
     pub mean_returns: Option<MeanMethod>,
     pub covariance: &'a Matrix,
     pub risk_free_asset: Option<String>,
+    /// The labels among `labels` that are cash: the risk-free asset when limits on cash make it
+    /// one of the choices.
+    pub cash: Vec<String>,
     pub risk_free_rate: f64,
     pub periods_per_year: f64,
     pub covariance_method: CovarianceMethod,
@@ -440,11 +443,22 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             })
             .collect(),
     };
-    let equal_weight = (n > 0).then(|| {
-        let w = vec![1.0 / n as f64; n];
+    // Equal weight of the assets, the cash aside.
+    let is_cash = |i: usize| inputs.cash.contains(&inputs.labels[i]);
+    let invested = (0..n).filter(|&i| !is_cash(i)).count();
+    let equal_weight = (invested > 0).then(|| {
+        let w: Vec<f64> = (0..n)
+            .map(|i| {
+                if is_cash(i) {
+                    0.0
+                } else {
+                    1.0 / invested as f64
+                }
+            })
+            .collect();
         RiskReturn {
             volatility: variance(&w).max(0.0).sqrt(),
-            expected_return: inputs.expected_returns.iter().sum::<f64>() / n as f64,
+            expected_return: (0..n).map(|i| w[i] * inputs.expected_returns[i]).sum(),
         }
     });
     let trades = match (inputs.current_weights, &weights) {
@@ -452,7 +466,11 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             inputs.labels,
             w,
             current,
-            inputs.risk_free_asset.as_deref(),
+            inputs
+                .cash
+                .first()
+                .map(String::as_str)
+                .or(inputs.risk_free_asset.as_deref()),
         )),
         _ => None,
     };
@@ -479,7 +497,12 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             status: inputs.status,
             solver: inputs.solver,
             iterations: inputs.iterations,
-            assets: inputs.labels.to_vec(),
+            assets: inputs
+                .labels
+                .iter()
+                .filter(|l| !inputs.cash.contains(l))
+                .cloned()
+                .collect(),
             risk_free_asset: inputs.risk_free_asset,
             risk_free_rate: inputs.risk_free_rate,
             periods_per_year: inputs.periods_per_year,
@@ -515,8 +538,8 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
 }
 
 /// The trades from `current` to the weights `w` of `labels`, with cash, held in the risk-free
-/// asset `cash` or apart, as what the weights leave. A change below 1e-7 is no trade, as for the
-/// optimiser's trade limits.
+/// asset `cash` or apart: one of `labels` when the weights may hold it, and otherwise what the
+/// weights leave. A change below 1e-7 is no trade, as for the optimiser's trade limits.
 fn trades_from(
     labels: &[String],
     w: &[f64],
@@ -533,15 +556,19 @@ fn trades_from(
                 current: now,
                 proposed: *proposed,
                 change: proposed - now,
-                cash: false,
+                cash: Some(asset.as_str()) == cash,
             }
         })
         .collect();
-    let count = trades.iter().filter(|t| t.change.abs() > 1e-7).count();
+    let count = trades
+        .iter()
+        .filter(|t| !t.cash && t.change.abs() > 1e-7)
+        .count();
+    let chosen = cash.is_some_and(|c| labels.iter().any(|l| l == c));
     let held: f64 = w.iter().sum();
     let cash_now = cash.and_then(|c| current.get(c)).copied().unwrap_or(0.0);
     let cash_after = (1.0 - held).max(0.0);
-    if cash_now.abs() > 1e-12 || cash_after > 1e-7 {
+    if !chosen && (cash_now.abs() > 1e-12 || cash_after > 1e-7) {
         trades.push(WeightChange {
             asset: cash.unwrap_or("Cash").to_owned(),
             current: cash_now,

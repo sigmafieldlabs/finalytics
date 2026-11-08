@@ -340,7 +340,17 @@ fn the_portfolio_dataset_reports_in_full() {
 fn a_portfolio_hands_its_holdings_to_the_optimiser() {
     let portfolio = datasets::portfolio();
     let assets = portfolio.assets().unwrap();
-    assert_eq!(assets.labels(), ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
+    // The instruments are the choices; the cash is there, riskless in dollars, moving with the
+    // rate in euros.
+    assert_eq!(
+        assets.labels(),
+        ["BND", "EXSA", "GLD", "VNQ", "VTI", "EUR cash", "USD cash"]
+    );
+    assert_eq!(assets.risky_assets(), ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
+    assert_eq!(assets.cash_assets(), ["USD cash", "EUR cash"]);
+    assert_eq!(assets.risk_free_rate(), 0.0);
+    let covariance = assets.covariance().unwrap().matrix;
+    assert!(covariance.get(6, 6) == 0.0 && covariance.get(5, 5) > 0.0);
     assert_eq!(assets.periods_per_year(), 252.0);
     let result = assets
         .optimise(Method::MinimumVariance)

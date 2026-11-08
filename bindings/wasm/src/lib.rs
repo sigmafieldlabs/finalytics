@@ -1536,6 +1536,27 @@ impl Assets {
         self.inner.risk_free_asset().map(str::to_owned)
     }
 
+    /// The assets optimisation chooses among: all but the cash.
+    #[wasm_bindgen(getter, js_name = riskyAssets)]
+    pub fn risky_assets(&self) -> Vec<String> {
+        self.inner
+            .risky_assets()
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    }
+
+    /// The cash among the assets, which optimisation does not choose: the risk-free asset, if
+    /// any, then cash in other currencies, such as a portfolio's euro cash.
+    #[wasm_bindgen(getter, js_name = cashAssets)]
+    pub fn cash_assets(&self) -> Vec<String> {
+        self.inner
+            .cash_assets()
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    }
+
     /// Problems met reading the prices that did not stop the assets being built.
     #[wasm_bindgen(getter, unchecked_return_type = "Issue[]")]
     pub fn warnings(&self) -> Result<JsValue, JsValue> {

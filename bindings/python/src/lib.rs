@@ -765,6 +765,22 @@ impl NativeAssets {
         self.inner.risk_free_asset().map(str::to_owned)
     }
 
+    fn risky_assets(&self) -> Vec<String> {
+        self.inner
+            .risky_assets()
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    }
+
+    fn cash_assets(&self) -> Vec<String> {
+        self.inner
+            .cash_assets()
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+    }
+
     fn warnings(&self) -> PyResult<String> {
         to_json(self.inner.warnings())
     }

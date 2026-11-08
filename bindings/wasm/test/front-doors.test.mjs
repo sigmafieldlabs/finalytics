@@ -35,6 +35,21 @@ test("assets from the asset-class dataset", () => {
   assert.deepEqual(fromCsv.returns[0], assets.returns[0]);
 });
 
+test("limits on cash let optimisation hold it", () => {
+  const assets = new fl.Assets(fl.datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
+  const result = assets.optimise({ method: "minimum_variance", cash: { min: 0, max: 0.3 } });
+  close(result.results.weights["T-Bills"], 0.3, 1e-6, "cash");
+  assert.deepEqual(result.report.context.limits, ["0% to 30% in cash"]);
+  // Without a risk-free asset, the cash earns the risk-free rate.
+  const plain = new fl.Assets(fl.datasets.assetClassPrices(), { risk_free_rate: 0.02 });
+  const held = plain.optimise({ method: "minimum_variance", cash: { min: 0.1, max: 0.2 } });
+  close(held.results.weights.Cash, 0.2, 1e-6, "Cash");
+  assert.throws(() => assets.optimise({ method: "maximum_sharpe", cash: { min: 0, max: 0.2 } }), (e) => {
+    assert.equal(e.issues[0].path, "options.cash");
+    return true;
+  });
+});
+
 test("the portfolio dataset, from report to trades", () => {
   const portfolio = fl.datasets.portfolio();
   assert.equal(portfolio.asOf, "2026-10-30");
@@ -43,7 +58,11 @@ test("the portfolio dataset, from report to trades", () => {
   assert.equal(report.scenarios.scenarios.length, 4);
   assert.ok(report.attribution);
   const assets = portfolio.assets();
-  assert.deepEqual(assets.labels, ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
+  assert.deepEqual(assets.labels, ["BND", "EXSA", "GLD", "VNQ", "VTI", "EUR cash", "USD cash"]);
+  // Optimisation chooses among the instruments; the cash is there to value the portfolio.
+  assert.deepEqual(assets.riskyAssets, ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
+  assert.deepEqual(assets.cashAssets, ["USD cash", "EUR cash"]);
+  assert.equal(assets.riskFreeAsset, "USD cash");
   const result = assets.optimise({ method: "minimum_variance", bounds: { min: 0.05, max: 0.5 } });
   const proposal = portfolio.rebalance(result);
   assert.deepEqual(proposal.results, portfolio.rebalance(result.results).results);

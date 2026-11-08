@@ -258,6 +258,17 @@ class Assets:
         return self._native.risk_free_asset()
 
     @property
+    def risky_assets(self) -> list[str]:
+        """The assets optimisation chooses among: all but the cash."""
+        return self._native.risky_assets()
+
+    @property
+    def cash_assets(self) -> list[str]:
+        """The cash among the assets, which optimisation does not choose: the risk-free asset,
+        if any, then cash in other currencies, such as a portfolio's euro cash."""
+        return self._native.cash_assets()
+
+    @property
     def warnings(self) -> list[_types.Issue]:
         """Problems met reading the prices that did not stop the assets being built, such as
         dates left out because an asset had no price."""
@@ -307,6 +318,7 @@ class Assets:
         max_trades: int | None = None,
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
+        cash: BoundLike | None = None,
     ) -> _types.OptimiseOptions:
         # Numbers JSON cannot hold, named by keyword: a comparison or backtest repeats the
         # options in each strategy.
@@ -350,6 +362,7 @@ class Assets:
             max_trades=None if max_trades is None else int(max_trades),
             benchmark_weights={k: float(v) for k, v in (benchmark_weights or {}).items()},
             max_tracking_error=None if max_tracking_error is None else float(max_tracking_error),
+            cash=None if cash is None else _bound(cash),
         )
 
     def optimise(
@@ -376,6 +389,7 @@ class Assets:
         max_trades: int | None = None,
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
+        cash: BoundLike | None = None,
         frontier: bool = False,
         name: str | None = None,
     ) -> _types.Optimisation:
@@ -427,6 +441,11 @@ class Assets:
         `benchmark_weights` gives the report the tracking error against a benchmark, and
         `max_tracking_error` limits it, a year, such as 0.03.
 
+        ``cash=(0, 0.2)`` lets the weights hold between none and 20% in cash, riskless: in the
+        risk-free asset, earning its return, or, without one, in ``"Cash"`` at the risk-free
+        rate. The frontier then includes the cash. Without it, the weights are fully invested
+        in the risky assets. The Sharpe and diversification methods take no limits on cash.
+
         ``frontier=True`` draws the efficient frontier under the same limits in the report. It
         takes 30 more optimisations, so it adds time that grows with the number of assets, to
         seconds for hundreds of assets; without it, the report shows the weights against each
@@ -454,14 +473,16 @@ class Assets:
             max_trades=max_trades,
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
+            cash=cash,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
         result = loads(_types.Optimisation, call(self._native.optimise, dumps(options, "options")))
         results = result.results
         if results.weights is not None:
-            # In the order of the assets, rather than of their names.
+            # In the order of the assets, rather than of their names, with any cash at the
+            # risk-free rate last.
             order = {label: i for i, label in enumerate(self.labels)}
-            weights = dict(sorted(results.weights.items(), key=lambda item: order[item[0]]))
+            weights = dict(sorted(results.weights.items(), key=lambda item: order.get(item[0], len(order))))
             result = dataclasses.replace(result, results=dataclasses.replace(results, weights=weights))
         if name is not None:
             result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
@@ -483,10 +504,11 @@ class Assets:
         max_trades: int | None = None,
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
+        cash: BoundLike | None = None,
     ) -> list[_types.FrontierPortfolio]:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
         the least variance to the one with the largest expected return, under the limits given
-        as for :meth:`optimise`, trade and tracking-error limits included."""
+        as for :meth:`optimise`, trade and tracking-error limits and cash included."""
         options = self._options(
             "maximum_sharpe",
             bounds=bounds,
@@ -501,6 +523,7 @@ class Assets:
             max_trades=max_trades,
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
+            cash=cash,
         )
         return loads(list[_types.FrontierPortfolio], call(self._native.frontier, int(points), dumps(options, "options")))
 
@@ -534,6 +557,7 @@ class Assets:
         max_trades: int | None = None,
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
+        cash: BoundLike | None = None,
         start_value: float | None = None,
         flows: FlowsLike = (),
     ) -> _types.Comparison:
@@ -593,6 +617,7 @@ class Assets:
             max_trades=max_trades,
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
+            cash=cash,
         )
         if isinstance(methods, str):
             raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
@@ -655,6 +680,7 @@ class Assets:
         max_trades: int | None = None,
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
+        cash: BoundLike | None = None,
         start_value: float | None = None,
         flows: FlowsLike = (),
     ) -> _types.Backtest:
@@ -688,6 +714,7 @@ class Assets:
             max_trades=max_trades,
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
+            cash=cash,
         )
         strategy: Any
         if weights is not None:

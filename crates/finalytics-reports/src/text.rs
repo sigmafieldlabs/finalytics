@@ -829,6 +829,14 @@ pub(crate) fn overview(page: &mut Page, o: &OverviewReport) {
             signed(current.expected_return),
             share(current.volatility),
         ]];
+        // The frontier is fully invested; the current mix with its cash aside compares with it.
+        if let Some(x) = o.current_invested.filter(|x| x != current) {
+            rows.push(vec![
+                "Invested, cash aside".to_owned(),
+                signed(x.expected_return),
+                share(x.volatility),
+            ]);
+        }
         if let Some(x) = lowest {
             rows.push(vec![
                 "Lowest volatility".to_owned(),

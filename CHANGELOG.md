@@ -9,6 +9,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Cash in optimisation: `cash` limits (`.cash(0.0, 0.2)` in Rust, `cash=(0, 0.2)` in Python,
+  `cash: { min: 0, max: 0.2 }` in JavaScript) let `optimise`, `compare` and `backtest` hold cash
+  beside the risky assets, riskless, in the risk-free asset or, for assets without one, in `Cash`
+  at the risk-free rate; the frontier then includes it. Without them, the weights are fully
+  invested in the risky assets, as before. `risky_assets` and `cash_assets` list which assets
+  optimisation chooses among and which are cash. The overview report adds `current_invested`, the
+  current mix with its base-currency cash set aside, on the axes of its frontier.
+
 - Group limits by classification: a group may name a classification rather than list its assets,
   such as at most 60% in the assets classed `Equity` under `asset_class` (Rust
   `.class_limit("asset_class", "Equity", 0.0, 0.6)`, Python `groups={"Equity": ("asset_class", 0,
@@ -49,6 +57,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Python.
 
 ### Changed
+
+- `Portfolio.assets()` includes the portfolio's cash: base-currency cash, such as `USD cash`, as
+  the risk-free asset, riskless and earning nothing, and cash in other currencies, such as
+  `EUR cash`, estimated with the instruments as it moves with its exchange rate. The estimates are
+  the overview report's, so the portfolio's own weights valued on them give the overview's
+  current point, and the rebalance report's figures for an optimisation's target are the
+  optimisation's. Optimisation still chooses among the instruments alone, but its estimates now
+  include the foreign cash, so its weights can differ slightly from rc.4's; `labels` lists the
+  cash after the instruments. `Assets.covariance()` gives a risk-free asset whose return is the
+  same in every period, such as idle cash, no variance, rather than the share a shrinkage
+  estimator lent it.
 
 - Rust: `AssetGroup` has a `classification` field, and its `min` and `max` default to 0 and 1
   in JSON.
