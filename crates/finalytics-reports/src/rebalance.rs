@@ -77,6 +77,9 @@ pub struct RebalanceContext {
     /// The estimates behind the volatility and expected return before and after; absent when
     /// the holdings' returns could not be estimated.
     pub estimates: Option<RebalanceEstimates>,
+    /// The cash kept as it was, by currency, as asked.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub kept_cash: Vec<finalytics_opt::KeptCash>,
 }
 
 /// The estimates behind a rebalance's volatility and expected return.
@@ -432,6 +435,7 @@ pub fn rebalance_report(inputs: RebalanceInputs<'_>) -> Result<RebalanceReport> 
                 start: e.start,
                 end: e.end,
             }),
+            kept_cash: inputs.results.kept_cash.clone(),
         },
         summary,
         holdings,
@@ -572,6 +576,22 @@ impl RebalanceReport {
             " Purchases leave room for the fees, so the trades fit the cash each account has.",
         );
         rows.push(("Trades", trades));
+        if !c.kept_cash.is_empty() {
+            let kept: Vec<String> = c
+                .kept_cash
+                .iter()
+                .map(|k| format!("{} {}", k.currency, crate::text::money(dec(k.amount))))
+                .collect();
+            rows.push((
+                "Cash",
+                format!(
+                    "{} kept as {}, as asked: the targets are shares of the rest of the value, so \
+                     the trades neither invest it nor add to it.",
+                    crate::backtest_html::and_list(&kept),
+                    if kept.len() == 1 { "it is" } else { "they are" }
+                ),
+            ));
+        }
         rows.push((
             "Lots",
             if c.tax.is_some() {

@@ -523,6 +523,7 @@ class Portfolio:
         minimum_fee: float = 0,
         tax: tuple[float, float] | None = None,
         long_term_after_days: int | None = None,
+        keep_cash: bool | Sequence[str] = False,
         name: str | None = None,
     ) -> _types.Rebalancing:
         """The trades that move `accounts` (by default every account) together to `targets`:
@@ -548,7 +549,14 @@ class Portfolio:
         in taxable accounts take the lots that cost the least tax, and the tax is estimated; a
         gain is long-term after `long_term_after_days` (365 by default), and an account that is
         not taxable, such as a retirement account, pays none.
+
+        ``keep_cash=True`` keeps every currency's cash as it is, and ``keep_cash=["USD"]`` that
+        of the currencies named: the targets are then shares of the rest of the value, so the
+        trades neither invest that cash nor add to it. By default the targets are shares of the
+        whole value, cash included.
         """
+        if isinstance(keep_cash, str):
+            raise invalid(("keep_cash", f"must be True or a list of currencies, such as [{keep_cash!r}]"))
         choices = {
             "accounts": [a.id for a in self.data.accounts] if accounts is None else list(accounts),
             "as_of": self._date_or_last_price(as_of),
@@ -561,6 +569,7 @@ class Portfolio:
             "minimum_fee": float(minimum_fee),
             "tax": None if tax is None else [float(tax[0]), float(tax[1])],
             "long_term_after_days": long_term_after_days,
+            "keep_cash": keep_cash if isinstance(keep_cash, bool) else list(keep_cash),
         }
         if isinstance(targets, _types.Optimisation):
             # The method and limits name the targets in the report.

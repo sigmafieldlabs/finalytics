@@ -1853,6 +1853,18 @@ export interface Issue {
   severity: Severity;
 }
 
+/** Cash a rebalancing kept as it was. */
+export interface KeptCash {
+  /** The currency. */
+  currency: Currency;
+  /** The amount kept, in the accounts rebalanced together. */
+  amount: Decimal;
+  /** Its value in the base currency. */
+  value_base: Decimal;
+  /** Its share of the accounts' value, which the targets leave to it. */
+  weight: number;
+}
+
 /** How clusters are joined in hierarchical risk parity. */
 export type Linkage = "single" | "complete" | "average" | "ward";
 
@@ -3350,6 +3362,8 @@ export interface RebalanceContext {
    * the holdings' returns could not be estimated.
    */
   estimates?: RebalanceEstimates | null;
+  /** The cash kept as it was, by currency, as asked. */
+  kept_cash?: KeptCash[];
 }
 
 /** The estimates behind a rebalance's volatility and expected return. */
@@ -3383,6 +3397,12 @@ export interface RebalanceOptions {
    * losses first, and the tax is estimated.
    */
   tax?: TaxRates | null;
+  /**
+   * Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest
+   * of the value, so the trades neither invest that cash nor add to it. None by default: the
+   * targets are shares of the whole value, and base-currency cash takes what they leave.
+   */
+  keep_cash?: Currency[];
 }
 
 /**
@@ -3435,6 +3455,8 @@ export interface RebalanceResults {
   fees_base: Decimal;
   /** With tax rates, the estimated tax on the sales' gains in the base currency. */
   tax_base?: Decimal | null;
+  /** The cash kept as it was, by currency, as `keep_cash` asked. */
+  kept_cash?: KeptCash[];
 }
 
 /**

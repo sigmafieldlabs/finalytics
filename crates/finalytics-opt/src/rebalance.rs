@@ -31,6 +31,11 @@ pub struct RebalanceOptions {
     /// Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,
     /// losses first, and the tax is estimated.
     pub tax: Option<TaxRates>,
+    /// Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest
+    /// of the value, so the trades neither invest that cash nor add to it. None by default: the
+    /// targets are shares of the whole value, and base-currency cash takes what they leave.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keep_cash: Vec<Currency>,
 }
 
 impl Default for RebalanceOptions {
@@ -41,8 +46,100 @@ impl Default for RebalanceOptions {
             minimum_trade: Decimal::ZERO,
             fees: Fees::default(),
             tax: None,
+            keep_cash: Vec::new(),
         }
     }
+}
+
+/// Cash a rebalancing kept as it was.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct KeptCash {
+    /// The currency.
+    pub currency: Currency,
+    /// The amount kept, in the accounts rebalanced together.
+    pub amount: Decimal,
+    /// Its value in the base currency.
+    pub value_base: Decimal,
+    /// Its share of the accounts' value, which the targets leave to it.
+    pub weight: f64,
+}
+
+/// Target weights by holding.
+type Targets = Vec<(HoldingKey, f64)>;
+
+/// The targets with the cash of `keep` kept: each target a share of the value of `accounts`
+/// other than that cash, and each kept balance at its own share, so that no trade invests it or
+/// adds to it. A target that names kept cash is a problem in `report`.
+fn keeping_cash(
+    books: &Books,
+    market: &MarketData,
+    date: Date,
+    accounts: &[AccountId],
+    targets: &[(HoldingKey, f64)],
+    keep: &[Currency],
+) -> Result<(Targets, Vec<KeptCash>)> {
+    let mut report = ValidationReport::new();
+    for (holding, _) in targets {
+        if let HoldingKey::Cash(c) = holding
+            && keep.contains(c)
+        {
+            report.error(
+                format!("targets.{holding}"),
+                format!("{c} cash is kept as it is, so it takes no target"),
+            );
+        }
+    }
+    report.into_result(())?;
+    let valuation = books.value_on(date, market)?;
+    let total: f64 = valuation
+        .positions
+        .iter()
+        .filter(|p| accounts.contains(&p.account))
+        .map(|p| to_f64(p.market_value_base))
+        .chain(
+            valuation
+                .cash
+                .iter()
+                .filter(|c| accounts.contains(&c.account))
+                .map(|c| to_f64(c.value_base)),
+        )
+        .sum();
+    let mut kept = Vec::new();
+    for currency in keep {
+        let held = valuation
+            .cash
+            .iter()
+            .filter(|c| accounts.contains(&c.account) && c.currency == *currency);
+        let (amount, value) = held.fold((Decimal::ZERO, Decimal::ZERO), |(a, v), c| {
+            (a + c.amount, v + c.value_base)
+        });
+        if !amount.is_zero() {
+            kept.push(KeptCash {
+                currency: *currency,
+                amount,
+                value_base: value,
+                weight: if total > 0.0 {
+                    to_f64(value) / total
+                } else {
+                    0.0
+                },
+            });
+        }
+    }
+    let rest = 1.0 - kept.iter().map(|k| k.weight).sum::<f64>();
+    let mut out: Vec<(HoldingKey, f64)> =
+        targets.iter().map(|(k, w)| (k.clone(), w * rest)).collect();
+    let base = books.base_currency();
+    // Base-currency cash takes what the targets leave, its own share among it; cash in another
+    // currency is converted to its target, so its target is its share.
+    out.extend(
+        kept.iter()
+            .filter(|k| k.currency != base)
+            .map(|k| (HoldingKey::Cash(k.currency), k.weight)),
+    );
+    Ok((out, kept))
 }
 
 /// The fee a trade pays, in the instrument's currency: `max(minimum, per_trade + rate * value)`,
@@ -271,6 +368,19 @@ pub fn rebalance(
     targets: &[(HoldingKey, f64)],
     options: &RebalanceOptions,
 ) -> Result<Rebalance> {
+    if !options.keep_cash.is_empty() {
+        let (kept_targets, _) = keeping_cash(
+            books,
+            market,
+            date,
+            std::slice::from_ref(account),
+            targets,
+            &options.keep_cash,
+        )?;
+        let mut rest = options.clone();
+        rest.keep_cash.clear();
+        return rebalance(books, market, date, account, &kept_targets, &rest);
+    }
     let base = books.base_currency();
     let mut problems = ValidationReport::new();
     let mut warnings = ValidationReport::new();
@@ -701,6 +811,9 @@ pub struct RebalanceResults {
     pub fees_base: Decimal,
     /// With tax rates, the estimated tax on the sales' gains in the base currency.
     pub tax_base: Option<Decimal>,
+    /// The cash kept as it was, by currency, as `keep_cash` asked.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub kept_cash: Vec<KeptCash>,
 }
 
 /// Proposes the trades that move `accounts` together to `targets`: a weight for each holding, as
@@ -736,6 +849,15 @@ pub fn rebalance_accounts(
     // share and their problems hidden.
     check_targets(books, targets, &mut report);
     report.into_result(())?;
+    if !options.keep_cash.is_empty() {
+        let (kept_targets, kept) =
+            keeping_cash(books, market, date, accounts, targets, &options.keep_cash)?;
+        let mut rest = options.clone();
+        rest.keep_cash.clear();
+        let mut results = rebalance_accounts(books, market, date, accounts, &kept_targets, &rest)?;
+        results.kept_cash = kept;
+        return Ok(results);
+    }
     if let [account] = accounts {
         let proposal = rebalance(books, market, date, account, targets, options)?;
         return Ok(combine(vec![proposal], base, options));
@@ -884,6 +1006,7 @@ fn combine(
         value_base,
         base_currency,
         accounts: proposals,
+        kept_cash: Vec::new(),
     }
 }
 

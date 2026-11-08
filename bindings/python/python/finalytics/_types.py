@@ -2641,6 +2641,23 @@ class Issue:
 
 
 @dataclass(frozen=True, kw_only=True)
+class KeptCash:
+    """Cash a rebalancing kept as it was."""
+
+    currency: str
+    """The currency."""
+
+    amount: decimal.Decimal
+    """The amount kept, in the accounts rebalanced together."""
+
+    value_base: decimal.Decimal
+    """Its value in the base currency."""
+
+    weight: float
+    """Its share of the accounts' value, which the targets leave to it."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class Lot:
     """Units of one instrument acquired together, with their remaining cost basis.
 
@@ -4691,6 +4708,9 @@ class RebalanceContext:
     holdings' returns could not be estimated.
     """
 
+    kept_cash: list[KeptCash] = field(default_factory=list)
+    """The cash kept as it was, by currency, as asked."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class RebalanceEstimates:
@@ -4730,6 +4750,12 @@ class RebalanceOptions:
     tax: TaxRates | None = None
     """Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,
     losses first, and the tax is estimated.
+    """
+
+    keep_cash: list[str] = field(default_factory=list)
+    """Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest of
+    the value, so the trades neither invest that cash nor add to it. None by default: the targets
+    are shares of the whole value, and base-currency cash takes what they leave.
     """
 
 
@@ -4794,6 +4820,9 @@ class RebalanceResults(PrintedResults):
 
     tax_base: decimal.Decimal | None = None
     """With tax rates, the estimated tax on the sales' gains in the base currency."""
+
+    kept_cash: list[KeptCash] = field(default_factory=list)
+    """The cash kept as it was, by currency, as `keep_cash` asked."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7504,6 +7533,7 @@ __all__ = [
     "InverseVolatility",
     "Issue",
     "JamesSteinMean",
+    "KeptCash",
     "LedoitWolf",
     "LevelUnit",
     "Linkage",

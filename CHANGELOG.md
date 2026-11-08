@@ -9,6 +9,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Rebalancing can keep cash as it is, for every currency or those named (`keep_cash=True` or
+  `keep_cash=["USD"]` in Python and JavaScript, `.keep_all_cash()` or `.keep_cash(["USD"])` in
+  Rust): the targets are then shares of the rest of the value, so the trades neither invest that
+  cash nor add to it. The results and the report say what was kept. By default the targets are
+  still shares of the whole value, cash included.
+
 - Blended benchmarks: the reports' `benchmark` may be weights by holding, such as
   `{"VTI": 0.55, "BND": 0.35, "GLD": 0.1}` (`.benchmark_blend(...)` in Rust), held at those
   weights in the base currency and rebalanced monthly. From a blend, the attribution report

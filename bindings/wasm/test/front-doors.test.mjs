@@ -106,3 +106,13 @@ test("a portfolio from its transactions alone", () => {
     name: "ValidationError",
   });
 });
+
+test("rebalancing keeps the cash asked", () => {
+  const portfolio = fl.datasets.portfolio();
+  const target = portfolio.assets().optimise({ method: "minimum_variance", bounds: { min: 0.05, max: 0.4 } });
+  const kept = portfolio.rebalance(target, { keep_cash: ["USD"] });
+  const r = kept.results;
+  assert.ok(Math.abs(r.weights_after["USD cash"] - r.weights_before["USD cash"]) * Number(r.value_base) < 0.01);
+  assert.deepEqual(r.kept_cash.map((k) => k.currency), ["USD"]);
+  assert.equal(portfolio.rebalance(target, { keep_cash: true }).results.kept_cash.length, 2);
+});

@@ -85,6 +85,12 @@ export interface RebalanceChoices {
   tax?: [number, number];
   /** The holding period, in days, after which a gain is long-term: 365 by default. */
   long_term_after_days?: number;
+  /**
+   * `true` keeps every currency's cash as it is, and `["USD"]` that of the currencies named: the
+   * targets are then shares of the rest of the value, so the trades neither invest that cash nor
+   * add to it. By default the targets are shares of the whole value, cash included.
+   */
+  keep_cash?: boolean | string[];
 }
 
 /**

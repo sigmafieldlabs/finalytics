@@ -160,3 +160,15 @@ def test_rebalancing_several_accounts(books):
     after = dict(plan.weights_after)
     assert abs(after["SPY"] - 0.3) < 1e-6
     assert abs(after["BOND"] - 0.4) < 1e-6
+
+
+def test_rebalancing_keeps_the_cash_asked():
+    portfolio = fl.datasets.portfolio()
+    target = portfolio.assets().optimise(method="minimum_variance", bounds=(0.05, 0.4))
+    kept = portfolio.rebalance(target, keep_cash=["USD"])
+    before, after = kept.results.weights_before["USD cash"], kept.results.weights_after["USD cash"]
+    assert abs(after - before) * float(kept.results.value_base) < 0.01
+    assert [k.currency for k in kept.results.kept_cash] == ["USD"]
+    assert len(portfolio.rebalance(target, keep_cash=True).results.kept_cash) == 2
+    with pytest.raises(fl.ValidationError):
+        portfolio.rebalance(target, keep_cash="USD")

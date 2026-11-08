@@ -381,6 +381,7 @@ impl Portfolio {
             name: None,
             options: RebalanceOptions::default(),
             plain: PlainCosts::default(),
+            keep: None,
         }
     }
 
@@ -718,6 +719,18 @@ pub struct RebalanceBuilder<'a> {
     name: Option<String>,
     options: RebalanceOptions,
     plain: PlainCosts,
+    keep: Option<KeepCash>,
+}
+
+/// The cash a rebalancing keeps: every currency's, or those named.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(untagged)]
+#[doc(hidden)]
+pub enum KeepCash {
+    /// Every currency's cash, when true.
+    All(bool),
+    /// The cash of these currencies, such as `["USD"]`.
+    Currencies(Vec<String>),
 }
 
 /// A rebalancing's choices as JSON gives them, with the names of the builder's methods: the
@@ -737,6 +750,7 @@ pub struct RebalanceChoices {
     pub minimum_fee: Option<f64>,
     pub tax: Option<(f64, f64)>,
     pub long_term_after_days: Option<u32>,
+    pub keep_cash: Option<KeepCash>,
 }
 
 impl RebalanceChoices {
@@ -757,6 +771,7 @@ impl RebalanceChoices {
         if self.whole_units {
             builder = builder.whole_units();
         }
+        builder.keep = self.keep_cash;
         builder.plain = PlainCosts {
             minimum_trade: self.minimum_trade,
             fee_bps: self.fee_bps,
@@ -886,6 +901,24 @@ impl RebalanceBuilder<'_> {
         self
     }
 
+    /// Keeps the cash of `currencies`, such as `["USD"]`, as it is: the targets are shares of
+    /// the rest of the value, so the trades neither invest that cash nor add to it.
+    pub fn keep_cash<S: AsRef<str>>(mut self, currencies: impl IntoIterator<Item = S>) -> Self {
+        self.keep = Some(KeepCash::Currencies(
+            currencies
+                .into_iter()
+                .map(|c| c.as_ref().to_owned())
+                .collect(),
+        ));
+        self
+    }
+
+    /// Keeps every currency's cash as it is, as [`RebalanceBuilder::keep_cash`] does for some.
+    pub fn keep_all_cash(mut self) -> Self {
+        self.keep = Some(KeepCash::All(true));
+        self
+    }
+
     /// Leaves out trades worth less than `value` in the base currency.
     pub fn minimum_trade(mut self, value: f64) -> Self {
         self.plain.minimum_trade = Some(value);
@@ -952,7 +985,32 @@ impl RebalanceBuilder<'_> {
                 .map(|a| a.id.clone())
                 .collect(),
         };
-        let options = self.plain.apply(self.options.clone(), &mut report);
+        let mut options = self.plain.apply(self.options.clone(), &mut report);
+        match &self.keep {
+            Some(KeepCash::All(true)) => {
+                let held: BTreeSet<Currency> = self
+                    .portfolio
+                    .books
+                    .holdings_on(self.portfolio.date_or_last(date)?)
+                    .cash()
+                    .filter(|(a, _, _)| accounts.contains(a))
+                    .map(|(_, c, _)| c)
+                    .collect();
+                options.keep_cash = held.into_iter().collect();
+            }
+            Some(KeepCash::All(false)) | None => {}
+            Some(KeepCash::Currencies(list)) => {
+                for (k, text) in list.iter().enumerate() {
+                    match text.parse::<Currency>() {
+                        Ok(c) => options.keep_cash.push(c),
+                        Err(_) => report.error(
+                            format!("keep_cash[{k}]"),
+                            format!("{text:?} is not a currency code, such as USD"),
+                        ),
+                    }
+                }
+            }
+        }
         report.into_result(())?;
         let mut rebalancing = self.portfolio.rebalancing(
             &accounts,

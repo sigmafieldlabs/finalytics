@@ -4826,6 +4826,35 @@
       ],
       "description": "One problem found while validating input."
     },
+    "KeptCash": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "$ref": "#/$defs/Currency",
+          "description": "The currency."
+        },
+        "amount": {
+          "description": "The amount kept, in the accounts rebalanced together.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "value_base": {
+          "description": "Its value in the base currency.",
+          "$ref": "#/$defs/Decimal"
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "description": "Its share of the accounts' value, which the targets leave to it."
+        }
+      },
+      "required": [
+        "currency",
+        "amount",
+        "value_base",
+        "weight"
+      ],
+      "description": "Cash a rebalancing kept as it was."
+    },
     "Linkage": {
       "oneOf": [
         {
@@ -9286,6 +9315,13 @@
             }
           ],
           "description": "The estimates behind the volatility and expected return before and after; absent when\nthe holdings' returns could not be estimated."
+        },
+        "kept_cash": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KeptCash"
+          },
+          "description": "The cash kept as it was, by currency, as asked."
         }
       },
       "required": [
@@ -9374,6 +9410,13 @@
           ],
           "description": "Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,\nlosses first, and the tax is estimated.",
           "default": null
+        },
+        "keep_cash": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Currency"
+          },
+          "description": "Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest\nof the value, so the trades neither invest that cash nor add to it. None by default: the\ntargets are shares of the whole value, and base-currency cash takes what they leave."
         }
       },
       "description": "Choices for `rebalance`."
@@ -9476,6 +9519,13 @@
               "type": "null"
             }
           ]
+        },
+        "kept_cash": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KeptCash"
+          },
+          "description": "The cash kept as it was, by currency, as `keep_cash` asked."
         }
       },
       "required": [

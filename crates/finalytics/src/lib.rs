@@ -274,8 +274,8 @@ pub mod reports {
 pub mod opt {
     pub use finalytics_opt::{
         AssetBound, BlackLitterman, BlackLittermanEstimate, Bound, Constraints,
-        FactorExposureLimit, Fees, FrontierPoint, GroupLimit, Linkage, Objective, Prior, Problem,
-        ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, RebalanceResults,
+        FactorExposureLimit, Fees, FrontierPoint, GroupLimit, KeptCash, Linkage, Objective, Prior,
+        Problem, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions, RebalanceResults,
         ResampledSolution, Resampling, ReturnUncertainty, Side, Solution, SolveMethod, SolveStatus,
         TaxRates, TrackingErrorLimit, TradeLimits, Turnover, View, ViewUncertainty,
         implied_risk_aversion, rebalance, rebalance_accounts,
