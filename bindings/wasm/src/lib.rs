@@ -1619,8 +1619,7 @@ impl Assets {
         }
         // Each item of `methods` is a method's name or fixed weights with a name, in order.
         let mut report = ValidationReport::new();
-        let mut listed: Vec<Result<finalytics::Method, (String, BTreeMap<String, f64>)>> =
-            Vec::new();
+        let mut listed: Vec<Listed> = Vec::new();
         match methods {
             Some(serde_json::Value::Array(items)) => {
                 for (k, item) in items.into_iter().enumerate() {
@@ -1908,6 +1907,9 @@ impl Assets {
         Ok(ordered.into())
     }
 }
+
+/// One strategy of a comparison as given: a method, or fixed weights with their name.
+type Listed = Result<finalytics::Method, (String, BTreeMap<String, f64>)>;
 
 /// A property of a JavaScript object.
 fn property(object: &JsValue, key: &str) -> Result<JsValue, JsValue> {
