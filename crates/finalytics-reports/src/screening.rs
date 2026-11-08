@@ -1450,6 +1450,28 @@ impl ScreenReport {
         text
     }
 
+    /// What the relative and risk-adjusted measures are taken against, in a line: "Benchmark:
+    /// S&P 500 · risk-free rate: 4% a year", each part only when the screen has it. A rate of
+    /// zero, the default, is no rate.
+    pub(crate) fn basis_line(&self) -> Option<String> {
+        let c = &self.context;
+        let mut parts = Vec::new();
+        if let Some(b) = &c.benchmark {
+            parts.push(format!("benchmark: {b}"));
+        }
+        if c.risk_free_rate != 0.0 && c.risk_free_rate.is_finite() {
+            parts.push(format!(
+                "risk-free rate: {} a year",
+                threshold(c.risk_free_rate, Some(MeasureUnit::Fraction))
+            ));
+        }
+        let mut line = parts.join(" · ");
+        if let Some(first) = line.get(..1) {
+            line = first.to_uppercase() + &line[1..];
+        }
+        (!line.is_empty()).then(|| line + ".")
+    }
+
     /// One line on the data that names only what is out of the ordinary: late, stale and short
     /// histories, and the screen's warnings.
     pub(crate) fn data_line(&self) -> String {

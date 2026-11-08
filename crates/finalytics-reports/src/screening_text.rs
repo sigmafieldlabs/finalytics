@@ -191,6 +191,9 @@ impl ScreenReport {
         // The data.
         page.section("Data");
         note(&mut page, &self.data_line());
+        if let Some(basis) = self.basis_line() {
+            note(&mut page, &basis);
+        }
         page.blank();
         page.line(format!(
             "  Finalytics {} · inputs {}",

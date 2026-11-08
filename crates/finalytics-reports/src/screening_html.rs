@@ -131,7 +131,14 @@ impl ScreenReport {
             "data",
             "Data",
             "",
-            &format!(r#"<p class="dline">{}</p>"#, esc(&self.data_line())),
+            &format!(
+                r#"<p class="dline">{}</p>{}"#,
+                esc(&self.data_line()),
+                self.basis_line().map_or_else(String::new, |b| format!(
+                    r#"<p class="dline">{}</p>"#,
+                    esc(&b)
+                ))
+            ),
         ));
         let source = format!(
             "the closes of {} up to {as_of}",

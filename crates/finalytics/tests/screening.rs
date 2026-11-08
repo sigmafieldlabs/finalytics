@@ -153,6 +153,49 @@ fn the_measures_leave_out_those_no_security_has() {
 }
 
 #[test]
+fn the_data_names_the_benchmark_and_the_risk_free_rate_when_given() {
+    let prices = include_str!("../../../tests/sp500/prices.csv");
+    let data = |u: &Universe| {
+        let screen = u.screen().measures(["return_1y"]).build().unwrap();
+        let text = screen.to_string();
+        assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
+        let html = screen.report.to_html(None);
+        (
+            text[text.find("\nData\n").unwrap()..].to_owned(),
+            html[html.find(r#"<section id="data">"#).unwrap()..].to_owned(),
+        )
+    };
+    // Both, in one line under the line on the data.
+    let (text, html) = data(&universe());
+    let line = "Benchmark: T-Bills · risk-free rate: 3% a year.";
+    assert!(text.contains(&format!("\n  {line}\n")), "{text}");
+    assert!(
+        html.contains(&format!(r#"<p class="dline">{line}</p>"#)),
+        "{html}"
+    );
+    // The rate alone.
+    let u = Universe::builder()
+        .prices_csv(prices)
+        .risk_free_rate(0.0425)
+        .build()
+        .unwrap();
+    let (text, html) = data(&u);
+    assert!(
+        text.contains("\n  Risk-free rate: 4.25% a year.\n"),
+        "{text}"
+    );
+    assert!(!text.contains("Benchmark") && !html.contains("Benchmark"));
+    // Neither: nothing more than the line on the data.
+    let u = Universe::builder().prices_csv(prices).build().unwrap();
+    let (text, html) = data(&u);
+    assert!(
+        !text.contains("Benchmark") && !text.contains("Risk-free"),
+        "{text}"
+    );
+    assert_eq!(html.matches(r#"<p class="dline">"#).count(), 1, "{html}");
+}
+
+#[test]
 fn columns_give_the_same_universe_as_series() {
     let u = universe();
     let mut columns = Columns::default();

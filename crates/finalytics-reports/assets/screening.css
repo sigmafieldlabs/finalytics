@@ -47,3 +47,4 @@ section#measures details.am{margin-top:0;border-top:0;padding-top:0}
 details.am summary{cursor:pointer;font-weight:600;font-size:14px}
 .sp td:first-child{white-space:nowrap}.sp tr.grp th{padding-top:14px;color:var(--ink);font-size:13.5px}
 .dline{margin:0;font-size:14px;color:var(--ink)}
+.dline+.dline{margin-top:6px}
