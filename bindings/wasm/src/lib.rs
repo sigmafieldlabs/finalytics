@@ -1066,7 +1066,7 @@ impl Portfolio {
     ) -> Result<JsValue, JsValue> {
         let mut choices = object(
             options,
-            &fields::<finalytics::reports::ReportOptions>(&["name"]),
+            &fields::<finalytics::reports::ReportOptions>(&["name", "accounts"]),
         )?;
         let name = match choices.remove("name") {
             Some(serde_json::Value::String(name)) => Some(name),
@@ -3183,7 +3183,10 @@ pub fn factor_model(
 }
 
 fn report_options(value: JsValue) -> Result<finalytics::reports::ReportOptions, JsValue> {
-    let options = object(value, &fields::<finalytics::reports::ReportOptions>(&[]))?;
+    let options = object(
+        value,
+        &fields::<finalytics::reports::ReportOptions>(&["accounts"]),
+    )?;
     finalytics::formats::from_json(&serde_json::Value::Object(options).to_string(), "options")
         .map_err(error)
 }
