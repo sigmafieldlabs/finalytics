@@ -90,6 +90,8 @@ pub fn attribution_report(
     source: &Source,
     options: &ReportOptions,
 ) -> Result<AttributionReport> {
+    let chosen = crate::context::chosen_books(books, options)?;
+    let books: &Books = &chosen;
     let Some(inputs) = &options.attribution else {
         return Err(invalid(
             "options.attribution",

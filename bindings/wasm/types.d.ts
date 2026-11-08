@@ -3331,6 +3331,12 @@ export interface Provenance {
    * the market data's exchange rates".
    */
   benchmark?: string | null;
+  /**
+   * The accounts the report covers, when not every one, as the reports describe them, such
+   * as "Brokerage only (1 of 2 accounts). 3 transfers with Retirement count as money in and
+   * out."
+   */
+  accounts?: string | null;
 }
 
 /** A gain or loss realised by a sale, a return of capital or a cash merger, for one lot. */
@@ -3684,6 +3690,12 @@ export interface ReportOptions {
   as_of?: Date | null;
   /** The first valuation date: the first transaction's date by default. */
   start?: Date | null;
+  /**
+   * The accounts to report on, by identifier: every account by default. The figures are
+   * those of the books kept from their transactions alone, so transfers with the accounts
+   * left out count as money in and out, and each report says how many there are.
+   */
+  accounts?: AccountId[];
   /**
    * Classification schemes of the instruments to break holdings, contribution and risk down
    * by, such as `asset_class` or `region`.

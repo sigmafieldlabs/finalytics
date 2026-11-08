@@ -24,6 +24,17 @@ test("every report runs and exports", () => {
   }
 });
 
+test("reports on some accounts", () => {
+  const whole = books.holdingsReport({});
+  const main = books.holdingsReport({ accounts: ["main"] });
+  assert.equal(main.value, whole.accounts.find((a) => a.account === "main").value_base);
+  assert.equal(main.provenance.accounts, "main only (1 of 2 accounts).");
+  assert.throws(() => books.holdingsReport({ accounts: ["joint"] }), (e) => {
+    assert.equal(e.issues[0].path, "options.accounts[0]");
+    return true;
+  });
+});
+
 test("holdings count gains and income within the period", () => {
   const whole = books.holdingsReport({});
   assert.deepEqual(whole.period.income, whole.income);

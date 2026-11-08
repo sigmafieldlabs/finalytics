@@ -50,6 +50,18 @@ def test_holdings_and_concentration(books):
     assert [b.by for b in report.breakdowns][-1] == "region"
 
 
+def test_reports_on_some_accounts(books):
+    whole = books.holdings_report()
+    main = books.holdings_report(accounts=["main"])
+    assert main.value == next(a.value_base for a in whole.accounts if a.account == "main")
+    assert main.provenance.accounts == "main only (1 of 2 accounts)."
+    assert main.provenance.options.accounts == ["main"]
+    assert "Accounts: main only" in str(main)
+    with pytest.raises(fl.ValidationError) as caught:
+        books.holdings_report(accounts=["joint"])
+    assert caught.value.issues[0].path == "options.accounts[0]"
+
+
 def test_holdings_count_gains_and_income_within_the_period(books):
     whole = books.holdings_report()
     assert whole.period.realised == whole.realised and whole.period.income == whole.income

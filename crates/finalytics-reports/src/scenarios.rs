@@ -111,6 +111,8 @@ pub fn scenarios_report(
     source: &Source,
     options: &ReportOptions,
 ) -> Result<ScenariosReport> {
+    let chosen = crate::context::chosen_books(books, options)?;
+    let books: &Books = &chosen;
     let cx = Context::new(books, market, source, options)?;
     let valuation = books.value_on(cx.as_of, market)?;
     let mut warnings = valuation.warnings.clone();

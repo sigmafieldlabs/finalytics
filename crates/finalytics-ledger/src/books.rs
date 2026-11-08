@@ -61,6 +61,19 @@ pub enum FlowKind {
     TransferOut,
 }
 
+impl FlowKind {
+    /// The flow at the other end of a transfer between accounts: a deposit's withdrawal, units
+    /// received's units sent, and the other way round.
+    pub fn counterpart(self) -> FlowKind {
+        match self {
+            FlowKind::Deposit => FlowKind::Withdrawal,
+            FlowKind::Withdrawal => FlowKind::Deposit,
+            FlowKind::TransferIn => FlowKind::TransferOut,
+            FlowKind::TransferOut => FlowKind::TransferIn,
+        }
+    }
+}
+
 /// Value entering (positive) or leaving (negative) the portfolio, in `currency`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -240,6 +253,21 @@ pub struct Event {
     pub flows: Vec<Flow>,
     /// How it moved value between holdings.
     pub allocations: Vec<Allocation>,
+}
+
+impl Event {
+    /// The account whose transaction this is: that of its effects or flows, absent when it
+    /// changed nothing.
+    pub fn account(&self) -> Option<&AccountId> {
+        self.effects
+            .iter()
+            .map(|e| match e {
+                Effect::SetLot { lot } => &lot.account,
+                Effect::CloseLot { account, .. } | Effect::Cash { account, .. } => account,
+            })
+            .chain(self.flows.iter().map(|f| &f.account))
+            .next()
+    }
 }
 
 /// A gain or loss realised by a sale, a return of capital or a cash merger, for one lot.
@@ -531,6 +559,24 @@ pub struct Books {
     events: Vec<Event>,
     realised: Vec<RealisedGain>,
     holdings: Holdings,
+    scope: Option<AccountScope>,
+}
+
+/// Books kept for some of a portfolio's accounts: which, of how many, and the transfers with
+/// the accounts left out, which these books count as money in and out.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct AccountScope {
+    /// The accounts kept, in the portfolio's order.
+    pub accounts: Vec<AccountId>,
+    /// How many accounts the portfolio has.
+    pub of: usize,
+    /// The accounts left out, in the portfolio's order.
+    pub left_out: Vec<Account>,
+    /// The transfers with each account left out: a withdrawal matched by a deposit of the same
+    /// amount on the same date, or units sent matched by units received, either way round.
+    pub transfers: BTreeMap<AccountId, usize>,
 }
 
 impl Books {
@@ -582,7 +628,119 @@ impl Books {
             events,
             realised: engine.realised,
             holdings: engine.holdings,
+            scope: None,
         })
+    }
+
+    /// The books of `accounts` alone, the same as books built from their transactions: each
+    /// account's lots, cash and gains are its own. Transfers with the accounts left out are
+    /// then money in and out, as they are for the portfolio's transfers with the outside world;
+    /// [`Books::scope`] counts them. An unknown account is an error, at its place in `accounts`.
+    pub fn for_accounts(&self, accounts: &[AccountId]) -> Result<Books> {
+        let mut report = ValidationReport::new();
+        if accounts.is_empty() {
+            report.error("accounts", "give at least one account");
+        }
+        for (i, id) in accounts.iter().enumerate() {
+            if !self.accounts.iter().any(|a| a.id == *id) {
+                let known: Vec<&str> = self.accounts.iter().map(|a| a.id.as_str()).collect();
+                report.error(
+                    format!("accounts[{i}]"),
+                    format!(
+                        "unknown account {id}; the accounts are {}",
+                        known.join(", ")
+                    ),
+                );
+            }
+        }
+        report.into_result(())?;
+        let kept = |id: &AccountId| accounts.contains(id);
+        // Each transfer out of or into a kept account, matched once with its other leg in an
+        // account left out.
+        let flows = |keep: bool| -> Vec<(Date, &Flow)> {
+            self.events
+                .iter()
+                .flat_map(|e| e.flows.iter().map(move |f| (e.date, f)))
+                .filter(|(_, f)| kept(&f.account) == keep)
+                .collect()
+        };
+        let outside = flows(false);
+        let mut matched = vec![false; outside.len()];
+        let mut transfers: BTreeMap<AccountId, usize> = BTreeMap::new();
+        for (date, f) in flows(true) {
+            let other = f.kind.counterpart();
+            let found = outside.iter().enumerate().position(|(k, (d, g))| {
+                !matched[k]
+                    && *d == date
+                    && g.kind == other
+                    && g.currency == f.currency
+                    && g.amount == -f.amount
+            });
+            if let Some(k) = found {
+                matched[k] = true;
+                *transfers.entry(outside[k].1.account.clone()).or_default() += 1;
+            }
+        }
+        Ok(Books {
+            base_currency: self.base_currency,
+            accounts: self
+                .accounts
+                .iter()
+                .filter(|a| kept(&a.id))
+                .cloned()
+                .collect(),
+            instruments: self.instruments.clone(),
+            events: self
+                .events
+                .iter()
+                .filter(|e| e.account().is_none_or(kept))
+                .cloned()
+                .collect(),
+            realised: self
+                .realised
+                .iter()
+                .filter(|g| kept(&g.account))
+                .cloned()
+                .collect(),
+            holdings: Holdings {
+                lots: self
+                    .holdings
+                    .lots
+                    .iter()
+                    .filter(|((a, _), _)| kept(a))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
+                cash: self
+                    .holdings
+                    .cash
+                    .iter()
+                    .filter(|((a, _), _)| kept(a))
+                    .map(|(k, v)| (k.clone(), *v))
+                    .collect(),
+            },
+            scope: Some(AccountScope {
+                accounts: self
+                    .accounts
+                    .iter()
+                    .filter(|a| kept(&a.id))
+                    .map(|a| a.id.clone())
+                    .collect(),
+                of: self.accounts.len(),
+                left_out: self
+                    .accounts
+                    .iter()
+                    .filter(|a| !kept(&a.id))
+                    .cloned()
+                    .collect(),
+                transfers,
+            }),
+        })
+    }
+
+    /// Which accounts these books keep, when [`Books::for_accounts`] kept some of a
+    /// portfolio's.
+    pub fn scope(&self) -> Option<&AccountScope> {
+        self.scope.as_ref()
     }
 
     /// The base currency.

@@ -42,6 +42,10 @@ fn setup() -> (PortfolioData, Books, MarketData) {
     (portfolio, books, market)
 }
 
+fn options_for_reports() -> ReportOptions {
+    options()
+}
+
 fn options() -> ReportOptions {
     {
         let mut report_options = ReportOptions::default();
@@ -159,6 +163,90 @@ fn holdings_add_up() {
         "effective",
     );
     every_table_is_rectangular(&r.tables());
+}
+
+#[test]
+fn reports_on_some_accounts_are_those_of_their_own_transactions() {
+    let options = CsvOptions::default();
+    // Cash and units sent from the brokerage account to the ISA.
+    let transfers = "t20,main,2026-10-01,withdrawal,,,,,2000,USD,,,,,\n\
+                     t21,isa,2026-10-01,deposit,,,,,2000,USD,,,,,\n\
+                     t22,main,2026-10-05,transfer_out,BOND,50,,,,,,,,,\n\
+                     t23,isa,2026-10-05,transfer_in,BOND,50,,,,,,,,,\n";
+    let transactions = format!("{TRANSACTIONS}{transfers}");
+    let read = |text: &str| {
+        portfolio_from_csv(
+            Some(Currency::USD),
+            Some(INSTRUMENTS),
+            text,
+            Some(ACCOUNTS),
+            options,
+        )
+        .unwrap()
+    };
+    let portfolio = read(&transactions);
+    let (_, _, market) = setup();
+    let books = Books::build(&portfolio, &market).unwrap();
+    let source = Source::of(&portfolio, &market);
+    let mut chosen = options_for_reports();
+    chosen.accounts = vec!["main".parse().unwrap()];
+    let report = portfolio_report(&books, &market, &source, &chosen).unwrap();
+    // The same as the brokerage account's own books, built from its transactions alone.
+    let mut own = portfolio.clone();
+    own.accounts.retain(|a| a.id.as_str() == "main");
+    own.transactions.retain(|t| t.account.as_str() == "main");
+    let own_books = Books::build(&own, &market).unwrap();
+    let alone = portfolio_report(&own_books, &market, &source, &options_for_reports()).unwrap();
+    assert_eq!(report.holdings.value, alone.holdings.value);
+    assert_eq!(report.holdings.realised, alone.holdings.realised);
+    assert_eq!(report.holdings.income, alone.holdings.income);
+    assert_eq!(report.performance.periods, alone.performance.periods);
+    assert_eq!(report.performance.flows, alone.performance.flows);
+    let whole = holdings_report(&books, &market, &source, &options_for_reports()).unwrap();
+    let main = whole
+        .accounts
+        .iter()
+        .find(|a| a.account.as_str() == "main")
+        .unwrap();
+    assert_eq!(report.holdings.value, main.value_base);
+    // Every report says which accounts it covers, and how the transfers count.
+    let said = "Brokerage account only (1 of 2 accounts). 2 transfers with Stocks and shares ISA \
+                count as money in and out.";
+    for p in [
+        &report.overview.provenance,
+        &report.holdings.provenance,
+        &report.performance.provenance,
+        &report.risk.provenance,
+    ] {
+        assert_eq!(p.accounts.as_deref(), Some(said));
+        assert_eq!(p.options.accounts, chosen.accounts);
+    }
+    assert!(alone.holdings.provenance.accounts.is_none());
+    let text = report.to_string();
+    assert!(text.contains("Accounts: Brokerage account only"), "{text}");
+    assert!(text.lines().all(|l| l.chars().count() <= 80));
+    assert!(
+        report
+            .to_html(None)
+            .contains("Accounts: Brokerage account only")
+    );
+    // Both accounts are every account; an unknown one is an error.
+    chosen.accounts = vec!["main".parse().unwrap(), "isa".parse().unwrap()];
+    let both = holdings_report(&books, &market, &source, &chosen).unwrap();
+    assert_eq!(both.value, whole.value);
+    assert!(both.provenance.accounts.is_none());
+    chosen.accounts = vec!["main".parse().unwrap(), "joint".parse().unwrap()];
+    let Err(finalytics::Error::Validation(problems)) =
+        holdings_report(&books, &market, &source, &chosen)
+    else {
+        panic!("reported on an unknown account");
+    };
+    assert_eq!(problems.issues()[0].path, "options.accounts[1]");
+    assert!(
+        problems.issues()[0]
+            .message
+            .contains("the accounts are main, isa")
+    );
 }
 
 #[test]

@@ -19,8 +19,8 @@ mod transaction;
 mod valuation;
 
 pub use books::{
-    Allocation, Books, CashBalance, Effect, Event, Flow, FlowKind, HoldingKey, Holdings, LotSale,
-    Position, RealisedGain,
+    AccountScope, Allocation, Books, CashBalance, Effect, Event, Flow, FlowKind, HoldingKey,
+    Holdings, LotSale, Position, RealisedGain,
 };
 pub use ids::{AccountId, InstrumentId, LotId, TransactionId};
 pub use instrument::{Account, Instrument, InstrumentKind, LotMethod};

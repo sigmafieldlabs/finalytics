@@ -430,6 +430,11 @@ impl Page {
                 self.line(line);
             }
         }
+        if let Some(a) = &p.accounts {
+            for line in wrap(&format!("Accounts: {a}"), WIDTH) {
+                self.line(line);
+            }
+        }
         self.rule('━');
     }
 

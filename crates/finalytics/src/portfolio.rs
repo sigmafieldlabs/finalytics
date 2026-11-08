@@ -558,6 +558,7 @@ impl Portfolio {
             expected_returns: Vec::new(),
             benchmark_weights: Vec::new(),
             blend: Vec::new(),
+            accounts: Vec::new(),
         }
     }
 
@@ -1088,9 +1089,18 @@ pub struct ReportBuilder<'a> {
     expected_returns: Vec<(String, f64)>,
     benchmark_weights: Vec<(String, f64)>,
     blend: Vec<(String, f64)>,
+    accounts: Vec<String>,
 }
 
 impl ReportBuilder<'_> {
+    /// The accounts to report on, by identifier, such as `["brokerage"]`: every account by
+    /// default. The reports are those of the accounts' own transactions, so transfers with the
+    /// other accounts count as money in and out, and each report says how many there are.
+    pub fn accounts<S: Into<String>>(mut self, accounts: impl IntoIterator<Item = S>) -> Self {
+        self.accounts = accounts.into_iter().map(Into::into).collect();
+        self
+    }
+
     /// The benchmark: an instrument whose prices are given with the portfolio's, such as an
     /// index, by its identifier. Its levels are in its currency, as the instruments list it, and
     /// are converted to the base currency.
@@ -1283,6 +1293,12 @@ impl ReportBuilder<'_> {
                         format!("{text:?} is not a date: write it as 2026-06-30"),
                     ),
                 }
+            }
+        }
+        for (i, id) in self.accounts.iter().enumerate() {
+            match id.parse::<AccountId>() {
+                Ok(id) => options.accounts.push(id),
+                Err(_) => report.error(format!("accounts[{i}]"), "is not an account identifier"),
             }
         }
         for (id, value) in &self.expected_returns {

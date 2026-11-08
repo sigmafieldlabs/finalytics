@@ -1,6 +1,7 @@
 //! What every report shares: its options, its provenance, and the dates and series it is
 //! computed on.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +9,7 @@ use sha2::{Digest, Sha256};
 
 use finalytics_core::{Currency, Date, Decimal, Error, Result, TimeSeries, ValidationReport};
 use finalytics_formats::PortfolioDocument;
-use finalytics_ledger::{Books, HoldingKey, InstrumentId, MarketData, PortfolioData};
+use finalytics_ledger::{AccountId, Books, HoldingKey, InstrumentId, MarketData, PortfolioData};
 use finalytics_perf::FlowTiming;
 use finalytics_risk::{CovarianceMethod, StatisticsOptions};
 
@@ -46,6 +47,11 @@ pub struct ReportOptions {
     pub as_of: Option<Date>,
     /// The first valuation date: the first transaction's date by default.
     pub start: Option<Date>,
+    /// The accounts to report on, by identifier: every account by default. The figures are
+    /// those of the books kept from their transactions alone, so transfers with the accounts
+    /// left out count as money in and out, and each report says how many there are.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub accounts: Vec<AccountId>,
     /// Classification schemes of the instruments to break holdings, contribution and risk down
     /// by, such as `asset_class` or `region`.
     pub group_by: Vec<String>,
@@ -92,6 +98,7 @@ impl Default for ReportOptions {
         ReportOptions {
             as_of: None,
             start: None,
+            accounts: Vec::new(),
             group_by: Vec::new(),
             benchmark: None,
             risk_free_rate: 0.0,
@@ -220,6 +227,81 @@ pub struct Provenance {
     /// the market data's exchange rates".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub benchmark: Option<String>,
+    /// The accounts the report covers, when not every one, as the reports describe them, such
+    /// as "Brokerage only (1 of 2 accounts). 3 transfers with Retirement count as money in and
+    /// out."
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accounts: Option<String>,
+}
+
+/// The books of the accounts `options` choose: `books` themselves when they choose none, or
+/// every account the books keep, and otherwise the books kept from the chosen accounts'
+/// transactions. An unknown account is an error at `options.accounts`.
+pub(crate) fn chosen_books<'a>(
+    books: &'a Books,
+    options: &ReportOptions,
+) -> Result<Cow<'a, Books>> {
+    let chosen = &options.accounts;
+    let held: Vec<&AccountId> = books.accounts().iter().map(|a| &a.id).collect();
+    if chosen.is_empty() || (held.len() == chosen.len() && chosen.iter().all(|a| held.contains(&a)))
+    {
+        return Ok(Cow::Borrowed(books));
+    }
+    books
+        .for_accounts(chosen)
+        .map(Cow::Owned)
+        .map_err(|e| match e {
+            Error::Validation(report) => {
+                let mut moved = ValidationReport::new();
+                for issue in report.issues() {
+                    moved.error(format!("options.{}", issue.path), issue.message.clone());
+                }
+                Error::Validation(moved)
+            }
+            other => other,
+        })
+}
+
+/// The accounts books keep, in words: "Brokerage only (1 of 2 accounts). 3 transfers with
+/// Retirement count as money in and out."
+fn describe_scope(
+    scope: &finalytics_ledger::AccountScope,
+    kept: &[finalytics_ledger::Account],
+) -> String {
+    let and_list = |names: &[String]| match names {
+        [] => String::new(),
+        [one] => one.clone(),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
+    };
+    let name = |id: &AccountId, accounts: &[finalytics_ledger::Account]| {
+        accounts
+            .iter()
+            .find(|a| a.id == *id)
+            .and_then(|a| a.name.clone())
+            .unwrap_or_else(|| id.to_string())
+    };
+    let kept: Vec<String> = scope.accounts.iter().map(|id| name(id, kept)).collect();
+    let mut text = format!(
+        "{} only ({} of {} accounts).",
+        and_list(&kept),
+        scope.accounts.len(),
+        scope.of
+    );
+    let count: usize = scope.transfers.values().sum();
+    if count > 0 {
+        let with: Vec<String> = scope
+            .transfers
+            .keys()
+            .map(|id| name(id, &scope.left_out))
+            .collect();
+        text.push_str(&format!(
+            " {count} {} with {} {} as money in and out.",
+            if count == 1 { "transfer" } else { "transfers" },
+            and_list(&with),
+            if count == 1 { "counts" } else { "count" }
+        ));
+    }
+    text
 }
 
 /// The dates, options and inputs a report is computed on.
@@ -400,6 +482,10 @@ impl<'a> Context<'a> {
             options: self.options.clone(),
             warnings,
             benchmark: self.benchmark.as_ref().map(|b| b.description.clone()),
+            accounts: self
+                .books
+                .scope()
+                .map(|scope| describe_scope(scope, self.books.accounts())),
         }
     }
 

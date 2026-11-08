@@ -4642,6 +4642,11 @@ class Provenance:
     market data's exchange rates".
     """
 
+    accounts: str | None = None
+    """The accounts the report covers, when not every one, as the reports describe them, such as
+    "Brokerage only (1 of 2 accounts). 3 transfers with Retirement count as money in and out."
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class RealisedGain:
@@ -5111,6 +5116,12 @@ class ReportOptions:
 
     start: datetime.date | None = None
     """The first valuation date: the first transaction's date by default."""
+
+    accounts: list[str] = field(default_factory=list)
+    """The accounts to report on, by identifier: every account by default. The figures are those of
+    the books kept from their transactions alone, so transfers with the accounts left out count
+    as money in and out, and each report says how many there are.
+    """
 
     group_by: list[str] = field(default_factory=list)
     """Classification schemes of the instruments to break holdings, contribution and risk down by,

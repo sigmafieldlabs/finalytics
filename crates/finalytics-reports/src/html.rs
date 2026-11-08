@@ -2105,6 +2105,10 @@ impl PortfolioReport {
                 .unwrap_or_default();
             format!("<br>Benchmark: {}", esc(&b))
         });
+        let accounts_line = p
+            .accounts
+            .as_ref()
+            .map_or_else(String::new, |a| format!("<br>Accounts: {}", esc(a)));
         let brand = if name.is_some() {
             r#"<div class="brand">Portfolio report</div>"#
         } else {
@@ -2118,7 +2122,7 @@ impl PortfolioReport {
 <body><div class="page">
 <div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,{light}"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,{dark}"></div>
 <h1>{title}</h1>{brand}</div>
-<div class="meta">As of {as_of} · from {start}<br>{accounts} · {instruments} · {transactions} · {ccy}{benchmark}</div></div>
+<div class="meta">As of {as_of} · from {start}<br>{accounts} · {instruments} · {transactions} · {ccy}{benchmark}{accounts_line}</div></div>
 <nav>{nav}</nav>
 {sections}
 <div class="foot">Every figure is computed by Finalytics {version} from the portfolio's transactions and market data; the same inputs give the same report, identified by the input digest <code>{digest}</code>.</div>

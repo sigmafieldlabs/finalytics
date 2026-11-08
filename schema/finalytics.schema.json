@@ -9156,6 +9156,13 @@
             "null"
           ],
           "description": "The benchmark, as the reports describe it, such as \"BENCH, in USD, converted to EUR at\nthe market data's exchange rates\"."
+        },
+        "accounts": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The accounts the report covers, when not every one, as the reports describe them, such\nas \"Brokerage only (1 of 2 accounts). 3 transfers with Retirement count as money in and\nout.\""
         }
       },
       "required": [
@@ -10080,6 +10087,13 @@
           ],
           "description": "The first valuation date: the first transaction's date by default.",
           "default": null
+        },
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountId"
+          },
+          "description": "The accounts to report on, by identifier: every account by default. The figures are\nthose of the books kept from their transactions alone, so transfers with the accounts\nleft out count as money in and out, and each report says how many there are."
         },
         "group_by": {
           "type": "array",

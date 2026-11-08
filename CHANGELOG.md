@@ -9,6 +9,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Reports on some accounts: `accounts=["brokerage"]` (`.accounts(["brokerage"])` in Rust)
+  reports on those accounts alone, from the books kept from their transactions. Transfers with
+  the accounts left out count as money in and out, and every report says which accounts it
+  covers and how many such transfers there are. `Books::for_accounts` keeps such books in Rust.
+
 - The holdings report counts realised gains and income within its period as well as to date
   (`period`, from the report's start to its date, as the performance report's flows count
   them), so that a report starting this year, such as `start="2026-01-01"`, gives this year's

@@ -83,6 +83,15 @@ a year's likewise, from the last valuation of the year before. A year is complet
 valuations reach back into the year before and forward into December. The benchmark's are its
 price changes over the same dates.
 
+**Some accounts.** `accounts`, such as `["brokerage"]`, reports on those accounts alone: the
+figures are those of the books kept from their transactions, so each account's lots, cash, gains
+and income are its own. A transfer between two accounts reported on nets to nothing, as it does
+for the whole portfolio; a transfer with an account left out (a withdrawal matched by a deposit
+of the same amount on the same date, or units sent matched by units received) is money in or out,
+as a transfer with the outside world is. Each report says which accounts it covers and how many
+such transfers there are, such as "Brokerage account only (1 of 2 accounts). 3 transfers with
+Retirement account count as money in and out." An unknown account is an error.
+
 **Realised gains and income.** Gains realised on disposals and income received, net of tax
 withheld, in the base currency at each one's date: to date, and within the report's period
 (`period`), from its first valuation date to its date, both included, as the performance report's
