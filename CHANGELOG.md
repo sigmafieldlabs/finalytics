@@ -21,6 +21,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The npm package's WebAssembly engine is a fifth smaller, about 1.6 MB gzipped rather than
+  2.0 MB, and no slower: the build leaves out the functions' names, which only debugging uses,
+  and optimises the module with Binaryen's `wasm-opt`. Errors are unchanged; only the stack trace
+  of an internal failure shows function numbers rather than names.
 - One rule for an option a method does not use, in every verb. `optimise` and a single
   `backtest` refuse it, as before. `compare` applies each option to the methods that take it and
   notes in the report each method it does not apply to (such as "Maximum Sharpe: the confidence

@@ -85,11 +85,17 @@ stage_js() {
     missing "wasm-bindgen $wanted: cargo install wasm-bindgen-cli --version $wanted --locked"
     return
   fi
+  local binaryen
+  binaryen=$(sed -n 's/^version=//p' scripts/install-binaryen.sh)
+  if ! wasm-opt --version 2>/dev/null | grep -q "(version_$binaryen)"; then
+    missing "wasm-opt from Binaryen $binaryen: scripts/install-binaryen.sh, then add its bin directory to PATH"
+    return
+  fi
   if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 22 ? 1 : 0)' 2>/dev/null; then
     missing "Node 22 or later"
     return
   fi
-  CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
+  CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER="$root/bindings/wasm/test-runner.sh" \
     run cargo test -p finalytics-wasm --target wasm32-unknown-unknown
   run bindings/wasm/build.sh
   local size

@@ -78,10 +78,14 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-bindgen@${{ steps.wasm-bindgen.outputs.version }}
+      - name: Install wasm-opt at the pinned Binaryen version
+        run: |
+          scripts/install-binaryen.sh "$RUNNER_TEMP/binaryen"
+          echo "$RUNNER_TEMP/binaryen/bin" >> "$GITHUB_PATH"
       - run: cargo build --workspace --exclude finalytics-py --target wasm32-unknown-unknown
-      - name: Run the tests in a WebAssembly runtime
+      - name: Run the tests in a WebAssembly runtime, optimised as the package is
         env:
-          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: ${{ github.workspace }}/bindings/wasm/test-runner.sh
         run: cargo test -p finalytics-wasm --target wasm32-unknown-unknown
       - run: bindings/wasm/build.sh
       - name: Check the size of the engine
@@ -114,6 +118,10 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-bindgen@${{ steps.wasm-bindgen.outputs.version }}
+      - name: Install wasm-opt at the pinned Binaryen version
+        run: |
+          scripts/install-binaryen.sh "$RUNNER_TEMP/binaryen"
+          echo "$RUNNER_TEMP/binaryen/bin" >> "$GITHUB_PATH"
       - name: Check the native budgets
         run: cargo run --release -p finalytics-bench --bin budgets -- --write-document large.json
       - run: bindings/wasm/build.sh

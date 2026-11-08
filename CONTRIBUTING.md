@@ -17,8 +17,13 @@ You need a recent stable Rust toolchain, Python 3.10 or later (3.11 or later for
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version <the version in Cargo.lock> --locked
+scripts/install-binaryen.sh && export PATH="$HOME/.local/binaryen/bin:$PATH"
 pip install maturin pytest pandas jsonschema
 ```
+
+`scripts/install-binaryen.sh` installs `wasm-opt` from Binaryen's release at the pinned version,
+checking its digest; the npm package is built with it, and `bindings/wasm/build.sh` refuses to
+build with another version.
 
 The Python tests use pandas and jsonschema as well as pytest.
 
@@ -46,7 +51,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --exclude finalytics-
 cd bindings/python && maturin develop --release && cd ../.. && pytest bindings/python/tests
 
 # JavaScript
-CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner \
+CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER="$PWD/bindings/wasm/test-runner.sh" \
   cargo test -p finalytics-wasm --target wasm32-unknown-unknown
 bindings/wasm/build.sh
 node --test bindings/wasm/test/*.test.mjs
