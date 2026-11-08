@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-rc.4] - 2026-11-08
+
 ### Added
 
 - Screening: `Universe` holds many securities, each on its own dates (no alignment), with a
@@ -693,7 +695,8 @@ Finalytics 1.0 is a redesign of the library. See the
 
 The last release of the 0.x series. See the `0.9.x` branch.
 
-[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.3...HEAD
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...HEAD
+[1.0.0-rc.4]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-alpha.0...v1.0.0-rc.1
