@@ -488,6 +488,67 @@ class Assets:
             result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
         return result
 
+    def evaluate(
+        self,
+        weights: Mapping[str, float],
+        *,
+        risk_free_rate: float | None = None,
+        expected_returns: Mapping[str, float] | None = None,
+        frontier: bool = False,
+        bounds: BoundLike | None = None,
+        max_weight: float | None = None,
+        asset_bounds: Mapping[str, BoundLike] | None = None,
+        groups: Mapping[str, GroupLike] | None = None,
+        min_effective_assets: float | None = None,
+        cash: BoundLike | None = None,
+        name: str | None = None,
+    ) -> _types.GivenWeights:
+        """`weights` by asset valued on the estimates :meth:`optimise` uses: the figures in
+        ``result.results`` (expected return, volatility, Sharpe ratio and each asset's share of
+        the risk), and the optimisation report's page and text for them, titled "Given weights",
+        in ``result.report``, which ``print(result)`` prints and ``result.show()`` shows. `name`
+        titles the report.
+
+        The weights add up to one, and may hold the risk-free asset and other cash, as a
+        portfolio's own weights do: ``portfolio.assets().evaluate(portfolio.weights())`` gives
+        the overview report's current point. `risk_free_rate` and `expected_returns` replace the
+        assets' own, as for :meth:`optimise`. ``frontier=True`` draws the efficient frontier in
+        the report under the limits given (`bounds`, `max_weight`, `asset_bounds`, `groups`,
+        `min_effective_assets` and `cash`, as for :meth:`optimise`), which apply to nothing
+        else.
+        """
+        given = {str(k): float(v) for k, v in weights.items()}
+        bad = [(k, v) for k, v in given.items() if not math.isfinite(v)]
+        if bad:
+            raise invalid(*((f"weights.{k}", f"must be a finite number, not {v}") for k, v in bad))
+        options = self._options(
+            "minimum_variance",
+            risk_free_rate=risk_free_rate,
+            bounds=bounds,
+            max_weight=max_weight,
+            asset_bounds=asset_bounds,
+            groups=groups,
+            min_effective_assets=min_effective_assets,
+            expected_returns=expected_returns,
+            cash=cash,
+        )
+        options = dataclasses.replace(options, frontier=bool(frontier))
+        text = call(self._native.evaluate, dumps(given, "weights"), dumps(options, "options"))
+        result = loads(_types.GivenWeights, text)
+        # In the order of the assets, rather than of their names.
+        order = {label: i for i, label in enumerate(self.labels)}
+
+        def ordered(values: dict[str, float]) -> dict[str, float]:
+            return dict(sorted(values.items(), key=lambda item: order.get(item[0], len(order))))
+
+        results = dataclasses.replace(
+            result.results, weights=ordered(result.results.weights), risk_shares=ordered(result.results.risk_shares)
+        )
+        result = dataclasses.replace(result, results=results)
+        if name is not None:
+            result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
+        return result
+
     def frontier(
         self,
         *,

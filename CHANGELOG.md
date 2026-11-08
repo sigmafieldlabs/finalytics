@@ -9,6 +9,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Assets.evaluate(weights)` values given weights on the estimates optimisation uses: the
+  expected return, volatility, Sharpe ratio and shares of risk in `results`, and the optimisation
+  report's page and text for them, titled "Given weights", in `report`, with the efficient
+  frontier under limits when asked (`frontier=True`). The weights may hold cash, so a portfolio's
+  own weights on `Portfolio.assets()` give the overview report's current point. Python
+  `assets.evaluate(weights, ...)`, JavaScript `assets.evaluate({ weights, ... })`, Rust
+  `assets.evaluate(weights).build()`.
+
 - Cash in optimisation: `cash` limits (`.cash(0.0, 0.2)` in Rust, `cash=(0, 0.2)` in Python,
   `cash: { min: 0, max: 0.2 }` in JavaScript) let `optimise`, `compare` and `backtest` hold cash
   beside the risky assets, riskless, in the risk-free asset or, for assets without one, in `Cash`

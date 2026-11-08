@@ -2810,6 +2810,58 @@
       ],
       "description": "A change to the books made by one transaction."
     },
+    "Evaluation": {
+      "type": "object",
+      "properties": {
+        "weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights by asset, as given."
+        },
+        "expected_return": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual expected return."
+        },
+        "volatility": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual volatility."
+        },
+        "sharpe_ratio": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "`(expected_return - risk_free_rate) / volatility`; absent when the weights are\nriskless."
+        },
+        "risk_free_rate": {
+          "type": "number",
+          "format": "double",
+          "description": "The annual risk-free rate of the Sharpe ratio."
+        },
+        "risk_shares": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Each asset's share of the variance, `w_i (Σw)_i / w'Σw`, adding up to one; zero for\nevery asset when the weights are riskless."
+        }
+      },
+      "required": [
+        "weights",
+        "expected_return",
+        "volatility",
+        "risk_free_rate",
+        "risk_shares"
+      ],
+      "description": "The figures of given weights on the assets' estimates: those an optimisation gives the\nweights it chooses, from the same covariance and expected returns."
+    },
     "Event": {
       "type": "object",
       "properties": {
@@ -3447,6 +3499,24 @@
         "weights"
       ],
       "description": "A portfolio on the efficient frontier of `Assets`: its annual expected return and\nvolatility, and its weights by asset."
+    },
+    "GivenWeights": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/OptimisationReport",
+          "description": "The report on the weights: what they are expected to deliver, where their risk comes\nfrom, where they sit against each asset (and on the efficient frontier, if asked for)\nand how they would have done on the assets' history."
+        },
+        "results": {
+          "$ref": "#/$defs/Evaluation",
+          "description": "The raw figures."
+        }
+      },
+      "required": [
+        "report",
+        "results"
+      ],
+      "description": "Given weights valued on the assets' estimates: the report, laid out as an optimisation's,\nand the raw figures. Printing it prints the report, and showing it shows the report as a\npage."
     },
     "Goal": {
       "oneOf": [
@@ -6566,6 +6636,11 @@
           ],
           "description": "For resampled optimisation, how the weights were averaged.",
           "default": null
+        },
+        "given": {
+          "type": "boolean",
+          "description": "Whether the weights were given rather than optimised: the report then values them on\nthe estimates, and the limits are those of the frontier.",
+          "default": false
         }
       },
       "required": [

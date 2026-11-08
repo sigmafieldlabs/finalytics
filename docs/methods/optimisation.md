@@ -204,6 +204,27 @@ to value the portfolio, and only the risk-free asset can be chosen, with `cash` 
 
 ```
 
+### Given weights
+
+`Assets.evaluate(weights)` values weights chosen some other way on the estimates optimisation
+uses, the same covariance and expected returns, so that they compare with an optimisation's:
+their expected return $\mu^\top w$, volatility $\sqrt{w^\top \Sigma w}$, Sharpe ratio and each
+asset's share of the variance, $w_i (\Sigma w)_i / w^\top \Sigma w$. The weights add up to one
+and may hold the risk-free asset and other cash. The report is the optimisation report's, titled
+"Given weights", without a solver; with `frontier=True` it draws the efficient frontier under
+the limits given, which apply to nothing else. A portfolio's own weights on its assets give the
+overview report's current point.
+
+```python
+>>> import finalytics as fl
+>>> portfolio = fl.datasets.portfolio()
+>>> valued = portfolio.assets().evaluate(portfolio.weights())
+>>> current = portfolio.report().overview.current
+>>> abs(valued.results.volatility - current.volatility) < 1e-12
+True
+
+```
+
 ### Resampling and Black–Litterman
 
 `Problem.resampled` solves any of the covariance-based objectives above for estimates re-made from

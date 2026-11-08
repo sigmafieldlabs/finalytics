@@ -1657,6 +1657,33 @@ Effect = Union[LotSet, LotClosed, CashChange]
 
 
 @dataclass(frozen=True, kw_only=True)
+class Evaluation(PrintedResults):
+    """The figures of given weights on the assets' estimates: those an optimisation gives the
+    weights it chooses, from the same covariance and expected returns.
+    """
+
+    weights: dict[str, float]
+    """The weights by asset, as given."""
+
+    expected_return: float
+    """The annual expected return."""
+
+    volatility: float
+    """The annual volatility."""
+
+    sharpe_ratio: float | None = None
+    """`(expected_return - risk_free_rate) / volatility`; absent when the weights are riskless."""
+
+    risk_free_rate: float
+    """The annual risk-free rate of the Sharpe ratio."""
+
+    risk_shares: dict[str, float]
+    """Each asset's share of the variance, `w_i (Σw)_i / w'Σw`, adding up to one; zero for every
+    asset when the weights are riskless.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
 class Event:
     """One transaction as applied to the books."""
 
@@ -1951,6 +1978,22 @@ class FrontierPortfolio:
 
     weights: dict[str, float]
     """The weights, by asset."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class GivenWeights(Result):
+    """Given weights valued on the assets' estimates: the report, laid out as an optimisation's, and
+    the raw figures. Printing it prints the report, and showing it shows the report as a page.
+    """
+
+    report: OptimisationReport
+    """The report on the weights: what they are expected to deliver, where their risk comes from,
+    where they sit against each asset (and on the efficient frontier, if asked for) and how they
+    would have done on the assets' history.
+    """
+
+    results: Evaluation
+    """The raw figures."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -3407,6 +3450,11 @@ class OptimisationContext:
 
     resampling: ResamplingSummary | None = None
     """For resampled optimisation, how the weights were averaged."""
+
+    given: bool = False
+    """Whether the weights were given rather than optimised: the report then values them on the
+    estimates, and the limits are those of the frontier.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7475,6 +7523,7 @@ __all__ = [
     "Effect",
     "Ellipsoid",
     "EqualWeight",
+    "Evaluation",
     "Event",
     "Every",
     "Ewma",
@@ -7506,6 +7555,7 @@ __all__ = [
     "FrontierPoint",
     "FrontierPortfolio",
     "FxConversion",
+    "GivenWeights",
     "GlidePath",
     "Goal",
     "Grid",

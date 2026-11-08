@@ -100,7 +100,11 @@ pub fn results_text(results: &str) -> Result<String> {
     };
     let value: serde_json::Value =
         serde_json::from_str(results).map_err(|e| invalid(format!("is not JSON: {e}")))?;
-    if value.get("solution").is_some() {
+    if value.get("risk_shares").is_some() {
+        let result: Evaluation =
+            serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
+        Ok(result.to_string())
+    } else if value.get("solution").is_some() {
         let result: OptimisationResult =
             serde_json::from_value(value).map_err(|e| invalid(e.to_string()))?;
         Ok(result.to_string())
@@ -122,7 +126,8 @@ pub fn results_text(results: &str) -> Result<String> {
         Ok(result.to_string())
     } else {
         Err(invalid(
-            "are not the results of an optimisation, a backtest, a rebalancing, a plan or a screen"
+            "are not the results of an optimisation, an evaluation, a backtest, a rebalancing, a \
+             plan or a screen"
                 .to_owned(),
         ))
     }
@@ -166,8 +171,9 @@ pub mod prelude {
 }
 
 pub use assets::{
-    AssetGroup, AssetSettings, AssetStatistics, Assets, AssetsBuilder, FrontierPortfolio, Method,
-    Optimisation, OptimisationResult, Optimise, OptimiseOptions,
+    AssetGroup, AssetSettings, AssetStatistics, Assets, AssetsBuilder, Evaluate, Evaluation,
+    FrontierPortfolio, GivenWeights, Method, Optimisation, OptimisationResult, Optimise,
+    OptimiseOptions,
 };
 pub use backtest::{Backtest, BacktestResults, Comparison};
 pub use finalytics_reports::{

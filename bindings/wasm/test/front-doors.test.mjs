@@ -50,6 +50,30 @@ test("limits on cash let optimisation hold it", () => {
   });
 });
 
+test("given weights are valued as optimisation values its own", () => {
+  const portfolio = fl.datasets.portfolio();
+  const valued = portfolio.assets().evaluate({ weights: portfolio.weights() });
+  const current = portfolio.report().overview.current;
+  close(valued.results.volatility, current.volatility, 1e-12, "volatility");
+  close(valued.results.expected_return, current.expected_return, 1e-12, "expected return");
+  assert.ok(valued.report.context.given);
+  assert.deepEqual(Object.keys(valued.results.weights).slice(0, 5), ["BND", "EXSA", "GLD", "VNQ", "VTI"]);
+  const assets = new fl.Assets(fl.datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
+  const framed = assets.evaluate({
+    weights: { "US Equity": 0.6, Bonds: 0.4 },
+    max_weight: 0.5,
+    frontier: true,
+    name: "Sixty forty",
+  });
+  assert.equal(framed.report.frontier.length, 30);
+  assert.equal(framed.report.name, "Sixty forty");
+  assert.match(fl.resultsText(framed.results), /Evaluation · Given weights/);
+  assert.throws(() => assets.evaluate({ weights: { "US Equity": 0.6 }, max_weight: 0.5 }), (e) => {
+    assert.deepEqual(e.issues.map((i) => i.path), ["options.max_weight", "weights"]);
+    return true;
+  });
+});
+
 test("the portfolio dataset, from report to trades", () => {
   const portfolio = fl.datasets.portfolio();
   assert.equal(portfolio.asOf, "2026-10-30");

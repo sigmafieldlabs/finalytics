@@ -90,6 +90,12 @@ impl Show for Optimisation {
     }
 }
 
+impl Show for crate::GivenWeights {
+    fn html(&self) -> String {
+        self.report.to_html(None)
+    }
+}
+
 impl Show for Comparison {
     fn html(&self) -> String {
         self.report.to_html(None)

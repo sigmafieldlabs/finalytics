@@ -111,6 +111,8 @@ fn api() -> Value {
     add::<finalytics::MethodInfo>(&mut g);
     add::<finalytics::OptimisationResult>(&mut g);
     add::<finalytics::FrontierPortfolio>(&mut g);
+    add::<finalytics::GivenWeights>(&mut g);
+    add::<finalytics::Evaluation>(&mut g);
     add::<finalytics::PortfolioReport>(&mut g);
     // Backtests.
     add::<finalytics::backtest::BacktestOptions>(&mut g);

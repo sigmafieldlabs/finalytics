@@ -133,6 +133,10 @@ pub struct OptimisationContext {
     /// For resampled optimisation, how the weights were averaged.
     #[serde(default)]
     pub resampling: Option<ResamplingSummary>,
+    /// Whether the weights were given rather than optimised: the report then values them on
+    /// the estimates, and the limits are those of the frontier.
+    #[serde(default)]
+    pub given: bool,
 }
 
 /// How resampled weights were found: the average of the optimal weights for histories simulated
@@ -296,9 +300,11 @@ pub struct OptimisationInputs<'a> {
     pub mean_returns: Option<MeanMethod>,
     pub covariance: &'a Matrix,
     pub risk_free_asset: Option<String>,
-    /// The labels among `labels` that are cash: the risk-free asset when limits on cash make it
-    /// one of the choices.
+    /// The labels among `labels` that are cash: for an optimisation, the risk-free asset when
+    /// limits on cash make it one of the choices; for given weights, any cash they hold.
     pub cash: Vec<String>,
+    /// Whether the weights were given rather than optimised.
+    pub given: bool,
     pub risk_free_rate: f64,
     pub periods_per_year: f64,
     pub covariance_method: CovarianceMethod,
@@ -512,6 +518,7 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             start: inputs.start,
             end: inputs.end,
             resampling: inputs.resampling,
+            given: inputs.given,
         },
         summary,
         allocation,
@@ -696,6 +703,19 @@ fn header_limits(c: &OptimisationContext) -> String {
         .collect();
     parts.push(format!("{groups} group limits"));
     parts.join("; ")
+}
+
+/// The report's first line: the method, its limits and how it ended, or for given weights the
+/// frontier's limits, if it has any.
+fn headline(c: &OptimisationContext) -> String {
+    if !c.given {
+        return format!("{} · {} · {}", c.method, header_limits(c), c.status);
+    }
+    if c.limits.is_empty() {
+        c.method.clone()
+    } else {
+        format!("{} · frontier {}", c.method, header_limits(c))
+    }
 }
 
 /// What the shares of risk are of: the variance, or for minimum CVaR the expected shortfall.
@@ -899,9 +919,15 @@ impl OptimisationReport {
                         ]
                     })
                     .collect();
+                let limited = if !c.given {
+                    format!("{}. ", capitalise(&limits(c)))
+                } else if c.limits.is_empty() {
+                    String::new()
+                } else {
+                    format!("The frontier: {}. ", limits(c))
+                };
                 let mut note = format!(
-                    "{}. {}. Shares of risk are of {}.",
-                    capitalise(&limits(c)),
+                    "{limited}{}. Shares of risk are of {}.",
                     estimates(c),
                     risk_basis(self)
                 );
@@ -987,7 +1013,11 @@ impl OptimisationReport {
         body.push_str(&section(
             "p-summary",
             "Summary",
-            "The weights to hold, and what they are expected to deliver",
+            if c.given {
+                "The weights given, and what they are expected to deliver"
+            } else {
+                "The weights to hold, and what they are expected to deliver"
+            },
             &summary,
         ));
 
@@ -1148,9 +1178,10 @@ impl OptimisationReport {
                     "Where the weights sit against each asset and equal weight",
                     "Expected return and volatility",
                     format!(
-                        "{line} To draw the efficient frontier, optimise with the frontier \
-                         turned on: frontier=True in Python, frontier: true in JavaScript or \
-                         .with_frontier() in Rust. It takes longer, more so with many assets."
+                        "{line} To draw the efficient frontier, {} with the frontier turned on: \
+                         frontier=True in Python, frontier: true in JavaScript or \
+                         .with_frontier() in Rust. It takes longer, more so with many assets.",
+                        if c.given { "evaluate" } else { "optimise" }
                     ),
                 )
             };
@@ -1201,20 +1232,28 @@ impl OptimisationReport {
                         Some(format!("Equal weight {}", percent(e.max_drawdown))),
                     ),
                 ]);
+            let (subtitle, title, note) = if c.given {
+                (
+                    "How the weights would have done on the assets' returns",
+                    "On the history the estimates come from",
+                    "Held from the start and rebalanced quarterly, without trading costs, on the \
+                     returns the estimates come from.",
+                )
+            } else {
+                (
+                    "How the weights would have done on the returns they were fitted to",
+                    "On the history it was fitted to",
+                    "In sample: the weights were chosen knowing these returns, so this flatters \
+                     them. Held from the start and rebalanced quarterly, without trading costs. \
+                     To test the method on returns it had not seen, backtest it with a holdout \
+                     or walk-forward validation.",
+                )
+            };
             body.push_str(&section(
                 "p-history",
                 "History",
-                "How the weights would have done on the returns they were fitted to",
-                &card(
-                    "On the history it was fitted to",
-                    &body_html,
-                    Some(
-                        "In sample: the weights were chosen knowing these returns, so this \
-                         flatters them. Held from the start and rebalanced quarterly, without \
-                         trading costs. To test the method on returns it had not seen, backtest it \
-                         with a holdout or walk-forward validation.",
-                    ),
-                ),
+                subtitle,
+                &card(title, &body_html, Some(note)),
             ));
         }
 
@@ -1222,19 +1261,17 @@ impl OptimisationReport {
         body.push_str(&section(
             "p-method",
             "Method",
-            "How the weights were found",
+            self.method_heading(),
             &card(
-                "How the weights were found",
+                self.method_heading(),
                 &notes_table(&self.method_rows()),
                 None,
             ),
         ));
 
         let meta = format!(
-            "{} · {} · {}<br>{} · {}, {} · {} covariance{}",
-            esc(&c.method),
-            esc(&header_limits(c)),
-            esc(&c.status),
+            "{}<br>{} · {}, {} · {} covariance{}",
+            esc(&headline(c)),
             esc(&plural(c.assets.len(), "asset")),
             frequency(c.periods_per_year),
             esc(&span(c.start, c.end)),
@@ -1273,10 +1310,21 @@ impl OptimisationReport {
         } else {
             plural(c.assets.len(), "asset")
         };
-        let cash = c
+        let mut cash = c
             .risk_free_asset
             .as_ref()
             .map_or_else(String::new, |a| format!("; {a} as the risk-free asset"));
+        // Cash other than the risk-free asset that the weights hold: cash in other currencies,
+        // or cash at the risk-free rate.
+        let other: Vec<String> = self
+            .allocation
+            .iter()
+            .map(|a| a.asset.clone())
+            .filter(|a| !c.assets.contains(a) && c.risk_free_asset.as_ref() != Some(a))
+            .collect();
+        if !other.is_empty() {
+            let _ = write!(cash, "; {} as cash", crate::backtest_html::and_list(&other));
+        }
         let mut rows = vec![
             ("Method", format!("{}: {}", c.method, c.description)),
             (
@@ -1288,8 +1336,12 @@ impl OptimisationReport {
                 ),
             ),
             ("Estimates", format!("{}.", estimates(c))),
-            ("Limits", format!("{}.", capitalise(&limits(c)))),
         ];
+        if !c.given {
+            rows.push(("Limits", format!("{}.", capitalise(&limits(c)))));
+        } else if !c.limits.is_empty() {
+            rows.push(("Frontier", format!("{}.", capitalise(&limits(c)))));
+        }
         if let Some(r) = &c.resampling {
             rows.push((
                 "Resampling",
@@ -1303,16 +1355,27 @@ impl OptimisationReport {
                 ),
             ));
         }
-        rows.push((
-            "Solver",
-            format!(
-                "{}, {} after {}.",
-                capitalise(&c.solver.replace('_', " ")),
-                c.status,
-                plural(c.iterations as usize, "iteration")
-            ),
-        ));
+        if !c.given {
+            rows.push((
+                "Solver",
+                format!(
+                    "{}, {} after {}.",
+                    capitalise(&c.solver.replace('_', " ")),
+                    c.status,
+                    plural(c.iterations as usize, "iteration")
+                ),
+            ));
+        }
         rows
+    }
+
+    /// The heading of the method section: how the weights were found, or valued.
+    fn method_heading(&self) -> &'static str {
+        if self.context.given {
+            "How the weights were valued"
+        } else {
+            "How the weights were found"
+        }
     }
 
     /// The frontier, the assets, equal weight and the weights, with the line from the risk-free
@@ -1553,12 +1616,7 @@ impl OptimisationReport {
         if let Some(name) = name {
             page.line(name);
         }
-        page.parts(format!(
-            "{} · {} · {}",
-            c.method,
-            header_limits(c),
-            c.status
-        ));
+        page.parts(headline(c));
         page.parts(format!(
             "{} · {} · {} covariance{}",
             plural(c.assets.len(), "asset"),
@@ -1732,7 +1790,11 @@ impl OptimisationReport {
             page.table(&head, &rows, None);
         }
         if let Some(h) = &self.history {
-            page.section("On the history it was fitted to (in sample)");
+            page.section(if c.given {
+                "On the history the estimates come from"
+            } else {
+                "On the history it was fitted to (in sample)"
+            });
             let w = &h.weights;
             let e = &h.equal_weight;
             let cells = 46;
@@ -1747,15 +1809,20 @@ impl OptimisationReport {
             page.blank();
             page.note(&format!(
                 "Return {} a year, volatility {}, Sharpe ratio {}, worst fall {}. Held from the \
-                 start and rebalanced quarterly, without trading costs. In sample, so it flatters \
-                 the weights: a backtest tests them on returns they had not seen.",
+                 start and rebalanced quarterly, without trading costs. {}",
                 percent(w.statistics.annualised_return),
                 percent(w.statistics.volatility),
                 num(w.statistics.sharpe_ratio, 2),
-                percent(w.statistics.max_drawdown)
+                percent(w.statistics.max_drawdown),
+                if c.given {
+                    "On the returns the estimates come from."
+                } else {
+                    "In sample, so it flatters the weights: a backtest tests them on returns \
+                     they had not seen."
+                }
             ));
         }
-        page.section("How the weights were found");
+        page.section(self.method_heading());
         let rows = self.method_rows();
         let lw = rows.iter().map(|(l, _)| width(l)).max().unwrap_or(0);
         for (label, text) in &rows {

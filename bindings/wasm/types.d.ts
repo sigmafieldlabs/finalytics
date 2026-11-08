@@ -1103,6 +1103,31 @@ export type Effect =
     amount: Decimal;
   };
 
+/**
+ * The figures of given weights on the assets' estimates: those an optimisation gives the
+ * weights it chooses, from the same covariance and expected returns.
+ */
+export interface Evaluation {
+  /** The weights by asset, as given. */
+  weights: Record<string, number>;
+  /** The annual expected return. */
+  expected_return: number;
+  /** The annual volatility. */
+  volatility: number;
+  /**
+   * `(expected_return - risk_free_rate) / volatility`; absent when the weights are
+   * riskless.
+   */
+  sharpe_ratio?: number | null;
+  /** The annual risk-free rate of the Sharpe ratio. */
+  risk_free_rate: number;
+  /**
+   * Each asset's share of the variance, `w_i (Σw)_i / w'Σw`, adding up to one; zero for
+   * every asset when the weights are riskless.
+   */
+  risk_shares: Record<string, number>;
+}
+
 /** One transaction as applied to the books. */
 export interface Event {
   /** The trade date. */
@@ -1349,6 +1374,22 @@ export interface FrontierPortfolio {
   volatility: number;
   /** The weights, by asset. */
   weights: Record<string, number>;
+}
+
+/**
+ * Given weights valued on the assets' estimates: the report, laid out as an optimisation's,
+ * and the raw figures. Printing it prints the report, and showing it shows the report as a
+ * page.
+ */
+export interface GivenWeights {
+  /**
+   * The report on the weights: what they are expected to deliver, where their risk comes
+   * from, where they sit against each asset (and on the efficient frontier, if asked for)
+   * and how they would have done on the assets' history.
+   */
+  report: OptimisationReport;
+  /** The raw figures. */
+  results: Evaluation;
 }
 
 /** The goal a plan is tested against. */
@@ -2379,6 +2420,11 @@ export interface OptimisationContext {
   end: Date;
   /** For resampled optimisation, how the weights were averaged. */
   resampling?: ResamplingSummary | null;
+  /**
+   * Whether the weights were given rather than optimised: the report then values them on
+   * the estimates, and the limits are those of the frontier.
+   */
+  given?: boolean;
 }
 
 /** How the weights, and equal weight, would have done on the history they were fitted to. */

@@ -227,6 +227,34 @@ export interface OptimiseChoices extends Partial<OptimiseOptions> {
 }
 
 /**
+ * The options of `Assets.evaluate`: the weights, the estimates' options, and the frontier with
+ * its limits, as for `Assets.optimise`.
+ */
+export interface EvaluateChoices
+  extends Partial<
+    Pick<
+      OptimiseOptions,
+      | "risk_free_rate"
+      | "expected_returns"
+      | "frontier"
+      | "bounds"
+      | "max_weight"
+      | "asset_bounds"
+      | "groups"
+      | "min_effective_assets"
+      | "cash"
+    >
+  > {
+  /**
+   * The weights by asset, adding up to one, such as `{ "US Equity": 0.6, Bonds: 0.4 }`: they may
+   * hold the risk-free asset and other cash, as a portfolio's own weights do.
+   */
+  weights: Record<string, number>;
+  /** The report's title: "Given weights" by default. */
+  name?: string;
+}
+
+/**
  * How strategies are validated: `"in_sample"` (the default); `{ holdout: { start: "2016-11-01" } }`,
  * fitted on the history before the date and tested on the rest; or
  * `{ walk_forward: { years: 5 } }`, refitted at each scheduled rebalance on the last five years
@@ -1631,6 +1659,57 @@ impl Assets {
         Ok(value)
     }
 
+    /// `options.weights` by asset valued on the estimates optimisation uses: the figures in
+    /// `results`, with the optimisation report's page and text for them, titled "Given
+    /// weights", in `report`. The limits apply to the efficient frontier, drawn with
+    /// `frontier: true`.
+    #[wasm_bindgen(unchecked_return_type = "Result<OptimisationReport, Evaluation>")]
+    pub fn evaluate(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "EvaluateChoices")] options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut allowed = fields::<finalytics::OptimiseOptions>(&["weights", "name"]);
+        allowed.retain(|name| name != "method");
+        let mut options = object(options, &allowed)?;
+        let name = match options.remove("name") {
+            Some(serde_json::Value::String(name)) => Some(name),
+            Some(serde_json::Value::Null) | None => None,
+            Some(_) => return Err(invalid("options.name", "must be a string")),
+        };
+        let Some(weights) = options.remove("weights") else {
+            return Err(invalid(
+                "options.weights",
+                "give the weights by asset, adding up to one",
+            ));
+        };
+        let weights: BTreeMap<String, f64> =
+            finalytics::formats::from_json(&weights.to_string(), "options.weights")
+                .map_err(error)?;
+        let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
+            &serde_json::Value::Object(options).to_string(),
+            "options",
+        )
+        .map_err(error)?;
+        let mut result = self
+            .inner
+            .evaluate_with(&weights, &options)
+            .map_err(error)?;
+        result.report.name = name;
+        let value = to_js(&result)?;
+        let results = js_sys::Reflect::get(&value, &"results".into())?;
+        js_sys::Reflect::set(
+            &results,
+            &"weights".into(),
+            &self.in_asset_order(&result.results.weights)?,
+        )?;
+        js_sys::Reflect::set(
+            &results,
+            &"risk_shares".into(),
+            &self.in_asset_order(&result.results.risk_shares)?,
+        )?;
+        Ok(value)
+    }
+
     /// The comparison of `options.methods`, each backtested on these assets with the same
     /// limits, rebalancing, validation and trading costs: the comparison report in `report`,
     /// and every return and trade in `results`.
@@ -1942,10 +2021,15 @@ impl Assets {
     /// `values` by asset as an object whose keys are in the order of the assets.
     fn in_asset_order(&self, values: &BTreeMap<String, f64>) -> Result<JsValue, JsValue> {
         let ordered = js_sys::Object::new();
-        for asset in self.inner.labels() {
+        let labels = self.inner.labels();
+        for asset in labels {
             if let Some(v) = values.get(asset) {
                 js_sys::Reflect::set(&ordered, &asset.into(), &(*v).into())?;
             }
+        }
+        // Then any other, such as cash at the risk-free rate.
+        for (asset, v) in values.iter().filter(|(a, _)| !labels.contains(*a)) {
+            js_sys::Reflect::set(&ordered, &asset.into(), &(*v).into())?;
         }
         Ok(ordered.into())
     }

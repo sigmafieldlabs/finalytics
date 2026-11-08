@@ -808,6 +808,19 @@ impl NativeAssets {
         })
     }
 
+    fn evaluate(&self, py: Python<'_>, weights: &str, options: &str) -> PyResult<String> {
+        let weights: BTreeMap<String, f64> = from_json(weights, "weights")?;
+        let options: OptimiseOptions = from_json(options, "options")?;
+        released(py, || {
+            to_json(
+                &self
+                    .inner
+                    .evaluate_with(&weights, &options)
+                    .map_err(engine)?,
+            )
+        })
+    }
+
     fn frontier(&self, py: Python<'_>, points: usize, options: &str) -> PyResult<String> {
         let options: OptimiseOptions = from_json(options, "options")?;
         released(py, || {

@@ -145,6 +145,24 @@ def test_limits_on_cash_let_optimisation_hold_it():
     assert caught.value.issues[0].path == "options.cash"
 
 
+def test_given_weights_are_valued_as_optimisation_values_its_own():
+    portfolio = fl.datasets.portfolio()
+    valued = portfolio.assets().evaluate(portfolio.weights())
+    current = portfolio.report().overview.current
+    assert valued.results.volatility == pytest.approx(current.volatility, abs=1e-12)
+    assert valued.results.expected_return == pytest.approx(current.expected_return, abs=1e-12)
+    assert valued.report.context.given and "Given weights" in str(valued)
+    assert list(valued.results.weights)[:5] == ["BND", "EXSA", "GLD", "VNQ", "VTI"]
+    assert sum(valued.results.risk_shares.values()) == pytest.approx(1.0, abs=1e-12)
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+    framed = assets.evaluate({"US Equity": 0.6, "Bonds": 0.4}, max_weight=0.5, frontier=True, name="Sixty forty")
+    assert len(framed.report.frontier) == 30 and framed.report.name == "Sixty forty"
+    assert "Evaluation · Given weights" in str(framed.results)
+    with pytest.raises(fl.ValidationError) as caught:
+        assets.evaluate({"US Equity": 0.6}, max_weight=0.5)
+    assert [i.path for i in caught.value.issues] == ["options.max_weight", "weights"]
+
+
 def test_a_portfolio_from_transactions_alone():
     transactions = (
         "date,type,instrument,quantity,price,amount,currency\n"

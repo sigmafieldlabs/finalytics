@@ -2,6 +2,9 @@
 
 use std::collections::BTreeMap;
 
+mod evaluate;
+pub use evaluate::{Evaluate, Evaluation, GivenWeights};
+
 use serde::{Deserialize, Serialize};
 
 use finalytics_core::{Date, Decimal, Error, Result, ValidationReport};
@@ -1081,6 +1084,7 @@ impl Assets {
             covariance: &covariance,
             risk_free_asset: self.risk_free_asset().map(str::to_owned),
             cash: self.cash_choice(options).into_iter().collect(),
+            given: false,
             risk_free_rate: results.risk_free_rate,
             periods_per_year: self.periods_per_year,
             covariance_method: self.covariance_method,

@@ -1,5 +1,5 @@
 // The reports and results the engine returns are plain data, with methods added: a report has
-// `toText`, `toHtml`, `saveHtml`, `show` and `toString`; the results of `Assets.optimise`, `Assets.compare`,
+// `toText`, `toHtml`, `saveHtml`, `show` and `toString`; the results of `Assets.optimise`, `Assets.evaluate`, `Assets.compare`,
 // `Assets.backtest`, `Assets.plan`, `Portfolio.rebalance` and `Universe.screen` have the same methods, for their
 // report, with the report in `report` and the raw results, which print as text too, in `results`. The methods
 // are not enumerable, so the data still writes to JSON and passes to a worker as data alone.
@@ -13,7 +13,7 @@ export function install(show, save) {
   const page = { show, save };
   wrap(Portfolio, "report", (report) => withReportMethods(report, page));
   wrap(Portfolio, "rebalance", (result) => withResultMethods(result, page));
-  for (const name of ["optimise", "compare", "backtest", "plan"]) {
+  for (const name of ["optimise", "evaluate", "compare", "backtest", "plan"]) {
     wrap(Assets, name, (result) => withResultMethods(result, page));
   }
   wrap(Universe, "screen", (result) => withResultMethods(result, page, screenRows));
