@@ -6,7 +6,7 @@ flows by replaying the transactions; its time-weighted returns by month, by cale
 over the standard periods, with the benchmark's; external flows and income by month; the
 concentration of its holdings; the histogram of its daily returns (``numpy.histogram``); and,
 for the attribution report, each segment's weight and return in each month from the holdings'
-daily gains, and the Brinson-Fachler effects. ``crates/finalytics/tests/reports_reference.rs``
+daily gains, and the Brinson-Fachler effects; and a blended benchmark's levels and segments. ``crates/finalytics/tests/reports_reference.rs``
 compares them.
 
 A purchase moves its cost, fees included, from cash into the instrument; a sale moves its
@@ -203,6 +203,37 @@ def main():
             }
         )
 
+    # A blended benchmark of 50% SPY, 30% SAP (in euros, converted at each date's rate) and 20%
+    # BOND, rebalanced to its weights after the last date of each month; its segments in each
+    # month by asset class, as the attribution report derives them.
+    blend = {"SPY": 0.5, "SAP": 0.3, "BOND": 0.2}
+    usd = {k: [prices.loc[d, k] * rate(instruments.loc[k, "currency"], d) for d in DATES] for k in blend}
+    levels, level = [], 100.0
+    units = {k: level * w / usd[k][0] for k, w in blend.items()}
+    for t, d in enumerate(DATES):
+        level = sum(units[k] * usd[k][t] for k in blend)
+        levels.append(level)
+        if t + 1 < len(DATES) and DATES[t + 1][:7] != d[:7]:
+            units = {k: level * w / usd[k][t] for k, w in blend.items()}
+    ends = [t for t in range(1, len(DATES) - 1) if DATES[t + 1][:7] != DATES[t][:7]] + [len(DATES) - 1]
+    blend_periods, start = [], 0
+    for end in ends:
+        by_class = defaultdict(lambda: [0.0, 0.0])
+        for k, w in blend.items():
+            by_class[segment[k]][0] += w
+            by_class[segment[k]][1] += w * (usd[k][end] / usd[k][start] - 1)
+        blend_periods.append(
+            {
+                "start": DATES[start],
+                "end": DATES[end],
+                "segments": [
+                    {"name": g, "benchmark_weight": w, "benchmark_return": wr / w}
+                    for g, (w, wr) in sorted(by_class.items())
+                ],
+            }
+        )
+        start = end
+
     fixture = {
         "generated_by": "scripts/reference/reports.py",
         "as_of": AS_OF,
@@ -220,6 +251,7 @@ def main():
         },
         "histogram": {"counts": counts.tolist(), "lower": float(edges[0]), "upper": float(edges[-1])},
         "attribution": attribution,
+        "blend": {"weights": blend, "levels": levels, "periods": blend_periods},
     }
 
     def plain(value):

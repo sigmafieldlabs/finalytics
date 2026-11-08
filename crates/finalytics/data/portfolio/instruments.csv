@@ -4,3 +4,4 @@ EXSA,fund,EUR,iShares STOXX Europe 600 UCITS ETF (DE),Equity,Europe
 BND,fund,USD,Vanguard Total Bond Market ETF,Fixed income,North America
 GLD,fund,USD,SPDR Gold Shares,Real assets,Global
 VNQ,fund,USD,Vanguard Real Estate ETF,Real assets,North America
+BENCH,other,USD,"Balanced benchmark, 55/35/10",,

@@ -55,7 +55,7 @@ fn d(s: &str) -> Date {
 fn options() -> ReportOptions {
     {
         let mut report_options = ReportOptions::default();
-        report_options.benchmark = Some(InstrumentId::new("SPY").unwrap());
+        report_options.benchmark = Some(InstrumentId::new("SPY").unwrap().into());
         report_options
     }
 }
@@ -191,6 +191,46 @@ fn attribution_segments_from_the_books() {
             close(x.allocation, &e["allocation"], &what);
             close(x.selection, &e["selection"], &what);
             close(x.interaction, &e["interaction"], &what);
+        }
+    }
+}
+
+#[test]
+fn a_blended_benchmark_and_its_segments_match_the_reference() {
+    let (books, market, source) = setup();
+    let f = fixture();
+    let blend = &f["blend"];
+    let mut options = ReportOptions::default();
+    let weights: std::collections::BTreeMap<finalytics::HoldingKey, f64> = blend["weights"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(k, w)| (k.parse().unwrap(), w.as_f64().unwrap()))
+        .collect();
+    options.benchmark = Some(ReportBenchmark::Blend(weights));
+    let overview = overview_report(&books, &market, &source, &options).unwrap();
+    let growth = overview.benchmark_growth.unwrap();
+    let levels = blend["levels"].as_array().unwrap();
+    assert_eq!(growth.values.len(), levels.len());
+    for (k, (got, want)) in growth.values.iter().zip(levels).enumerate() {
+        close(*got, want, &format!("level {k}"));
+    }
+    options.attribution = Some(AttributionInputs {
+        scheme: "asset_class".to_owned(),
+        periods: Vec::new(),
+        linking: Default::default(),
+    });
+    let attribution = attribution_report(&books, &market, &source, &options).unwrap();
+    let periods = blend["periods"].as_array().unwrap();
+    assert_eq!(attribution.periods.len(), periods.len());
+    for (got, want) in attribution.periods.iter().zip(periods) {
+        assert_eq!(got.start.to_string(), want["start"].as_str().unwrap());
+        assert_eq!(got.end.to_string(), want["end"].as_str().unwrap());
+        for segment in want["segments"].as_array().unwrap() {
+            let name = segment["name"].as_str().unwrap();
+            let found = got.segments.iter().find(|s| s.name == name).unwrap();
+            close(found.benchmark_weight, &segment["benchmark_weight"], name);
+            close(found.benchmark_return, &segment["benchmark_return"], name);
         }
     }
 }

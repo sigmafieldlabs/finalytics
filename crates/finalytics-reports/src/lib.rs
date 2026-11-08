@@ -50,7 +50,7 @@ pub use backtests::{
     History, MoneyFigures, RunReport, StrategyReport, WeightsAt, backtest_report,
     comparison_report,
 };
-pub use context::{Provenance, ReportKind, ReportOptions, Source};
+pub use context::{Provenance, ReportBenchmark, ReportKind, ReportOptions, Source};
 pub use holdings::{
     AccountHoldings, Concentration, HoldingRow, HoldingsReport, IncomeSummary, LotRow,
     RealisedSummary, holdings_report,

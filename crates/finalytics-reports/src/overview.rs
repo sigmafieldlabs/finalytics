@@ -164,10 +164,7 @@ pub fn overview_report(
         values: growth.values().to_vec(),
     };
     let benchmark_growth = cx.benchmark_levels().map(|l| Series {
-        name: options
-            .benchmark
-            .as_ref()
-            .map_or_else(String::new, ToString::to_string),
+        name: cx.benchmark_name(),
         unit: Unit::Level,
         dates: cx.dates.clone(),
         values: l.iter().map(|v| v / l[0] * 100.0).collect(),

@@ -707,7 +707,8 @@
           "items": {
             "$ref": "#/$defs/BenchmarkPeriod"
           },
-          "description": "The benchmark's segments in each period, such as each month."
+          "description": "The benchmark's segments in each period, such as each month. Without them, they are\nderived from a blended benchmark: one period for each calendar month of the report, each\nsegment's weight the sum of its holdings' weights and its return their weighted return\nover the month, by the classification `scheme` of the portfolio's instruments.",
+          "default": []
         },
         "linking": {
           "$ref": "#/$defs/Linking",
@@ -716,8 +717,7 @@
         }
       },
       "required": [
-        "scheme",
-        "periods"
+        "scheme"
       ],
       "description": "What the attribution report compares the portfolio with."
     },
@@ -8977,6 +8977,13 @@
         "warnings": {
           "$ref": "#/$defs/ValidationReport",
           "description": "Prices and rates carried forward from earlier dates, and figures that could not be\ncomputed."
+        },
+        "benchmark": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The benchmark, as the reports describe it, such as \"BENCH, in USD, converted to EUR at\nthe market data's exchange rates\"."
         }
       },
       "required": [
@@ -9802,6 +9809,23 @@
       ],
       "description": "Statistics of a returns series against a benchmark's returns over the same periods."
     },
+    "ReportBenchmark": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "An instrument, such as an index, by its identifier."
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Weights by holding, adding up to one: instruments, such as funds or indices with prices,\nand cash, such as `USD cash`."
+        }
+      ],
+      "description": "The benchmark of the portfolio reports.\n\nAn instrument's levels are in its currency, as the portfolio's instruments give it (the base\ncurrency for one they do not list), and are converted to the base currency at the market\ndata's rates. A blend holds its instruments, and any cash, at the weights given, rebalanced to\nthem at the start of each month, each in the base currency in the same way; the attribution\nreport derives the benchmark's segments from it."
+    },
     "ReportKind": {
       "oneOf": [
         {
@@ -9875,13 +9899,13 @@
         "benchmark": {
           "anyOf": [
             {
-              "$ref": "#/$defs/InstrumentId"
+              "$ref": "#/$defs/ReportBenchmark"
             },
             {
               "type": "null"
             }
           ],
-          "description": "An instrument whose prices in the market data are the benchmark's levels, such as an\nindex. It need not be held.",
+          "description": "The benchmark: an instrument whose prices in the market data are its levels, such as an\nindex, which need not be held; or a blend of instruments by weight, such as\n`{\"VTI\": 0.6, \"BND\": 0.4}`. Either is in the base currency, converted at the market\ndata's exchange rates.",
           "default": null
         },
         "risk_free_rate": {

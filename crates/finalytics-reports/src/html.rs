@@ -1000,11 +1000,7 @@ fn overview(o: &OverviewReport) -> String {
         }];
         if let Some(b) = &o.benchmark_growth {
             lines.push(Line {
-                name: p
-                    .options
-                    .benchmark
-                    .as_ref()
-                    .map_or_else(|| "Benchmark".to_owned(), |b| b.to_string()),
+                name: benchmark_label(&b.name),
                 values: &b.values,
                 colour: SERIES[1],
             });
@@ -1410,11 +1406,7 @@ fn performance(r: &PerformanceReport, names: &BTreeMap<String, String>) -> Strin
         }];
         if benchmark {
             series.push(Columns {
-                name: p
-                    .options
-                    .benchmark
-                    .as_ref()
-                    .map_or_else(|| "Benchmark".to_owned(), |b| b.to_string()),
+                name: benchmark_label(r.benchmark_growth.as_ref().map_or("", |b| b.name.as_str())),
                 values: r.calendar_years.iter().map(|y| y.benchmark).collect(),
                 colour: SERIES[1],
             });
@@ -2000,6 +1992,15 @@ impl Theme {
     }
 }
 
+/// A benchmark's name for a chart's legend: "Benchmark" when it has none.
+pub(crate) fn benchmark_label(name: &str) -> String {
+    if name.is_empty() {
+        "Benchmark".to_owned()
+    } else {
+        name.to_owned()
+    }
+}
+
 impl PortfolioReport {
     /// The six reports as one self-contained HTML page, with the portfolio's `name` (or the
     /// report's own) as its title, if given: inline styles and SVG charts with hover details, no
@@ -2035,11 +2036,14 @@ impl PortfolioReport {
             .collect();
         let sections: String = parts.into_iter().map(|(_, _, html)| html).collect();
         let s = &p.source;
-        let benchmark = p
-            .options
-            .benchmark
-            .as_ref()
-            .map_or_else(String::new, |b| format!(" · benchmark {}", esc(b.as_str())));
+        let benchmark = p.benchmark.as_ref().map_or_else(String::new, |b| {
+            let mut chars = b.chars();
+            let b: String = chars
+                .next()
+                .map(|c| c.to_uppercase().chain(chars).collect())
+                .unwrap_or_default();
+            format!("<br>Benchmark: {}", esc(&b))
+        });
         let brand = if name.is_some() {
             r#"<div class="brand">Portfolio report</div>"#
         } else {

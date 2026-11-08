@@ -49,9 +49,11 @@ pub struct ReportOptions {
     /// Classification schemes of the instruments to break holdings, contribution and risk down
     /// by, such as `asset_class` or `region`.
     pub group_by: Vec<String>,
-    /// An instrument whose prices in the market data are the benchmark's levels, such as an
-    /// index. It need not be held.
-    pub benchmark: Option<InstrumentId>,
+    /// The benchmark: an instrument whose prices in the market data are its levels, such as an
+    /// index, which need not be held; or a blend of instruments by weight, such as
+    /// `{"VTI": 0.6, "BND": 0.4}`. Either is in the base currency, converted at the market
+    /// data's exchange rates.
+    pub benchmark: Option<ReportBenchmark>,
     /// The annual risk-free rate, for Sharpe ratios. The default is 0.
     pub risk_free_rate: f64,
     /// Valuation periods in a year, for annualising: 252 (trading days) by default.
@@ -110,6 +112,54 @@ impl Default for ReportOptions {
     }
 }
 
+/// The benchmark of the portfolio reports.
+///
+/// An instrument's levels are in its currency, as the portfolio's instruments give it (the base
+/// currency for one they do not list), and are converted to the base currency at the market
+/// data's rates. A blend holds its instruments, and any cash, at the weights given, rebalanced to
+/// them at the start of each month, each in the base currency in the same way; the attribution
+/// report derives the benchmark's segments from it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+pub enum ReportBenchmark {
+    /// An instrument, such as an index, by its identifier.
+    Instrument(InstrumentId),
+    /// Weights by holding, adding up to one: instruments, such as funds or indices with prices,
+    /// and cash, such as `USD cash`.
+    Blend(BTreeMap<HoldingKey, f64>),
+}
+
+impl From<InstrumentId> for ReportBenchmark {
+    fn from(id: InstrumentId) -> ReportBenchmark {
+        ReportBenchmark::Instrument(id)
+    }
+}
+
+impl ReportBenchmark {
+    /// The instrument, for a benchmark that is one.
+    pub fn instrument(&self) -> Option<&InstrumentId> {
+        match self {
+            ReportBenchmark::Instrument(id) => Some(id),
+            ReportBenchmark::Blend(_) => None,
+        }
+    }
+}
+
+/// The benchmark resolved on the reports' dates: its name, a line saying what it is, and its
+/// levels in the base currency.
+#[derive(Debug, Clone)]
+pub(crate) struct BenchmarkLevels {
+    /// The name in charts and tables: the instrument's, or "Benchmark" for a blend.
+    pub(crate) name: String,
+    /// What it is, for the reports' headers.
+    pub(crate) description: String,
+    /// Its levels on the valuation dates, when every date has them.
+    pub(crate) levels: Option<Vec<f64>>,
+    /// Why it has no levels, when it has none.
+    pub(crate) missing: Option<String>,
+}
+
 /// What a report was computed from: a digest of the portfolio document and market data, and
 /// their size. Computing it once and passing it to each report avoids hashing the inputs again.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,6 +216,10 @@ pub struct Provenance {
     /// Prices and rates carried forward from earlier dates, and figures that could not be
     /// computed.
     pub warnings: ValidationReport,
+    /// The benchmark, as the reports describe it, such as "BENCH, in USD, converted to EUR at
+    /// the market data's exchange rates".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub benchmark: Option<String>,
 }
 
 /// The dates, options and inputs a report is computed on.
@@ -179,6 +233,8 @@ pub(crate) struct Context<'a> {
     /// The valuation dates: every price date from `start` to `as_of`.
     pub(crate) dates: Vec<Date>,
     pub(crate) base: Currency,
+    /// The benchmark, if the options name one.
+    pub(crate) benchmark: Option<BenchmarkLevels>,
 }
 
 impl<'a> Context<'a> {
@@ -212,13 +268,37 @@ impl<'a> Context<'a> {
         if options.frontier_points < 2 {
             report.error("options.frontier_points", "must be at least 2");
         }
-        if let Some(b) = &options.benchmark
-            && market.prices(b).is_none()
-        {
-            report.error(
-                "options.benchmark",
-                format!("{b} has no prices in the market data"),
-            );
+        match &options.benchmark {
+            Some(ReportBenchmark::Instrument(b)) if market.prices(b).is_none() => {
+                report.error(
+                    "options.benchmark",
+                    format!("{b} has no prices in the market data"),
+                );
+            }
+            Some(ReportBenchmark::Blend(weights)) => {
+                if weights.is_empty() {
+                    report.error("options.benchmark", "a blend needs at least one holding");
+                }
+                for (key, w) in weights {
+                    let path = format!("options.benchmark.{key}");
+                    if !(w.is_finite() && *w >= 0.0) {
+                        report.error(&path, format!("must be a weight of zero or more, not {w}"));
+                    }
+                    if let HoldingKey::Instrument(id) = key
+                        && market.prices(id).is_none()
+                    {
+                        report.error(path, format!("{id} has no prices in the market data"));
+                    }
+                }
+                let total: f64 = weights.values().sum();
+                if !weights.is_empty() && (total - 1.0).abs() > 1e-6 {
+                    report.error(
+                        "options.benchmark",
+                        format!("the blend's weights add up to {total}, not one"),
+                    );
+                }
+            }
+            _ => {}
         }
         let known: BTreeSet<&String> = books
             .instruments()
@@ -286,6 +366,11 @@ impl<'a> Context<'a> {
         if dates.last() != Some(&as_of) {
             dates.push(as_of);
         }
+        let base = books.base_currency();
+        let benchmark = options
+            .benchmark
+            .as_ref()
+            .map(|b| resolve_benchmark(books, market, &dates, base, b));
         Ok(Context {
             books,
             market,
@@ -294,11 +379,16 @@ impl<'a> Context<'a> {
             as_of,
             start,
             dates,
-            base: books.base_currency(),
+            base,
+            benchmark,
         })
     }
 
     pub(crate) fn provenance(&self, report: ReportKind, warnings: ValidationReport) -> Provenance {
+        let mut warnings = warnings;
+        if let Some(why) = self.benchmark.as_ref().and_then(|b| b.missing.clone()) {
+            warnings.warning("options.benchmark", why);
+        }
         Provenance {
             report,
             engine: "finalytics".to_owned(),
@@ -309,7 +399,15 @@ impl<'a> Context<'a> {
             source: self.source.clone(),
             options: self.options.clone(),
             warnings,
+            benchmark: self.benchmark.as_ref().map(|b| b.description.clone()),
         }
+    }
+
+    /// The benchmark's name in charts and tables.
+    pub(crate) fn benchmark_name(&self) -> String {
+        self.benchmark
+            .as_ref()
+            .map_or_else(String::new, |b| b.name.clone())
     }
 
     pub(crate) fn statistics_options(&self) -> StatisticsOptions {
@@ -321,20 +419,236 @@ impl<'a> Context<'a> {
         options
     }
 
-    /// The benchmark's levels on the valuation dates, carried forward as prices are.
+    /// The benchmark's levels on the valuation dates in the base currency, carried forward as
+    /// prices are.
     pub(crate) fn benchmark_levels(&self) -> Option<Vec<f64>> {
-        let id = self.options.benchmark.as_ref()?;
-        self.dates
-            .iter()
-            .map(|&d| {
-                self.market
-                    .price(id, d)
-                    .value()
-                    .copied()
-                    .map(to_f64)
-                    .filter(|v| *v > 0.0)
-            })
-            .collect()
+        self.benchmark.as_ref()?.levels.clone()
+    }
+}
+
+/// A holding's value per unit in the base currency on `date`: an instrument's price at the
+/// rate of its currency (the base currency for an instrument the books do not list), and a unit
+/// of cash at its rate.
+pub(crate) fn unit_value(
+    books: &Books,
+    market: &MarketData,
+    key: &HoldingKey,
+    date: Date,
+    base: Currency,
+) -> UnitValue {
+    let (price, currency) = match key {
+        HoldingKey::Cash(c) => (Some(1.0), *c),
+        HoldingKey::Instrument(id) => (
+            market.price(id, date).value().copied().map(to_f64),
+            books.instrument(id).map_or(base, |i| i.currency),
+        ),
+    };
+    let Some(price) = price.filter(|p| *p > 0.0) else {
+        return UnitValue::NoPrice;
+    };
+    match market.fx_rate(currency, base, date).value().copied() {
+        Some(rate) => UnitValue::Value(price * to_f64(rate)),
+        None => UnitValue::NoRate(price),
+    }
+}
+
+/// A holding's value per unit in the base currency, or why there is none.
+pub(crate) enum UnitValue {
+    /// The value.
+    Value(f64),
+    /// No price on or shortly before the date.
+    NoPrice,
+    /// A price, in its own currency, but no rate to the base currency.
+    NoRate(f64),
+}
+
+/// Percentages in words, such as "55%".
+fn share_words(w: f64) -> String {
+    let text = format!("{:.2}", w * 100.0);
+    format!("{}%", text.trim_end_matches('0').trim_end_matches('.'))
+}
+
+/// The benchmark `b` on `dates`, in `base`.
+fn resolve_benchmark(
+    books: &Books,
+    market: &MarketData,
+    dates: &[Date],
+    base: Currency,
+    b: &ReportBenchmark,
+) -> BenchmarkLevels {
+    match b {
+        ReportBenchmark::Instrument(id) => {
+            let key = HoldingKey::Instrument(id.clone());
+            let listed = books.instrument(id).map(|i| i.currency);
+            let currency = listed.unwrap_or(base);
+            let values: Vec<UnitValue> = dates
+                .iter()
+                .map(|&d| unit_value(books, market, &key, d, base))
+                .collect();
+            let no_price = values.iter().any(|v| matches!(v, UnitValue::NoPrice));
+            let no_rate = values
+                .iter()
+                .filter(|v| matches!(v, UnitValue::NoRate(_)))
+                .count();
+            let mut description = match listed {
+                None => format!(
+                    "{id}, taken to be in {base}, the base currency, as the instruments do not \
+                     list it"
+                ),
+                Some(c) if c == base => format!("{id}, in {base}"),
+                Some(c) => format!("{id}, in {c}, converted to {base} at the market data's rates"),
+            };
+            let (levels, missing) = if no_price {
+                (
+                    None,
+                    Some(format!(
+                        "{id} has no price on some valuation dates, so the benchmark is left out"
+                    )),
+                )
+            } else if no_rate == values.len() {
+                // No rate at all: the levels are compared as they are, and the reports say so.
+                description = format!(
+                    "{id}, in {currency}: the market data has no {currency} to {base} rate, so \
+                     its levels are compared unconverted"
+                );
+                (
+                    Some(
+                        values
+                            .iter()
+                            .map(|v| match v {
+                                UnitValue::NoRate(p) => *p,
+                                _ => f64::NAN,
+                            })
+                            .collect(),
+                    ),
+                    None,
+                )
+            } else if no_rate > 0 {
+                (
+                    None,
+                    Some(format!(
+                        "the market data has no {currency} to {base} rate on some valuation \
+                         dates, so the benchmark is left out"
+                    )),
+                )
+            } else {
+                (
+                    Some(
+                        values
+                            .iter()
+                            .map(|v| match v {
+                                UnitValue::Value(x) => *x,
+                                _ => f64::NAN,
+                            })
+                            .collect(),
+                    ),
+                    None,
+                )
+            };
+            BenchmarkLevels {
+                name: id.to_string(),
+                description,
+                levels,
+                missing,
+            }
+        }
+        ReportBenchmark::Blend(weights) => {
+            let mut parts: Vec<(&HoldingKey, f64)> = weights.iter().map(|(k, w)| (k, *w)).collect();
+            parts.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+            let named: Vec<String> = parts
+                .iter()
+                .map(|(k, w)| format!("{} {k}", share_words(*w)))
+                .collect();
+            let foreign = parts.iter().any(|(k, _)| {
+                let c = match k {
+                    HoldingKey::Cash(c) => *c,
+                    HoldingKey::Instrument(id) => books.instrument(id).map_or(base, |i| i.currency),
+                };
+                c != base
+            });
+            let description = format!(
+                "a blend of {}, rebalanced monthly{}",
+                and_list(&named),
+                if foreign {
+                    format!(", in {base} at the market data's rates")
+                } else {
+                    String::new()
+                }
+            );
+            let (levels, missing) = match blend_levels(books, market, dates, base, &parts) {
+                Ok(levels) => (Some(levels), None),
+                Err(why) => (None, Some(why)),
+            };
+            BenchmarkLevels {
+                name: "Benchmark".to_owned(),
+                description,
+                levels,
+                missing,
+            }
+        }
+    }
+}
+
+/// The blend's levels on `dates`, from 100: each holding at its weight, rebalanced after the last
+/// date of each month.
+fn blend_levels(
+    books: &Books,
+    market: &MarketData,
+    dates: &[Date],
+    base: Currency,
+    parts: &[(&HoldingKey, f64)],
+) -> std::result::Result<Vec<f64>, String> {
+    let mut prices: Vec<Vec<f64>> = Vec::with_capacity(parts.len());
+    for (key, _) in parts {
+        let mut column = Vec::with_capacity(dates.len());
+        for &d in dates {
+            match unit_value(books, market, key, d, base) {
+                UnitValue::Value(v) => column.push(v),
+                UnitValue::NoPrice => {
+                    return Err(format!(
+                        "{key}, in the blended benchmark, has no price on {d}, so the benchmark \
+                         is left out"
+                    ));
+                }
+                UnitValue::NoRate(_) => {
+                    return Err(format!(
+                        "the market data has no rate to {base} on {d} for {key}, in the blended \
+                         benchmark, so the benchmark is left out"
+                    ));
+                }
+            }
+        }
+        prices.push(column);
+    }
+    let mut level = 100.0;
+    let mut levels = Vec::with_capacity(dates.len());
+    let mut units: Vec<f64> = parts
+        .iter()
+        .zip(&prices)
+        .map(|((_, w), p)| level * w / p[0])
+        .collect();
+    for t in 0..dates.len() {
+        level = units.iter().zip(&prices).map(|(u, p)| u * p[t]).sum();
+        levels.push(level);
+        let month_ends = t + 1 < dates.len()
+            && (dates[t + 1].year(), dates[t + 1].month()) != (dates[t].year(), dates[t].month());
+        if month_ends {
+            units = parts
+                .iter()
+                .zip(&prices)
+                .map(|((_, w), p)| level * w / p[t])
+                .collect();
+        }
+    }
+    Ok(levels)
+}
+
+/// Names joined as in a sentence: "a, b and c".
+fn and_list(items: &[String]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => one.clone(),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
     }
 }
 

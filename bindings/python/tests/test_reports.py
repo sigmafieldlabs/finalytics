@@ -115,3 +115,17 @@ def test_table_titles_are_excel_sheet_names():
     assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
     optimisation = assets.optimise(method="minimum_variance", max_weight=0.4)
     assert sheet_name_problems(fl.reports.tables(optimisation.report)) == []
+
+
+def test_a_benchmark_in_another_currency_is_converted_and_a_blend_gives_the_segments():
+    files = {name: fl.datasets.file(f"portfolio/{name}.csv") for name in ("transactions", "instruments", "accounts", "prices", "fx")}
+    eur = fl.Portfolio.from_csv(**files, base_currency="EUR")
+    report = eur.overview_report(benchmark="BENCH")
+    assert report.provenance.benchmark == "BENCH, in USD, converted to EUR at the market data's rates"
+    portfolio = fl.datasets.portfolio()
+    blended = portfolio.report(benchmark={"VTI": 0.55, "BND": 0.35, "GLD": 0.1}, attribution="asset_class")
+    assert blended.overview.provenance.benchmark == "a blend of 55% VTI, 35% BND and 10% GLD, rebalanced monthly"
+    assert len(blended.attribution.periods) == 36
+    # The portfolio's cash is a segment too, which the benchmark does not hold.
+    first = {s.name: s.benchmark_weight for s in blended.attribution.periods[0].segments if s.benchmark_weight}
+    assert first == pytest.approx({"Equity": 0.55, "Fixed income": 0.35, "Real assets": 0.1})

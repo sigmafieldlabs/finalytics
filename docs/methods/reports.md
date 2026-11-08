@@ -15,12 +15,13 @@ report holds and the few figures the reports derive themselves.
 | Scenarios | Named shock and historical scenarios run together, side by side, with the change in each holding's value in each scenario |
 
 `Portfolio.report` computes all six from one set of options; the attribution report needs the
-benchmark's segments and the scenarios report needs scenarios, and without them they are left
-out.
+benchmark's segments, or a blended benchmark to derive them from, and the scenarios report needs
+scenarios, and without them they are left out.
 
 Each report is defined by the same options: the report's date (the last price date by default),
 the first valuation date (the first transaction's by default), the classification schemes to
-break figures down by, a benchmark (any instrument with prices in the market data), the
+break figures down by, a benchmark (any instrument with prices in the market data, or a blend of
+them by weight), the
 risk-free rate, the number of valuation periods in a year (252), when flows happen within the
 day, the covariance estimator (Ledoit–Wolf), the confidences of tail risk (95% and 99%), the
 window of rolling statistics (63 periods), the number of histogram bins (30), the length of top
@@ -106,7 +107,24 @@ same axes.
 advisory fee, are shown as their own line in contribution (`expenses`), not as a loss on the cash
 that paid them; with the holdings' contributions, they add up to the time-weighted return.
 
-**Attribution segments.** A segment's weight is its share of the portfolio's value at the start
+**The benchmark.** A benchmark instrument's levels are in its currency, the one the portfolio's
+instruments give it, and are converted to the base currency at the market data's rates on each
+valuation date, so a report in euros compares with the benchmark in euros. An instrument the
+instruments do not list is taken to be in the base currency; list a benchmark there, with its
+currency, for it to be converted. When the market data has no rate for the benchmark's currency,
+its levels are compared as they are. Each report's header says which of these holds, such as
+"Benchmark: BENCH, in USD, converted to EUR at the market data's rates". A blended benchmark is
+given as weights by holding, such as `{"VTI": 0.55, "BND": 0.35, "GLD": 0.1}`, instruments or
+indices with prices and cash: it holds them at those weights, each in the base currency,
+rebalanced to them after the last valuation date of each month.
+
+**Attribution segments.** With a blended benchmark, the attribution report needs only the
+classification scheme (`attribution="asset_class"` in Python, `{ scheme: "asset_class" }` in
+JavaScript, `.attribution_by("asset_class")` in Rust): it derives the benchmark's segments in
+each calendar month of the report, each segment's weight the sum of its holdings' weights and its
+return their weighted return over the month, which is how the blend is held. A holding is in the
+segment its instrument is classified in, an index the instruments do not list is
+"unclassified", and cash is "cash". A segment's weight is its share of the portfolio's value at the start
 of the period, and its return links its holdings' daily gains as a holding's own return does
 (see [contribution](contribution.md)). A segment the portfolio does not hold takes the
 benchmark's return, so it has no selection effect; a segment the benchmark does not have, such

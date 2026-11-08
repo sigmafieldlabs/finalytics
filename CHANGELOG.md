@@ -9,6 +9,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Blended benchmarks: the reports' `benchmark` may be weights by holding, such as
+  `{"VTI": 0.55, "BND": 0.35, "GLD": 0.1}` (`.benchmark_blend(...)` in Rust), held at those
+  weights in the base currency and rebalanced monthly. From a blend, the attribution report
+  derives the benchmark's segments in each month by the portfolio's classification, given only
+  the scheme (`attribution="asset_class"`, `.attribution_by("asset_class")`), so Brinson–Fachler
+  attribution works for any portfolio rather than only with segments given by hand.
+
 - Trade and tracking-error limits in `Assets.optimise`, with plain inputs in every language:
   `current_weights` (the weights held now, with any cash on the risk-free asset),
   `max_turnover`, `min_trade`, `max_trades`, `benchmark_weights` and `max_tracking_error`. They
@@ -31,6 +38,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Rust: `ReportOptions::benchmark` is a `ReportBenchmark`, an instrument or a blend; an
+  instrument converts with `.into()`, as in `options.benchmark = Some(id.into())`. The JSON form
+  of an instrument, its identifier, is unchanged.
+- The sample portfolio's instruments list BENCH, its benchmark, in USD.
+
 - The npm package's WebAssembly engine is a fifth smaller, about 1.6 MB gzipped rather than
   2.0 MB, and no slower: the build leaves out the functions' names, which only debugging uses,
   and optimises the module with Binaryen's `wasm-opt`. Errors are unchanged; only the stack trace
@@ -50,6 +62,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and refused by the solver.
 
 ### Fixed
+
+- A benchmark is converted to the base currency: its levels are in its own currency, as the
+  instruments list it, converted at the market data's rates, so a report in EUR no longer
+  compares with a dollar benchmark's levels. When the data has no rate for it, or the
+  instruments do not list it, each report's header says so, as it says how the benchmark is
+  measured in every case.
 
 - `compare` keeps the strategies in the order they are given, in the results, the tables, the
   legends and both forms of the report: it listed the methods first and, in JavaScript, the fixed

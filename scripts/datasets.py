@@ -168,6 +168,9 @@ def portfolio() -> None:
         ["BND", "fund", "USD", "Vanguard Total Bond Market ETF", "Fixed income", "North America"],
         ["GLD", "fund", "USD", "SPDR Gold Shares", "Real assets", "Global"],
         ["VNQ", "fund", "USD", "Vanguard Real Estate ETF", "Real assets", "North America"],
+        # The benchmark is listed for its currency, so that a report in another base currency
+        # converts its levels; it is a blend of asset classes, so it has none of its own.
+        ["BENCH", "other", "USD", "Balanced benchmark, 55/35/10", "", ""],
     ])
     write_csv(out / "accounts.csv", ["id", "name", "lot_method", "taxable", "class.owner", "class.wrapper"], [
         ["brokerage", "Brokerage account", "fifo", "true", "Alex", "Taxable"],

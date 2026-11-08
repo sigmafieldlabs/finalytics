@@ -101,9 +101,12 @@ def _options(options: ReportOptions | None, keywords: dict[str, Any]) -> ReportO
     for name in ("as_of", "start"):
         if keywords.get(name) is not None:
             keywords[name] = datetime.date.fromisoformat(_arrays.date(keywords[name]))
-    for name in ("expected_returns", "benchmark_weights"):
+    for name in ("expected_returns", "benchmark_weights", "benchmark"):
         if isinstance(keywords.get(name), Mapping):
-            keywords[name] = {k: float(v) for k, v in keywords[name].items()}
+            keywords[name] = {str(k): float(v) for k, v in keywords[name].items()}
+    if isinstance(keywords.get("attribution"), str):
+        # A classification scheme alone: the segments come from a blended benchmark.
+        keywords["attribution"] = AttributionInputs(scheme=keywords["attribution"])
     base = options or ReportOptions()
     return dataclasses.replace(base, **keywords) if keywords else base
 

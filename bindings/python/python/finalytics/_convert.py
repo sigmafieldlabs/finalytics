@@ -63,6 +63,10 @@ def from_json(tp: Any, value: Any) -> Any:
             lists = [o for o in options if typing.get_origin(o) in (list, tuple)]
             if len(lists) == 1:
                 return from_json(lists[0], value)
+        if isinstance(value, dict):
+            maps = [o for o in options if typing.get_origin(o) is dict]
+            if len(maps) == 1:
+                return from_json(maps[0], value)
         if isinstance(value, (bool, int, float, str)) and any(o in (float, int, bool, str) for o in options):
             return value
         variants = [a for a in options if a in _TAGS]

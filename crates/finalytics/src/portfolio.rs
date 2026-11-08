@@ -505,6 +505,7 @@ impl Portfolio {
             name: None,
             expected_returns: Vec::new(),
             benchmark_weights: Vec::new(),
+            blend: Vec::new(),
         }
     }
 
@@ -977,13 +978,38 @@ pub struct ReportBuilder<'a> {
     name: Option<String>,
     expected_returns: Vec<(String, f64)>,
     benchmark_weights: Vec<(String, f64)>,
+    blend: Vec<(String, f64)>,
 }
 
 impl ReportBuilder<'_> {
     /// The benchmark: an instrument whose prices are given with the portfolio's, such as an
-    /// index, by its identifier.
+    /// index, by its identifier. Its levels are in its currency, as the instruments list it, and
+    /// are converted to the base currency.
     pub fn benchmark(mut self, instrument: &str) -> Self {
         self.benchmark = Some(instrument.to_owned());
+        self
+    }
+
+    /// A blended benchmark: instruments, such as funds or indices with prices, and cash, by
+    /// weight, such as `[("VTI", 0.6), ("BND", 0.4)]`, rebalanced at the start of each month. The
+    /// attribution report derives the benchmark's segments from it when `attribution` gives
+    /// only a classification scheme.
+    pub fn benchmark_blend<S: Into<String>>(
+        mut self,
+        weights: impl IntoIterator<Item = (S, f64)>,
+    ) -> Self {
+        self.blend = weights.into_iter().map(|(h, w)| (h.into(), w)).collect();
+        self
+    }
+
+    /// Attribution against the benchmark's segments by the classification `scheme`, such as
+    /// `asset_class`, derived from a blended benchmark, monthly.
+    pub fn attribution_by(mut self, scheme: &str) -> Self {
+        self.options.attribution = Some(AttributionInputs {
+            scheme: scheme.to_owned(),
+            periods: Vec::new(),
+            linking: finalytics_perf::Linking::default(),
+        });
         self
     }
 
@@ -1106,13 +1132,35 @@ impl ReportBuilder<'_> {
         let mut report = ValidationReport::new();
         let mut options = self.options.clone();
         if let Some(id) = &self.benchmark {
-            match id.parse() {
-                Ok(id) => options.benchmark = Some(id),
+            match id.parse::<InstrumentId>() {
+                Ok(id) => options.benchmark = Some(id.into()),
                 Err(_) => report.error(
                     "benchmark",
                     format!("{id:?} is not an instrument identifier"),
                 ),
             }
+        }
+        if !self.blend.is_empty() {
+            let mut weights = BTreeMap::new();
+            for (holding, weight) in &self.blend {
+                match holding.parse::<HoldingKey>() {
+                    Ok(key) => {
+                        weights.insert(key, *weight);
+                    }
+                    Err(_) => report.error(
+                        format!("benchmark.{holding}"),
+                        "is not a holding: an instrument's identifier, or a currency's cash such \
+                         as USD cash",
+                    ),
+                }
+            }
+            if self.benchmark.is_some() {
+                report.error(
+                    "benchmark",
+                    "give an instrument as the benchmark, or a blend, not both",
+                );
+            }
+            options.benchmark = Some(finalytics_reports::ReportBenchmark::Blend(weights));
         }
         for (field, text, slot) in [
             ("as_of", &self.as_of, &mut options.as_of),

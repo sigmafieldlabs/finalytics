@@ -168,17 +168,9 @@ pub fn performance_report(
         dates: growth.dates().to_vec(),
         values: growth.values().to_vec(),
     };
+    // When the benchmark has no levels, the provenance's warnings say why.
     let levels = cx.benchmark_levels();
-    if options.benchmark.is_some() && levels.is_none() {
-        warnings.warning(
-            "options.benchmark",
-            "the benchmark has no price on some valuation dates, so it is left out",
-        );
-    }
-    let benchmark_name = options
-        .benchmark
-        .as_ref()
-        .map_or_else(String::new, ToString::to_string);
+    let benchmark_name = cx.benchmark_name();
     let benchmark_growth = levels.as_ref().map(|l| Series {
         name: benchmark_name.clone(),
         unit: Unit::Level,

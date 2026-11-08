@@ -302,8 +302,13 @@ export interface AttributionInputs {
    * Cash is the segment "cash", and instruments without the classification "unclassified".
    */
   scheme: string;
-  /** The benchmark's segments in each period, such as each month. */
-  periods: BenchmarkPeriod[];
+  /**
+   * The benchmark's segments in each period, such as each month. Without them, they are
+   * derived from a blended benchmark: one period for each calendar month of the report, each
+   * segment's weight the sum of its holdings' weights and its return their weighted return
+   * over the month, by the classification `scheme` of the portfolio's instruments.
+   */
+  periods?: BenchmarkPeriod[];
   /** How the periods are linked: Cariño's method by default. */
   linking?: Linking;
 }
@@ -3223,6 +3228,11 @@ export interface Provenance {
    * computed.
    */
   warnings: ValidationReport;
+  /**
+   * The benchmark, as the reports describe it, such as "BENCH, in USD, converted to EUR at
+   * the market data's exchange rates".
+   */
+  benchmark?: string | null;
 }
 
 /** A gain or loss realised by a sale, a return of capital or a cash merger, for one lot. */
@@ -3543,6 +3553,17 @@ export interface RelativeStatistics {
   upside_capture?: number | null;
 }
 
+/**
+ * The benchmark of the portfolio reports.
+ *
+ * An instrument's levels are in its currency, as the portfolio's instruments give it (the base
+ * currency for one they do not list), and are converted to the base currency at the market
+ * data's rates. A blend holds its instruments, and any cash, at the weights given, rebalanced to
+ * them at the start of each month, each in the base currency in the same way; the attribution
+ * report derives the benchmark's segments from it.
+ */
+export type ReportBenchmark = InstrumentId | Record<string, number>;
+
 /** Which report a report is. */
 export type ReportKind = "holdings" | "overview" | "performance" | "risk" | "attribution" | "scenarios";
 
@@ -3561,10 +3582,12 @@ export interface ReportOptions {
    */
   group_by?: string[];
   /**
-   * An instrument whose prices in the market data are the benchmark's levels, such as an
-   * index. It need not be held.
+   * The benchmark: an instrument whose prices in the market data are its levels, such as an
+   * index, which need not be held; or a blend of instruments by weight, such as
+   * `{"VTI": 0.6, "BND": 0.4}`. Either is in the base currency, converted at the market
+   * data's exchange rates.
    */
-  benchmark?: InstrumentId | null;
+  benchmark?: ReportBenchmark | null;
   /** The annual risk-free rate, for Sharpe ratios. The default is 0. */
   risk_free_rate?: number;
   /** Valuation periods in a year, for annualising: 252 (trading days) by default. */

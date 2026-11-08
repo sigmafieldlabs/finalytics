@@ -46,7 +46,11 @@ pub struct AttributionInputs {
     /// The instrument classification scheme that defines the segments, such as `asset_class`.
     /// Cash is the segment "cash", and instruments without the classification "unclassified".
     pub scheme: String,
-    /// The benchmark's segments in each period, such as each month.
+    /// The benchmark's segments in each period, such as each month. Without them, they are
+    /// derived from a blended benchmark: one period for each calendar month of the report, each
+    /// segment's weight the sum of its holdings' weights and its return their weighted return
+    /// over the month, by the classification `scheme` of the portfolio's instruments.
+    #[serde(default)]
     pub periods: Vec<BenchmarkPeriod>,
     /// How the periods are linked: Cariño's method by default.
     #[serde(default)]
@@ -93,6 +97,24 @@ pub fn attribution_report(
         ));
     };
     let cx = Context::new(books, market, source, options)?;
+    let derived;
+    let inputs = if inputs.periods.is_empty() {
+        let Some(crate::context::ReportBenchmark::Blend(weights)) = &options.benchmark else {
+            return Err(invalid(
+                "options.attribution.periods",
+                "give the benchmark's segments in each period, or a blended benchmark to derive \
+                 them from",
+            ));
+        };
+        derived = AttributionInputs {
+            scheme: inputs.scheme.clone(),
+            periods: derived_periods(&cx, weights, &inputs.scheme)?,
+            linking: inputs.linking,
+        };
+        &derived
+    } else {
+        inputs
+    };
     let mut report = ValidationReport::new();
     let first = cx.dates[0];
     for (k, p) in inputs.periods.iter().enumerate() {
@@ -226,4 +248,64 @@ pub fn attribution_report(
         attribution,
         time_weighted,
     })
+}
+
+/// The segments of the blended benchmark `weights` in each calendar month of the report's dates:
+/// the blend is rebalanced to its weights at the start of each month, so a segment's weight is
+/// the sum of its holdings' and its return their weighted return in the base currency.
+fn derived_periods(
+    cx: &Context<'_>,
+    weights: &BTreeMap<finalytics_ledger::HoldingKey, f64>,
+    scheme: &str,
+) -> Result<Vec<BenchmarkPeriod>> {
+    let dates = &cx.dates;
+    // The ends of the periods: the last valuation date of each month, and the report's date.
+    let mut ends: Vec<usize> = (0..dates.len().saturating_sub(1))
+        .filter(|&t| {
+            (dates[t + 1].year(), dates[t + 1].month()) != (dates[t].year(), dates[t].month())
+        })
+        .filter(|&t| t > 0)
+        .collect();
+    if dates.len() > 1 {
+        ends.push(dates.len() - 1);
+    }
+    let value = |key: &finalytics_ledger::HoldingKey, t: usize| -> Result<f64> {
+        match crate::context::unit_value(cx.books, cx.market, key, dates[t], cx.base) {
+            crate::context::UnitValue::Value(v) => Ok(v),
+            _ => Err(invalid(
+                "options.benchmark",
+                format!(
+                    "{key} has no price or rate on {}, so the benchmark's segments cannot be \
+                     derived",
+                    dates[t]
+                ),
+            )),
+        }
+    };
+    let mut periods = Vec::with_capacity(ends.len());
+    let mut start = 0;
+    for end in ends {
+        let mut segments: BTreeMap<String, (f64, f64)> = BTreeMap::new();
+        for (key, w) in weights {
+            let r = value(key, end)? / value(key, start)? - 1.0;
+            let e = segments.entry(group_of(cx.books, key, scheme)).or_default();
+            e.0 += w;
+            e.1 += w * r;
+        }
+        periods.push(BenchmarkPeriod {
+            start: dates[start],
+            end: dates[end],
+            segments: segments
+                .into_iter()
+                .filter(|(_, (w, _))| *w > 0.0)
+                .map(|(name, (w, wr))| BenchmarkSegment {
+                    name,
+                    benchmark_weight: w,
+                    benchmark_return: wr / w,
+                })
+                .collect(),
+        });
+        start = end;
+    }
+    Ok(periods)
 }

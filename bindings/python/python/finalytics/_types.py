@@ -520,8 +520,12 @@ class AttributionInputs:
     is the segment "cash", and instruments without the classification "unclassified".
     """
 
-    periods: list[BenchmarkPeriod]
-    """The benchmark's segments in each period, such as each month."""
+    periods: list[BenchmarkPeriod] = field(default_factory=list)
+    """The benchmark's segments in each period, such as each month. Without them, they are derived
+    from a blended benchmark: one period for each calendar month of the report, each segment's
+    weight the sum of its holdings' weights and its return their weighted return over the month,
+    by the classification `scheme` of the portfolio's instruments.
+    """
 
     linking: Linking = "carino"
     """How the periods are linked: Cariño's method by default."""
@@ -4525,6 +4529,11 @@ class Provenance:
     """Prices and rates carried forward from earlier dates, and figures that could not be computed.
     """
 
+    benchmark: str | None = None
+    """The benchmark, as the reports describe it, such as "BENCH, in USD, converted to EUR at the
+    market data's exchange rates".
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class RealisedGain:
@@ -4960,6 +4969,17 @@ class RelativeStatistics:
     """The same over the periods the benchmark rose: above 1, the portfolio gained more."""
 
 
+ReportBenchmark = Union[str, dict[str, float]]
+"""The benchmark of the portfolio reports.
+
+An instrument's levels are in its currency, as the portfolio's instruments give it (the base
+currency for one they do not list), and are converted to the base currency at the market data's
+rates. A blend holds its instruments, and any cash, at the weights given, rebalanced to them at
+the start of each month, each in the base currency in the same way; the attribution report
+derives the benchmark's segments from it.
+"""
+
+
 @dataclass(frozen=True, kw_only=True)
 class ReportOptions:
     """The options every report takes. Each report uses the ones that concern it; the others are
@@ -4977,9 +4997,10 @@ class ReportOptions:
     such as `asset_class` or `region`.
     """
 
-    benchmark: str | None = None
-    """An instrument whose prices in the market data are the benchmark's levels, such as an index.
-    It need not be held.
+    benchmark: ReportBenchmark | None = None
+    """The benchmark: an instrument whose prices in the market data are its levels, such as an
+    index, which need not be held; or a blend of instruments by weight, such as `{"VTI": 0.6,
+    "BND": 0.4}`. Either is in the base currency, converted at the market data's exchange rates.
     """
 
     risk_free_rate: float = 0.0
@@ -7590,6 +7611,7 @@ __all__ = [
     "RebalanceSummary",
     "Rebalancing",
     "RelativeStatistics",
+    "ReportBenchmark",
     "ReportKind",
     "ReportOptions",
     "ReportTable",

@@ -66,3 +66,13 @@ test("table titles are Excel sheet names, and a full report gives every table", 
   }
   assert.ok(tables.some((t) => t.title === "Return and risk by holding"));
 });
+
+test("a benchmark in another currency is converted, and a blend gives the attribution segments", () => {
+  const files = Object.fromEntries(["transactions", "instruments", "accounts", "prices", "fx"].map((n) => [n, fl.datasets.file(`portfolio/${n}.csv`)]));
+  const eur = fl.Portfolio.fromCsv({ ...files, base_currency: "EUR" });
+  assert.equal(eur.overviewReport({ benchmark: "BENCH" }).provenance.benchmark, "BENCH, in USD, converted to EUR at the market data's rates");
+  const report = fl.datasets.portfolio().report({ benchmark: { VTI: 0.55, BND: 0.35, GLD: 0.1 }, attribution: { scheme: "asset_class" } });
+  assert.equal(report.attribution.periods.length, 36);
+  const first = Object.fromEntries(report.attribution.periods[0].segments.map((s) => [s.name, s.benchmark_weight]));
+  close(first.Equity, 0.55, 1e-12, "equity");
+});

@@ -46,7 +46,7 @@ fn options() -> ReportOptions {
     {
         let mut report_options = ReportOptions::default();
         report_options.group_by = vec!["asset_class".into(), "region".into()];
-        report_options.benchmark = Some(InstrumentId::new("SPY").unwrap());
+        report_options.benchmark = Some(InstrumentId::new("SPY").unwrap().into());
         report_options.rolling_window = 20;
         report_options
     }

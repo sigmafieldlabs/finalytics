@@ -425,6 +425,11 @@ impl Page {
             p.base_currency,
             date(p.start)
         ));
+        if let Some(b) = &p.benchmark {
+            for line in wrap(&format!("Benchmark: {b}"), WIDTH) {
+                self.line(line);
+            }
+        }
         self.rule('━');
     }
 
@@ -749,11 +754,7 @@ pub(crate) fn overview(page: &mut Page, o: &OverviewReport) {
         let last = |s: &Series| num(s.values.last().copied(), 1);
         page.sparkline("Portfolio", &o.growth, 50, last(&o.growth));
         if let Some(b) = &o.benchmark_growth {
-            let name = p
-                .options
-                .benchmark
-                .as_ref()
-                .map_or_else(|| "Benchmark".to_owned(), |b| b.to_string());
+            let name = crate::html::benchmark_label(&b.name);
             page.sparkline(&name, b, 50, last(b));
         }
         if let (Some(first), Some(end)) = (o.growth.dates.first(), o.growth.dates.last()) {
