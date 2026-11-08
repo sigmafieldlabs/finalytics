@@ -149,6 +149,36 @@ for the assets' own estimates; see [robust and resampled optimisation](robust-op
 portfolio's expected return to the largest attainable under the constraints (found by
 maximising the expected return), and returns each portfolio's expected return, volatility and weights.
 
+## What each method takes
+
+`Assets.optimise` names each method's inputs: the parameters some methods need (a target for
+target return and target volatility, a risk aversion for the mean–variance methods, a confidence
+for minimum CVaR and CDaR), those others may take (risk budgets, a linkage, resampling), the
+options every method takes (a risk-free rate and expected returns), and the limits on weights,
+which equal weight, inverse volatility, risk parity, risk budgeting and hierarchical risk parity
+do not take, being fully invested and long only by construction. `methods()` (`fl.methods()` in
+Python, `methods()` in JavaScript) describes every method this way: each input's name, kind,
+default, and the range of values allowed, with whether either end of it is allowed. The checks on
+the options read the same descriptions.
+
+One rule applies to an option a method does not use, in every verb. An optimisation, and a
+backtest of one method, refuse it, naming the option and the method:
+`options.target: minimum variance does not use target`. A comparison gives its options to every
+method it compares, so it applies each option to the methods that take it and notes, for each
+other method, that the option does not apply; it refuses an option that none of its methods
+takes, naming them all. Fixed weights take no limits or parameters.
+
+```python
+>>> import finalytics as fl
+>>> cvar = next(m for m in fl.methods() if m.method == "minimum_cvar")
+>>> [(p.name, p.required, p.default) for p in cvar.parameters]
+[('confidence', False, 0.95), ('target', False, None), ('risk_free_rate', False, None), ('expected_returns', False, None)]
+>>> confidence = cvar.parameters[0]
+>>> confidence.min, confidence.min_exclusive, confidence.max, confidence.max_exclusive
+(0.0, True, 1.0, True)
+
+```
+
 ## Reporting
 
 Every solution reports its **status** (`optimal`, `nearly_optimal`, `infeasible`, `unbounded`,

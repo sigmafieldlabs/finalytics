@@ -5581,6 +5581,137 @@
       ],
       "description": "An optimisation method, by name. The parameters some methods need are given beside it, in\n`OptimiseOptions` or with the builder's methods."
     },
+    "MethodInfo": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/Method",
+          "description": "The method."
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name in words, such as \"Maximum Sharpe\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "What it does, in a sentence."
+        },
+        "takes_limits": {
+          "type": "boolean",
+          "description": "Whether it takes limits on weights; those that do not are fully invested and long only."
+        },
+        "resamples": {
+          "type": "boolean",
+          "description": "Whether its weights can be resampled."
+        },
+        "uses_scenarios": {
+          "type": "boolean",
+          "description": "Whether it is measured on the periods' returns as scenarios, rather than on estimates."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MethodParameter"
+          },
+          "description": "Its own parameters, such as a target or a confidence, then the options every method\ntakes."
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MethodParameter"
+          },
+          "description": "The limits on weights it takes; none for the methods that take no limits."
+        }
+      },
+      "required": [
+        "method",
+        "label",
+        "description",
+        "takes_limits",
+        "resamples",
+        "uses_scenarios",
+        "parameters",
+        "limits"
+      ],
+      "description": "An optimisation method and what it takes."
+    },
+    "MethodParameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The option's name, as in `OptimiseOptions` and the builders, such as `confidence`."
+        },
+        "kind": {
+          "$ref": "#/$defs/ParameterKind",
+          "description": "The kind of value it takes."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the method needs it."
+        },
+        "default": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The value used when it is not given, if a number."
+        },
+        "default_choice": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The value used when it is not given, if a choice."
+        },
+        "min": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest value allowed, for numbers and the numbers by asset."
+        },
+        "min_exclusive": {
+          "type": "boolean",
+          "description": "Whether `min` itself is not allowed."
+        },
+        "max": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The largest value allowed."
+        },
+        "max_exclusive": {
+          "type": "boolean",
+          "description": "Whether `max` itself is not allowed."
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The names allowed, for a choice."
+        },
+        "description": {
+          "type": "string",
+          "description": "What it does, in a sentence."
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "required",
+        "min_exclusive",
+        "max_exclusive",
+        "choices",
+        "description"
+      ],
+      "description": "One option an optimisation method takes, with the values it accepts."
+    },
     "Mix": {
       "oneOf": [
         {
@@ -6959,6 +7090,51 @@
         "holdings"
       ],
       "description": "The overview report."
+    },
+    "ParameterKind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "number",
+          "description": "A number, such as 0.95."
+        },
+        {
+          "type": "string",
+          "const": "count",
+          "description": "A whole number, such as 200."
+        },
+        {
+          "type": "string",
+          "const": "choice",
+          "description": "One of the names in `choices`."
+        },
+        {
+          "type": "string",
+          "const": "by_asset",
+          "description": "A number for each of some of the assets, by asset."
+        },
+        {
+          "type": "string",
+          "const": "bound",
+          "description": "The smallest and largest weight: `{ min, max }`."
+        },
+        {
+          "type": "string",
+          "const": "bounds_by_asset",
+          "description": "Bounds by asset."
+        },
+        {
+          "type": "string",
+          "const": "groups",
+          "description": "Groups of assets with limits on their total weight, by group name."
+        },
+        {
+          "type": "string",
+          "const": "uncertainty",
+          "description": "The uncertainty of expected returns: an ellipsoid or a box."
+        }
+      ],
+      "description": "The kind of value an option takes."
     },
     "PaymentsOutcome": {
       "type": "object",

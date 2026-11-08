@@ -552,7 +552,13 @@ fn non_finite(
         for entry in js_sys::Object::entries(value.unchecked_ref()).iter() {
             let pair = js_sys::Array::from(&entry);
             let key = pair.get(0).as_string().unwrap_or_default();
-            non_finite(&pair.get(1), &format!("{path}.{key}"), found, typed, depth + 1);
+            non_finite(
+                &pair.get(1),
+                &format!("{path}.{key}"),
+                found,
+                typed,
+                depth + 1,
+            );
         }
     }
 }
@@ -1686,6 +1692,16 @@ impl Assets {
         };
         let mut settings = settings(&mut choices)?;
         let limits = limits(choices)?;
+        if !listed.iter().any(Result::is_ok) && !limits.is_empty() {
+            let mut report = ValidationReport::new();
+            for key in limits.keys() {
+                report.error(
+                    format!("options.{key}"),
+                    "fixed weights take no limits or parameters",
+                );
+            }
+            return Err(error(Error::Validation(report)));
+        }
         let strategies = listed
             .into_iter()
             .map(|strategy| match strategy {
@@ -2994,6 +3010,14 @@ fn report_options(value: JsValue) -> Result<finalytics::reports::ReportOptions, 
     let options = object(value, &fields::<finalytics::reports::ReportOptions>(&[]))?;
     finalytics::formats::from_json(&serde_json::Value::Object(options).to_string(), "options")
         .map_err(error)
+}
+
+/// Every optimisation method with what it takes: its parameters, with their defaults and the
+/// values allowed, and the limits on weights it accepts. `Assets.optimise` checks its options
+/// against the same descriptions.
+#[wasm_bindgen(unchecked_return_type = "MethodInfo[]")]
+pub fn methods() -> Result<JsValue, JsValue> {
+    to_js(&finalytics::methods())
 }
 
 /// Any report, as returned by the engine, as labelled tables for export; the six reports of

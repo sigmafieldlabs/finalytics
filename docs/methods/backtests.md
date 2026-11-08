@@ -116,6 +116,12 @@ Maximum Sharpe 0.69 0.29
 
 ```
 
+The strategies keep the order they are given in, in the results and throughout the report;
+fixed weights may also come among the methods, as `("60/40", {...})`. The limits and parameters
+of a comparison apply to every method that takes them, and the report notes each method they do
+not apply to; an option that none of the methods takes is refused (see
+[what each method takes](optimisation.md#what-each-method-takes)).
+
 The methods were fitted to the twenty years before November 2016 and held for the ten after;
 their Sharpe ratios fall out of sample, as estimated portfolios' do. The 60/40 weights were not
 fitted, so they have no run in sample. The first trade, at the end of the first quarter of the

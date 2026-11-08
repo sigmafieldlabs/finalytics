@@ -331,7 +331,12 @@ fn a_comparison_keeps_the_strategies_in_the_order_given() {
         .risk_free_asset("T-Bills")
         .build()
         .unwrap();
-    let names = ["Zero bonds", "Minimum variance", "Equal weight", "All bonds"];
+    let names = [
+        "Zero bonds",
+        "Minimum variance",
+        "Equal weight",
+        "All bonds",
+    ];
     let result = assets
         .compare([
             Strategy::weights("Zero bonds", [("US Equity", 0.7), ("Gold", 0.3)]),

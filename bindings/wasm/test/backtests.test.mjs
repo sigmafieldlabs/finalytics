@@ -330,3 +330,22 @@ test("a comparison keeps the strategies in the order given", () => {
     (e) => e.name === "ValidationError" && e.issues[0].path === "options.methods[0].name",
   );
 });
+
+test("one rule for options a method does not use, and each method says what it takes", async () => {
+  const fl = await import("../pkg/node.js");
+  assert.throws(
+    () => assets.compare({ methods: ["minimum_variance", "maximum_sharpe"], target: 0.05 }),
+    (e) => e.issues[0].path === "options.target" && e.issues[0].message === "minimum variance and maximum Sharpe do not use target",
+  );
+  assert.throws(
+    () => assets.compare({ weights: { "60/40": { "US Equity": 0.6, Bonds: 0.4 } }, max_weight: 0.4 }),
+    (e) => e.issues[0].path === "options.max_weight",
+  );
+  const result = assets.compare({ methods: ["equal_weight", "minimum_variance"], max_weight: 0.4 });
+  assert.deepEqual(result.results.strategies[0].notes, ["Fully invested and long only; the limits on weights do not apply."]);
+  const methods = fl.methods();
+  assert.equal(methods.length, 15);
+  const cvar = methods.find((m) => m.method === "minimum_cvar");
+  assert.equal(cvar.parameters.find((p) => p.name === "confidence").default, 0.95);
+  assert.deepEqual(methods.find((m) => m.method === "equal_weight").limits, []);
+});

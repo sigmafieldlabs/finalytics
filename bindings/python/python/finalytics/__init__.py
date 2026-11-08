@@ -60,7 +60,7 @@ from finalytics._types import (
     Target,
     WalkForward,
 )
-from finalytics.assets import Assets
+from finalytics.assets import Assets, methods
 from finalytics.performance import Performance, group_contributions, period
 from finalytics.portfolio import (
     Document,
@@ -108,6 +108,7 @@ __all__ = [
     "cash",
     "datasets",
     "group_contributions",
+    "methods",
     "opt",
     "performance",
     "period",

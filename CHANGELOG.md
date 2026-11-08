@@ -9,9 +9,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `methods()` (`finalytics::methods()` in Rust, `fl.methods()` in Python, `methods()` in
+  JavaScript) and `Method::info()` describe every optimisation method: its parameters, with
+  whether it needs each, its default and the values allowed, the limits on weights it takes, and
+  whether it resamples or is measured on the periods' returns. The checks on the options follow
+  the same descriptions, so that a form built from them offers only what the method uses.
+
 - `PortfolioReport::tables()` in Rust, and `reportTables` of the six reports of
   `Portfolio.report` in JavaScript, give the tables of each report in turn, as `tables()` does in
   Python.
+
+### Changed
+
+- One rule for an option a method does not use, in every verb. `optimise` and a single
+  `backtest` refuse it, as before. `compare` applies each option to the methods that take it,
+  notes in the report each method it does not apply to (such as "Maximum Sharpe: the confidence
+  does not apply"), and refuses an option none of its methods takes, naming them all
+  ("minimum variance and maximum Sharpe do not use target"); it used to ignore such options
+  silently. Limits or parameters given with fixed weights alone are refused in every language,
+  rather than dropped.
+- A risk aversion must be above zero, as the solver requires: zero was let through the checks
+  and refused by the solver.
 
 ### Fixed
 

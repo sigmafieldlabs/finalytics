@@ -303,3 +303,34 @@ def test_a_comparison_keeps_the_order_given(assets):
     with pytest.raises(fl.ValidationError) as raised:
         assets.compare(methods=[("Bad", ["Bonds"])])
     assert raised.value.issues[0].path == "methods[0]"
+
+
+def test_one_rule_for_options_a_method_does_not_use(assets):
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.optimise(method="minimum_variance", target=0.05)
+    assert [(i.path, i.message) for i in raised.value.issues] == [
+        ("options.target", "minimum variance does not use target")
+    ]
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.compare(methods=["minimum_variance", "maximum_sharpe"], target=0.05)
+    assert raised.value.issues[0].message == "minimum variance and maximum Sharpe do not use target"
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.compare(weights={"60/40": {"US Equity": 0.6, "Bonds": 0.4}}, max_weight=0.4)
+    assert raised.value.issues[0].path == "options.max_weight"
+    # An option some strategies use applies to them, and is noted for the others.
+    result = assets.compare(methods=["equal_weight", "minimum_variance"], max_weight=0.4)
+    assert result.results.strategies[0].notes == ["Fully invested and long only; the limits on weights do not apply."]
+    assert result.results.strategies[1].notes == []
+
+
+def test_each_method_says_what_it_takes():
+    methods = {m.method: m for m in fl.methods()}
+    assert len(methods) == 15
+    cvar = methods["minimum_cvar"]
+    confidence = next(p for p in cvar.parameters if p.name == "confidence")
+    assert (confidence.default, confidence.min, confidence.max) == (0.95, 0.0, 1.0)
+    assert confidence.min_exclusive and confidence.max_exclusive
+    assert [p.name for p in methods["target_return"].parameters if p.required] == ["target"]
+    assert not methods["equal_weight"].takes_limits and methods["equal_weight"].limits == []
+    assert next(p for p in methods["hierarchical_risk_parity"].parameters if p.name == "linkage").choices == [
+        "single", "complete", "average", "ward"]

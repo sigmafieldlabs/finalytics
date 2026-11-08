@@ -2031,6 +2031,55 @@ export type MeasureUnit = "fraction" | "ratio" | "price" | "index" | "count" | "
  */
 export type Method = "minimum_variance" | "mean_variance" | "robust_mean_variance" | "target_return" | "target_volatility" | "maximum_sharpe" | "maximum_diversification" | "minimum_cvar" | "minimum_semivariance" | "minimum_cdar" | "equal_weight" | "inverse_volatility" | "risk_parity" | "risk_budgeting" | "hierarchical_risk_parity";
 
+/** An optimisation method and what it takes. */
+export interface MethodInfo {
+  /** The method. */
+  method: Method;
+  /** Its name in words, such as "Maximum Sharpe". */
+  label: string;
+  /** What it does, in a sentence. */
+  description: string;
+  /** Whether it takes limits on weights; those that do not are fully invested and long only. */
+  takes_limits: boolean;
+  /** Whether its weights can be resampled. */
+  resamples: boolean;
+  /** Whether it is measured on the periods' returns as scenarios, rather than on estimates. */
+  uses_scenarios: boolean;
+  /**
+   * Its own parameters, such as a target or a confidence, then the options every method
+   * takes.
+   */
+  parameters: MethodParameter[];
+  /** The limits on weights it takes; none for the methods that take no limits. */
+  limits: MethodParameter[];
+}
+
+/** One option an optimisation method takes, with the values it accepts. */
+export interface MethodParameter {
+  /** The option's name, as in `OptimiseOptions` and the builders, such as `confidence`. */
+  name: string;
+  /** The kind of value it takes. */
+  kind: ParameterKind;
+  /** Whether the method needs it. */
+  required: boolean;
+  /** The value used when it is not given, if a number. */
+  default?: number | null;
+  /** The value used when it is not given, if a choice. */
+  default_choice?: string | null;
+  /** The smallest value allowed, for numbers and the numbers by asset. */
+  min?: number | null;
+  /** Whether `min` itself is not allowed. */
+  min_exclusive: boolean;
+  /** The largest value allowed. */
+  max?: number | null;
+  /** Whether `max` itself is not allowed. */
+  max_exclusive: boolean;
+  /** The names allowed, for a choice. */
+  choices: string[];
+  /** What it does, in a sentence. */
+  description: string;
+}
+
 /**
  * What the money is invested in: fixed weights, or weights that change along a glide path.
  * The weights are restored every month.
@@ -2522,6 +2571,9 @@ export interface OverviewReport {
   /** The current portfolio on the same axes as the frontier. */
   current?: PortfolioPoint | null;
 }
+
+/** The kind of value an option takes. */
+export type ParameterKind = "number" | "count" | "choice" | "by_asset" | "bound" | "bounds_by_asset" | "groups" | "uncertainty";
 
 /** What a goal of payments comes to. */
 export interface PaymentsOutcome {

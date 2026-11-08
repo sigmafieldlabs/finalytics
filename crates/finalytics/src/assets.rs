@@ -1176,47 +1176,30 @@ impl Assets {
             }
         }
 
-        // The method's own parameters: those it needs, and, for one method, those it does not
-        // use.
-        let uses = |parameter: &str| match parameter {
-            "target" => {
-                matches!(method, Method::TargetReturn | Method::TargetVolatility)
-                    || method.uses_scenarios()
-            }
-            "risk_aversion" => matches!(method, Method::MeanVariance | Method::RobustMeanVariance),
-            "uncertainty" => method == Method::RobustMeanVariance,
-            "confidence" => matches!(method, Method::MinimumCvar | Method::MinimumCdar),
-            "resample" => method.resamples(),
-            "budgets" => method == Method::RiskBudgeting,
-            "linkage" => method == Method::HierarchicalRiskParity,
-            _ => true,
-        };
-        let given = [
-            ("target", options.target.is_some()),
-            ("risk_aversion", options.risk_aversion.is_some()),
-            ("uncertainty", options.uncertainty.is_some()),
-            ("confidence", options.confidence.is_some()),
-            ("resample", options.resample.is_some()),
-            ("budgets", options.budgets.is_some()),
-            ("linkage", options.linkage.is_some()),
-        ];
-        for (parameter, is_given) in given {
-            let path = format!("options.{parameter}");
-            if is_given && !uses(parameter) {
-                if method == Method::RiskParity && parameter == "budgets" {
+        // The method's own parameters, as its description gives them: those it needs, and, for
+        // one method, those it does not use. A comparison applies each to the methods that
+        // take it, and refuses one that none takes (`Assets::simulate`).
+        let info = method.info();
+        let given = crate::methods::given(options);
+        for parameter in given.iter().filter(|p| !crate::methods::is_limit(p)) {
+            if !info.takes(parameter) && single {
+                let path = format!("options.{parameter}");
+                if method == Method::RiskParity && *parameter == "budgets" {
                     report.error(
                         path,
                         "risk parity gives every asset the same budget; use risk budgeting for others",
                     );
-                } else if single {
+                } else {
                     report.error(path, format!("{name} does not use {parameter}"));
                 }
-            } else if !is_given
-                && uses(parameter)
-                && matches!(parameter, "target" | "risk_aversion" | "uncertainty")
-                && !(parameter == "target" && method.uses_scenarios())
-            {
-                report.error(path, format!("{name} needs {parameter}"));
+            }
+        }
+        for parameter in info.parameters.iter().filter(|p| p.required) {
+            if !given.contains(&parameter.name.as_str()) {
+                report.error(
+                    format!("options.{}", parameter.name),
+                    format!("{name} needs {}", parameter.name),
+                );
             }
         }
         if let Some(target) = options.target {
@@ -1230,11 +1213,11 @@ impl Assets {
         }
         if let Some(a) = options.risk_aversion
             && finite(&mut report, Some(a), "options.risk_aversion")
-            && a < 0.0
+            && a <= 0.0
         {
             report.error(
                 "options.risk_aversion",
-                format!("must not be negative, not {a}"),
+                format!("must be greater than zero, such as 3, not {a}"),
             );
         }
         if let Some(c) = options.confidence
@@ -1253,7 +1236,7 @@ impl Assets {
                 format!("must be at least 2 histories, such as 200, not {samples}"),
             );
         }
-        if let Some(budgets) = options.budgets.as_ref().filter(|_| uses("budgets")) {
+        if let Some(budgets) = options.budgets.as_ref().filter(|_| info.takes("budgets")) {
             for (asset, b) in budgets {
                 let path = format!("options.budgets.{asset}");
                 if !known(asset) {

@@ -108,6 +108,7 @@ fn api() -> Value {
     add::<finalytics::PriceTable>(&mut g);
     add::<finalytics::AssetStatistics>(&mut g);
     add::<finalytics::OptimiseOptions>(&mut g);
+    add::<finalytics::MethodInfo>(&mut g);
     add::<finalytics::OptimisationResult>(&mut g);
     add::<finalytics::FrontierPortfolio>(&mut g);
     add::<finalytics::PortfolioReport>(&mut g);

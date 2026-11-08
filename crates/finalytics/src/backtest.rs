@@ -210,13 +210,18 @@ impl Assets {
     /// the covariance estimator, and the risk-free asset's mean return over the window (or the
     /// risk-free rate). Cash, held before a first fit succeeds, earns the risk-free return.
     ///
-    /// With `single`, one strategy was asked for, so that a parameter its method does not use
-    /// is a problem; a comparison notes the limits a method does not take instead.
+    /// With `single`, one strategy was asked for, so that an option its method does not use is
+    /// a problem. A comparison applies each option to the strategies that use it and notes,
+    /// for each other strategy given it, that it does not apply; an option that no strategy
+    /// given it uses is a problem, naming them.
     fn simulate(&self, options: &BacktestOptions, single: bool) -> Result<BacktestResults> {
         let returns = self.risky_returns()?;
         let labels = returns.labels().to_vec();
         let cash = self.cash_returns();
         let mut report = ValidationReport::new();
+        if !single {
+            unused_options(&options.strategies, &mut report);
+        }
         let mut strategies = Vec::with_capacity(options.strategies.len());
         for (i, strategy) in options.strategies.iter().enumerate() {
             let name = strategy.name();
@@ -476,28 +481,95 @@ fn single_issue(issue: &finalytics_core::Issue) -> ValidationReport {
     one
 }
 
-/// The options a method takes, and notes on any limits it does not.
+/// The options a method takes, and notes on those given that it does not: the limits on
+/// weights, for a method fully invested and long only, and the parameters of other methods.
 fn applicable(options: &OptimiseOptions) -> (OptimiseOptions, Vec<String>) {
     let mut method = options.clone();
     let mut notes = Vec::new();
-    if !options.method.takes_limits() {
-        let limited = options.bounds.is_some()
-            || options.max_weight.is_some()
-            || !options.asset_bounds.is_empty()
-            || !options.groups.is_empty()
-            || options.min_effective_assets.is_some();
-        method.bounds = None;
-        method.max_weight = None;
-        method.asset_bounds.clear();
-        method.groups.clear();
-        method.min_effective_assets = None;
-        if limited {
-            notes.push(
-                "Fully invested and long only; the limits on weights do not apply.".to_owned(),
-            );
+    let info = options.method.info();
+    let given = crate::methods::given(options);
+    let mut limited = false;
+    let mut unused = Vec::new();
+    for name in given.iter().filter(|name| !info.takes(name)) {
+        crate::methods::without(&mut method, name);
+        if crate::methods::is_limit(name) {
+            limited = true;
+        } else {
+            unused.push(crate::methods::in_words(name));
         }
     }
+    if limited {
+        notes.push("Fully invested and long only; the limits on weights do not apply.".to_owned());
+    }
+    if !unused.is_empty() {
+        let verb = if unused.len() == 1 { "does" } else { "do" };
+        let text = crate::methods::listed(&unused);
+        let mut chars = text.chars();
+        let text: String = chars
+            .next()
+            .map(|c| c.to_uppercase().chain(chars).collect())
+            .unwrap_or_default();
+        notes.push(format!("{text} {verb} not apply."));
+    }
     (method, notes)
+}
+
+/// Adds to `report` each option given to the comparison's optimisations that none of them
+/// uses, naming them all; an option one of them uses applies to it and is noted for the others.
+fn unused_options(strategies: &[Strategy], report: &mut ValidationReport) {
+    let fitted: Vec<(String, &OptimiseOptions)> = strategies
+        .iter()
+        .filter_map(|s| match s {
+            Strategy::Optimise { options, .. } => Some((s.name(), options.as_ref())),
+            Strategy::Weights { .. } => None,
+        })
+        .collect();
+    let mut names: Vec<&'static str> = Vec::new();
+    for (_, options) in &fitted {
+        for name in crate::methods::given(options) {
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+    }
+    for name in names {
+        let given: Vec<&(String, &OptimiseOptions)> = fitted
+            .iter()
+            .filter(|(_, o)| crate::methods::given(o).contains(&name))
+            .collect();
+        if given.iter().any(|(_, o)| o.method.info().takes(name)) {
+            continue;
+        }
+        let who: Vec<String> = given.iter().map(|(n, _)| lower_first(n)).collect();
+        let one = who.len() == 1;
+        let message = if crate::methods::is_limit(name) {
+            format!(
+                "{} {} fully invested and long only, and {} no limits on weights",
+                crate::methods::listed(&who),
+                if one { "is" } else { "are" },
+                if one { "takes" } else { "take" },
+            )
+        } else if one && given[0].1.method == Method::RiskParity && name == "budgets" {
+            "risk parity gives every asset the same budget; use risk budgeting for others"
+                .to_owned()
+        } else {
+            format!(
+                "{} {} not use {name}",
+                crate::methods::listed(&who),
+                if one { "does" } else { "do" },
+            )
+        };
+        report.error(format!("options.{name}"), message);
+    }
+}
+
+/// A strategy's name within a sentence: a method's own name in lower case ("minimum
+/// variance"), a name the user gave as it is.
+fn lower_first(name: &str) -> String {
+    match Method::ALL.iter().find(|m| m.label() == name) {
+        Some(m) => m.in_sentence(),
+        None => name.to_owned(),
+    }
 }
 
 impl From<Method> for Strategy {
@@ -621,6 +693,19 @@ impl Common {
                     return Err(Error::Validation(report));
                 }
             }
+        }
+        if !strategies
+            .iter()
+            .any(|s| matches!(s, Strategy::Optimise { .. }))
+        {
+            let mut report = ValidationReport::new();
+            for name in crate::methods::given(&self.options) {
+                report.error(
+                    format!("options.{name}"),
+                    "fixed weights take no limits or parameters",
+                );
+            }
+            report.into_result(())?;
         }
         let strategies = strategies
             .into_iter()

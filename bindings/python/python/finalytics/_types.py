@@ -91,6 +91,9 @@ Op = Literal["<", "<=", ">", ">=", "between", "in", "not_in"]
 Order = Literal["ascending", "descending"]
 """Which way matches are sorted."""
 
+ParameterKind = Literal["number", "count", "choice", "by_asset", "bound", "bounds_by_asset", "groups", "uncertainty"]
+"""The kind of value an option takes."""
+
 ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
 """Which report a report is."""
 
@@ -2841,6 +2844,73 @@ class MeasureSpread:
 
     thresholds: list[float]
     """The values the rules compare it with."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MethodInfo:
+    """An optimisation method and what it takes."""
+
+    method: Method
+    """The method."""
+
+    label: str
+    """Its name in words, such as "Maximum Sharpe"."""
+
+    description: str
+    """What it does, in a sentence."""
+
+    takes_limits: bool
+    """Whether it takes limits on weights; those that do not are fully invested and long only."""
+
+    resamples: bool
+    """Whether its weights can be resampled."""
+
+    uses_scenarios: bool
+    """Whether it is measured on the periods' returns as scenarios, rather than on estimates."""
+
+    parameters: list[MethodParameter]
+    """Its own parameters, such as a target or a confidence, then the options every method takes."""
+
+    limits: list[MethodParameter]
+    """The limits on weights it takes; none for the methods that take no limits."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MethodParameter:
+    """One option an optimisation method takes, with the values it accepts."""
+
+    name: str
+    """The option's name, as in `OptimiseOptions` and the builders, such as `confidence`."""
+
+    kind: ParameterKind
+    """The kind of value it takes."""
+
+    required: bool
+    """Whether the method needs it."""
+
+    default: float | None = None
+    """The value used when it is not given, if a number."""
+
+    default_choice: str | None = None
+    """The value used when it is not given, if a choice."""
+
+    min: float | None = None
+    """The smallest value allowed, for numbers and the numbers by asset."""
+
+    min_exclusive: bool
+    """Whether `min` itself is not allowed."""
+
+    max: float | None = None
+    """The largest value allowed."""
+
+    max_exclusive: bool
+    """Whether `max` itself is not allowed."""
+
+    choices: list[str]
+    """The names allowed, for a choice."""
+
+    description: str
+    """What it does, in a sentence."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7366,6 +7436,8 @@ __all__ = [
     "MeasureUnit",
     "Merger",
     "Method",
+    "MethodInfo",
+    "MethodParameter",
     "MinimumCdar",
     "MinimumCvar",
     "MinimumSemivariance",
@@ -7404,6 +7476,7 @@ __all__ = [
     "Order",
     "Outcome",
     "OverviewReport",
+    "ParameterKind",
     "Payments",
     "PaymentsOutcome",
     "Percentiles",

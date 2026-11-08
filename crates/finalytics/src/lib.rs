@@ -146,6 +146,7 @@ pub use finalytics_formats::PortfolioDocument;
 mod assets;
 pub mod backtest;
 pub mod datasets;
+mod methods;
 pub mod planning;
 mod portfolio;
 pub mod screening;
@@ -174,6 +175,7 @@ pub use finalytics_reports::{
     RebalanceReport, Theme,
 };
 pub use finalytics_risk::PriceTable;
+pub use methods::{MethodInfo, MethodParameter, ParameterKind, methods};
 pub use planning::{Plan, PlanBuilder, PlanOptions, PlanResults};
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;

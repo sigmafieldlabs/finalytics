@@ -17,7 +17,21 @@ from finalytics._arrays import DateArray
 from finalytics._convert import dumps, loads
 from finalytics._errors import call, invalid
 
-__all__ = ["Assets"]
+__all__ = ["Assets", "methods"]
+
+
+def methods() -> list[_types.MethodInfo]:
+    """Every optimisation method with what it takes: its parameters, with their defaults and the
+    values allowed, the limits on weights it accepts, and whether it resamples or is measured on
+    the periods' returns. :meth:`Assets.optimise` checks its keywords against the same
+    descriptions, so a form built from them offers only what the method uses.
+
+    ::
+
+        cvar = next(m for m in fl.methods() if m.method == "minimum_cvar")
+        [p.name for p in cvar.parameters]   # ['confidence', 'target', 'risk_free_rate', ...]
+    """
+    return loads(list[_types.MethodInfo], _finalytics.methods())
 
 BoundLike = _types.Bound | tuple[float, float]
 """Limits on a weight: a :class:`~finalytics.types.Bound` or a ``(min, max)`` pair."""
@@ -516,6 +530,10 @@ class Assets:
         ]
         if not strategies:
             raise invalid(("methods", "give the methods to compare, or fixed weights"))
+        if not any(isinstance(s, _types.OptimisedStrategy) for s in strategies):
+            given = [key for key, value in limits.items() if value is not None]
+            if given:
+                raise invalid(*((f"options.{key}", "fixed weights take no limits or parameters") for key in given))
         options = _backtest_options(
             strategies, validation, rebalance, trading_cost_bps, benchmark, benchmark_name, start_value, flows
         )
