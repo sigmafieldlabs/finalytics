@@ -250,14 +250,22 @@ export interface AssetFit {
   r_squared?: number | null;
 }
 
-/** A group of assets whose total weight is limited. */
+/**
+ * A group of assets whose total weight is limited: the assets listed, or those classed as the
+ * group's name under a classification, such as the group "Equity" under `asset_class`.
+ */
 export interface AssetGroup {
-  /** The assets in the group. */
-  assets: string[];
-  /** The smallest total weight. */
-  min: number;
-  /** The largest total weight. */
-  max: number;
+  /** The assets in the group; or give `classification`. */
+  assets?: string[];
+  /**
+   * A classification scheme of the assets, such as `asset_class`: the group is the assets
+   * classed as its name under it.
+   */
+  classification?: string | null;
+  /** The smallest total weight: 0 by default. */
+  min?: number;
+  /** The largest total weight: 1 by default. */
+  max?: number;
 }
 
 /** One asset's statistics, with its value at risk and expected shortfall at 95% (historical). */

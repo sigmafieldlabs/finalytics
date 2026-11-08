@@ -736,6 +736,10 @@ impl NativeAssets {
         self.inner.labels().to_vec()
     }
 
+    fn classes(&self) -> PyResult<String> {
+        to_json(self.inner.classes())
+    }
+
     fn dates<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
         date_bytes(py, self.inner.dates())
     }

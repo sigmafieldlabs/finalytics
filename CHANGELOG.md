@@ -9,6 +9,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Group limits by classification: a group may name a classification rather than list its assets,
+  such as at most 60% in the assets classed `Equity` under `asset_class` (Rust
+  `.class_limit("asset_class", "Equity", 0.0, 0.6)`, Python `groups={"Equity": ("asset_class", 0,
+  0.6)}`, JavaScript `groups: { Equity: { classification: "asset_class", max: 0.6 } }`). `Assets`
+  carry classes: a portfolio's assets take its instruments', and others take `classes`.
+
 - Rebalancing can keep cash as it is, for every currency or those named (`keep_cash=True` or
   `keep_cash=["USD"]` in Python and JavaScript, `.keep_all_cash()` or `.keep_cash(["USD"])` in
   Rust): the targets are then shares of the rest of the value, so the trades neither invest that
@@ -43,6 +49,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Python.
 
 ### Changed
+
+- Rust: `AssetGroup` has a `classification` field, and its `min` and `max` default to 0 and 1
+  in JSON.
 
 - Rust: `ReportOptions::benchmark` is a `ReportBenchmark`, an instrument or a blend; an
   instrument converts with `.into()`, as in `options.benchmark = Some(id.into())`. The JSON form

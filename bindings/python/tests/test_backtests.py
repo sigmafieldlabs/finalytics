@@ -363,3 +363,18 @@ def test_trade_and_tracking_error_limits(assets):
     with pytest.raises(fl.ValidationError) as raised:
         assets.backtest(method="maximum_sharpe", max_turnover=0.05)
     assert raised.value.issues[0].path == "options.max_turnover"
+
+
+def test_group_limits_by_class():
+    classes = {"asset_class": {"US Equity": "Equity", "Intl Equity": "Equity", "Bonds": "Fixed income"}}
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills", classes=classes)
+    assert assets.classes == classes
+    result = assets.optimise(method="maximum_sharpe", groups={"Equity": ("asset_class", 0, 0.3)})
+    w = result.results.weights
+    assert w["US Equity"] + w["Intl Equity"] <= 0.3 + 1e-6
+    assert result.report.groups[0].assets == ["US Equity", "Intl Equity"]
+    portfolio_assets = fl.datasets.portfolio().assets()
+    assert portfolio_assets.classes["asset_class"]["BND"] == "Fixed income"
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.optimise(method="maximum_sharpe", groups={"Crypto": ("asset_class", 0, 0.1)})
+    assert raised.value.issues[0].path == "options.groups.Crypto"

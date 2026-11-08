@@ -136,6 +136,14 @@ re-optimised. This repeats until the limits hold. The result satisfies the limit
 guaranteed to be the best portfolio that does, and fixing assets can make the other constraints
 infeasible. A change in weight below $10^{-7}$ counts as no trade.
 
+### Group limits by class
+
+A group limit names its assets, or a classification of them: the group is then the assets
+classed as its name, such as `Equity` under `asset_class`, at most 60% together. Assets take
+their classes from a portfolio's instruments (`Portfolio.assets()`), or as given (`classes`, such
+as `{"asset_class": {"US Equity": "Equity", "Bonds": "Fixed income"}}`). A classification or class
+that no asset has is refused, naming those there are.
+
 ### Trade and tracking-error limits on assets
 
 `Assets.optimise` takes these limits with plain inputs: `current_weights`, the weights held now

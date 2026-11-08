@@ -52,6 +52,9 @@ pub struct Assets {
     covariance_method: CovarianceMethod,
     mean_method: MeanMethod,
     warnings: ValidationReport,
+    /// Each classification scheme's class of each asset classified by it, such as
+    /// `asset_class` → `US Equity` → `Equity`.
+    classes: BTreeMap<String, BTreeMap<String, String>>,
 }
 
 /// One asset's statistics, with its value at risk and expected shortfall at 95% (historical).
@@ -246,16 +249,28 @@ impl Method {
     }
 }
 
-/// A group of assets whose total weight is limited.
+/// A group of assets whose total weight is limited: the assets listed, or those classed as the
+/// group's name under a classification, such as the group "Equity" under `asset_class`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct AssetGroup {
-    /// The assets in the group.
+    /// The assets in the group; or give `classification`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub assets: Vec<String>,
-    /// The smallest total weight.
+    /// A classification scheme of the assets, such as `asset_class`: the group is the assets
+    /// classed as its name under it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub classification: Option<String>,
+    /// The smallest total weight: 0 by default.
+    #[serde(default)]
     pub min: f64,
-    /// The largest total weight.
+    /// The largest total weight: 1 by default.
+    #[serde(default = "one")]
     pub max: f64,
+}
+
+fn one() -> f64 {
+    1.0
 }
 
 /// The method, its parameters and the limits on the weights. Everything is optional: by default
@@ -448,6 +463,7 @@ impl Assets {
             covariance_method: CovarianceMethod::LedoitWolf,
             mean_method: MeanMethod::Historical,
             warnings: found.warnings,
+            classes: BTreeMap::new(),
         })
     }
 
@@ -485,6 +501,7 @@ impl Assets {
             covariance_method: CovarianceMethod::LedoitWolf,
             mean_method: MeanMethod::Historical,
             warnings: ValidationReport::new(),
+            classes: BTreeMap::new(),
         })
     }
 
@@ -672,6 +689,7 @@ impl Assets {
             covariance_method: self.covariance_method,
             mean_method: self.mean_method,
             warnings: ValidationReport::new(),
+            classes: self.classes.clone(),
         };
         if let Some(i) = self.risk_free_asset {
             window.risk_free_rate = window.historical_means()[i];
@@ -683,6 +701,57 @@ impl Assets {
     /// left out because an asset had no price.
     pub fn warnings(&self) -> &ValidationReport {
         &self.warnings
+    }
+
+    /// Each classification scheme's class of each asset it classifies, such as `asset_class` →
+    /// `US Equity` → `Equity`, for group limits by class.
+    pub fn classes(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
+        &self.classes
+    }
+
+    /// The same assets classified by `scheme`, such as `asset_class`, with each asset's class
+    /// in `classes`, such as `[("US Equity", "Equity"), ("Bonds", "Fixed income")]`: group
+    /// limits can then name a class rather than list its assets.
+    pub fn with_classes<S: Into<String>, C: Into<String>>(
+        mut self,
+        scheme: &str,
+        classes: impl IntoIterator<Item = (S, C)>,
+    ) -> Result<Assets> {
+        let mut report = ValidationReport::new();
+        let mut found = BTreeMap::new();
+        for (asset, class) in classes {
+            let asset = asset.into();
+            if self.labels().contains(&asset) {
+                found.insert(asset, class.into());
+            } else {
+                report.error(
+                    format!("classes.{scheme}.{asset}"),
+                    format!("unknown asset {asset}"),
+                );
+            }
+        }
+        report.into_result(())?;
+        self.classes.insert(scheme.to_owned(), found);
+        Ok(self)
+    }
+
+    /// The assets of group `name`, as `group` gives them: listed, or those of the risky assets
+    /// classed `name` under its classification.
+    pub(crate) fn group_assets(&self, name: &str, group: &AssetGroup) -> Vec<String> {
+        match &group.classification {
+            None => group.assets.clone(),
+            Some(scheme) => self
+                .risky_assets()
+                .into_iter()
+                .filter(|a| {
+                    self.classes
+                        .get(scheme)
+                        .and_then(|c| c.get(*a))
+                        .is_some_and(|c| c == name)
+                })
+                .map(str::to_owned)
+                .collect(),
+        }
     }
 
     /// Each asset's statistics, in the order of the assets.
@@ -912,7 +981,7 @@ impl Assets {
             groups: options
                 .groups
                 .iter()
-                .map(|(name, g)| (name.clone(), g.assets.clone(), g.min, g.max))
+                .map(|(name, g)| (name.clone(), self.group_assets(name, g), g.min, g.max))
                 .collect(),
             resampling: results.resampled.as_ref().map(|r| {
                 finalytics_reports::ResamplingSummary::new(
@@ -1133,6 +1202,53 @@ impl Assets {
                 if !known(asset) {
                     report.error(&path, unknown(asset));
                 }
+            }
+            match &g.classification {
+                Some(_) if !g.assets.is_empty() => report.error(
+                    &path,
+                    "give the group's assets or a classification, not both",
+                ),
+                Some(scheme) => match self.classes.get(scheme) {
+                    None => {
+                        let names: Vec<&str> = self.classes.keys().map(String::as_str).collect();
+                        report.error(
+                            format!("{path}.classification"),
+                            if names.is_empty() {
+                                format!(
+                                    "no asset is classified by {scheme}: give the assets' classes"
+                                )
+                            } else {
+                                format!(
+                                    "no asset is classified by {scheme}; the classifications are \
+                                     {}",
+                                    names.join(", ")
+                                )
+                            },
+                        );
+                    }
+                    Some(classes) => {
+                        if self.group_assets(group, g).is_empty() {
+                            let mut names: Vec<&str> = risky
+                                .iter()
+                                .filter_map(|a| classes.get(*a).map(String::as_str))
+                                .collect();
+                            names.sort_unstable();
+                            names.dedup();
+                            report.error(
+                                &path,
+                                format!(
+                                    "no asset is classed {group} under {scheme}; the classes are {}",
+                                    names.join(", ")
+                                ),
+                            );
+                        }
+                    }
+                },
+                None if g.assets.is_empty() => report.error(
+                    &path,
+                    "give the group's assets, or a classification whose class is its name",
+                ),
+                None => {}
             }
         }
         if single {
@@ -1398,7 +1514,7 @@ impl Assets {
         for (name, group) in &options.groups {
             constraints.groups.push(GroupLimit {
                 name: name.clone(),
-                assets: group.assets.clone(),
+                assets: self.group_assets(name, group),
                 min: group.min,
                 max: group.max,
             });
@@ -1624,6 +1740,22 @@ impl Optimise<'_> {
             name.to_owned(),
             AssetGroup {
                 assets: assets.iter().map(|a| a.as_ref().to_owned()).collect(),
+                classification: None,
+                min,
+                max,
+            },
+        );
+        self
+    }
+
+    /// The total weight of the assets classed `class` under `scheme`, such as `Equity` under
+    /// `asset_class`, between `min` and `max`.
+    pub fn class_limit(mut self, scheme: &str, class: &str, min: f64, max: f64) -> Self {
+        self.options.groups.insert(
+            class.to_owned(),
+            AssetGroup {
+                assets: Vec::new(),
+                classification: Some(scheme.to_owned()),
                 min,
                 max,
             },
@@ -1805,9 +1937,28 @@ pub struct AssetsBuilder {
     periods_per_year: Option<f64>,
     covariance: Option<CovarianceMethod>,
     mean_returns: Option<MeanMethod>,
+    classes: BTreeMap<String, BTreeMap<String, String>>,
 }
 
 impl AssetsBuilder {
+    /// Each asset's class under the classification `scheme`, such as `asset_class`, for group
+    /// limits by class: `.classes("asset_class", [("US Equity", "Equity"), ("Bonds", "Fixed
+    /// income")])`. Repeatable, one scheme at a time.
+    pub fn classes<S: Into<String>, C: Into<String>>(
+        mut self,
+        scheme: &str,
+        classes: impl IntoIterator<Item = (S, C)>,
+    ) -> Self {
+        self.classes.insert(
+            scheme.to_owned(),
+            classes
+                .into_iter()
+                .map(|(a, c)| (a.into(), c.into()))
+                .collect(),
+        );
+        self
+    }
+
     /// The assets' prices: a date column and one column per asset. Prices should include
     /// income, as adjusted closes do.
     pub fn prices(mut self, prices: PriceTable) -> Self {
@@ -1896,6 +2047,7 @@ impl AssetsBuilder {
             periods_per_year: self.periods_per_year,
             covariance: self.covariance,
             mean_returns: self.mean_returns,
+            classes: (!self.classes.is_empty()).then_some(self.classes),
         };
         settings.check(&mut report);
         report.into_result(())?;
@@ -1923,6 +2075,7 @@ pub struct AssetSettings {
     pub periods_per_year: Option<f64>,
     pub covariance: Option<CovarianceMethod>,
     pub mean_returns: Option<MeanMethod>,
+    pub classes: Option<BTreeMap<String, BTreeMap<String, String>>>,
 }
 
 impl AssetSettings {
@@ -1991,6 +2144,15 @@ impl AssetSettings {
         if let Some(method) = self.mean_returns {
             assets.mean_method = method;
         }
+        let mut report = ValidationReport::new();
+        for (scheme, classes) in self.classes.iter().flatten() {
+            match assets.clone().with_classes(scheme, classes.clone()) {
+                Ok(with) => assets = with,
+                Err(Error::Validation(found)) => report.merge("", found),
+                Err(e) => return Err(e),
+            }
+        }
+        report.into_result(())?;
         // The estimators chosen are checked on the risky assets' returns, as optimisation uses
         // them, so that a choice the returns cannot support is reported here.
         let mut report = ValidationReport::new();

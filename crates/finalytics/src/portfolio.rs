@@ -355,7 +355,25 @@ impl Portfolio {
             .collect();
         let dates = self.dates();
         let found = holding_returns(&self.books, &held, &dates, &self.market)?;
-        Assets::from_returns(found.dates, found.table)
+        let mut assets = Assets::from_returns(found.dates, found.table)?;
+        // The instruments' classifications, for group limits by class.
+        let mut schemes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+        for key in &held {
+            if let HoldingKey::Instrument(id) = key
+                && let Some(instrument) = self.books.instrument(id)
+            {
+                for (scheme, class) in &instrument.classifications {
+                    schemes
+                        .entry(scheme.clone())
+                        .or_default()
+                        .push((id.to_string(), class.clone()));
+                }
+            }
+        }
+        for (scheme, classes) in schemes {
+            assets = assets.with_classes(&scheme, classes)?;
+        }
+        Ok(assets)
     }
 
     /// The trades that move the accounts to `targets`, weights by holding such as an

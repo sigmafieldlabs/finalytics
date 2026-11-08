@@ -501,7 +501,9 @@ pub(crate) fn limits(options: &OptimiseOptions, refits: bool) -> Vec<String> {
     for (name, g) in &options.groups {
         out.push(format!(
             "{name} ({}): {} to {} together",
-            g.assets.join(", "),
+            g.classification
+                .clone()
+                .unwrap_or_else(|| g.assets.join(", ")),
             pct(g.min),
             pct(g.max)
         ));
@@ -915,6 +917,22 @@ macro_rules! common_setters {
                     name.to_owned(),
                     AssetGroup {
                         assets: assets.iter().map(|a| a.as_ref().to_owned()).collect(),
+                        classification: None,
+                        min,
+                        max,
+                    },
+                );
+                self
+            }
+
+            /// The total weight of the assets classed `class` under `scheme`, such as `Equity`
+            /// under `asset_class`, between `min` and `max`.
+            pub fn class_limit(mut self, scheme: &str, class: &str, min: f64, max: f64) -> Self {
+                self.common.options.groups.insert(
+                    class.to_owned(),
+                    AssetGroup {
+                        assets: Vec::new(),
+                        classification: Some(scheme.to_owned()),
                         min,
                         max,
                     },

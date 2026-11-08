@@ -44,9 +44,11 @@ FlowsLike = Mapping[Any, float] | Sequence[tuple[Any, float]]
 """Money paid in or taken out on dates: amounts by date, such as ``{"2020-01-31": 500}``, or
 ``(date, amount)`` pairs; a date is a :class:`datetime.date` or its ISO text."""
 
-GroupLike = _types.AssetGroup | tuple[Sequence[str], float, float]
+GroupLike = _types.AssetGroup | tuple[Sequence[str] | str, float, float]
 """A group of assets and the limits on their total weight: a
-:class:`~finalytics.types.AssetGroup` or an ``(assets, min, max)`` triple."""
+:class:`~finalytics.types.AssetGroup`, an ``(assets, min, max)`` triple, or a
+``(classification, min, max)`` triple, such as ``("asset_class", 0, 0.6)`` for the group named
+``"Equity"``: the assets classed as the group's name under the classification."""
 
 
 def _covariance(method: str | _types.CovarianceMethod) -> str:
@@ -91,6 +93,8 @@ def _group(value: GroupLike) -> _types.AssetGroup:
     if isinstance(value, _types.AssetGroup):
         return value
     assets, low, high = value
+    if isinstance(assets, str):
+        return _types.AssetGroup(classification=assets, min=float(low), max=float(high))
     return _types.AssetGroup(assets=list(assets), min=float(low), max=float(high))
 
 
@@ -117,6 +121,10 @@ class Assets:
       ``"james_stein"`` (shrunk towards the assets' average) or ``"ewma"`` (exponentially
       weighted, with a decay of 0.94), or a :class:`~finalytics.types.MeanMethod` such as
       ``EwmaMean(decay=0.97)``.
+    - `classes`: each asset's class under classification schemes, such as
+      ``{"asset_class": {"US Equity": "Equity", "Bonds": "Fixed income"}}``, so that group limits
+      can name a class: ``groups={"Equity": ("asset_class", 0, 0.6)}``. A portfolio's assets
+      carry its instruments' classes.
 
     ::
 
@@ -136,6 +144,7 @@ class Assets:
         periods_per_year: float | None = None,
         covariance: str | _types.CovarianceMethod = "ledoit_wolf",
         mean_returns: str | _types.MeanMethod = "historical",
+        classes: Mapping[str, Mapping[str, str]] | None = None,
     ):
         if isinstance(prices, (str, os.PathLike)):
             from finalytics.portfolio import _text
@@ -144,7 +153,7 @@ class Assets:
         else:
             native = call(_finalytics.NativeAssets.from_prices, dumps(_price_table(prices)))
         self._native = self._configure(
-            native, risk_free_rate, risk_free_asset, periods_per_year, covariance, mean_returns
+            native, risk_free_rate, risk_free_asset, periods_per_year, covariance, mean_returns, classes
         )
 
     @staticmethod
@@ -155,6 +164,7 @@ class Assets:
         periods_per_year: float | None,
         covariance: str | _types.CovarianceMethod,
         mean_returns: str | _types.MeanMethod,
+        classes: Mapping[str, Mapping[str, str]] | None = None,
     ) -> Any:
         settings = {
             "risk_free_rate": None if risk_free_rate is None else float(risk_free_rate),
@@ -162,6 +172,9 @@ class Assets:
             "periods_per_year": None if periods_per_year is None else float(periods_per_year),
             "covariance": json.loads(_covariance(covariance)),
             "mean_returns": json.loads(_mean(mean_returns)),
+            "classes": None
+            if classes is None
+            else {str(k): {str(a): str(c) for a, c in v.items()} for k, v in classes.items()},
         }
         return call(native.with_settings, dumps(settings))
 
@@ -183,6 +196,7 @@ class Assets:
         periods_per_year: float | None = None,
         covariance: str | _types.CovarianceMethod = "ledoit_wolf",
         mean_returns: str | _types.MeanMethod = "historical",
+        classes: Mapping[str, Mapping[str, str]] | None = None,
     ) -> Assets:
         """Assets from their returns: a pandas DataFrame indexed by the date each return ends on,
         with one column per asset, or a two-dimensional array (one row per period) with `dates`
@@ -203,7 +217,7 @@ class Assets:
         )
         assets = cls._wrap(native)
         assets._native = cls._configure(
-            native, risk_free_rate, risk_free_asset, periods_per_year, covariance, mean_returns
+            native, risk_free_rate, risk_free_asset, periods_per_year, covariance, mean_returns, classes
         )
         return assets
 
@@ -211,6 +225,11 @@ class Assets:
     def labels(self) -> list[str]:
         """The assets."""
         return self._native.labels()
+
+    @property
+    def classes(self) -> dict[str, dict[str, str]]:
+        """Each classification scheme's class of each asset it classifies."""
+        return json.loads(self._native.classes())
 
     @property
     def dates(self) -> DateArray:
@@ -384,7 +403,8 @@ class Assets:
         `max_weight` is the largest weight of any asset, such as 0.4; `bounds` limits every
         weight, ``(0, 1)`` by default; `asset_bounds` limits particular assets, such as
         ``{"Gold": (0, 0.1)}``; `groups` limits the total weight of groups of assets, such as
-        ``{"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)}``; `min_effective_assets`, such
+        ``{"Equity": (["US Equity", "Intl Equity"], 0.3, 0.6)}``, or the assets of a class,
+        ``{"Equity": ("asset_class", 0.3, 0.6)}`` (see `classes`); `min_effective_assets`, such
         as 5, spreads the weights over at least as many assets as 5 equal weights would be,
         holding ``1 / sum(w ** 2)`` at or above it. Equal weight, inverse volatility, risk
         parity, risk budgeting and hierarchical risk parity are fully invested and long only,

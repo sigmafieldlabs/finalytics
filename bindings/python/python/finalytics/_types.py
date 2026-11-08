@@ -452,16 +452,23 @@ class AssetFit:
 
 @dataclass(frozen=True, kw_only=True)
 class AssetGroup:
-    """A group of assets whose total weight is limited."""
+    """A group of assets whose total weight is limited: the assets listed, or those classed as the
+    group's name under a classification, such as the group "Equity" under `asset_class`.
+    """
 
-    assets: list[str]
-    """The assets in the group."""
+    assets: list[str] = field(default_factory=list)
+    """The assets in the group; or give `classification`."""
 
-    min: float
-    """The smallest total weight."""
+    classification: str | None = None
+    """A classification scheme of the assets, such as `asset_class`: the group is the assets classed
+    as its name under it.
+    """
 
-    max: float
-    """The largest total weight."""
+    min: float = 0.0
+    """The smallest total weight: 0 by default."""
+
+    max: float = 1.0
+    """The largest total weight: 1 by default."""
 
 
 @dataclass(frozen=True, kw_only=True)

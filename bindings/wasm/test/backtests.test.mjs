@@ -365,3 +365,13 @@ test("trade and tracking-error limits in an optimisation and at walk-forward ref
     (e) => e.issues[0].path === "options.max_turnover",
   );
 });
+
+test("group limits by class", () => {
+  const classes = { asset_class: { "US Equity": "Equity", "Intl Equity": "Equity", Bonds: "Fixed income" } };
+  const classified = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills", classes });
+  assert.deepEqual(classified.classes, classes);
+  const result = classified.optimise({ method: "maximum_sharpe", groups: { Equity: { classification: "asset_class", max: 0.3 } } });
+  const w = result.results.weights;
+  assert.ok(w["US Equity"] + w["Intl Equity"] <= 0.3 + 1e-6);
+  assert.deepEqual(result.report.groups[0].assets, ["US Equity", "Intl Equity"]);
+});

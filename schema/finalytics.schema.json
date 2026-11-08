@@ -587,25 +587,29 @@
           "items": {
             "type": "string"
           },
-          "description": "The assets in the group."
+          "description": "The assets in the group; or give `classification`."
+        },
+        "classification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A classification scheme of the assets, such as `asset_class`: the group is the assets\nclassed as its name under it."
         },
         "min": {
           "type": "number",
           "format": "double",
-          "description": "The smallest total weight."
+          "description": "The smallest total weight: 0 by default.",
+          "default": 0.0
         },
         "max": {
           "type": "number",
           "format": "double",
-          "description": "The largest total weight."
+          "description": "The largest total weight: 1 by default.",
+          "default": 1.0
         }
       },
-      "required": [
-        "assets",
-        "min",
-        "max"
-      ],
-      "description": "A group of assets whose total weight is limited."
+      "description": "A group of assets whose total weight is limited: the assets listed, or those classed as the\ngroup's name under a classification, such as the group \"Equity\" under `asset_class`."
     },
     "AssetStatistics": {
       "type": "object",

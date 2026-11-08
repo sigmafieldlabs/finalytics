@@ -148,6 +148,13 @@ export interface AssetsOptions {
    * `{ type: "ewma", decay: 0.97 }`.
    */
   mean_returns?: MeanMethod["type"] | MeanMethod;
+  /**
+   * Each asset's class under classification schemes, such as
+   * `{ asset_class: { "US Equity": "Equity", Bonds: "Fixed income" } }`, so that group limits can
+   * name a class: `groups: { Equity: { classification: "asset_class", max: 0.6 } }`. A portfolio's
+   * assets carry its instruments' classes.
+   */
+  classes?: Record<string, Record<string, string>>;
 }
 
 /** Choices for `Portfolio.report`, all optional. */
@@ -1483,6 +1490,15 @@ impl Assets {
     #[wasm_bindgen(getter)]
     pub fn labels(&self) -> Vec<String> {
         self.inner.labels().to_vec()
+    }
+
+    /// Each classification scheme's class of each asset it classifies.
+    #[wasm_bindgen(
+        getter,
+        unchecked_return_type = "Record<string, Record<string, string>>"
+    )]
+    pub fn classes(&self) -> Result<JsValue, JsValue> {
+        to_js(self.inner.classes())
     }
 
     /// The date each return ends on.
