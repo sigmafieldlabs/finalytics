@@ -5,5 +5,6 @@ set -euo pipefail
 module=$1
 shift
 optimised="${module%.wasm}.optimised.wasm"
+trap 'rm -f "$optimised"' EXIT
 wasm-opt -O1 "$module" -o "$optimised"
-exec wasm-bindgen-test-runner "$optimised" "$@"
+wasm-bindgen-test-runner "$optimised" "$@"
