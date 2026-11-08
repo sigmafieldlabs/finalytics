@@ -7209,7 +7209,7 @@
           ],
           "description": "The current portfolio on the same axes as the frontier."
         },
-        "current_invested": {
+        "current_without_base_cash": {
           "anyOf": [
             {
               "$ref": "#/$defs/PortfolioPoint"
@@ -7218,7 +7218,7 @@
               "type": "null"
             }
           ],
-          "description": "The current portfolio with its base-currency cash aside: the invested holdings in the\nshares they have of each other, which the frontier, fully invested in them, can be\ncompared with. The same as `current` when no base-currency cash is held.",
+          "description": "The current portfolio with base-currency cash set aside: the other holdings in the shares\nthey have of each other, which the frontier, fully invested in them, can be compared\nwith. Cash in other currencies counts as a holding, as its value moves with the exchange\nrate. The same as `current` when no base-currency cash is held.",
           "default": null
         }
       },

@@ -106,11 +106,12 @@ pub struct OverviewReport {
     pub frontier: Option<Vec<FrontierPoint>>,
     /// The current portfolio on the same axes as the frontier.
     pub current: Option<PortfolioPoint>,
-    /// The current portfolio with its base-currency cash aside: the invested holdings in the
-    /// shares they have of each other, which the frontier, fully invested in them, can be
-    /// compared with. The same as `current` when no base-currency cash is held.
+    /// The current portfolio with base-currency cash set aside: the other holdings in the shares
+    /// they have of each other, which the frontier, fully invested in them, can be compared
+    /// with. Cash in other currencies counts as a holding, as its value moves with the exchange
+    /// rate. The same as `current` when no base-currency cash is held.
     #[serde(default)]
-    pub current_invested: Option<PortfolioPoint>,
+    pub current_without_base_cash: Option<PortfolioPoint>,
 }
 
 /// The overview on the report's date.
@@ -214,107 +215,107 @@ pub fn overview_report(
         allocation.push(breakdown(scheme, &|k| group_of(books, k, scheme)));
     }
 
-    let (risk, holdings, frontier, current, current_invested) = match holdings_risk(&cx, &valuation)
-    {
-        Err(e) => {
-            warnings.warning(
-                "risk",
-                format!("the holdings' risk could not be estimated: {e}"),
-            );
-            (None, Vec::new(), None, None, None)
-        }
-        Ok(Estimated {
-            risk,
-            keys,
-            weights,
-            means,
-        }) => {
-            let given = &options.expected_returns;
-            let expected: Vec<(f64, bool)> = keys
-                .iter()
-                .zip(&means)
-                .map(|(key, mean)| match key {
-                    HoldingKey::Instrument(id) => match given.get(id) {
-                        Some(r) => (*r, true),
-                        None => (*mean, false),
-                    },
-                    HoldingKey::Cash(_) => (*mean, false),
-                })
-                .collect();
-            let holdings: Vec<HoldingRiskReturn> = keys
-                .iter()
-                .enumerate()
-                .map(|(i, key)| HoldingRiskReturn {
-                    holding: key.clone(),
-                    weight: weights[i],
-                    expected_return: expected[i].0,
-                    expected_return_given: expected[i].1,
-                    volatility: risk.covariance.get(i, i).max(0.0).sqrt(),
-                    risk_share: risk.decomposition.contributions[i].share,
-                })
-                .collect();
-            let mu: Vec<f64> = expected.iter().map(|(r, _)| *r).collect();
-            let current = PortfolioPoint {
-                expected_return: weights.iter().zip(&mu).map(|(w, r)| w * r).sum(),
-                volatility: risk.decomposition.volatility,
-            };
-            // The frontier of the invested holdings: base-currency cash is riskless, and with
-            // it the frontier's least risky point would be all cash.
-            let invested: Vec<usize> = (0..keys.len())
-                .filter(|&i| keys[i] != HoldingKey::Cash(cx.base))
-                .collect();
-            let sub = |i: usize, j: usize| risk.covariance.get(invested[i], invested[j]);
-            let m = invested.len();
-            // Base-currency cash is riskless and earns nothing, so setting it aside scales the
-            // current point by the share invested.
-            let share: f64 = invested.iter().map(|&i| weights[i]).sum();
-            let current_invested = if invested.len() == keys.len() {
-                Some(current)
-            } else {
-                (share > 0.0).then(|| PortfolioPoint {
-                    expected_return: current.expected_return / share,
-                    volatility: current.volatility / share,
-                })
-            };
-            let problem = Matrix::new(
-                invested.iter().map(|&i| label(&keys[i])).collect(),
-                (0..m * m).map(|k| sub(k / m, k % m)).collect(),
-            )
-            .map(|matrix| {
-                Problem::from_covariance(matrix)
-                    .with_expected_returns(invested.iter().map(|&i| mu[i]).collect())
-            });
-            let frontier = match problem.and_then(|p| p.frontier(options.frontier_points)) {
-                Ok(points) => Some(
-                    points
-                        .into_iter()
-                        .map(|mut point| {
-                            let mut weights = vec![0.0; keys.len()];
-                            for (k, &i) in invested.iter().enumerate() {
-                                weights[i] = point.weights[k];
-                            }
-                            point.weights = weights;
-                            point
-                        })
-                        .collect(),
-                ),
-                Err(e) => {
-                    warnings.warning(
-                        "frontier",
-                        format!("the efficient frontier could not be found: {e}"),
-                    );
-                    None
-                }
-            };
-            (
-                Some(risk),
-                holdings,
-                frontier,
-                Some(current),
-                current_invested,
-            )
-        }
-    };
+    let (risk, holdings, frontier, current, current_without_base_cash) =
+        match holdings_risk(&cx, &valuation) {
+            Err(e) => {
+                warnings.warning(
+                    "risk",
+                    format!("the holdings' risk could not be estimated: {e}"),
+                );
+                (None, Vec::new(), None, None, None)
+            }
+            Ok(Estimated {
+                risk,
+                keys,
+                weights,
+                means,
+            }) => {
+                let given = &options.expected_returns;
+                let expected: Vec<(f64, bool)> = keys
+                    .iter()
+                    .zip(&means)
+                    .map(|(key, mean)| match key {
+                        HoldingKey::Instrument(id) => match given.get(id) {
+                            Some(r) => (*r, true),
+                            None => (*mean, false),
+                        },
+                        HoldingKey::Cash(_) => (*mean, false),
+                    })
+                    .collect();
+                let holdings: Vec<HoldingRiskReturn> = keys
+                    .iter()
+                    .enumerate()
+                    .map(|(i, key)| HoldingRiskReturn {
+                        holding: key.clone(),
+                        weight: weights[i],
+                        expected_return: expected[i].0,
+                        expected_return_given: expected[i].1,
+                        volatility: risk.covariance.get(i, i).max(0.0).sqrt(),
+                        risk_share: risk.decomposition.contributions[i].share,
+                    })
+                    .collect();
+                let mu: Vec<f64> = expected.iter().map(|(r, _)| *r).collect();
+                let current = PortfolioPoint {
+                    expected_return: weights.iter().zip(&mu).map(|(w, r)| w * r).sum(),
+                    volatility: risk.decomposition.volatility,
+                };
+                // The frontier of the invested holdings: base-currency cash is riskless, and with
+                // it the frontier's least risky point would be all cash.
+                let invested: Vec<usize> = (0..keys.len())
+                    .filter(|&i| keys[i] != HoldingKey::Cash(cx.base))
+                    .collect();
+                let sub = |i: usize, j: usize| risk.covariance.get(invested[i], invested[j]);
+                let m = invested.len();
+                // Base-currency cash is riskless and earns nothing, so setting it aside scales the
+                // current point by the share invested.
+                let share: f64 = invested.iter().map(|&i| weights[i]).sum();
+                let current_without_base_cash = if invested.len() == keys.len() {
+                    Some(current)
+                } else {
+                    (share > 0.0).then(|| PortfolioPoint {
+                        expected_return: current.expected_return / share,
+                        volatility: current.volatility / share,
+                    })
+                };
+                let problem = Matrix::new(
+                    invested.iter().map(|&i| label(&keys[i])).collect(),
+                    (0..m * m).map(|k| sub(k / m, k % m)).collect(),
+                )
+                .map(|matrix| {
+                    Problem::from_covariance(matrix)
+                        .with_expected_returns(invested.iter().map(|&i| mu[i]).collect())
+                });
+                let frontier = match problem.and_then(|p| p.frontier(options.frontier_points)) {
+                    Ok(points) => Some(
+                        points
+                            .into_iter()
+                            .map(|mut point| {
+                                let mut weights = vec![0.0; keys.len()];
+                                for (k, &i) in invested.iter().enumerate() {
+                                    weights[i] = point.weights[k];
+                                }
+                                point.weights = weights;
+                                point
+                            })
+                            .collect(),
+                    ),
+                    Err(e) => {
+                        warnings.warning(
+                            "frontier",
+                            format!("the efficient frontier could not be found: {e}"),
+                        );
+                        None
+                    }
+                };
+                (
+                    Some(risk),
+                    holdings,
+                    frontier,
+                    Some(current),
+                    current_without_base_cash,
+                )
+            }
+        };
 
     Ok(OverviewReport {
         provenance: cx.provenance(ReportKind::Overview, warnings),
@@ -332,6 +333,6 @@ pub fn overview_report(
         holdings,
         frontier,
         current,
-        current_invested,
+        current_without_base_cash,
     })
 }

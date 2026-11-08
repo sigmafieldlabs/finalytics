@@ -718,8 +718,10 @@ fn frontier_chart(
     points: &[FrontierPoint],
     current: &PortfolioPoint,
     invested: Option<&PortfolioPoint>,
+    base: &str,
     holdings: &[HoldingRiskReturn],
 ) -> String {
+    let without = format!("Without {base} cash");
     let (w, h, l, r, t, b) = (880.0, 272.0, 56.0, 120.0, 24.0, 34.0);
     let xs: Vec<f64> = points
         .iter()
@@ -826,7 +828,8 @@ fn frontier_chart(
     if let Some(p) = invested {
         let _ = write!(
             out,
-            r#"<g><title>Invested, cash aside: return {}, volatility {}</title><circle class="dot" cx="{:.1}" cy="{:.1}" r="6" style="fill:var(--s4)"/></g>"#,
+            r#"<g><title>{}: return {}, volatility {}</title><circle class="dot" cx="{:.1}" cy="{:.1}" r="6" style="fill:var(--s4)"/></g>"#,
+            esc(&without),
             signed(p.expected_return),
             share(p.volatility),
             x(p.volatility),
@@ -846,7 +849,7 @@ fn frontier_chart(
         ("Current portfolio".to_owned(), "var(--s2)"),
     ];
     if invested.is_some() {
-        keys.push(("Invested, cash aside".to_owned(), "var(--s4)"));
+        keys.push((without.clone(), "var(--s4)"));
     }
     keys.push(("Holdings".to_owned(), "var(--s3)"));
     legend(&keys) + &out
@@ -1070,12 +1073,17 @@ fn overview(o: &OverviewReport) -> String {
             &frontier_chart(
                 frontier,
                 current,
-                o.current_invested.as_ref().filter(|x| *x != current),
+                o.current_without_base_cash
+                    .as_ref()
+                    .filter(|x| *x != current),
+                &o.provenance.base_currency.to_string(),
                 &o.holdings,
             ),
             Some(&format!(
-                "Long only and fully invested in the holdings other than base-currency cash; \
-                 {given}; {method}."
+                "Long only and fully invested in the holdings other than base-currency cash, \
+                 which the current mix without it compares with; cash in other currencies \
+                 counts as a holding, as its value moves with the exchange rate; {given}; \
+                 {method}."
             )),
         ));
     }

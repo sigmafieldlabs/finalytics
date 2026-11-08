@@ -64,7 +64,7 @@ fn the_portfolio_mix_on_the_assets_estimates_is_the_overviews_current_point() {
     close(variance.sqrt(), current.volatility, "volatility");
     close(expected, current.expected_return, "expected return");
     // Set aside, the cash leaves the invested holdings in their own shares.
-    let invested = overview.current_invested.unwrap();
+    let invested = overview.current_without_base_cash.unwrap();
     let cash = w[labels.iter().position(|l| l == "USD cash").unwrap()];
     assert!(cash > 0.0);
     close(
@@ -78,7 +78,7 @@ fn the_portfolio_mix_on_the_assets_estimates_is_the_overviews_current_point() {
         "invested return",
     );
     let text = portfolio.report().build().unwrap().to_string();
-    assert!(text.contains("Invested, cash aside"), "{text}");
+    assert!(text.contains("Without USD cash"), "{text}");
 }
 
 #[test]

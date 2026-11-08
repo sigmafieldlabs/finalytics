@@ -14,8 +14,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   beside the risky assets, riskless, in the risk-free asset or, for assets without one, in `Cash`
   at the risk-free rate; the frontier then includes it. Without them, the weights are fully
   invested in the risky assets, as before. `risky_assets` and `cash_assets` list which assets
-  optimisation chooses among and which are cash. The overview report adds `current_invested`, the
-  current mix with its base-currency cash set aside, on the axes of its frontier.
+  optimisation chooses among and which are cash. The overview report adds
+  `current_without_base_cash`, the current mix with base-currency cash set aside, on the axes of
+  its frontier; cash in other currencies counts as a holding there, as its value moves with the
+  exchange rate.
 
 - Group limits by classification: a group may name a classification rather than list its assets,
   such as at most 60% in the assets classed `Equity` under `asset_class` (Rust

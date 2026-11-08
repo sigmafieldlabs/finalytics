@@ -829,10 +829,11 @@ pub(crate) fn overview(page: &mut Page, o: &OverviewReport) {
             signed(current.expected_return),
             share(current.volatility),
         ]];
-        // The frontier is fully invested; the current mix with its cash aside compares with it.
-        if let Some(x) = o.current_invested.filter(|x| x != current) {
+        // The frontier is fully invested in the holdings other than base-currency cash; the
+        // current mix with that cash set aside compares with it.
+        if let Some(x) = o.current_without_base_cash.filter(|x| x != current) {
             rows.push(vec![
-                "Invested, cash aside".to_owned(),
+                format!("Without {} cash", o.provenance.base_currency),
                 signed(x.expected_return),
                 share(x.volatility),
             ]);

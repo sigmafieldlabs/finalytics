@@ -2634,11 +2634,12 @@ export interface OverviewReport {
   /** The current portfolio on the same axes as the frontier. */
   current?: PortfolioPoint | null;
   /**
-   * The current portfolio with its base-currency cash aside: the invested holdings in the
-   * shares they have of each other, which the frontier, fully invested in them, can be
-   * compared with. The same as `current` when no base-currency cash is held.
+   * The current portfolio with base-currency cash set aside: the other holdings in the shares
+   * they have of each other, which the frontier, fully invested in them, can be compared
+   * with. Cash in other currencies counts as a holding, as its value moves with the exchange
+   * rate. The same as `current` when no base-currency cash is held.
    */
-  current_invested?: PortfolioPoint | null;
+  current_without_base_cash?: PortfolioPoint | null;
 }
 
 /** The kind of value an option takes. */
