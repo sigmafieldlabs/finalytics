@@ -1668,7 +1668,7 @@ impl Assets {
         &self,
         #[wasm_bindgen(unchecked_param_type = "EvaluateChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut allowed = fields::<finalytics::OptimiseOptions>(&["weights", "name"]);
+        let mut allowed = fields::<finalytics::OptimiseOptions>(&["weights", "frontier", "name"]);
         allowed.retain(|name| name != "method");
         let mut options = object(options, &allowed)?;
         let name = match options.remove("name") {
