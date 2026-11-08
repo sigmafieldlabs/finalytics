@@ -9,7 +9,8 @@ use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_ledger::HoldingKey;
 use finalytics_opt::{
     AssetBound, Bound, Constraints, GroupLimit, Linkage, Objective, Problem, ResampledSolution,
-    Resampling, ReturnUncertainty, Solution, SolveStatus,
+    Resampling, ReturnUncertainty, Solution, SolveStatus, TrackingErrorLimit, TradeLimits,
+    Turnover,
 };
 use finalytics_reports::OptimisationReport;
 use finalytics_risk::{
@@ -300,6 +301,23 @@ pub struct OptimiseOptions {
     pub resample: Option<usize>,
     /// Annual expected returns by asset, in place of the estimates.
     pub expected_returns: BTreeMap<String, f64>,
+    /// The weights held now, by asset, adding up to one with any weight on the risk-free asset,
+    /// which is cash: the start of the trades the report lists, and of the turnover and trade
+    /// limits.
+    pub current_weights: BTreeMap<String, f64>,
+    /// The largest one-way turnover from the current weights, `sum |w - current| / 2`, such as
+    /// 0.2 for 20% of the portfolio bought (and as much sold).
+    pub max_turnover: Option<f64>,
+    /// The smallest trade, as a weight, such as 0.01: each asset is traded by at least this
+    /// much from its current weight, or not at all.
+    pub min_trade: Option<f64>,
+    /// The largest number of assets traded from the current weights.
+    pub max_trades: Option<usize>,
+    /// A benchmark's weights by asset, adding up to one with any weight on the risk-free asset:
+    /// the report gives the weights' ex-ante tracking error against it.
+    pub benchmark_weights: BTreeMap<String, f64>,
+    /// The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03.
+    pub max_tracking_error: Option<f64>,
     /// Whether the optimisation report draws the efficient frontier under the same limits.
     /// Off by default: the frontier takes 30 more optimisations, so it adds time that grows with
     /// the number of assets, to seconds for hundreds of assets. Only an optimisation reads it;
@@ -883,7 +901,7 @@ impl Assets {
             risk_free_rate: results.risk_free_rate,
             periods_per_year: self.periods_per_year,
             covariance_method: self.covariance_method,
-            limits: crate::backtest::limits(options),
+            limits: crate::backtest::limits(options, false),
             start,
             end,
             frontier,
@@ -903,6 +921,10 @@ impl Assets {
                     r.solved,
                 )
             }),
+            current_weights: (!options.current_weights.is_empty())
+                .then_some(&options.current_weights),
+            benchmark_weights: (!options.benchmark_weights.is_empty())
+                .then_some(&options.benchmark_weights),
         })
     }
 
@@ -1113,23 +1135,25 @@ impl Assets {
                 }
             }
         }
-        if single && !method.takes_limits() {
-            let limited = [
-                (options.max_weight.is_some(), "options.max_weight"),
-                (options.bounds.is_some(), "options.bounds"),
-                (!options.asset_bounds.is_empty(), "options.asset_bounds"),
-                (!options.groups.is_empty(), "options.groups"),
-                (
-                    options.min_effective_assets.is_some(),
-                    "options.min_effective_assets",
-                ),
-            ];
-            for (_, path) in limited.iter().filter(|(given, _)| *given) {
+        if single {
+            let info = method.info();
+            for limit in crate::methods::given(options)
+                .into_iter()
+                .filter(|l| crate::methods::is_limit(l) && !info.takes(l))
+            {
                 report.error(
-                    *path,
-                    format!(
-                        "{name} is fully invested and long only, and takes no limits on weights"
-                    ),
+                    format!("options.{limit}"),
+                    if method.takes_limits() {
+                        format!(
+                            "{name} does not take {limit}: its optimum on the periods' returns \
+                             need not be unique, so trades cannot be left out one by one"
+                        )
+                    } else {
+                        format!(
+                            "{name} is fully invested and long only, and takes no limits on \
+                             weights"
+                        )
+                    },
                 );
             }
         }
@@ -1158,6 +1182,99 @@ impl Assets {
                         ),
                     );
                 }
+            }
+        }
+
+        // Weights held now and a benchmark's: shares of the portfolio, adding up to one with
+        // any cash in the risk-free asset.
+        let rf_asset = self.risk_free_asset();
+        let shares =
+            |report: &mut ValidationReport, weights: &BTreeMap<String, f64>, field: &str| {
+                let mut ok = true;
+                for (asset, w) in weights {
+                    let path = format!("options.{field}.{asset}");
+                    if !(known(asset) || rf_asset == Some(asset.as_str())) {
+                        report.error(path, format!("unknown asset {asset}"));
+                        ok = false;
+                    } else if !(w.is_finite() && *w >= 0.0) {
+                        report.error(path, format!("must be a weight of zero or more, not {w}"));
+                        ok = false;
+                    }
+                }
+                let total: f64 = weights.values().sum();
+                if ok && (total - 1.0).abs() > 1e-6 {
+                    report.error(
+                    format!("options.{field}"),
+                    match rf_asset {
+                        Some(cash) => format!(
+                            "add up to {total}, not one; give {cash}, the risk-free asset, any cash"
+                        ),
+                        None => format!("add up to {total}, not one"),
+                    },
+                );
+                }
+            };
+        if !options.current_weights.is_empty() {
+            shares(&mut report, &options.current_weights, "current_weights");
+        }
+        if !options.benchmark_weights.is_empty() {
+            shares(&mut report, &options.benchmark_weights, "benchmark_weights");
+        }
+        let trading = [
+            ("max_turnover", options.max_turnover.is_some()),
+            ("min_trade", options.min_trade.is_some()),
+            ("max_trades", options.max_trades.is_some()),
+        ];
+        for (field, _) in trading.iter().filter(|(_, given)| *given) {
+            if options.current_weights.is_empty() {
+                report.error(
+                    format!("options.{field}"),
+                    "limits trades from the weights held now: give current_weights too",
+                );
+            }
+        }
+        if let Some(t) = options.max_turnover {
+            let cash = rf_asset
+                .and_then(|rf| options.current_weights.get(rf))
+                .copied()
+                .unwrap_or(0.0);
+            if !(t.is_finite() && t > 0.0 && t <= 1.0) {
+                report.error(
+                    "options.max_turnover",
+                    format!("must be a share above 0 and at most 1, such as 0.2, not {t}"),
+                );
+            } else if t < cash / 2.0 - 1e-12 {
+                report.error(
+                    "options.max_turnover",
+                    format!(
+                        "investing the {} held in cash turns over {} on its own, more than {}",
+                        crate::backtest::percent_text(cash),
+                        crate::backtest::percent_text(cash / 2.0),
+                        crate::backtest::percent_text(t)
+                    ),
+                );
+            }
+        }
+        if let Some(m) = options.min_trade
+            && !(m.is_finite() && m > 0.0 && m <= 1.0)
+        {
+            report.error(
+                "options.min_trade",
+                format!("must be a weight above 0 and at most 1, such as 0.01, not {m}"),
+            );
+        }
+        if let Some(te) = options.max_tracking_error {
+            if options.benchmark_weights.is_empty() {
+                report.error(
+                    "options.max_tracking_error",
+                    "limits the tracking error against a benchmark: give benchmark_weights too",
+                );
+            }
+            if !(te.is_finite() && te > 0.0) {
+                report.error(
+                    "options.max_tracking_error",
+                    format!("must be an annual tracking error above 0, such as 0.03, not {te}"),
+                );
             }
         }
 
@@ -1286,6 +1403,40 @@ impl Assets {
                 max: group.max,
             });
         }
+        let by_label = |weights: &BTreeMap<String, f64>| -> Vec<f64> {
+            labels
+                .iter()
+                .map(|l| weights.get(l).copied().unwrap_or(0.0))
+                .collect()
+        };
+        if options.max_turnover.is_some()
+            || options.min_trade.is_some()
+            || options.max_trades.is_some()
+        {
+            let mut turnover = Turnover::new(by_label(&options.current_weights));
+            // The turnover counts the cash too: optimisation invests all of it, so a change of
+            // `cash` in its weight is part of every portfolio's turnover, and the risky assets'
+            // changes have what the limit leaves.
+            let cash = self
+                .risk_free_asset()
+                .and_then(|rf| options.current_weights.get(rf))
+                .copied()
+                .unwrap_or(0.0);
+            turnover.limit = options.max_turnover.map(|t| (t - cash / 2.0).max(0.0));
+            constraints.turnover = Some(turnover);
+        }
+        if options.min_trade.is_some() || options.max_trades.is_some() {
+            let mut trades = TradeLimits::default();
+            trades.minimum = options.min_trade;
+            trades.maximum_count = options.max_trades;
+            constraints.trades = Some(trades);
+        }
+        if let Some(limit) = options.max_tracking_error {
+            constraints.tracking_error = Some(TrackingErrorLimit {
+                benchmark: by_label(&options.benchmark_weights),
+                limit,
+            });
+        }
         let matrix = covariance(&returns, self.covariance_method)?
             .matrix
             .scaled(self.periods_per_year);
@@ -1331,6 +1482,18 @@ fn user_paths(error: Error, options: &OptimiseOptions) -> Error {
             )
         } else if path == "constraints.min_effective_assets" {
             "options.min_effective_assets".to_owned()
+        } else if path.starts_with("constraints.turnover") {
+            "options.max_turnover".to_owned()
+        } else if path == "constraints.trades.minimum" {
+            "options.min_trade".to_owned()
+        } else if path.starts_with("constraints.trades") {
+            if options.min_trade.is_some() {
+                "options.min_trade".to_owned()
+            } else {
+                "options.max_trades".to_owned()
+            }
+        } else if path.starts_with("constraints.tracking_error") {
+            "options.max_tracking_error".to_owned()
         } else if path == "constraints.min_return" {
             "options.target".to_owned()
         } else if path.starts_with("resampling") {
@@ -1533,6 +1696,53 @@ impl Optimise<'_> {
         self.options
             .expected_returns
             .insert(asset.to_owned(), value);
+        self
+    }
+
+    /// The weights held now, by asset, such as `[("US Equity", 0.5), ("Bonds", 0.5)]`, adding up
+    /// to one with any cash on the risk-free asset: the report lists the trades from them, and
+    /// the turnover and trade limits start from them.
+    pub fn current_weights<S: Into<String>>(
+        mut self,
+        weights: impl IntoIterator<Item = (S, f64)>,
+    ) -> Self {
+        self.options.current_weights = weights.into_iter().map(|(a, w)| (a.into(), w)).collect();
+        self
+    }
+
+    /// The largest one-way turnover from the current weights, such as 0.2 for 20% of the
+    /// portfolio bought and as much sold.
+    pub fn max_turnover(mut self, turnover: f64) -> Self {
+        self.options.max_turnover = Some(turnover);
+        self
+    }
+
+    /// The smallest trade, as a weight, such as 0.01: each asset is traded by at least this
+    /// much, or not at all.
+    pub fn min_trade(mut self, weight: f64) -> Self {
+        self.options.min_trade = Some(weight);
+        self
+    }
+
+    /// The largest number of assets traded from the current weights.
+    pub fn max_trades(mut self, count: usize) -> Self {
+        self.options.max_trades = Some(count);
+        self
+    }
+
+    /// A benchmark's weights by asset, adding up to one with any cash on the risk-free asset:
+    /// the report gives the tracking error against it, and `max_tracking_error` limits it.
+    pub fn benchmark_weights<S: Into<String>>(
+        mut self,
+        weights: impl IntoIterator<Item = (S, f64)>,
+    ) -> Self {
+        self.options.benchmark_weights = weights.into_iter().map(|(a, w)| (a.into(), w)).collect();
+        self
+    }
+
+    /// The largest ex-ante tracking error a year against the benchmark weights, such as 0.03.
+    pub fn max_tracking_error(mut self, limit: f64) -> Self {
+        self.options.max_tracking_error = Some(limit);
         self
     }
 

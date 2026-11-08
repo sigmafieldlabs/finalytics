@@ -136,6 +136,36 @@ re-optimised. This repeats until the limits hold. The result satisfies the limit
 guaranteed to be the best portfolio that does, and fixing assets can make the other constraints
 infeasible. A change in weight below $10^{-7}$ counts as no trade.
 
+### Trade and tracking-error limits on assets
+
+`Assets.optimise` takes these limits with plain inputs: `current_weights`, the weights held now
+by asset, adding up to one with any cash on the risk-free asset; `max_turnover`, the one-way
+turnover from them; `min_trade` and `max_trades`, the trade limits above; and
+`benchmark_weights` with `max_tracking_error`, an annual limit on the tracking error against a
+benchmark. The turnover counts the cash: an optimisation invests all of it, so a weight $c$ held
+in cash takes $c/2$ of the turnover, and the assets' trades have $T - c/2$; a limit below $c/2$
+is refused. The report lists the trades from the current weights with the turnover, and gives the
+tracking error against the benchmark weights whenever they are given, and the frontier is drawn
+under the same limits. The trade limits need a unique optimum, so they are not offered for the
+methods measured on the periods' returns.
+
+In a backtest, the tracking-error limit applies at every fit. The turnover and trade limits apply
+at each refit of a walk-forward validation, from the weights held at that refit, which have
+drifted with the returns since the last; the first fit enters from cash without them. So these
+refits are fitted in order as the run reaches them, rather than all at once beforehand. A backtest
+takes no current weights, and refuses the turnover and trade limits under a validation that fits
+only once, in sample or on a holdout.
+
+```python
+>>> import finalytics as fl
+>>> assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+>>> current = {"US Equity": 0.5, "Intl Equity": 0.1, "Bonds": 0.3, "Gold": 0.05, "T-Bills": 0.05}
+>>> result = assets.optimise(method="maximum_sharpe", current_weights=current, max_turnover=0.1)
+>>> round(result.report.trades.turnover, 4)
+0.1
+
+```
+
 ### Resampling and Black–Litterman
 
 `Problem.resampled` solves any of the covariance-based objectives above for estimates re-made from
@@ -171,8 +201,10 @@ takes, naming them all. Fixed weights take no limits or parameters.
 ```python
 >>> import finalytics as fl
 >>> cvar = next(m for m in fl.methods() if m.method == "minimum_cvar")
->>> [(p.name, p.required, p.default) for p in cvar.parameters]
-[('confidence', False, 0.95), ('target', False, None), ('risk_free_rate', False, None), ('expected_returns', False, None)]
+>>> [(p.name, p.required, p.default) for p in cvar.parameters[:2]]
+[('confidence', False, 0.95), ('target', False, None)]
+>>> [p.name for p in cvar.limits]
+['max_weight', 'bounds', 'asset_bounds', 'groups', 'min_effective_assets', 'max_turnover', 'max_tracking_error']
 >>> confidence = cvar.parameters[0]
 >>> confidence.min, confidence.min_exclusive, confidence.max, confidence.max_exclusive
 (0.0, True, 1.0, True)

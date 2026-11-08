@@ -349,3 +349,19 @@ test("one rule for options a method does not use, and each method says what it t
   assert.equal(cvar.parameters.find((p) => p.name === "confidence").default, 0.95);
   assert.deepEqual(methods.find((m) => m.method === "equal_weight").limits, []);
 });
+
+test("trade and tracking-error limits in an optimisation and at walk-forward refits", () => {
+  const current = { "US Equity": 0.5, "Intl Equity": 0.1, Bonds: 0.3, Gold: 0.05, "T-Bills": 0.05 };
+  const result = assets.optimise({ method: "maximum_sharpe", current_weights: current, max_turnover: 0.1 });
+  assert.ok(result.report.trades.turnover <= 0.1 + 1e-6);
+  assert.ok(`${result}`.includes("Trades from the current weights"));
+  const te = assets.optimise({ method: "maximum_sharpe", benchmark_weights: { "US Equity": 0.6, Bonds: 0.4 }, max_tracking_error: 0.03 });
+  assert.ok(te.report.summary.tracking_error <= 0.03 + 1e-6);
+  const walk = assets.backtest({ method: "maximum_sharpe", validation: { walk_forward: { years: 5 } }, rebalance: "yearly", max_turnover: 0.05 });
+  const refits = walk.results.strategies[0].out_of_sample.trades.filter((t) => t.refit);
+  assert.ok(refits.length > 0 && refits.every((t) => t.turnover <= 0.05 + 1e-6));
+  assert.throws(
+    () => assets.optimise({ method: "maximum_sharpe", max_turnover: 0.1 }),
+    (e) => e.issues[0].path === "options.max_turnover",
+  );
+});

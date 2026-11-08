@@ -282,6 +282,12 @@ class Assets:
         min_effective_assets: float | None = None,
         expected_returns: Mapping[str, float] | None = None,
         resample: int | None = None,
+        current_weights: Mapping[str, float] | None = None,
+        max_turnover: float | None = None,
+        min_trade: float | None = None,
+        max_trades: int | None = None,
+        benchmark_weights: Mapping[str, float] | None = None,
+        max_tracking_error: float | None = None,
     ) -> _types.OptimiseOptions:
         # Numbers JSON cannot hold, named by keyword: a comparison or backtest repeats the
         # options in each strategy.
@@ -292,9 +298,14 @@ class Assets:
             "confidence": confidence,
             "max_weight": max_weight,
             "min_effective_assets": min_effective_assets,
+            "max_turnover": max_turnover,
+            "min_trade": min_trade,
+            "max_tracking_error": max_tracking_error,
         }
         numbers.update({f"budgets.{k}": v for k, v in (budgets or {}).items()})
         numbers.update({f"expected_returns.{k}": v for k, v in (expected_returns or {}).items()})
+        numbers.update({f"current_weights.{k}": v for k, v in (current_weights or {}).items()})
+        numbers.update({f"benchmark_weights.{k}": v for k, v in (benchmark_weights or {}).items()})
         bad = [(k, float(v)) for k, v in numbers.items() if v is not None and not math.isfinite(float(v))]
         if bad:
             raise invalid(*((f"options.{k}", f"must be a finite number, not {v}") for k, v in bad))
@@ -314,6 +325,12 @@ class Assets:
             min_effective_assets=None if min_effective_assets is None else float(min_effective_assets),
             expected_returns={k: float(v) for k, v in (expected_returns or {}).items()},
             resample=None if resample is None else int(resample),
+            current_weights={k: float(v) for k, v in (current_weights or {}).items()},
+            max_turnover=None if max_turnover is None else float(max_turnover),
+            min_trade=None if min_trade is None else float(min_trade),
+            max_trades=None if max_trades is None else int(max_trades),
+            benchmark_weights={k: float(v) for k, v in (benchmark_weights or {}).items()},
+            max_tracking_error=None if max_tracking_error is None else float(max_tracking_error),
         )
 
     def optimise(
@@ -334,6 +351,12 @@ class Assets:
         min_effective_assets: float | None = None,
         expected_returns: Mapping[str, float] | None = None,
         resample: int | None = None,
+        current_weights: Mapping[str, float] | None = None,
+        max_turnover: float | None = None,
+        min_trade: float | None = None,
+        max_trades: int | None = None,
+        benchmark_weights: Mapping[str, float] | None = None,
+        max_tracking_error: float | None = None,
         frontier: bool = False,
         name: str | None = None,
     ) -> _types.Optimisation:
@@ -374,6 +397,16 @@ class Assets:
         much each weight varied. It applies to the methods that use estimates, other than those
         measured on the periods' returns.
 
+        `current_weights` are the weights held now, by asset, adding up to one with any cash
+        on the risk-free asset, such as ``{"US Equity": 0.5, "Bonds": 0.45, "T-Bills": 0.05}``:
+        the report lists the trades from them, and they are where the trade limits start.
+        `max_turnover` limits the one-way turnover from them, ``sum(abs(w - current)) / 2``
+        with the cash, such as 0.2; `min_trade` makes each trade at least that weight or none,
+        and `max_trades` limits how many assets are traded (both met by leaving trades out one
+        by one, so not for the methods measured on the periods' returns).
+        `benchmark_weights` gives the report the tracking error against a benchmark, and
+        `max_tracking_error` limits it, a year, such as 0.03.
+
         ``frontier=True`` draws the efficient frontier under the same limits in the report. It
         takes 30 more optimisations, so it adds time that grows with the number of assets, to
         seconds for hundreds of assets; without it, the report shows the weights against each
@@ -395,6 +428,12 @@ class Assets:
             min_effective_assets=min_effective_assets,
             expected_returns=expected_returns,
             resample=resample,
+            current_weights=current_weights,
+            max_turnover=max_turnover,
+            min_trade=min_trade,
+            max_trades=max_trades,
+            benchmark_weights=benchmark_weights,
+            max_tracking_error=max_tracking_error,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
         result = loads(_types.Optimisation, call(self._native.optimise, dumps(options, "options")))
@@ -418,10 +457,16 @@ class Assets:
         groups: Mapping[str, GroupLike] | None = None,
         min_effective_assets: float | None = None,
         expected_returns: Mapping[str, float] | None = None,
+        current_weights: Mapping[str, float] | None = None,
+        max_turnover: float | None = None,
+        min_trade: float | None = None,
+        max_trades: int | None = None,
+        benchmark_weights: Mapping[str, float] | None = None,
+        max_tracking_error: float | None = None,
     ) -> list[_types.FrontierPortfolio]:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
         the least variance to the one with the largest expected return, under the limits given
-        as for :meth:`optimise`."""
+        as for :meth:`optimise`, trade and tracking-error limits included."""
         options = self._options(
             "maximum_sharpe",
             bounds=bounds,
@@ -430,6 +475,12 @@ class Assets:
             groups=groups,
             min_effective_assets=min_effective_assets,
             expected_returns=expected_returns,
+            current_weights=current_weights,
+            max_turnover=max_turnover,
+            min_trade=min_trade,
+            max_trades=max_trades,
+            benchmark_weights=benchmark_weights,
+            max_tracking_error=max_tracking_error,
         )
         return loads(list[_types.FrontierPortfolio], call(self._native.frontier, int(points), dumps(options, "options")))
 
@@ -458,6 +509,11 @@ class Assets:
         expected_returns: Mapping[str, float] | None = None,
         risk_free_rate: float | None = None,
         resample: int | None = None,
+        max_turnover: float | None = None,
+        min_trade: float | None = None,
+        max_trades: int | None = None,
+        benchmark_weights: Mapping[str, float] | None = None,
+        max_tracking_error: float | None = None,
         start_value: float | None = None,
         flows: FlowsLike = (),
     ) -> _types.Comparison:
@@ -493,7 +549,9 @@ class Assets:
           reports then give each run's ending value and money-weighted return.
 
         The limits and parameters are those of :meth:`optimise`; they apply to every method
-        that takes them.
+        that takes them. `max_turnover`, `min_trade` and `max_trades` limit the trades at each
+        refit of a walk-forward validation, from the weights held then (the first fit enters
+        from cash); `max_tracking_error` applies at every fit.
         """
         limits = dict(
             max_weight=max_weight,
@@ -510,6 +568,11 @@ class Assets:
             expected_returns=expected_returns,
             risk_free_rate=risk_free_rate,
             resample=resample,
+            max_turnover=max_turnover,
+            min_trade=min_trade,
+            max_trades=max_trades,
+            benchmark_weights=benchmark_weights,
+            max_tracking_error=max_tracking_error,
         )
         if isinstance(methods, str):
             raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
@@ -567,6 +630,11 @@ class Assets:
         expected_returns: Mapping[str, float] | None = None,
         risk_free_rate: float | None = None,
         resample: int | None = None,
+        max_turnover: float | None = None,
+        min_trade: float | None = None,
+        max_trades: int | None = None,
+        benchmark_weights: Mapping[str, float] | None = None,
+        max_tracking_error: float | None = None,
         start_value: float | None = None,
         flows: FlowsLike = (),
     ) -> _types.Backtest:
@@ -595,6 +663,11 @@ class Assets:
             expected_returns=expected_returns,
             risk_free_rate=risk_free_rate,
             resample=resample,
+            max_turnover=max_turnover,
+            min_trade=min_trade,
+            max_trades=max_trades,
+            benchmark_weights=benchmark_weights,
+            max_tracking_error=max_tracking_error,
         )
         strategy: Any
         if weights is not None:

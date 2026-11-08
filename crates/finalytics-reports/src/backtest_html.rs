@@ -283,7 +283,13 @@ pub(crate) fn limits_sentence(c: &BacktestContext) -> String {
 /// limit that starts with an asset's or a group's name, such as "Intl Equity: 0% to 30%", as it
 /// is.
 pub(crate) fn limit_in_sentence(limit: &str) -> String {
-    for start in ["At most ", "At least ", "Expected return "] {
+    for start in [
+        "At most ",
+        "At least ",
+        "Expected return ",
+        "Trades ",
+        "Tracking error ",
+    ] {
         if limit.starts_with(start) {
             let mut chars = limit.chars();
             return chars

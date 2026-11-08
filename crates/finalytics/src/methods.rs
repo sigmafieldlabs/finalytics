@@ -56,6 +56,8 @@ pub struct MethodParameter {
     pub max_exclusive: bool,
     /// The names allowed, for a choice.
     pub choices: Vec<String>,
+    /// The other options it needs, such as `current_weights` for a turnover limit.
+    pub needs: Vec<String>,
     /// What it does, in a sentence.
     pub description: String,
 }
@@ -125,6 +127,7 @@ fn number(name: &str, description: &str) -> MethodParameter {
         max: None,
         max_exclusive: false,
         choices: Vec::new(),
+        needs: Vec::new(),
         description: description.to_owned(),
     }
 }
@@ -137,6 +140,11 @@ fn of_kind(name: &str, kind: ParameterKind, description: &str) -> MethodParamete
 }
 
 impl MethodParameter {
+    fn needs(mut self, option: &str) -> Self {
+        self.needs.push(option.to_owned());
+        self
+    }
+
     fn required(mut self) -> Self {
         self.required = true;
         self
@@ -294,7 +302,27 @@ impl Method {
             ParameterKind::ByAsset,
             "Annual expected returns for some of the assets, in place of the estimates.",
         ));
-        let limits = if self.takes_limits() {
+        parameters.push(
+            of_kind(
+                "current_weights",
+                ParameterKind::ByAsset,
+                "The weights held now, adding up to one with any cash on the risk-free asset: \
+                 the report lists the trades from them, and the trade limits start from them.",
+            )
+            .at_least(0.0)
+            .at_most(1.0),
+        );
+        parameters.push(
+            of_kind(
+                "benchmark_weights",
+                ParameterKind::ByAsset,
+                "A benchmark's weights, adding up to one with any cash on the risk-free asset: \
+                 the report gives the tracking error against it.",
+            )
+            .at_least(0.0)
+            .at_most(1.0),
+        );
+        let mut limits = if self.takes_limits() {
             vec![
                 number(
                     "max_weight",
@@ -328,10 +356,47 @@ impl Method {
                     "The smallest effective number of assets, 1 / sum w^2, such as 5.",
                 )
                 .at_least(1.0),
+                number(
+                    "max_turnover",
+                    "The largest one-way turnover from the current weights, such as 0.2.",
+                )
+                .above(0.0)
+                .at_most(1.0)
+                .needs("current_weights"),
+                number(
+                    "max_tracking_error",
+                    "The largest ex-ante tracking error a year against the benchmark weights, \
+                     such as 0.03.",
+                )
+                .above(0.0)
+                .needs("benchmark_weights"),
             ]
         } else {
             Vec::new()
         };
+        // The trade limits are met by leaving out trades one by one, which needs a unique
+        // optimum: not those measured on the periods' returns.
+        if self.takes_limits() && !self.uses_scenarios() {
+            limits.push(
+                number(
+                    "min_trade",
+                    "The smallest trade, as a weight, such as 0.01: each asset is traded by at \
+                     least this much, or not at all.",
+                )
+                .above(0.0)
+                .at_most(1.0)
+                .needs("current_weights"),
+            );
+            limits.push(
+                of_kind(
+                    "max_trades",
+                    ParameterKind::Count,
+                    "The largest number of assets traded from the current weights.",
+                )
+                .at_least(0.0)
+                .needs("current_weights"),
+            );
+        }
         MethodInfo {
             method: self,
             label: self.label().to_owned(),
@@ -373,6 +438,12 @@ pub(crate) fn given(options: &OptimiseOptions) -> Vec<&'static str> {
         ),
         ("resample", options.resample.is_some()),
         ("expected_returns", !options.expected_returns.is_empty()),
+        ("current_weights", !options.current_weights.is_empty()),
+        ("max_turnover", options.max_turnover.is_some()),
+        ("min_trade", options.min_trade.is_some()),
+        ("max_trades", options.max_trades.is_some()),
+        ("benchmark_weights", !options.benchmark_weights.is_empty()),
+        ("max_tracking_error", options.max_tracking_error.is_some()),
     ];
     flags
         .into_iter()
@@ -398,6 +469,12 @@ pub(crate) fn without(options: &mut OptimiseOptions, name: &str) {
         "min_effective_assets" => options.min_effective_assets = None,
         "resample" => options.resample = None,
         "expected_returns" => options.expected_returns.clear(),
+        "current_weights" => options.current_weights.clear(),
+        "max_turnover" => options.max_turnover = None,
+        "min_trade" => options.min_trade = None,
+        "max_trades" => options.max_trades = None,
+        "benchmark_weights" => options.benchmark_weights.clear(),
+        "max_tracking_error" => options.max_tracking_error = None,
         _ => {}
     }
 }
@@ -406,7 +483,15 @@ pub(crate) fn without(options: &mut OptimiseOptions, name: &str) {
 pub(crate) fn is_limit(name: &str) -> bool {
     matches!(
         name,
-        "bounds" | "max_weight" | "asset_bounds" | "groups" | "min_effective_assets"
+        "bounds"
+            | "max_weight"
+            | "asset_bounds"
+            | "groups"
+            | "min_effective_assets"
+            | "max_turnover"
+            | "min_trade"
+            | "max_trades"
+            | "max_tracking_error"
     )
 }
 

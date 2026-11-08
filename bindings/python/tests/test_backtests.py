@@ -334,3 +334,32 @@ def test_each_method_says_what_it_takes():
     assert not methods["equal_weight"].takes_limits and methods["equal_weight"].limits == []
     assert next(p for p in methods["hierarchical_risk_parity"].parameters if p.name == "linkage").choices == [
         "single", "complete", "average", "ward"]
+
+
+CURRENT = {"US Equity": 0.5, "Intl Equity": 0.1, "Bonds": 0.3, "Gold": 0.05, "T-Bills": 0.05}
+
+
+def test_trade_and_tracking_error_limits(assets):
+    result = assets.optimise(method="maximum_sharpe", current_weights=CURRENT, max_turnover=0.1, frontier=True)
+    trades = result.report.trades
+    assert trades.turnover <= 0.1 + 1e-6
+    assert {t.asset for t in trades.trades} >= {"T-Bills"}
+    assert any(t.name == "trades" for t in fl.reports.tables(result.report))
+    assert "Trades from the current weights" in str(result)
+    points = assets.frontier(points=6, current_weights=CURRENT, max_turnover=0.1)
+    assert len(points) >= 2
+    te = assets.optimise(
+        method="maximum_sharpe", benchmark_weights={"US Equity": 0.6, "Bonds": 0.4}, max_tracking_error=0.03
+    )
+    assert te.report.summary.tracking_error <= 0.03 + 1e-6
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.optimise(method="maximum_sharpe", max_turnover=0.1)
+    assert raised.value.issues[0].path == "options.max_turnover"
+    walk = assets.backtest(
+        method="maximum_sharpe", validation=fl.WalkForward(years=5), rebalance="yearly", max_turnover=0.05
+    )
+    refits = [t for t in walk.results.strategies[0].out_of_sample.trades if t.refit]
+    assert refits and all(t.turnover <= 0.05 + 1e-6 for t in refits)
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.backtest(method="maximum_sharpe", max_turnover=0.05)
+    assert raised.value.issues[0].path == "options.max_turnover"

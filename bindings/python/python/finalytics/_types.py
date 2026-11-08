@@ -2909,6 +2909,9 @@ class MethodParameter:
     choices: list[str]
     """The names allowed, for a choice."""
 
+    needs: list[str]
+    """The other options it needs, such as `current_weights` for a turnover limit."""
+
     description: str
     """What it does, in a sentence."""
 
@@ -3428,6 +3431,9 @@ class OptimisationReport(ReportPage):
     from the start and rebalanced quarterly, without trading costs.
     """
 
+    trades: TradesSummary | None = None
+    """The trades from the weights held now to these, when the current weights were given."""
+
     name: str | None = None
     """The report's title, such as "Six asset classes": shown when it is printed or laid out as a
     page.
@@ -3513,6 +3519,9 @@ class OptimisationSummary:
     minimises.
     """
 
+    tracking_error: float | None = None
+    """The ex-ante tracking error a year against the benchmark weights, when they were given."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class OptimiseOptions:
@@ -3572,6 +3581,33 @@ class OptimiseOptions:
 
     expected_returns: dict[str, float] = field(default_factory=dict)
     """Annual expected returns by asset, in place of the estimates."""
+
+    current_weights: dict[str, float] = field(default_factory=dict)
+    """The weights held now, by asset, adding up to one with any weight on the risk-free asset,
+    which is cash: the start of the trades the report lists, and of the turnover and trade
+    limits.
+    """
+
+    max_turnover: float | None = None
+    """The largest one-way turnover from the current weights, `sum |w - current| / 2`, such as 0.2
+    for 20% of the portfolio bought (and as much sold).
+    """
+
+    min_trade: float | None = None
+    """The smallest trade, as a weight, such as 0.01: each asset is traded by at least this much
+    from its current weight, or not at all.
+    """
+
+    max_trades: int | None = None
+    """The largest number of assets traded from the current weights."""
+
+    benchmark_weights: dict[str, float] = field(default_factory=dict)
+    """A benchmark's weights by asset, adding up to one with any weight on the risk-free asset: the
+    report gives the weights' ex-ante tracking error against it.
+    """
+
+    max_tracking_error: float | None = None
+    """The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03."""
 
     frontier: bool = False
     """Whether the optimisation report draws the efficient frontier under the same limits. Off by
@@ -6332,7 +6368,7 @@ class OptimisedStrategy:
     name: str | None = None
     """The name in the results; the method's own by default, such as `Maximum Sharpe`."""
 
-    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}))
+    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}, current_weights={}, max_turnover=None, min_trade=None, max_trades=None, benchmark_weights={}, max_tracking_error=None))
     """The method, its parameters and the limits on the weights."""
 
 
@@ -6621,6 +6657,20 @@ class TradeRow:
 
     tax_base: float | None = None
     """For a sale in a taxable account with tax rates, the estimated tax."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class TradesSummary:
+    """The trades from the weights held now to the weights found."""
+
+    turnover: float
+    """The one-way turnover: half the sum of the absolute changes in weight, cash included."""
+
+    count: int
+    """The number of assets traded, cash aside."""
+
+    trades: list[WeightChange]
+    """Each asset traded, and cash, the largest change first."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7163,6 +7213,26 @@ ViewUncertainty = Union[Proportional, Confidence, Variance]
 
 
 @dataclass(frozen=True, kw_only=True)
+class WeightChange:
+    """One asset's weight now and in the weights found."""
+
+    asset: str
+    """The asset, or the risk-free asset for cash."""
+
+    current: float
+    """Its weight now."""
+
+    proposed: float
+    """Its weight in the weights found."""
+
+    change: float
+    """`proposed - current`: bought when positive, sold when negative."""
+
+    cash: bool = False
+    """Whether this is the cash: the risk-free asset, or what the weights leave."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class WeightsAt:
     """Weights at a date, by asset; what they leave is held in cash."""
 
@@ -7616,6 +7686,7 @@ __all__ = [
     "TradeAllocation",
     "TradeLimits",
     "TradeRow",
+    "TradesSummary",
     "Transaction",
     "TransactionId",
     "TransactionKind",
@@ -7631,6 +7702,7 @@ __all__ = [
     "View",
     "ViewUncertainty",
     "WalkForward",
+    "WeightChange",
     "WeightsAt",
     "WhatIf",
     "Withdrawal",

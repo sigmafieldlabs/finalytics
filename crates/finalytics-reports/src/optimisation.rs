@@ -51,10 +51,44 @@ pub struct OptimisationReport {
     /// How the weights, and equal weight, would have done on the history they were fitted to:
     /// held from the start and rebalanced quarterly, without trading costs.
     pub history: Option<OptimisationHistory>,
+    /// The trades from the weights held now to these, when the current weights were given.
+    #[serde(default)]
+    pub trades: Option<TradesSummary>,
     /// The report's title, such as "Six asset classes": shown when it is printed or laid out as
     /// a page.
     #[serde(default)]
     pub name: Option<String>,
+}
+
+/// The trades from the weights held now to the weights found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct TradesSummary {
+    /// The one-way turnover: half the sum of the absolute changes in weight, cash included.
+    pub turnover: f64,
+    /// The number of assets traded, cash aside.
+    pub count: usize,
+    /// Each asset traded, and cash, the largest change first.
+    pub trades: Vec<WeightChange>,
+}
+
+/// One asset's weight now and in the weights found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct WeightChange {
+    /// The asset, or the risk-free asset for cash.
+    pub asset: String,
+    /// Its weight now.
+    pub current: f64,
+    /// Its weight in the weights found.
+    pub proposed: f64,
+    /// `proposed - current`: bought when positive, sold when negative.
+    pub change: f64,
+    /// Whether this is the cash: the risk-free asset, or what the weights leave.
+    #[serde(default)]
+    pub cash: bool,
 }
 
 /// What an optimisation report describes: the method, the data and estimates, the limits and
@@ -159,6 +193,9 @@ pub struct OptimisationSummary {
     /// minimises.
     #[serde(default)]
     pub drawdown_at_risk: Option<DrawdownFigure>,
+    /// The ex-ante tracking error a year against the benchmark weights, when they were given.
+    #[serde(default)]
+    pub tracking_error: Option<f64>,
 }
 
 /// A conditional drawdown at risk: the mean of the deepest drawdowns of the cumulative returns.
@@ -277,6 +314,10 @@ pub struct OptimisationInputs<'a> {
     /// The groups with limits: name, assets, smallest and largest total weight.
     pub groups: Vec<(String, Vec<String>, f64, f64)>,
     pub resampling: Option<ResamplingSummary>,
+    /// The weights held now, by asset, the risk-free asset as cash.
+    pub current_weights: Option<&'a BTreeMap<String, f64>>,
+    /// A benchmark's weights by asset, the risk-free asset as cash.
+    pub benchmark_weights: Option<&'a BTreeMap<String, f64>>,
 }
 
 /// The optimisation report from what the `finalytics` crate assembles.
@@ -342,6 +383,12 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             drawdown_at_risk: inputs
                 .drawdown_at_risk
                 .map(|(confidence, value)| DrawdownFigure { confidence, value }),
+            tracking_error: inputs.benchmark_weights.map(|b| {
+                let active: Vec<f64> = (0..n)
+                    .map(|i| w[i] - b.get(&inputs.labels[i]).copied().unwrap_or(0.0))
+                    .collect();
+                variance(&active).max(0.0).sqrt()
+            }),
         });
     } else {
         for ((asset, expected), volatility) in
@@ -400,6 +447,15 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             expected_return: inputs.expected_returns.iter().sum::<f64>() / n as f64,
         }
     });
+    let trades = match (inputs.current_weights, &weights) {
+        (Some(current), Some(w)) => Some(trades_from(
+            inputs.labels,
+            w,
+            current,
+            inputs.risk_free_asset.as_deref(),
+        )),
+        _ => None,
+    };
     let mut hash = Sha256::new();
     for (l, r) in inputs.labels.iter().zip(inputs.expected_returns) {
         hash.update(l.as_bytes());
@@ -453,8 +509,55 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
                 weights,
                 equal_weight,
             }),
+        trades,
         name: None,
     })
+}
+
+/// The trades from `current` to the weights `w` of `labels`, with cash, held in the risk-free
+/// asset `cash` or apart, as what the weights leave. A change below 1e-7 is no trade, as for the
+/// optimiser's trade limits.
+fn trades_from(
+    labels: &[String],
+    w: &[f64],
+    current: &BTreeMap<String, f64>,
+    cash: Option<&str>,
+) -> TradesSummary {
+    let mut trades: Vec<WeightChange> = labels
+        .iter()
+        .zip(w)
+        .map(|(asset, proposed)| {
+            let now = current.get(asset).copied().unwrap_or(0.0);
+            WeightChange {
+                asset: asset.clone(),
+                current: now,
+                proposed: *proposed,
+                change: proposed - now,
+                cash: false,
+            }
+        })
+        .collect();
+    let count = trades.iter().filter(|t| t.change.abs() > 1e-7).count();
+    let held: f64 = w.iter().sum();
+    let cash_now = cash.and_then(|c| current.get(c)).copied().unwrap_or(0.0);
+    let cash_after = (1.0 - held).max(0.0);
+    if cash_now.abs() > 1e-12 || cash_after > 1e-7 {
+        trades.push(WeightChange {
+            asset: cash.unwrap_or("Cash").to_owned(),
+            current: cash_now,
+            proposed: cash_after,
+            change: cash_after - cash_now,
+            cash: true,
+        });
+    }
+    let turnover = trades.iter().map(|t| t.change.abs()).sum::<f64>() / 2.0;
+    trades.retain(|t| t.change.abs() > 1e-7);
+    trades.sort_by(|a, b| b.change.abs().total_cmp(&a.change.abs()));
+    TradesSummary {
+        turnover,
+        count,
+        trades,
+    }
 }
 
 // ── Words ────────────────────────────────────────────────────────────────────────────────────
@@ -464,6 +567,45 @@ const HELD_LISTED: usize = 20;
 
 fn weight(v: f64) -> String {
     crate::text::weight_pct(v, 1)
+}
+
+/// A change in weight with its sign: "+4.2%", "−3.0%".
+fn signed_weight(v: f64) -> String {
+    let text = weight(v.abs());
+    if v > 0.0 {
+        format!("+{text}")
+    } else if v < 0.0 {
+        format!("−{text}")
+    } else {
+        text
+    }
+}
+
+/// The trades in a sentence: how many, and the turnover.
+fn trades_note(t: &TradesSummary) -> String {
+    let cash = match t.trades.iter().find(|x| x.cash) {
+        Some(x) if x.change < 0.0 => ", and the cash invested",
+        Some(_) => ", and cash set aside",
+        None => "",
+    };
+    let mut note = format!(
+        "{} {} from the current weights{cash}: a one-way turnover of {}, the share of the \
+         portfolio bought, and as much sold.",
+        t.count,
+        if t.count == 1 {
+            "asset traded"
+        } else {
+            "assets traded"
+        },
+        weight(t.turnover)
+    );
+    if t.trades.len() > HELD_LISTED {
+        let _ = write!(
+            note,
+            " The {HELD_LISTED} largest changes are listed; the page lists them all."
+        );
+    }
+    note
 }
 
 /// The assets held, the largest first.
@@ -672,6 +814,24 @@ impl OptimisationReport {
                         Some(s.largest_asset.clone()),
                     ),
                 ]);
+                if let Some(te) = s.tracking_error {
+                    items.push((
+                        "Tracking error".to_owned(),
+                        format!("{} a year", percent(te)),
+                        Some("Against the benchmark weights".to_owned()),
+                    ));
+                }
+                if let Some(t) = &self.trades {
+                    items.push((
+                        "Turnover".to_owned(),
+                        weight(t.turnover),
+                        Some(format!(
+                            "{} {} from the current weights",
+                            t.count,
+                            if t.count == 1 { "trade" } else { "trades" }
+                        )),
+                    ));
+                }
                 summary.push_str(&tiles(&items));
                 let mut segs = String::new();
                 let mut keys: Vec<(String, &str)> = Vec::new();
@@ -756,6 +916,34 @@ impl OptimisationReport {
                             "",
                         ),
                         Some("Each group's total weight against its limits, and its share of the risk."),
+                    ));
+                }
+                if let Some(t) = self.trades.as_ref().filter(|t| !t.trades.is_empty()) {
+                    let rows: Vec<Vec<String>> = t
+                        .trades
+                        .iter()
+                        .map(|x| {
+                            vec![
+                                esc(&x.asset),
+                                esc(&weight(x.current)),
+                                esc(&weight(x.proposed)),
+                                esc(&signed_weight(x.change)),
+                            ]
+                        })
+                        .collect();
+                    let mut note = trades_note(t);
+                    if let Some(cut) = note.find(" The ") {
+                        note.truncate(cut);
+                    }
+                    summary.push_str(&card(
+                        "Trades from the current weights",
+                        &table(
+                            &["Asset", "Now", "Proposed", "Change"].map(str::to_owned),
+                            &rows,
+                            1,
+                            "",
+                        ),
+                        Some(&note),
                     ));
                 }
             }
@@ -1452,7 +1640,37 @@ impl OptimisationReport {
                         ),
                     ),
                 ]);
+                if let Some(te) = s.tracking_error {
+                    pairs.push(("Tracking error".to_owned(), percent(te)));
+                }
                 page.pairs(&pairs);
+                if let Some(t) = &self.trades {
+                    page.section("Trades from the current weights");
+                    if t.trades.is_empty() {
+                        page.note("The weights found are the weights held now: nothing to trade.");
+                    } else {
+                        let rows: Vec<Vec<String>> = t
+                            .trades
+                            .iter()
+                            .take(HELD_LISTED)
+                            .map(|x| {
+                                vec![
+                                    x.asset.clone(),
+                                    weight(x.current),
+                                    weight(x.proposed),
+                                    signed_weight(x.change),
+                                ]
+                            })
+                            .collect();
+                        page.table(
+                            &["Asset", "Now", "Proposed", "Change"],
+                            &rows,
+                            Some(&[L, R, R, R]),
+                        );
+                        page.blank();
+                        page.note(&trades_note(t));
+                    }
+                }
             }
             None => {
                 page.section("No weights");

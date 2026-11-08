@@ -71,12 +71,23 @@ pub enum Fit {
 /// error, never by panicking.
 pub type Fitter<'a> = Box<dyn Fn(Range<usize>) -> Result<Fit> + Send + Sync + 'a>;
 
+/// A function that fits weights to a range of the market's periods from the weights held at the
+/// end of them, one per asset (none for a first fit, from cash): for limits on the trades from
+/// the weights held, such as a turnover limit. Walk-forward validation fits it at each refit as
+/// the run reaches it, in order, rather than all at once beforehand.
+pub type Refitter<'a> = Box<dyn Fn(Range<usize>, Option<&[f64]>) -> Result<Fit> + Send + Sync + 'a>;
+
+/// The fit at the end of a period of a run, from the weights held then.
+type RefitAt<'a> = dyn FnMut(usize, &[f64]) -> Result<Fit> + 'a;
+
 /// How a strategy chooses its weights.
 pub enum Plan<'a> {
     /// Fixed weights, one per asset; what they leave is held in cash.
     Weights(Vec<f64>),
     /// Weights fitted to history, as the validation says.
     Fit(Fitter<'a>),
+    /// Weights fitted to history and to the weights held, as the validation says.
+    Refit(Refitter<'a>),
 }
 
 /// A strategy to backtest.
@@ -349,6 +360,34 @@ impl Simulation<'_, '_> {
                 let run = self.run(window..n, Some(w), None, &mut failures)?;
                 (run.clone(), Some(run))
             }
+            (Plan::Refit(refit), Split::InSample | Split::Holdout(_)) => {
+                let fit: Fitter<'_> = Box::new(|rows| refit(rows, None));
+                return self.strategy(
+                    &Strategy {
+                        name: strategy.name.clone(),
+                        plan: Plan::Fit(fit),
+                        notes: strategy.notes.clone(),
+                    },
+                    split,
+                );
+            }
+            (Plan::Refit(refit), Split::WalkForward { window, expanding }) => {
+                let rows = |t: usize| (if expanding { 0 } else { t + 1 - window })..t + 1;
+                let from_cash: Fitter<'_> = Box::new(|rows| refit(rows, None));
+                let first = self.fit(&from_cash, 0..window, &mut failures)?;
+                // Each refit starts from the weights held then, so it is fitted when the run
+                // reaches it.
+                let mut at = |t: usize, held: &[f64]| refit(rows(t), Some(held));
+                let out = self.run(window..n, first.as_deref(), Some(&mut at), &mut failures)?;
+                let mut whole = Vec::new();
+                let full = self.fit(&from_cash, 0..n, &mut whole)?;
+                failures.extend(whole.into_iter().map(|f| Failure {
+                    reason: format!("in-sample fit: {}", f.reason),
+                    ..f
+                }));
+                let ins = self.run(window..n, full.as_deref(), None, &mut failures)?;
+                (ins, Some(out))
+            }
             (Plan::Fit(fit), Split::InSample) => {
                 let weights = self.fit(fit, 0..n, &mut failures)?;
                 (
@@ -379,7 +418,8 @@ impl Simulation<'_, '_> {
                 let mut ready: BTreeMap<usize, Result<Fit>> =
                     refits.into_iter().zip(fitted).collect();
                 // A refit the schedule did not foresee is fitted when it falls.
-                let mut refit = |t: usize| ready.remove(&t).unwrap_or_else(|| fit(rows(t)));
+                let mut refit =
+                    |t: usize, _: &[f64]| ready.remove(&t).unwrap_or_else(|| fit(rows(t)));
                 let out = self.run(window..n, first.as_deref(), Some(&mut refit), &mut failures)?;
                 let mut whole = Vec::new();
                 let full = self.record(whole_fit, fit, 0..n, &mut whole)?;
@@ -393,7 +433,7 @@ impl Simulation<'_, '_> {
         };
         Ok(StrategyResult {
             name: strategy.name.clone(),
-            fitted: matches!(strategy.plan, Plan::Fit(_)),
+            fitted: matches!(strategy.plan, Plan::Fit(_) | Plan::Refit(_)),
             in_sample,
             out_of_sample,
             failures,
@@ -511,7 +551,7 @@ impl Simulation<'_, '_> {
         &self,
         rows: Range<usize>,
         start: Option<&[f64]>,
-        mut refit: Option<&mut dyn FnMut(usize) -> Result<Fit>>,
+        mut refit: Option<&mut RefitAt<'_>>,
         failures: &mut Vec<Failure>,
     ) -> Result<Run> {
         let market = self.market;
@@ -547,7 +587,7 @@ impl Simulation<'_, '_> {
             let calendar = self.scheduled(&rows, t);
             let mut refitted = false;
             if calendar && let Some(refit) = refit.as_mut() {
-                match refit(t)? {
+                match refit(t, &held)? {
                     Fit::Weights(weights) => {
                         self.check_fitted(&weights, date)?;
                         target = weights;

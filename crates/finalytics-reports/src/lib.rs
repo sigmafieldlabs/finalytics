@@ -59,6 +59,7 @@ pub use html::Theme;
 pub use optimisation::{
     AllocationRow, DrawdownFigure, GroupRow, OptimisationContext, OptimisationHistory,
     OptimisationReport, OptimisationSummary, ResamplingSummary, RiskReturn, ShortfallFigure,
+    TradesSummary, WeightChange,
 };
 #[doc(hidden)]
 pub use optimisation::{OptimisationInputs, optimisation_report, weights_text};

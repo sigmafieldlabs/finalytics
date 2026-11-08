@@ -5696,6 +5696,13 @@
           },
           "description": "The names allowed, for a choice."
         },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The other options it needs, such as `current_weights` for a turnover limit."
+        },
         "description": {
           "type": "string",
           "description": "What it does, in a sentence."
@@ -5708,6 +5715,7 @@
         "min_exclusive",
         "max_exclusive",
         "choices",
+        "needs",
         "description"
       ],
       "description": "One option an optimisation method takes, with the values it accepts."
@@ -6629,6 +6637,18 @@
           ],
           "description": "How the weights, and equal weight, would have done on the history they were fitted to:\nheld from the start and rebalanced quarterly, without trading costs."
         },
+        "trades": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TradesSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The trades from the weights held now to these, when the current weights were given.",
+          "default": null
+        },
         "name": {
           "type": [
             "string",
@@ -6792,6 +6812,15 @@
           ],
           "description": "For minimum CDaR, the conditional drawdown at risk the weights reach, which the method\nminimises.",
           "default": null
+        },
+        "tracking_error": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The ex-ante tracking error a year against the benchmark weights, when they were given.",
+          "default": null
         }
       },
       "required": [
@@ -6947,6 +6976,61 @@
           },
           "description": "Annual expected returns by asset, in place of the estimates.",
           "default": {}
+        },
+        "current_weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "The weights held now, by asset, adding up to one with any weight on the risk-free asset,\nwhich is cash: the start of the trades the report lists, and of the turnover and trade\nlimits.",
+          "default": {}
+        },
+        "max_turnover": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The largest one-way turnover from the current weights, `sum |w - current| / 2`, such as\n0.2 for 20% of the portfolio bought (and as much sold).",
+          "default": null
+        },
+        "min_trade": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The smallest trade, as a weight, such as 0.01: each asset is traded by at least this\nmuch from its current weight, or not at all.",
+          "default": null
+        },
+        "max_trades": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "description": "The largest number of assets traded from the current weights.",
+          "default": null
+        },
+        "benchmark_weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "A benchmark's weights by asset, adding up to one with any weight on the risk-free asset:\nthe report gives the weights' ex-ante tracking error against it.",
+          "default": {}
+        },
+        "max_tracking_error": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03.",
+          "default": null
         },
         "frontier": {
           "type": "boolean",
@@ -12658,7 +12742,13 @@
                 "groups": {},
                 "min_effective_assets": null,
                 "resample": null,
-                "expected_returns": {}
+                "expected_returns": {},
+                "current_weights": {},
+                "max_turnover": null,
+                "min_trade": null,
+                "max_trades": null,
+                "benchmark_weights": {},
+                "max_tracking_error": null
               }
             }
           },
@@ -13164,6 +13254,35 @@
         "fees_local"
       ],
       "description": "One proposed trade."
+    },
+    "TradesSummary": {
+      "type": "object",
+      "properties": {
+        "turnover": {
+          "type": "number",
+          "format": "double",
+          "description": "The one-way turnover: half the sum of the absolute changes in weight, cash included."
+        },
+        "count": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of assets traded, cash aside."
+        },
+        "trades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WeightChange"
+          },
+          "description": "Each asset traded, and cash, the largest change first."
+        }
+      },
+      "required": [
+        "turnover",
+        "count",
+        "trades"
+      ],
+      "description": "The trades from the weights held now to the weights found."
     },
     "Transaction": {
       "type": "object",
@@ -14058,6 +14177,42 @@
         }
       ],
       "description": "How uncertain a view is: its variance in the model."
+    },
+    "WeightChange": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "The asset, or the risk-free asset for cash."
+        },
+        "current": {
+          "type": "number",
+          "format": "double",
+          "description": "Its weight now."
+        },
+        "proposed": {
+          "type": "number",
+          "format": "double",
+          "description": "Its weight in the weights found."
+        },
+        "change": {
+          "type": "number",
+          "format": "double",
+          "description": "`proposed - current`: bought when positive, sold when negative."
+        },
+        "cash": {
+          "type": "boolean",
+          "description": "Whether this is the cash: the risk-free asset, or what the weights leave.",
+          "default": false
+        }
+      },
+      "required": [
+        "asset",
+        "current",
+        "proposed",
+        "change"
+      ],
+      "description": "One asset's weight now and in the weights found."
     },
     "WeightsAt": {
       "type": "object",

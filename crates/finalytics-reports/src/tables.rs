@@ -434,10 +434,33 @@ impl OptimisationReport {
                 })
                 .collect(),
         );
-        vec![
-            weights,
-            grid_table("correlation", "Asset", &self.correlation),
-        ]
+        let mut out = vec![weights];
+        if let Some(summary) = &self.trades {
+            out.push(table(
+                "trades",
+                "Trades",
+                vec![
+                    col("asset", "Asset", ColumnKind::Text),
+                    col("current", "Now", ColumnKind::Fraction),
+                    col("proposed", "Proposed", ColumnKind::Fraction),
+                    col("change", "Change", ColumnKind::Fraction),
+                ],
+                summary
+                    .trades
+                    .iter()
+                    .map(|x| {
+                        vec![
+                            t(x.asset.as_str()),
+                            n(x.current),
+                            n(x.proposed),
+                            n(x.change),
+                        ]
+                    })
+                    .collect(),
+            ));
+        }
+        out.push(grid_table("correlation", "Asset", &self.correlation));
+        out
     }
 }
 

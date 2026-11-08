@@ -9,6 +9,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Trade and tracking-error limits in `Assets.optimise`, with plain inputs in every language:
+  `current_weights` (the weights held now, with any cash on the risk-free asset),
+  `max_turnover`, `min_trade`, `max_trades`, `benchmark_weights` and `max_tracking_error`. They
+  were available only through the low-level `solve(problem, objective)`. Every problem with them
+  is reported together; the frontier is drawn under the same limits; and the optimisation report
+  lists the trades from the current weights with the turnover (a `trades` table too) and gives the
+  tracking error against the benchmark weights. In `compare` and `backtest`, the tracking-error
+  limit applies at every fit and the turnover and trade limits at each walk-forward refit, from
+  the weights held then.
+
 - `methods()` (`finalytics::methods()` in Rust, `fl.methods()` in Python, `methods()` in
   JavaScript) and `Method::info()` describe every optimisation method: its parameters, with
   whether it needs each, its default and the values allowed, the limits on weights it takes, and

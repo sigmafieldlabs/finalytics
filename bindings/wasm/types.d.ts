@@ -2076,6 +2076,8 @@ export interface MethodParameter {
   max_exclusive: boolean;
   /** The names allowed, for a choice. */
   choices: string[];
+  /** The other options it needs, such as `current_weights` for a turnover limit. */
+  needs: string[];
   /** What it does, in a sentence. */
   description: string;
 }
@@ -2396,6 +2398,8 @@ export interface OptimisationReport {
    * held from the start and rebalanced quarterly, without trading costs.
    */
   history?: OptimisationHistory | null;
+  /** The trades from the weights held now to these, when the current weights were given. */
+  trades?: TradesSummary | null;
   /**
    * The report's title, such as "Six asset classes": shown when it is printed or laid out as
    * a page.
@@ -2470,6 +2474,8 @@ export interface OptimisationSummary {
    * minimises.
    */
   drawdown_at_risk?: DrawdownFigure | null;
+  /** The ex-ante tracking error a year against the benchmark weights, when they were given. */
+  tracking_error?: number | null;
 }
 
 /**
@@ -2521,6 +2527,31 @@ export interface OptimiseOptions {
   resample?: number | null;
   /** Annual expected returns by asset, in place of the estimates. */
   expected_returns?: Record<string, number>;
+  /**
+   * The weights held now, by asset, adding up to one with any weight on the risk-free asset,
+   * which is cash: the start of the trades the report lists, and of the turnover and trade
+   * limits.
+   */
+  current_weights?: Record<string, number>;
+  /**
+   * The largest one-way turnover from the current weights, `sum |w - current| / 2`, such as
+   * 0.2 for 20% of the portfolio bought (and as much sold).
+   */
+  max_turnover?: number | null;
+  /**
+   * The smallest trade, as a weight, such as 0.01: each asset is traded by at least this
+   * much from its current weight, or not at all.
+   */
+  min_trade?: number | null;
+  /** The largest number of assets traded from the current weights. */
+  max_trades?: number | null;
+  /**
+   * A benchmark's weights by asset, adding up to one with any weight on the risk-free asset:
+   * the report gives the weights' ex-ante tracking error against it.
+   */
+  benchmark_weights?: Record<string, number>;
+  /** The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03. */
+  max_tracking_error?: number | null;
   /**
    * Whether the optimisation report draws the efficient frontier under the same limits.
    * Off by default: the frontier takes 30 more optimisations, so it adds time that grows with
@@ -4849,6 +4880,16 @@ export interface TradeRow {
   tax_base?: number | null;
 }
 
+/** The trades from the weights held now to the weights found. */
+export interface TradesSummary {
+  /** The one-way turnover: half the sum of the absolute changes in weight, cash included. */
+  turnover: number;
+  /** The number of assets traded, cash aside. */
+  count: number;
+  /** Each asset traded, and cash, the largest change first. */
+  trades: WeightChange[];
+}
+
 /**
  * One event in the life of a portfolio.
  *
@@ -5157,6 +5198,20 @@ export type ViewUncertainty =
     /** The variance, not negative. */
     variance: number;
   };
+
+/** One asset's weight now and in the weights found. */
+export interface WeightChange {
+  /** The asset, or the risk-free asset for cash. */
+  asset: string;
+  /** Its weight now. */
+  current: number;
+  /** Its weight in the weights found. */
+  proposed: number;
+  /** `proposed - current`: bought when positive, sold when negative. */
+  change: number;
+  /** Whether this is the cash: the risk-free asset, or what the weights leave. */
+  cash?: boolean;
+}
 
 /** Weights at a date, by asset; what they leave is held in cash. */
 export interface WeightsAt {

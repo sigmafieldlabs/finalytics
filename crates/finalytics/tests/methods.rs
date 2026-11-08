@@ -213,13 +213,24 @@ fn the_checks_follow_the_methods_descriptions() {
                         _ => serde_json::json!(0.05),
                     };
                 }
+                for need in &p.needs {
+                    json[need] = match need.as_str() {
+                        "current_weights" => serde_json::json!({ "US Equity": 0.5, "Bonds": 0.5 }),
+                        _ => serde_json::json!({ "US Equity": 0.6, "Bonds": 0.4 }),
+                    };
+                }
                 json[&p.name] = if p.kind == ParameterKind::Count {
                     serde_json::json!(value.round() as i64)
                 } else {
                     serde_json::json!(value)
                 };
                 if p.kind == ParameterKind::Count && !ok {
-                    json[&p.name] = serde_json::json!(value.ceil() as i64 - 1);
+                    let below = value.ceil() as i64 - 1;
+                    if below < 0 {
+                        // A count below zero is not a count: the type refuses it.
+                        continue;
+                    }
+                    json[&p.name] = serde_json::json!(below);
                 }
                 let options: OptimiseOptions = serde_json::from_value(json.clone()).unwrap();
                 let checked = assets.optimise_with(&options);

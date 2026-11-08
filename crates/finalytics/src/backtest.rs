@@ -222,6 +222,8 @@ impl Assets {
         if !single {
             unused_options(&options.strategies, &mut report);
         }
+        let walk_forward = matches!(options.validation, Validation::WalkForward { .. });
+        trade_limits(&options.strategies, walk_forward, &mut report);
         let mut strategies = Vec::with_capacity(options.strategies.len());
         for (i, strategy) in options.strategies.iter().enumerate() {
             let name = strategy.name();
@@ -231,36 +233,78 @@ impl Assets {
                     options: method, ..
                 } => {
                     // The options the strategies share are checked once: their problems are
-                    // the same for each.
-                    let checked = if single {
-                        self.check_options(method, true)
+                    // the same for each. Trades are limited from the weights each refit holds,
+                    // which the run supplies, so they are checked from any.
+                    let mut to_check = if single {
+                        (**method).clone()
                     } else {
-                        self.check_options(&applicable(method).0, false)
+                        applicable(method).0
                     };
+                    let trading = trades_limited(&to_check);
+                    if trading && to_check.current_weights.is_empty() {
+                        let risky = self.risky_assets();
+                        let share = 1.0 / risky.len().max(1) as f64;
+                        to_check.current_weights =
+                            risky.iter().map(|a| ((*a).to_owned(), share)).collect();
+                    }
+                    let checked = self.check_options(&to_check, single);
                     for issue in checked.issues() {
                         if !report.issues().contains(issue) {
                             report.merge("", single_issue(issue));
                         }
                     }
                     let (method, notes) = applicable(method);
-                    strategies.push(engine::Strategy {
-                        name,
-                        plan: Plan::Fit(Box::new(move |rows| {
-                            let result = self.window(rows)?.solve(&method)?;
-                            Ok(match result.weights {
-                                Some(weights) => Fit::Weights(
-                                    self.risky_assets()
+                    let weights_of = move |result: crate::OptimisationResult| match result.weights {
+                        Some(weights) => Fit::Weights(
+                            self.risky_assets()
+                                .iter()
+                                .map(|a| weights.get(*a).copied().unwrap_or(0.0))
+                                .collect(),
+                        ),
+                        None => Fit::NoSolution(result.status.to_string().replace('_', " ")),
+                    };
+                    let plan = if trading {
+                        Plan::Refit(Box::new(move |rows, held: Option<&[f64]>| {
+                            let mut options = method.clone();
+                            match held {
+                                // From the weights held, the risk-free asset holding the rest.
+                                Some(held) => {
+                                    options.current_weights = self
+                                        .risky_assets()
                                         .iter()
-                                        .map(|a| weights.get(*a).copied().unwrap_or(0.0))
-                                        .collect(),
-                                ),
-                                None => {
-                                    Fit::NoSolution(result.status.to_string().replace('_', " "))
+                                        .map(|a| (*a).to_owned())
+                                        .zip(held.iter().copied())
+                                        .collect();
+                                    let cash = 1.0 - held.iter().sum::<f64>();
+                                    if let Some(rf) = self.risk_free_asset()
+                                        && cash > 1e-12
+                                    {
+                                        options.current_weights.insert(rf.to_owned(), cash);
+                                    } else if cash > 1e-9 {
+                                        // Without a risk-free asset, the cash a refit holds is
+                                        // left out of the turnover: the weights it starts from
+                                        // are the assets' shares of what is invested.
+                                        let invested = 1.0 - cash;
+                                        for w in options.current_weights.values_mut() {
+                                            *w /= invested;
+                                        }
+                                    }
                                 }
-                            })
-                        })),
-                        notes,
-                    });
+                                // A first fit enters from cash, without limits on its trades.
+                                None => {
+                                    for name in ["max_turnover", "min_trade", "max_trades"] {
+                                        crate::methods::without(&mut options, name);
+                                    }
+                                }
+                            }
+                            Ok(weights_of(self.window(rows)?.solve(&options)?))
+                        }))
+                    } else {
+                        Plan::Fit(Box::new(move |rows| {
+                            Ok(weights_of(self.window(rows)?.solve(&method)?))
+                        }))
+                    };
+                    strategies.push(engine::Strategy { name, plan, notes });
                 }
                 Strategy::Weights { weights, .. } => {
                     let fixed = self.fixed(weights, &format!("{path}.weights"), &mut report);
@@ -347,7 +391,7 @@ impl Assets {
             .strategies
             .iter()
             .find_map(|s| match s {
-                Strategy::Optimise { options, .. } => Some(limits(options)),
+                Strategy::Optimise { options, .. } => Some(limits(options, true)),
                 Strategy::Weights { .. } => None,
             })
             .unwrap_or_default();
@@ -433,13 +477,17 @@ impl Assets {
     }
 }
 
-/// The limits of `options` in words.
-pub(crate) fn limits(options: &OptimiseOptions) -> Vec<String> {
-    let pct = |x: f64| {
-        let text = format!("{:.2}", x * 100.0);
-        let text = text.trim_end_matches('0').trim_end_matches('.');
-        format!("{}%", text.replace('-', "−"))
-    };
+/// A share as a percentage in words, such as "12.5%", with at most two decimals.
+pub(crate) fn percent_text(x: f64) -> String {
+    let text = format!("{:.2}", x * 100.0);
+    let text = text.trim_end_matches('0').trim_end_matches('.');
+    format!("{}%", text.replace('-', "−"))
+}
+
+/// The limits of `options` in words: of one optimisation from the current weights, or, with
+/// `refits`, of a backtest's refits.
+pub(crate) fn limits(options: &OptimiseOptions, refits: bool) -> Vec<String> {
+    let pct = percent_text;
     let mut out = Vec::new();
     if let Some(max) = options.max_weight {
         out.push(format!("At most {} in any asset", pct(max)));
@@ -466,6 +514,32 @@ pub(crate) fn limits(options: &OptimiseOptions) -> Vec<String> {
         out.push(format!(
             "At least {} effective assets",
             text.trim_end_matches('0').trim_end_matches('.')
+        ));
+    }
+    if let Some(t) = options.max_turnover {
+        out.push(if refits {
+            format!("At most {} turnover at each refit", pct(t))
+        } else {
+            format!("At most {} turnover from the current weights", pct(t))
+        });
+    }
+    if let Some(m) = options.min_trade {
+        out.push(format!(
+            "Trades of at least {} of the portfolio, or none",
+            pct(m)
+        ));
+    }
+    if let Some(k) = options.max_trades {
+        out.push(format!(
+            "At most {k} {}{}",
+            if k == 1 { "trade" } else { "trades" },
+            if refits { " at each refit" } else { "" }
+        ));
+    }
+    if let Some(te) = options.max_tracking_error {
+        out.push(format!(
+            "Tracking error at most {} a year against the benchmark weights",
+            pct(te)
         ));
     }
     out
@@ -512,6 +586,46 @@ fn applicable(options: &OptimiseOptions) -> (OptimiseOptions, Vec<String>) {
         notes.push(format!("{text} {verb} not apply."));
     }
     (method, notes)
+}
+
+/// Whether `options` limit the trades from the weights held: by turnover, size or number.
+fn trades_limited(options: &OptimiseOptions) -> bool {
+    options.max_turnover.is_some() || options.min_trade.is_some() || options.max_trades.is_some()
+}
+
+/// Adds to `report` the problems with the trade limits of `strategies`: a backtest trades from
+/// the weights it holds, so current weights are not given; and the limits apply at the refits
+/// of a walk-forward validation, the only one that refits.
+fn trade_limits(strategies: &[Strategy], walk_forward: bool, report: &mut ValidationReport) {
+    let mut found = ValidationReport::new();
+    for s in strategies {
+        let Strategy::Optimise { options, .. } = s else {
+            continue;
+        };
+        if !options.current_weights.is_empty() {
+            found.error(
+                "options.current_weights",
+                "a backtest trades from the weights it holds at each refit, so it takes no \
+                 current weights; they are for one optimisation",
+            );
+        }
+        if !walk_forward {
+            for name in ["max_turnover", "min_trade", "max_trades"] {
+                if crate::methods::given(options).contains(&name) {
+                    found.error(
+                        format!("options.{name}"),
+                        "limits the trades at each refit of a walk-forward validation; in sample \
+                         and on a holdout, the weights are fitted once, from cash",
+                    );
+                }
+            }
+        }
+    }
+    for issue in found.issues() {
+        if !report.issues().contains(issue) {
+            report.merge("", single_issue(issue));
+        }
+    }
 }
 
 /// Adds to `report` each option given to the comparison's optimisations that none of them
@@ -872,6 +986,44 @@ macro_rules! common_setters {
                     .options
                     .expected_returns
                     .insert(asset.to_owned(), value);
+                self
+            }
+
+            /// The largest one-way turnover at each refit of a walk-forward validation, from
+            /// the weights held then, such as 0.2; the first fit enters from cash without it.
+            pub fn max_turnover(mut self, turnover: f64) -> Self {
+                self.common.options.max_turnover = Some(turnover);
+                self
+            }
+
+            /// The smallest trade at each refit of a walk-forward validation, as a weight, such
+            /// as 0.01: each asset is traded by at least this much, or not at all.
+            pub fn min_trade(mut self, weight: f64) -> Self {
+                self.common.options.min_trade = Some(weight);
+                self
+            }
+
+            /// The largest number of assets traded at each refit of a walk-forward validation.
+            pub fn max_trades(mut self, count: usize) -> Self {
+                self.common.options.max_trades = Some(count);
+                self
+            }
+
+            /// A benchmark's weights by asset, for `max_tracking_error`, adding up to one with
+            /// any cash on the risk-free asset.
+            pub fn benchmark_weights<S: Into<String>>(
+                mut self,
+                weights: impl IntoIterator<Item = (S, f64)>,
+            ) -> Self {
+                self.common.options.benchmark_weights =
+                    weights.into_iter().map(|(a, w)| (a.into(), w)).collect();
+                self
+            }
+
+            /// The largest ex-ante tracking error a year against the benchmark weights, at
+            /// every fit, such as 0.03.
+            pub fn max_tracking_error(mut self, limit: f64) -> Self {
+                self.common.options.max_tracking_error = Some(limit);
                 self
             }
 
