@@ -319,7 +319,8 @@ fn reports_hold(portfolio: &PortfolioData, books: &Books, market: &MarketData) {
         .instruments
         .iter()
         .map(|i| i.id.clone())
-        .find(|id| market.prices(id).is_some_and(|p| !p.is_empty()));
+        .find(|id| market.prices(id).is_some_and(|p| !p.is_empty()))
+        .map(Into::into);
     options.rolling_window = 5;
     options.histogram_bins = 10;
     options.frontier_points = 2;
