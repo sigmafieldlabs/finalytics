@@ -22,12 +22,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - One rule for an option a method does not use, in every verb. `optimise` and a single
-  `backtest` refuse it, as before. `compare` applies each option to the methods that take it,
+  `backtest` refuse it, as before. `compare` applies each option to the methods that take it and
   notes in the report each method it does not apply to (such as "Maximum Sharpe: the confidence
-  does not apply"), and refuses an option none of its methods takes, naming them all
-  ("minimum variance and maximum Sharpe do not use target"); it used to ignore such options
-  silently. Limits or parameters given with fixed weights alone are refused in every language,
-  rather than dropped.
+  does not apply"). Two cases that used to pass now raise a validation error, so code that relied
+  on them needs the option removed:
+  - `compare` given an option that none of its methods takes, such as a `target` for minimum
+    variance and maximum Sharpe, which it used to ignore, now refuses it, naming them all
+    ("minimum variance and maximum Sharpe do not use target");
+  - limits or parameters given to `compare` with fixed weights alone, or to a Rust `backtest` of
+    fixed weights, which were dropped, are now refused ("fixed weights take no limits or
+    parameters"), as Python and JavaScript already refused them for `backtest`.
 - A risk aversion must be above zero, as the solver requires: zero was let through the checks
   and refused by the solver.
 
