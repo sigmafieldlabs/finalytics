@@ -314,3 +314,19 @@ test("a backtest follows money in and out", () => {
   assert.equal(money.flows, 2);
   assert.ok(`${result}`.includes("Money in and out"));
 });
+
+test("a comparison keeps the strategies in the order given", () => {
+  const names = ["Zero bonds", "Minimum variance", "Equal weight", "All bonds", "A gold tilt"];
+  const result = assets.compare({
+    methods: [{ name: "Zero bonds", weights: { "US Equity": 0.7, Gold: 0.3 } }, "minimum_variance", "equal_weight"],
+    weights: { "All bonds": { Bonds: 1 }, "A gold tilt": { "US Equity": 0.5, Gold: 0.5 } },
+  });
+  assert.deepEqual(result.results.strategies.map((s) => s.name), names);
+  assert.deepEqual(result.report.strategies.map((s) => s.name), names);
+  const at = names.map((n) => `${result}`.indexOf(n));
+  assert.deepEqual(at, [...at].sort((a, b) => a - b));
+  assert.throws(
+    () => assets.compare({ methods: [{ weights: { Bonds: 1 } }] }),
+    (e) => e.name === "ValidationError" && e.issues[0].path === "options.methods[0].name",
+  );
+});

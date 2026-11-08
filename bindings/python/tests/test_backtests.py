@@ -287,3 +287,19 @@ def test_a_backtest_follows_money_in_and_out():
     assert "money" in [t.name for t in fl.reports.tables(result.report)]
     plain = assets.backtest(weights={"US Equity": 0.6, "Bonds": 0.4})
     assert plain.report.strategy.tested.money is None and "Money in and out" not in str(plain)
+
+
+def test_a_comparison_keeps_the_order_given(assets):
+    names = ["Zero bonds", "Minimum variance", "Equal weight", "All bonds", "A gold tilt"]
+    result = assets.compare(
+        methods=[("Zero bonds", {"US Equity": 0.7, "Gold": 0.3}), "minimum_variance", "equal_weight"],
+        weights={"All bonds": {"Bonds": 1.0}, "A gold tilt": {"US Equity": 0.5, "Gold": 0.5}},
+    )
+    assert [s.name for s in result.results.strategies] == names
+    assert [s.name for s in result.report.strategies] == names
+    text = str(result)
+    at = [text.find(n) for n in names]
+    assert at == sorted(at), at
+    with pytest.raises(fl.ValidationError) as raised:
+        assets.compare(methods=[("Bad", ["Bonds"])])
+    assert raised.value.issues[0].path == "methods[0]"

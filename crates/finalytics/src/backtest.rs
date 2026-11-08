@@ -876,8 +876,7 @@ macro_rules! common_setters {
 #[must_use = "a comparison does nothing until `build` runs it"]
 pub struct Compare<'a> {
     assets: &'a Assets,
-    methods: Vec<Method>,
-    weights: Vec<Strategy>,
+    strategies: Vec<Strategy>,
     common: Common,
     title: Option<String>,
 }
@@ -904,25 +903,25 @@ impl Compare<'_> {
 
     /// Fixed `weights` by asset, under `name`, compared with the methods and scored on the same
     /// periods, such as `.weights("60/40", [("US Equity", 0.6), ("Bonds", 0.4)])`. Repeatable;
-    /// they come after the methods, in the order given.
+    /// the strategies keep the order they are given in, so these come after those already given.
     pub fn weights<S: Into<String>>(
         mut self,
         name: &str,
         weights: impl IntoIterator<Item = (S, f64)>,
     ) -> Self {
-        self.weights.push(Strategy::weights(name, weights));
+        self.strategies.push(Strategy::weights(name, weights));
+        self
+    }
+
+    /// Another method, after the strategies already given.
+    pub fn method(mut self, method: Method) -> Self {
+        self.strategies.push(Strategy::from(method));
         self
     }
 
     /// The options of the comparison, as [`Assets::compare_with`] takes them.
     pub fn options(&self) -> Result<BacktestOptions> {
-        let strategies = self
-            .methods
-            .iter()
-            .map(|m| Strategy::from(*m))
-            .chain(self.weights.iter().cloned())
-            .collect();
-        self.common.options(strategies)
+        self.common.options(self.strategies.clone())
     }
 
     /// Runs the comparison: the comparison report in `report`, and every return and trade in
@@ -958,13 +957,17 @@ impl BacktestBuilder<'_> {
 }
 
 impl Assets {
-    /// A comparison of `methods`, each backtested with the same limits, rebalancing,
-    /// validation and costs.
-    pub fn compare(&self, methods: impl IntoIterator<Item = Method>) -> Compare<'_> {
+    /// A comparison of `strategies`, methods such as `Method::MinimumVariance` or fixed weights
+    /// such as `Strategy::weights("60/40", [("US Equity", 0.6), ("Bonds", 0.4)])`, each
+    /// backtested with the same limits, rebalancing, validation and costs. The results and the
+    /// report keep the order of the strategies.
+    pub fn compare<S: Into<Strategy>>(
+        &self,
+        strategies: impl IntoIterator<Item = S>,
+    ) -> Compare<'_> {
         Compare {
             assets: self,
-            methods: methods.into_iter().collect(),
-            weights: Vec::new(),
+            strategies: strategies.into_iter().map(Into::into).collect(),
             common: Common::default(),
             title: None,
         }

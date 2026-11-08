@@ -15,6 +15,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `compare` keeps the strategies in the order they are given, in the results, the tables, the
+  legends and both forms of the report: it listed the methods first and, in JavaScript, the fixed
+  weights by name. Fixed weights may now come among the methods: in Rust `compare` takes
+  strategies, such as `[Strategy::weights("60/40", [...]), Method::MinimumVariance.into()]`, and
+  `.method()` adds one in turn; in Python `methods` takes `("60/40", {...})` pairs, and in
+  JavaScript `{ name, weights }` objects.
 - JavaScript: typed arrays, such as `Float64Array`, are read wherever an input holds arrays of
   numbers: `Assets.fromReturns` took them by its types but refused them ("invalid type: map,
   expected a sequence"), and so did returns tables, matrices and the other structured inputs. A

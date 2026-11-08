@@ -262,11 +262,16 @@ export interface BacktestSettings {
 
 /** Choices for `Assets.compare`: the methods, with limits and settings applied to each. */
 export interface CompareChoices extends OptimiseLimits, BacktestSettings {
-  /** The methods to compare, such as `["equal_weight", "minimum_variance"]`. */
-  methods?: Method[];
+  /**
+   * The methods to compare, such as `["equal_weight", "minimum_variance"]`, in the order of the
+   * results and the report. Fixed weights may come among them, as
+   * `{ name: "60/40", weights: { "US Equity": 0.6, Bonds: 0.4 } }`.
+   */
+  methods?: (Method | { name: string; weights: Record<string, number> })[];
   /**
    * Fixed weights by name, such as `{ "60/40": { "US Equity": 0.6, Bonds: 0.4 } }`, held and
    * rebalanced as the methods are and scored on the same periods; not fitted to any returns.
+   * They come after `methods`, in the order of the object's keys.
    */
   weights?: Record<string, Record<string, number>>;
   /** The report's title, such as `"S&P 500 stocks"`. */
@@ -1588,6 +1593,15 @@ impl Assets {
         let mut allowed = fields::<finalytics::OptimiseOptions>(&["methods", "weights", "name"]);
         allowed.retain(|name| name != "method");
         allowed.extend(SETTINGS.map(str::to_owned));
+        // The fixed weights' names in the order the object gives them, which JSON text read
+        // into a map need not keep.
+        let order: Vec<String> = match property(&options, "weights") {
+            Ok(w) if w.is_object() => js_sys::Object::keys(w.unchecked_ref::<js_sys::Object>())
+                .iter()
+                .filter_map(|k| k.as_string())
+                .collect(),
+            _ => Vec::new(),
+        };
         let mut choices = object(options, &allowed)?;
         let methods = choices.remove("methods");
         let fixed = choices.remove("weights");
@@ -1597,18 +1611,74 @@ impl Assets {
                 "give the methods to compare, or fixed weights",
             ));
         }
-        let methods: Vec<finalytics::Method> = match methods {
-            Some(m) => {
-                finalytics::formats::from_json(&m.to_string(), "options.methods").map_err(error)?
+        // Each item of `methods` is a method's name or fixed weights with a name, in order.
+        let mut report = ValidationReport::new();
+        let mut listed: Vec<Result<finalytics::Method, (String, BTreeMap<String, f64>)>> =
+            Vec::new();
+        match methods {
+            Some(serde_json::Value::Array(items)) => {
+                for (k, item) in items.into_iter().enumerate() {
+                    let path = format!("options.methods[{k}]");
+                    match item {
+                        serde_json::Value::Object(mut map) if map.contains_key("weights") => {
+                            let name = match map.remove("name") {
+                                Some(serde_json::Value::String(name)) => name,
+                                _ => {
+                                    report.error(
+                                        format!("{path}.name"),
+                                        "fixed weights in methods need a name",
+                                    );
+                                    continue;
+                                }
+                            };
+                            let weights = map.remove("weights").unwrap_or_default();
+                            for key in map.keys() {
+                                report.error(
+                                    format!("{path}.{key}"),
+                                    "is not part of fixed weights: give a name and weights",
+                                );
+                            }
+                            match finalytics::formats::from_json(
+                                &weights.to_string(),
+                                &format!("{path}.weights"),
+                            ) {
+                                Ok(w) => listed.push(Err((name, w))),
+                                Err(Error::Validation(r)) => report.merge("", r),
+                                Err(e) => return Err(error(e)),
+                            }
+                        }
+                        other => match finalytics::formats::from_json(&other.to_string(), &path) {
+                            Ok(method) => listed.push(Ok(method)),
+                            Err(Error::Validation(r)) => report.merge("", r),
+                            Err(e) => return Err(error(e)),
+                        },
+                    }
+                }
             }
-            None => Vec::new(),
-        };
-        let fixed: BTreeMap<String, BTreeMap<String, f64>> = match fixed {
-            Some(w) => {
-                finalytics::formats::from_json(&w.to_string(), "options.weights").map_err(error)?
-            }
+            Some(_) => report.error(
+                "options.methods",
+                "must be a list of methods, such as [\"minimum_variance\"]",
+            ),
+            None => {}
+        }
+        let mut fixed: BTreeMap<String, BTreeMap<String, f64>> = match fixed {
+            Some(w) => match finalytics::formats::from_json(&w.to_string(), "options.weights") {
+                Ok(w) => w,
+                Err(Error::Validation(r)) => {
+                    report.merge("", r);
+                    BTreeMap::new()
+                }
+                Err(e) => return Err(error(e)),
+            },
             None => BTreeMap::new(),
         };
+        report.into_result(()).map_err(error)?;
+        for name in &order {
+            if let Some(weights) = fixed.remove(name) {
+                listed.push(Err((name.clone(), weights)));
+            }
+        }
+        listed.extend(fixed.into_iter().map(Err));
         let name = match choices.remove("name") {
             Some(serde_json::Value::String(name)) => Some(name),
             Some(serde_json::Value::Null) | None => None,
@@ -1616,16 +1686,18 @@ impl Assets {
         };
         let mut settings = settings(&mut choices)?;
         let limits = limits(choices)?;
-        let strategies = methods
+        let strategies = listed
             .into_iter()
-            .map(|method| {
-                let mut options = limits.clone();
-                options.insert("method".to_owned(), serde_json::json!(method));
-                serde_json::json!({ "type": "optimise", "options": options })
+            .map(|strategy| match strategy {
+                Ok(method) => {
+                    let mut options = limits.clone();
+                    options.insert("method".to_owned(), serde_json::json!(method));
+                    serde_json::json!({ "type": "optimise", "options": options })
+                }
+                Err((name, weights)) => {
+                    serde_json::json!({ "type": "weights", "name": name, "weights": weights })
+                }
             })
-            .chain(fixed.into_iter().map(|(name, weights)| {
-                serde_json::json!({ "type": "weights", "name": name, "weights": weights })
-            }))
             .collect();
         settings.insert(
             "strategies".to_owned(),

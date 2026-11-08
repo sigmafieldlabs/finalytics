@@ -24,7 +24,7 @@ fn fits_eighty_columns(text: &str) {
 fn fixed_weights_on_the_prices_given_are_not_called_in_sample() {
     let assets = assets();
     let result = assets
-        .compare([])
+        .compare::<Method>([])
         .weights("Min-CVaR", [("US Equity", 0.3), ("Bonds", 0.7)])
         .weights("Growth", [("US Equity", 0.8), ("Gold", 0.2)])
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
@@ -167,7 +167,7 @@ fn the_downside_methods_show_the_optimum_they_reach() {
 fn reports_of_fixed_weights_speak_of_portfolios_throughout() {
     let assets = assets();
     let result = assets
-        .compare([])
+        .compare::<Method>([])
         .weights("Cautious", [("US Equity", 0.3), ("Bonds", 0.7)])
         .weights("Growth", [("US Equity", 0.8), ("Gold", 0.2)])
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
@@ -187,7 +187,7 @@ fn reports_of_fixed_weights_speak_of_portfolios_throughout() {
 #[test]
 fn one_strategy_beside_a_benchmark_is_not_ranked() {
     let result = assets()
-        .compare([])
+        .compare::<Method>([])
         .weights("Bonds only", [("Bonds", 1.0)])
         .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
         .build()

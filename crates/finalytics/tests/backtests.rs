@@ -323,3 +323,66 @@ fn a_backtest_follows_money_in_and_out() {
         .unwrap_err();
     assert!(err.to_string().contains("flows[0].date"), "{err}");
 }
+
+#[test]
+fn a_comparison_keeps_the_strategies_in_the_order_given() {
+    let assets = Assets::builder()
+        .prices(datasets::asset_class_prices())
+        .risk_free_asset("T-Bills")
+        .build()
+        .unwrap();
+    let names = ["Zero bonds", "Minimum variance", "Equal weight", "All bonds"];
+    let result = assets
+        .compare([
+            Strategy::weights("Zero bonds", [("US Equity", 0.7), ("Gold", 0.3)]),
+            Method::MinimumVariance.into(),
+        ])
+        .method(Method::EqualWeight)
+        .weights("All bonds", [("Bonds", 1.0)])
+        .benchmark([("US Equity", 0.6), ("Bonds", 0.4)])
+        .build()
+        .unwrap();
+    let in_results: Vec<&str> = result
+        .results
+        .strategies
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect();
+    assert_eq!(in_results, names);
+    let in_report: Vec<&str> = result
+        .report
+        .strategies
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect();
+    assert_eq!(in_report, names);
+    // The tables list the strategies in the same order, the benchmark last.
+    let statistics = &result.report.tables()[0];
+    let first: Vec<String> = statistics
+        .rows
+        .iter()
+        .filter_map(|row| match &row[0] {
+            finalytics::reports::Cell::Text(t) => Some(t.clone()),
+            _ => None,
+        })
+        .collect();
+    let mut seen: Vec<&str> = Vec::new();
+    for name in &first {
+        if !seen.contains(&name.as_str()) {
+            seen.push(name.as_str());
+        }
+    }
+    assert_eq!(&seen[..4], names, "{first:?}");
+    // The text and the page's tables and legends name them in the same order too (the page's
+    // tiles, which rank them, come first).
+    let html = result.report.to_html(None);
+    let tables = &html[html.find("<table").unwrap()..];
+    let text = result.report.to_text(None);
+    for page in [text.as_str(), tables] {
+        let at: Vec<usize> = names.iter().map(|n| page.find(n).unwrap()).collect();
+        assert!(at.windows(2).all(|w| w[0] < w[1]), "{at:?}");
+    }
+    let legend = &html[html.find(r#"class="key""#).unwrap()..];
+    let at: Vec<usize> = names.iter().map(|n| legend.find(n).unwrap()).collect();
+    assert!(at.windows(2).all(|w| w[0] < w[1]), "{at:?}");
+}

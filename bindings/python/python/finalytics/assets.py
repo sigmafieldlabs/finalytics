@@ -422,7 +422,7 @@ class Assets:
     def compare(
         self,
         *,
-        methods: Sequence[_types.Method] = (),
+        methods: Sequence[_types.Method | tuple[str, Mapping[str, float]] | _types.FixedWeights] = (),
         weights: Mapping[str, Mapping[str, float]] | None = None,
         name: str | None = None,
         validation: _types.Validation | str = "in_sample",
@@ -451,11 +451,14 @@ class Assets:
         rebalancing, validation and trading costs and scored on the periods it was tested on:
         the comparison report in ``result.report``, and every return and trade in
         ``result.results``. ``print(result)`` prints the report and ``result.show()`` shows it,
-        inline in a notebook or in a browser. `name` titles the report.
+        inline in a notebook or in a browser. `name` titles the report. The results and the
+        report keep the strategies in the order given.
 
         `weights` adds fixed weights by name, such as ``{"60/40": {"US Equity": 0.6, "Bonds":
-        0.4}}``, held and rebalanced as the methods are and scored on the same periods; they are
-        not fitted to any returns, so they have no run in sample.
+        0.4}}``, after the methods, held and rebalanced as the methods are and scored on the same
+        periods; they are not fitted to any returns, so they have no run in sample. Fixed
+        weights may also come among the methods, as a name and weights: ``methods=[("60/40",
+        {...}), "minimum_variance"]``.
 
         - `validation`: ``"in_sample"`` (the default); :class:`~finalytics.Holdout`, such as
           ``fl.Holdout(start="2016-11-01")``, which fits on the history before the date and
@@ -496,9 +499,17 @@ class Assets:
         )
         if isinstance(methods, str):
             raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
-        strategies: list[Any] = [
-            _types.OptimisedStrategy(options=self._options(method, **limits)) for method in methods
-        ]
+        strategies: list[Any] = []
+        for k, item in enumerate(methods):
+            if isinstance(item, _types.FixedWeights):
+                strategies.append(item)
+            elif isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str):
+                label, held = item
+                if not isinstance(held, Mapping):
+                    raise invalid((f"methods[{k}]", "fixed weights are a name and weights by asset"))
+                strategies.append(_types.FixedWeights(name=label, weights={a: float(v) for a, v in held.items()}))
+            else:
+                strategies.append(_types.OptimisedStrategy(options=self._options(item, **limits)))
         strategies += [
             _types.FixedWeights(name=label, weights={k: float(v) for k, v in held.items()})
             for label, held in (weights or {}).items()
