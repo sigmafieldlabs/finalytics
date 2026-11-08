@@ -1543,12 +1543,30 @@ impl ScreenReport {
             parts.push(format!("Every history starts on {}.", crate::text::date(d)));
         }
         // Each formula as written, with the securities that have no value of it.
-        for f in &self.context.formulas {
-            let lacking = match f.lacking {
-                0 => String::new(),
-                n => format!("; {} without a value", counted(n, "security", "securities")),
-            };
-            parts.push(format!("{} = {}{lacking}.", f.name, f.formula));
+        let formulas: Vec<String> = self
+            .context
+            .formulas
+            .iter()
+            .map(|f| match f.lacking {
+                0 => format!("{} = {}", f.name, f.formula),
+                n => format!(
+                    "{} = {} ({} without a value)",
+                    f.name,
+                    f.formula,
+                    counted(n, "security", "securities")
+                ),
+            })
+            .collect();
+        if !formulas.is_empty() {
+            parts.push(format!(
+                "{}: {}.",
+                if formulas.len() == 1 {
+                    "Formula"
+                } else {
+                    "Formulas"
+                },
+                formulas.join("; ")
+            ));
         }
         for issue in self.context.warnings.issues() {
             parts.push(sentence(&issue.message));
