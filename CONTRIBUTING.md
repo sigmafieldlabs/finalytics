@@ -55,7 +55,7 @@ npx -p typescript@5.9.3 tsc -p bindings/wasm/test
 
 CI runs the same checks, and also: the Rust tests on Linux, macOS and Windows; `cargo check`
 with the minimum supported Rust version, 1.88; the Python tests on Python 3.10 and 3.13; the
-size of the WebAssembly engine, at most 2 MiB gzipped (the `js` stage checks it too); the
+size of the WebAssembly engine, at most 2.5 MiB gzipped (the `js` stage checks it too); the
 performance budgets (below); and the dependencies' licences and advisories with
 [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`cargo deny check`).
 

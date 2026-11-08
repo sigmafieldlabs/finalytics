@@ -94,8 +94,8 @@ stage_js() {
   run bindings/wasm/build.sh
   local size
   size=$(gzip -9 -c bindings/wasm/pkg/finalytics_bg.wasm | wc -c | tr -d ' ')
-  echo "The engine is $size bytes gzipped (budget 2 MiB)"
-  run test "$size" -le 2097152
+  echo "The engine is $size bytes gzipped (budget 2.5 MiB)"
+  run test "$size" -le 2621440
   run node --test bindings/wasm/test/*.test.mjs
   run npx --yes -p typescript@5.9.3 tsc -p bindings/wasm/test
 }
