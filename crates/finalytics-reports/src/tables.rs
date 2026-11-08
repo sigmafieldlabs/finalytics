@@ -804,17 +804,38 @@ impl HoldingsReport {
                 })
                 .collect(),
         );
+        // Within the report's period: each year's part of it, empty for a year outside it.
+        let within =
+            |by_year: Option<&std::collections::BTreeMap<i32, Decimal>>, year: i32| -> Cell {
+                match (&self.period, by_year) {
+                    (Some(p), Some(m)) if (p.start.year()..=p.end.year()).contains(&year) => {
+                        d(m.get(&year).copied().unwrap_or(Decimal::ZERO))
+                    }
+                    _ => Cell::Missing,
+                }
+            };
         let realised = table(
             "realised_gains",
             "Realised gains by year",
             vec![
                 col("year", "Year", ColumnKind::Integer),
                 col("gain", &format!("Gain ({ccy})"), money(ccy)),
+                col(
+                    "gain_in_period",
+                    &format!("In the period ({ccy})"),
+                    money(ccy),
+                ),
             ],
             self.realised
                 .by_year
                 .iter()
-                .map(|(y, g)| vec![int(*y), d(*g)])
+                .map(|(y, g)| {
+                    vec![
+                        int(*y),
+                        d(*g),
+                        within(self.period.as_ref().map(|p| &p.realised.by_year), *y),
+                    ]
+                })
                 .collect(),
         );
         let income = table(
@@ -823,11 +844,22 @@ impl HoldingsReport {
             vec![
                 col("year", "Year", ColumnKind::Integer),
                 col("income", &format!("Income ({ccy})"), money(ccy)),
+                col(
+                    "income_in_period",
+                    &format!("In the period ({ccy})"),
+                    money(ccy),
+                ),
             ],
             self.income
                 .by_year
                 .iter()
-                .map(|(y, v)| vec![int(*y), d(*v)])
+                .map(|(y, v)| {
+                    vec![
+                        int(*y),
+                        d(*v),
+                        within(self.period.as_ref().map(|p| &p.income.by_year), *y),
+                    ]
+                })
                 .collect(),
         );
         vec![holdings, lots, allocation, realised, income]

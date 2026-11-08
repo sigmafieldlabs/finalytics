@@ -1041,24 +1041,44 @@ pub(crate) fn holdings(page: &mut Page, h: &HoldingsReport) {
         .into_iter()
         .collect();
     let year_labels: Vec<String> = years.iter().map(i32::to_string).collect();
+    // The report's period beside the totals to date, when they differ.
+    let period = h
+        .period
+        .as_ref()
+        .filter(|x| x.realised != h.realised || x.income != h.income);
     let mut headings: Vec<&str> = vec![""];
     headings.extend(year_labels.iter().map(String::as_str));
     headings.push("Total");
-    let row = |name: &str, by_year: &BTreeMap<i32, Decimal>, total: Decimal| {
-        let mut cells = vec![name.to_owned()];
-        cells.extend(
-            years
-                .iter()
-                .map(|y| money(by_year.get(y).copied().map_or(0.0, dec))),
-        );
-        cells.push(money(dec(total)));
-        cells
-    };
+    if period.is_some() {
+        headings.push("Period");
+    }
+    let row =
+        |name: &str, by_year: &BTreeMap<i32, Decimal>, total: Decimal, within: Option<Decimal>| {
+            let mut cells = vec![name.to_owned()];
+            cells.extend(
+                years
+                    .iter()
+                    .map(|y| money(by_year.get(y).copied().map_or(0.0, dec))),
+            );
+            cells.push(money(dec(total)));
+            cells.extend(within.map(|v| money(dec(v))));
+            cells
+        };
     page.table(
         &headings,
         &[
-            row("Realised gains", &h.realised.by_year, h.realised.total),
-            row("Income", &h.income.by_year, h.income.total),
+            row(
+                "Realised gains",
+                &h.realised.by_year,
+                h.realised.total,
+                period.map(|x| x.realised.total),
+            ),
+            row(
+                "Income",
+                &h.income.by_year,
+                h.income.total,
+                period.map(|x| x.income.total),
+            ),
         ],
         None,
     );
@@ -1067,6 +1087,15 @@ pub(crate) fn holdings(page: &mut Page, h: &HoldingsReport) {
         money(dec(h.realised.short_term)),
         money(dec(h.realised.long_term))
     ));
+    if let Some(x) = period {
+        page.note(&format!(
+            "Period: from {} to {}, the report's period; realised {} short-term, {} long-term.",
+            date(x.start),
+            date(x.end),
+            money(dec(x.realised.short_term)),
+            money(dec(x.realised.long_term))
+        ));
+    }
     page.footer(p);
 }
 

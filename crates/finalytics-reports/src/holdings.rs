@@ -150,6 +150,21 @@ pub struct IncomeSummary {
     pub by_holding: BTreeMap<HoldingKey, Decimal>,
 }
 
+/// Gains realised and income received within the report's period, from its start to its date.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct HoldingsPeriod {
+    /// The period's first day: disposals and payments on it count.
+    pub start: Date,
+    /// The period's last day, the report's date.
+    pub end: Date,
+    /// Gains realised within the period.
+    pub realised: RealisedSummary,
+    /// Income received within the period, net of tax withheld.
+    pub income: IncomeSummary,
+}
+
 /// The holdings report.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -174,6 +189,11 @@ pub struct HoldingsReport {
     pub realised: RealisedSummary,
     /// Income received to date.
     pub income: IncomeSummary,
+    /// Gains realised and income received within the report's period, as the performance
+    /// report's flows count them: the same as to date unless the report starts after the first
+    /// transaction.
+    #[serde(default)]
+    pub period: Option<HoldingsPeriod>,
 }
 
 /// The holdings on the report's date: positions, lots and cash, by holding and by account;
@@ -432,33 +452,26 @@ pub fn holdings_report(
         effective_holdings: herfindahl.filter(|h| *h > 0.0).map(|h| 1.0 / h),
     };
 
-    let mut realised = RealisedSummary {
-        total: Decimal::ZERO,
-        short_term: Decimal::ZERO,
-        long_term: Decimal::ZERO,
-        by_year: BTreeMap::new(),
-        by_instrument: BTreeMap::new(),
+    let realised = realised(books, None, cx.as_of, options.long_term_after_days);
+    let income = income(books, market, None, cx.as_of, &mut warnings);
+    // Within the period, from its first day; a missing rate is reported once, above.
+    let period = HoldingsPeriod {
+        start: cx.start,
+        end: cx.as_of,
+        realised: self::realised(
+            books,
+            Some(cx.start),
+            cx.as_of,
+            options.long_term_after_days,
+        ),
+        income: self::income(
+            books,
+            market,
+            Some(cx.start),
+            cx.as_of,
+            &mut ValidationReport::new(),
+        ),
     };
-    let mut gains_by_year: BTreeMap<i32, Decimal> = BTreeMap::new();
-    let mut gains_by_instrument: BTreeMap<InstrumentId, Decimal> = BTreeMap::new();
-    for g in books
-        .realised_gains()
-        .iter()
-        .filter(|g| g.disposed <= cx.as_of)
-    {
-        realised.total += g.gain_base;
-        if g.acquired.days_until(g.disposed) > options.long_term_after_days {
-            realised.long_term += g.gain_base;
-        } else {
-            realised.short_term += g.gain_base;
-        }
-        *gains_by_year.entry(g.disposed.year()).or_default() += g.gain_base;
-        *gains_by_instrument.entry(g.instrument.clone()).or_default() += g.gain_base;
-    }
-    realised.by_year = gains_by_year;
-    realised.by_instrument = gains_by_instrument;
-
-    let income = income(books, market, cx.as_of, &mut warnings);
     Ok(HoldingsReport {
         provenance: cx.provenance(ReportKind::Holdings, warnings),
         value: total,
@@ -469,13 +482,50 @@ pub fn holdings_report(
         concentration,
         realised,
         income,
+        period: Some(period),
     })
 }
 
-/// Income received up to `as_of`, converted at each payment's date.
+/// Gains realised from `from` (or the first disposal) up to `as_of`, in the base currency.
+fn realised(
+    books: &Books,
+    from: Option<Date>,
+    as_of: Date,
+    long_term_after_days: i32,
+) -> RealisedSummary {
+    let mut realised = RealisedSummary {
+        total: Decimal::ZERO,
+        short_term: Decimal::ZERO,
+        long_term: Decimal::ZERO,
+        by_year: BTreeMap::new(),
+        by_instrument: BTreeMap::new(),
+    };
+    for g in books
+        .realised_gains()
+        .iter()
+        .filter(|g| g.disposed <= as_of && from.is_none_or(|f| g.disposed >= f))
+    {
+        realised.total += g.gain_base;
+        if g.acquired.days_until(g.disposed) > long_term_after_days {
+            realised.long_term += g.gain_base;
+        } else {
+            realised.short_term += g.gain_base;
+        }
+        *realised.by_year.entry(g.disposed.year()).or_default() += g.gain_base;
+        *realised
+            .by_instrument
+            .entry(g.instrument.clone())
+            .or_default() += g.gain_base;
+    }
+    realised
+}
+
+/// Income received from `from` (or the first payment) up to `as_of`, converted at each payment's
+/// date.
 fn income(
     books: &Books,
     market: &MarketData,
+    from: Option<Date>,
     as_of: Date,
     warnings: &mut ValidationReport,
 ) -> IncomeSummary {
@@ -483,7 +533,11 @@ fn income(
     let mut total = Decimal::ZERO;
     let mut by_year: BTreeMap<i32, Decimal> = BTreeMap::new();
     let mut by_holding: BTreeMap<HoldingKey, Decimal> = BTreeMap::new();
-    for event in books.events().iter().filter(|e| e.date <= as_of) {
+    for event in books
+        .events()
+        .iter()
+        .filter(|e| e.date <= as_of && from.is_none_or(|f| e.date >= f))
+    {
         for allocation in &event.allocations {
             let Allocation::Income {
                 holding,

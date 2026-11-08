@@ -7,7 +7,7 @@ report holds and the few figures the reports derive themselves.
 
 | Report | Holds |
 | --- | --- |
-| Holdings | Positions by holding and by account, with cost and unrealised gains in local and base currency; open tax lots with their holding period; allocation by holding, currency, instrument kind, account and each classification; concentration; realised gains and income to date |
+| Holdings | Positions by holding and by account, with cost and unrealised gains in local and base currency; open tax lots with their holding period; allocation by holding, currency, instrument kind, account and each classification; concentration; realised gains and income to date and within the report's period |
 | Overview | Headline figures; value and growth of 100 against a benchmark; allocation; risk by holding and by group; each holding's expected return, volatility and share of risk; the efficient frontier with the current portfolio |
 | Performance | Value, growth and daily returns; returns over MTD, QTD, YTD, one, three and five years and since inception, time- and money-weighted and Modified Dietz, against the benchmark; monthly and calendar-year returns; contribution by holding and by group, with the top contributors and detractors; flows and income by month; the household by account |
 | Risk | Statistics, and statistics against the benchmark; the drawdown series and the largest drawdowns; value at risk and expected shortfall by the historical, parametric and Cornish–Fisher methods at each confidence; the return distribution; the holdings' covariance, correlation and risk decomposition, by holding and by group, and ex-ante tracking error; rolling volatility, Sharpe ratio, beta and tracking error |
@@ -82,6 +82,13 @@ last valuation of the month before (or the first valuation) to the last valuatio
 a year's likewise, from the last valuation of the year before. A year is complete when the
 valuations reach back into the year before and forward into December. The benchmark's are its
 price changes over the same dates.
+
+**Realised gains and income.** Gains realised on disposals and income received, net of tax
+withheld, in the base currency at each one's date: to date, and within the report's period
+(`period`), from its first valuation date to its date, both included, as the performance report's
+monthly flows count them. The period is the whole history unless the report starts later, such
+as `start="2026-01-01"` for this year's; the report then shows the period beside the totals, and
+the tables of realised gains and income by year give each year's part of it.
 
 **Concentration.** The shares of the portfolio in its five and ten largest instruments, and the
 Herfindahl–Hirschman index $H = \sum_i s_i^2$ of the instruments' shares $s_i$ of the value

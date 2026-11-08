@@ -2474,6 +2474,23 @@ class HoldingSeries:
 
 
 @dataclass(frozen=True, kw_only=True)
+class HoldingsPeriod:
+    """Gains realised and income received within the report's period, from its start to its date."""
+
+    start: datetime.date
+    """The period's first day: disposals and payments on it count."""
+
+    end: datetime.date
+    """The period's last day, the report's date."""
+
+    realised: RealisedSummary
+    """Gains realised within the period."""
+
+    income: IncomeSummary
+    """Income received within the period, net of tax withheld."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class HoldingsReport(PrintedReport):
     """The holdings report."""
 
@@ -2505,6 +2522,11 @@ class HoldingsReport(PrintedReport):
 
     income: IncomeSummary
     """Income received to date."""
+
+    period: HoldingsPeriod | None = None
+    """Gains realised and income received within the report's period, as the performance report's
+    flows count them: the same as to date unless the report starts after the first transaction.
+    """
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7583,6 +7605,7 @@ __all__ = [
     "HoldingRiskReturn",
     "HoldingRow",
     "HoldingSeries",
+    "HoldingsPeriod",
     "HoldingsReport",
     "HoldingsRisk",
     "Holdout",

@@ -1739,6 +1739,18 @@ export interface HoldingSeries {
   warnings: ValidationReport;
 }
 
+/** Gains realised and income received within the report's period, from its start to its date. */
+export interface HoldingsPeriod {
+  /** The period's first day: disposals and payments on it count. */
+  start: Date;
+  /** The period's last day, the report's date. */
+  end: Date;
+  /** Gains realised within the period. */
+  realised: RealisedSummary;
+  /** Income received within the period, net of tax withheld. */
+  income: IncomeSummary;
+}
+
 /** The holdings report. */
 export interface HoldingsReport {
   /** Where the numbers come from. */
@@ -1762,6 +1774,12 @@ export interface HoldingsReport {
   realised: RealisedSummary;
   /** Income received to date. */
   income: IncomeSummary;
+  /**
+   * Gains realised and income received within the report's period, as the performance
+   * report's flows count them: the same as to date unless the report starts after the first
+   * transaction.
+   */
+  period?: HoldingsPeriod | null;
 }
 
 /** The current holdings' risk, from the covariance of their returns. */

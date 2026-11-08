@@ -24,6 +24,21 @@ test("every report runs and exports", () => {
   }
 });
 
+test("holdings count gains and income within the period", () => {
+  const whole = books.holdingsReport({});
+  assert.deepEqual(whole.period.income, whole.income);
+  assert.deepEqual(whole.period.realised, whole.realised);
+  const month = (m) => reference.flows[m].income;
+  for (const [start, expected] of [
+    ["2026-09-01", month("2026-09") + month("2026-10")],
+    ["2026-10-01", month("2026-10")],
+  ]) {
+    const report = books.holdingsReport({ start });
+    assert.equal(report.period.start, start);
+    close(Number(report.period.income.total), expected, 1e-9, start);
+  }
+});
+
 test("performance matches the reference", () => {
   const report = books.performanceReport({ benchmark: "SPY" });
   close(report.monthly.values[0][8], reference.months["2026-09"], 1e-12, "September");

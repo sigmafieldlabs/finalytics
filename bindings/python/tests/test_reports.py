@@ -50,6 +50,20 @@ def test_holdings_and_concentration(books):
     assert [b.by for b in report.breakdowns][-1] == "region"
 
 
+def test_holdings_count_gains_and_income_within_the_period(books):
+    whole = books.holdings_report()
+    assert whole.period.realised == whole.realised and whole.period.income == whole.income
+    month = lambda m: REFERENCE["flows"][m]["income"]  # noqa: E731
+    for start, expected in (("2026-09-01", month("2026-09") + month("2026-10")), ("2026-10-01", month("2026-10"))):
+        report = books.holdings_report(start=start)
+        assert report.period.start.isoformat() == start
+        assert float(report.period.income.total) == pytest.approx(expected, abs=1e-9)
+        assert report.realised == whole.realised and report.income == whole.income
+    later = books.holdings_report(start="2026-10-01")
+    table = next(t for t in fl.reports.tables(later) if t.name == "income")
+    assert [c.key for c in table.columns] == ["year", "income", "income_in_period"]
+
+
 def test_attribution_and_scenarios(books):
     segments = [
         fl.reports.BenchmarkSegment(name="Equity", benchmark_weight=0.6, benchmark_return=-0.04),

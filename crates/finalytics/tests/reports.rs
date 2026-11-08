@@ -162,6 +162,74 @@ fn holdings_add_up() {
 }
 
 #[test]
+fn realised_gains_and_income_within_the_period() {
+    let (portfolio, books, market) = setup();
+    let source = Source::of(&portfolio, &market);
+    // From the first transaction, the period is the whole history, and the report shows the
+    // totals to date alone.
+    let whole = holdings_report(&books, &market, &source, &options()).unwrap();
+    let p = whole.period.as_ref().unwrap();
+    assert_eq!(p.realised, whole.realised);
+    assert_eq!(p.income, whole.income);
+    assert!(!whole.to_string().contains("Period: from"));
+    // From a later start, the disposals and payments on or after it.
+    let gains = books.realised_gains();
+    let paid = books
+        .events()
+        .iter()
+        .find(|e| {
+            e.allocations
+                .iter()
+                .any(|a| matches!(a, finalytics::Allocation::Income { .. }))
+        })
+        .unwrap()
+        .date;
+    for start in [
+        gains[gains.len() / 2].disposed,
+        paid,
+        paid.add_days(1).unwrap(),
+    ] {
+        let mut o = options();
+        o.start = Some(start);
+        let r = holdings_report(&books, &market, &source, &o).unwrap();
+        let p = r.period.as_ref().unwrap();
+        assert_eq!((p.start, p.end), (start, d("2026-10-30")));
+        let within: Decimal = gains
+            .iter()
+            .filter(|g| g.disposed >= start)
+            .map(|g| g.gain_base)
+            .sum();
+        assert_eq!(p.realised.total, within, "from {start}");
+        assert_eq!(p.realised.short_term + p.realised.long_term, within);
+        let income = if paid >= start { "153" } else { "0" };
+        assert_eq!(
+            p.income.total,
+            income.parse::<Decimal>().unwrap(),
+            "from {start}"
+        );
+        // The totals to date are as before.
+        assert_eq!((&r.realised, &r.income), (&whole.realised, &whole.income));
+        if p.realised != r.realised || p.income != r.income {
+            let text = r.to_string();
+            assert!(text.contains("Period: from"), "{text}");
+            assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
+        }
+        // The tables give each year's part of the period.
+        let tables = r.tables();
+        let realised = tables.iter().find(|t| t.name == "realised_gains").unwrap();
+        assert_eq!(realised.columns[2].key, "gain_in_period");
+        for row in &realised.rows {
+            let Cell::Number(year) = row[0] else {
+                panic!("a year")
+            };
+            let in_period = year as i32 >= start.year();
+            assert_eq!(!matches!(row[2], Cell::Missing), in_period, "{year}");
+        }
+        every_table_is_rectangular(&tables);
+    }
+}
+
+#[test]
 fn long_term_means_held_for_more_than_the_period() {
     // As in rebalancing's tax rates: a lot held for exactly the period is still short-term.
     let (portfolio, books, market) = setup();

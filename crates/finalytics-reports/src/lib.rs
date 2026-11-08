@@ -52,8 +52,8 @@ pub use backtests::{
 };
 pub use context::{Provenance, ReportBenchmark, ReportKind, ReportOptions, Source};
 pub use holdings::{
-    AccountHoldings, Concentration, HoldingRow, HoldingsReport, IncomeSummary, LotRow,
-    RealisedSummary, holdings_report,
+    AccountHoldings, Concentration, HoldingRow, HoldingsPeriod, HoldingsReport, IncomeSummary,
+    LotRow, RealisedSummary, holdings_report,
 };
 pub use html::Theme;
 pub use optimisation::{

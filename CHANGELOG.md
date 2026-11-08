@@ -9,6 +9,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The holdings report counts realised gains and income within its period as well as to date
+  (`period`, from the report's start to its date, as the performance report's flows count
+  them), so that a report starting this year, such as `start="2026-01-01"`, gives this year's
+  realised gains and income for tax. The text and page show the period beside the totals when
+  they differ, and the tables of realised gains and income by year gain a column for the
+  period.
+
 - `Assets.evaluate(weights)` values given weights on the estimates optimisation uses: the
   expected return, volatility, Sharpe ratio and shares of risk in `results`, and the optimisation
   report's page and text for them, titled "Given weights", in `report`, with the efficient

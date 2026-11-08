@@ -4474,6 +4474,34 @@
       ],
       "description": "Values, value moved in and income per holding over dates, in the holding's currency and in\nthe base currency: the input to contribution analysis."
     },
+    "HoldingsPeriod": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Date",
+          "description": "The period's first day: disposals and payments on it count."
+        },
+        "end": {
+          "$ref": "#/$defs/Date",
+          "description": "The period's last day, the report's date."
+        },
+        "realised": {
+          "$ref": "#/$defs/RealisedSummary",
+          "description": "Gains realised within the period."
+        },
+        "income": {
+          "$ref": "#/$defs/IncomeSummary",
+          "description": "Income received within the period, net of tax withheld."
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "realised",
+        "income"
+      ],
+      "description": "Gains realised and income received within the report's period, from its start to its date."
+    },
     "HoldingsReport": {
       "type": "object",
       "properties": {
@@ -4524,6 +4552,18 @@
         "income": {
           "$ref": "#/$defs/IncomeSummary",
           "description": "Income received to date."
+        },
+        "period": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldingsPeriod"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Gains realised and income received within the report's period, as the performance\nreport's flows count them: the same as to date unless the report starts after the first\ntransaction.",
+          "default": null
         }
       },
       "required": [

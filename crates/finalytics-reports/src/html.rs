@@ -1315,23 +1315,53 @@ fn holdings(h: &HoldingsReport) -> String {
             &compact,
             180.0,
         );
+        // The report's period beside the totals to date, when they differ.
+        let period = h
+            .period
+            .as_ref()
+            .filter(|x| x.realised != h.realised || x.income != h.income);
         let mut headings: Vec<&str> = vec![""];
         headings.extend(categories.iter().map(String::as_str));
         headings.push("Total");
-        let row = |name: &str, m: &BTreeMap<i32, Decimal>, total: Decimal| {
-            let mut cells = vec![name.to_owned()];
-            cells.extend(years.iter().map(|y| money(of(m, y))));
-            cells.push(money(dec(total)));
-            cells
-        };
+        if period.is_some() {
+            headings.push("Period");
+        }
+        let row =
+            |name: &str, m: &BTreeMap<i32, Decimal>, total: Decimal, within: Option<Decimal>| {
+                let mut cells = vec![name.to_owned()];
+                cells.extend(years.iter().map(|y| money(of(m, y))));
+                cells.push(money(dec(total)));
+                cells.extend(within.map(|v| money(dec(v))));
+                cells
+            };
         let rows = vec![
-            row("Income", &h.income.by_year, h.income.total),
-            row("Realised gains", &h.realised.by_year, h.realised.total),
+            row(
+                "Income",
+                &h.income.by_year,
+                h.income.total,
+                period.map(|x| x.income.total),
+            ),
+            row(
+                "Realised gains",
+                &h.realised.by_year,
+                h.realised.total,
+                period.map(|x| x.realised.total),
+            ),
         ];
+        let note = period.map(|x| {
+            format!(
+                "Period: from {} to {}, the report's period; realised {} short-term and {} \
+                 long-term within it.",
+                date(x.start),
+                date(x.end),
+                money(dec(x.realised.short_term)),
+                money(dec(x.realised.long_term))
+            )
+        });
         body.push_str(&card(
             &format!("Realised gains and income ({ccy})"),
             &(chart + &table(&headings, &rows, &numbers(headings.len()))),
-            None,
+            note.as_deref(),
         ));
     }
     section(

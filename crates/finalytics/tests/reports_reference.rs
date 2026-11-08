@@ -108,6 +108,23 @@ fn returns_by_month_year_and_period() {
 }
 
 #[test]
+fn income_within_the_period_matches_the_reference_months() {
+    let (books, market, source) = setup();
+    let f = fixture();
+    let month = |m: &str| f["flows"][m]["income"].as_f64().unwrap();
+    for (start, expected) in [
+        ("2026-09-01", month("2026-09") + month("2026-10")),
+        ("2026-10-01", month("2026-10")),
+    ] {
+        let mut o = options();
+        o.start = Some(d(start));
+        let h = holdings_report(&books, &market, &source, &o).unwrap();
+        let income = h.period.unwrap().income.total;
+        close(income.to_string().parse().unwrap(), &expected.into(), start);
+    }
+}
+
+#[test]
 fn concentration_and_the_return_distribution() {
     let (books, market, source) = setup();
     let f = fixture();
