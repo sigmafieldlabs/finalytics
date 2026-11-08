@@ -31,6 +31,7 @@ function screenRows(columns) {
     risk_free_rate: columns.risk_free_rate,
     measures,
     fields,
+    formulas: columns.formulas,
     rules: columns.rules,
     sort: columns.sort,
     limit: columns.limit,

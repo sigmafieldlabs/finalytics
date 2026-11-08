@@ -6,6 +6,7 @@
 //! securities, such as a sector or a price-to-earnings ratio, keep the securities that meet all
 //! of them, sorted and limited as asked.
 
+mod formula;
 mod measures;
 
 use std::collections::{BTreeMap, HashMap};
@@ -1007,6 +1008,76 @@ impl Sort {
     }
 }
 
+/// Formulas by name, in the order given, such as `risk_adjusted = return_1y / volatility`: each
+/// is a numeric field of every security, computed from the measures, the numeric fields and the
+/// formulas before it. In JSON, an object from names to formulas, whose keys keep their order.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Formulas(pub Vec<(String, String)>);
+
+impl Formulas {
+    /// Whether there are none.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl Serialize for Formulas {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for (name, formula) in &self.0 {
+            map.serialize_entry(name, formula)?;
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Formulas {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        struct InOrder;
+        impl<'de> serde::de::Visitor<'de> for InOrder {
+            type Value = Formulas;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(
+                    "formulas by name, such as {\"risk_adjusted\": \"return_1y / volatility\"}",
+                )
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Formulas, A::Error> {
+                let mut out: Vec<(String, String)> = Vec::new();
+                while let Some((name, formula)) = map.next_entry::<String, String>()? {
+                    if out.iter().any(|(n, _)| *n == name) {
+                        return Err(serde::de::Error::custom(format!("{name} is given twice")));
+                    }
+                    out.push((name, formula));
+                }
+                Ok(Formulas(out))
+            }
+        }
+        deserializer.deserialize_map(InOrder)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for Formulas {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Formulas".into()
+    }
+
+    fn inline_schema() -> bool {
+        true
+    }
+
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        generator.subschema_for::<BTreeMap<String, String>>()
+    }
+}
+
 /// What a screen measures and keeps. Everything is optional: by default every measure the
 /// universe allows, on its latest date, with no rules.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1030,6 +1101,16 @@ pub struct ScreenOptions {
     pub sort: Option<Sort>,
     /// The most matches to keep, after sorting.
     pub limit: Option<usize>,
+    /// Formulas by name, in order, such as `{"risk_adjusted": "return_1y / volatility"}`: each
+    /// a numeric field of every security, which rules, the sort and the results take as they
+    /// take a field. A formula is numbers, the names of measures, numeric fields and earlier
+    /// formulas, `+ - * /`, unary minus, parentheses, and `abs(x)`, `sqrt(x)`, `log(x)`
+    /// (natural), `min(a, b, ...)` and `max(a, b, ...)`. A security has no value where an input
+    /// has none, where the formula divides by zero, takes the square root of a negative number
+    /// or the logarithm of one at most zero, or where the result is not finite.
+    #[serde(skip_serializing_if = "Formulas::is_empty")]
+    #[cfg_attr(feature = "schema", schemars(with = "BTreeMap<String, String>"))]
+    pub formulas: Formulas,
 }
 
 impl Default for ScreenOptions {
@@ -1041,6 +1122,7 @@ impl Default for ScreenOptions {
             rules: Vec::new(),
             sort: None,
             limit: None,
+            formulas: Formulas::default(),
         }
     }
 }
@@ -1116,6 +1198,19 @@ pub struct Coverage {
     pub lacking_history: Vec<usize>,
 }
 
+/// A formula, with how many securities have no value of it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
+pub struct FormulaResult {
+    /// Its name.
+    pub name: String,
+    /// The formula, as given.
+    pub formula: String,
+    /// How many securities that are not stale have no value of it.
+    pub lacking: usize,
+}
+
 /// A rule, with how many securities met it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -1148,8 +1243,12 @@ pub struct ScreenResults {
     pub risk_free_rate: f64,
     /// The measures computed, in the order of each security's `values`.
     pub measures: Vec<Measure>,
-    /// The names of the fields given.
+    /// The names of the fields given, then of the formulas, which each security's `fields`
+    /// give as numbers.
     pub fields: Vec<String>,
+    /// The formulas, in order, with how many securities have no value of each.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub formulas: Vec<FormulaResult>,
     /// Each rule, with how many met it.
     pub rules: Vec<RuleResult>,
     /// How the matches are sorted.
@@ -1310,6 +1409,22 @@ enum Target {
     Measure(usize),
     /// The field at this place in the universe's fields.
     Field(usize),
+    /// The formula at this place in the formulas.
+    Formula(usize),
+}
+
+/// What a name in a formula stands for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Input {
+    Measure(usize),
+    Field(usize),
+    Formula(usize),
+}
+
+/// A formula read, with the inputs its names stand for.
+struct Compiled {
+    expr: formula::Expr,
+    inputs: Vec<Input>,
 }
 
 enum Test {
@@ -1335,6 +1450,7 @@ enum Verdict {
 struct Plan {
     as_of: Date,
     measures: Vec<Measure>,
+    formulas: Vec<Compiled>,
     rules: Vec<Resolved>,
     sort: Option<(Target, Order)>,
     /// The measures the rules and the sort test, by their place in `measures`.
@@ -1374,6 +1490,36 @@ fn known_measure(
         )),
         None => Err(format!("unknown measure {name}")),
     }
+}
+
+/// The edit distance between two names, for suggesting the one meant.
+fn distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut previous = row[0];
+        row[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let current = row[j + 1];
+            row[j + 1] = if ca == *cb {
+                previous
+            } else {
+                1 + previous.min(row[j]).min(row[j + 1])
+            };
+            previous = current;
+        }
+    }
+    row[b.len()]
+}
+
+/// The name among `names` closest to `name`, if one is near.
+fn nearest<'a>(name: &str, names: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+    names
+        .into_iter()
+        .map(|n| (distance(name, n), n))
+        .filter(|(d, _)| *d <= 2)
+        .min_by_key(|(d, _)| *d)
+        .map(|(_, n)| n)
 }
 
 /// The field `name` names, or why it names none.
@@ -1451,6 +1597,91 @@ fn plan(
         }
     }
 
+    // The formulas, in order: each may use the measures, the numeric fields and the formulas
+    // before it.
+    let mut formulas: Vec<Compiled> = Vec::new();
+    let names: Vec<&str> = options.formulas.0.iter().map(|(n, _)| n.as_str()).collect();
+    for (k, (name, text)) in options.formulas.0.iter().enumerate() {
+        let path = format!("formulas.{name}");
+        let well_formed = name.chars().next().is_some_and(char::is_alphabetic)
+            && name.chars().all(|c| c.is_alphanumeric() || c == '_');
+        if !well_formed {
+            report.error(
+                &path,
+                format!(
+                    "{name:?} cannot be a formula's name: use letters, digits and underscores, \
+                     starting with a letter"
+                ),
+            );
+            continue;
+        }
+        if let Some(problem) = field_name_problem(name) {
+            report.error(&path, problem.replace("the field", "the formula"));
+            continue;
+        }
+        if securities.field(name).is_some() {
+            report.error(
+                &path,
+                format!("{name} is a field of the universe: give the formula another name"),
+            );
+            continue;
+        }
+        let mut inputs: Vec<Input> = Vec::new();
+        let mut resolve = |used: &str| -> std::result::Result<usize, String> {
+            let input = if let Some(m) = Measure::from_name(used) {
+                if let Some(problem) = unavailable(m, securities, bench) {
+                    return Err(problem);
+                }
+                Input::Measure(add(m, &mut measures))
+            } else if let Some(f) = securities.fields.iter().position(|f| f.name == used) {
+                if securities.fields[f].is_text() {
+                    return Err(format!("{used} is text: a formula takes numbers"));
+                }
+                Input::Field(f)
+            } else if let Some(j) = names.iter().position(|n| *n == used) {
+                if j >= k {
+                    return Err(if j == k {
+                        "is this formula's own name".to_owned()
+                    } else {
+                        format!("{used} is a formula given after this one: give it first")
+                    });
+                }
+                Input::Formula(j)
+            } else if DATES.contains(&used) {
+                return Err(format!("{used} is a date: a formula takes numbers"));
+            } else {
+                let candidates: Vec<String> = Measure::all()
+                    .map(|m| m.name().to_owned())
+                    .chain(securities.fields.iter().map(|f| f.name.clone()))
+                    .chain(names[..k].iter().map(|n| (*n).to_owned()))
+                    .collect();
+                return Err(match nearest(used, candidates.iter().map(String::as_str)) {
+                    Some(near) => format!("unknown name; did you mean {near}?"),
+                    None => "unknown name: not a measure, a numeric field or an earlier formula"
+                        .to_owned(),
+                });
+            };
+            Ok(match inputs.iter().position(|x| *x == input) {
+                Some(p) => p,
+                None => {
+                    inputs.push(input);
+                    inputs.len() - 1
+                }
+            })
+        };
+        match formula::parse(text, &mut resolve) {
+            Ok(expr) => formulas.push(Compiled { expr, inputs }),
+            Err(problem) => {
+                report.error(&path, problem);
+                // Its place is kept, so that later formulas' inputs stay where they are.
+                formulas.push(Compiled {
+                    expr: formula::Expr::Number(f64::NAN),
+                    inputs: Vec::new(),
+                });
+            }
+        }
+    }
+
     let mut needed = Vec::new();
     let mut resolve = |path: &str,
                        measure: &Option<String>,
@@ -1479,12 +1710,15 @@ fn plan(
                     None
                 }
             },
-            (None, Some(name)) => match known_field(name, securities) {
-                Ok(k) => Some(Target::Field(k)),
-                Err(problem) => {
-                    report.error(format!("{path}.field"), problem);
-                    None
-                }
+            (None, Some(name)) => match names.iter().position(|n| n == name) {
+                Some(k) => Some(Target::Formula(k)),
+                None => match known_field(name, securities) {
+                    Ok(k) => Some(Target::Field(k)),
+                    Err(problem) => {
+                        report.error(format!("{path}.field"), problem);
+                        None
+                    }
+                },
             },
         }
     };
@@ -1641,6 +1875,7 @@ fn plan(
     report.into_result(Plan {
         as_of,
         measures,
+        formulas,
         rules,
         sort,
         needed,
@@ -1650,6 +1885,8 @@ fn plan(
 /// One security measured, judged on every rule.
 struct Row {
     values: Vec<Option<f64>>,
+    /// The value of each formula.
+    formulas: Vec<Option<f64>>,
     /// For each measure, whether it has no value for want of history.
     short: Vec<bool>,
     status: Status,
@@ -1738,6 +1975,25 @@ pub fn screen(
         } else {
             Status::Measured
         };
+        // The formulas, in order, on the measures, the fields and the formulas before each.
+        let mut formula_values: Vec<Option<f64>> = Vec::with_capacity(plan.formulas.len());
+        for compiled in &plan.formulas {
+            let inputs: Vec<Option<f64>> = compiled
+                .inputs
+                .iter()
+                .map(|input| match *input {
+                    Input::Measure(k) => measured.values[k],
+                    Input::Field(k) => securities.fields[k].number(i),
+                    Input::Formula(k) => formula_values[k],
+                })
+                .collect();
+            let value = if measured.stale {
+                None
+            } else {
+                compiled.expr.eval(&inputs)
+            };
+            formula_values.push(value);
+        }
         let short = plan
             .measures
             .iter()
@@ -1768,6 +2024,7 @@ pub fn screen(
                         let value = match rule.target {
                             Target::Measure(k) => measured.values[k],
                             Target::Field(k) => securities.fields[k].number(i),
+                            Target::Formula(k) => formula_values[k],
                         };
                         let Some(x) = value else {
                             return Verdict::Lacking;
@@ -1786,6 +2043,7 @@ pub fn screen(
             .collect();
         Row {
             values: measured.values,
+            formulas: formula_values,
             short,
             status,
             first_day: measured.first_day,
@@ -1805,6 +2063,7 @@ pub fn screen(
             match target {
                 Target::Measure(k) => rows[i].values[k],
                 Target::Field(k) => securities.fields[k].number(i),
+                Target::Formula(k) => rows[i].formulas[k],
             }
         };
         order.sort_by(|a, b| match (key(*a), key(*b)) {
@@ -1826,6 +2085,7 @@ pub fn screen(
     }
 
     let mut lacking = vec![0usize; plan.measures.len()];
+    let mut formulas_lacking = vec![0usize; plan.formulas.len()];
     let mut lacking_history = vec![0usize; plan.measures.len()];
     let mut rule_results: Vec<RuleResult> = options
         .rules
@@ -1848,6 +2108,11 @@ pub fn screen(
             Status::Measured => measured += 1,
         }
         for (count, v) in lacking.iter_mut().zip(&row.values) {
+            if v.is_none() {
+                *count += 1;
+            }
+        }
+        for (count, v) in formulas_lacking.iter_mut().zip(&row.formulas) {
             if v.is_none() {
                 *count += 1;
             }
@@ -1901,19 +2166,28 @@ pub fn screen(
     }
 
     let day = |d: Option<i32>| d.and_then(|d| Date::from_days_since_epoch(d).ok());
+    let formula_names: Vec<&str> = options.formulas.0.iter().map(|(n, _)| n.as_str()).collect();
     let securities_rows: Vec<SecurityScreen> = rows
         .into_iter()
         .enumerate()
-        .map(|(i, row)| SecurityScreen {
-            id: securities.ids[i].clone(),
-            status: row.status,
-            passed: passed[i],
-            matched: rank[i].is_some(),
-            rank: rank[i],
-            first_date: day(row.first_day),
-            last_date: day(row.last_day),
-            values: row.values,
-            fields: securities.fields(i),
+        .map(|(i, row)| {
+            let mut fields = securities.fields(i);
+            for (name, value) in formula_names.iter().zip(&row.formulas) {
+                if let Some(x) = value {
+                    fields.insert((*name).to_owned(), FieldValue::Number(*x));
+                }
+            }
+            SecurityScreen {
+                id: securities.ids[i].clone(),
+                status: row.status,
+                passed: passed[i],
+                matched: rank[i].is_some(),
+                rank: rank[i],
+                first_date: day(row.first_day),
+                last_date: day(row.last_day),
+                values: row.values,
+                fields,
+            }
         })
         .collect();
     let coverage = Coverage {
@@ -1935,7 +2209,19 @@ pub fn screen(
         fields: securities
             .field_names()
             .into_iter()
+            .chain(formula_names.iter().copied())
             .map(str::to_owned)
+            .collect(),
+        formulas: options
+            .formulas
+            .0
+            .iter()
+            .zip(formulas_lacking)
+            .map(|((name, formula), lacking)| FormulaResult {
+                name: name.clone(),
+                formula: formula.clone(),
+                lacking,
+            })
             .collect(),
         rules: rule_results,
         sort: options.sort.clone(),

@@ -103,6 +103,38 @@ field (`measures[2]`, `rules[0].field`), a measure the universe cannot give, a c
 does not suit what it tests, a range whose low end is above its high end, a missing value, a sort
 by text, a limit of zero.
 
+## Formulas
+
+A formula is a numeric field computed for each security from its measures, its numeric fields
+and the formulas given before it, such as `risk_adjusted = return_1y / volatility` or
+`earnings_yield = 1 / pe_ratio`. Formulas are given by name, in order (`formulas={...}` in
+Python and JavaScript, `.formula(name, formula)` in Rust), and the rules, the sort and the
+results then take each by its name, as they take a field. A formula is evaluated, never run: it
+is numbers (`0.5`, `1e-3`), names, `+ - * /`, unary minus, parentheses, and the functions
+`abs(x)`, `sqrt(x)`, `log(x)` (natural), `min(a, b, ...)` and `max(a, b, ...)`, with the usual
+precedence. A security has no value of a formula where an input has none, where the formula
+divides by zero, takes the square root of a negative number or the logarithm of one at most
+zero, or where the result is not finite; it then fails a rule on the formula, as it fails one on
+a missing measure, and the Data section counts it. A measure a formula uses is computed whether
+or not it is asked for.
+
+The problems with the formulas are reported with the others, at `formulas.<name>`, with the token
+and its place: an unknown name (with the nearest known one), a text field, a formula given after
+the one that uses it, a name that is a measure's or a field's, or anything else that is not part
+of a formula.
+
+```python
+>>> import pandas as pd
+>>> import finalytics as fl
+>>> dates = pd.to_datetime(["2026-01-02", "2026-01-05", "2026-01-06"])
+>>> closes = {"A": pd.Series([100.0, 102.0, 101.0], index=dates)}
+>>> u = fl.Universe(closes, fields={"A": {"pe_ratio": 20.0}})
+>>> screen = u.screen(formulas={"earnings_yield": "1 / pe_ratio"})
+>>> screen.results.securities[0].fields["earnings_yield"]
+0.05
+
+```
+
 ## Coverage
 
 A security is **measured** when it has at least two closes to `as_of` and the history every

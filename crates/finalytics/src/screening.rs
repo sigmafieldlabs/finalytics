@@ -43,8 +43,8 @@ pub use finalytics_reports::{
     MeasureSpread, ScreenColumn, ScreenContext, ScreenMatch, ScreenReport,
 };
 pub use finalytics_risk::screening::{
-    Columns, Coverage, FieldValue, Measure, MeasureUnit, Op, Order, Rule, RuleResult, RuleValue,
-    ScreenOptions, ScreenResults, SecurityScreen, Series, Sort, Status,
+    Columns, Coverage, FieldValue, FormulaResult, Formulas, Measure, MeasureUnit, Op, Order, Rule,
+    RuleResult, RuleValue, ScreenOptions, ScreenResults, SecurityScreen, Series, Sort, Status,
 };
 
 /// Many securities, each with its own dates and closes, and their volumes, dividends and fields
@@ -372,6 +372,19 @@ impl ScreenBuilder<'_> {
     /// The most matches to keep, after sorting.
     pub fn limit(mut self, limit: usize) -> Self {
         self.options.limit = Some(limit);
+        self
+    }
+
+    /// A formula, such as `formula("risk_adjusted", "return_1y / volatility")`: a numeric field
+    /// of every security, computed from the measures, the numeric fields and the formulas
+    /// before it, which the rules, the sort and the results then take by its name. A formula
+    /// given again under the same name replaces the first.
+    pub fn formula(mut self, name: &str, formula: &str) -> Self {
+        let formulas = &mut self.options.formulas.0;
+        match formulas.iter_mut().find(|(n, _)| n == name) {
+            Some((_, f)) => *f = formula.to_owned(),
+            None => formulas.push((name.to_owned(), formula.to_owned())),
+        }
         self
     }
 

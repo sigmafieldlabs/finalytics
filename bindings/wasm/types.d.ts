@@ -1350,6 +1350,16 @@ export interface FlowSummary {
 /** When external flows are assumed to happen within the day they are recorded on. */
 export type FlowTiming = "start_of_day" | "end_of_day";
 
+/** A formula, with how many securities have no value of it. */
+export interface FormulaResult {
+  /** Its name. */
+  name: string;
+  /** The formula, as given. */
+  formula: string;
+  /** How many securities that are not stale have no value of it. */
+  lacking: number;
+}
+
 /** How often a regular amount falls due. */
 export type Frequency = "month" | "quarter" | "year";
 
@@ -4270,8 +4280,10 @@ export interface ScreenContext {
   max_carry_days: number;
   /** The measures computed. */
   measures: Measure[];
-  /** The names of the fields given. */
+  /** The names of the fields given, then of the formulas. */
   fields: string[];
+  /** The formulas, in order, with how many securities have no value of each. */
+  formulas?: FormulaResult[];
   /** How the matches are sorted. */
   sort?: Sort | null;
   /** The most matches kept. */
@@ -4335,6 +4347,16 @@ export interface ScreenOptions {
   sort?: Sort | null;
   /** The most matches to keep, after sorting. */
   limit?: number | null;
+  /**
+   * Formulas by name, in order, such as `{"risk_adjusted": "return_1y / volatility"}`: each
+   * a numeric field of every security, which rules, the sort and the results take as they
+   * take a field. A formula is numbers, the names of measures, numeric fields and earlier
+   * formulas, `+ - * /`, unary minus, parentheses, and `abs(x)`, `sqrt(x)`, `log(x)`
+   * (natural), `min(a, b, ...)` and `max(a, b, ...)`. A security has no value where an input
+   * has none, where the formula divides by zero, takes the square root of a negative number
+   * or the logarithm of one at most zero, or where the result is not finite.
+   */
+  formulas?: Record<string, string>;
 }
 
 /** The screening report: what one screen of a universe found. */
@@ -4394,8 +4416,13 @@ export interface ScreenResults {
   risk_free_rate: number;
   /** The measures computed, in the order of each security's `values`. */
   measures: Measure[];
-  /** The names of the fields given. */
+  /**
+   * The names of the fields given, then of the formulas, which each security's `fields`
+   * give as numbers.
+   */
   fields: string[];
+  /** The formulas, in order, with how many securities have no value of each. */
+  formulas?: FormulaResult[];
   /** Each rule, with how many met it. */
   rules: RuleResult[];
   /** How the matches are sorted. */

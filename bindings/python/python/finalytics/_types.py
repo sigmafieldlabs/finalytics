@@ -1951,6 +1951,20 @@ class FlowSummary:
 
 
 @dataclass(frozen=True, kw_only=True)
+class FormulaResult:
+    """A formula, with how many securities have no value of it."""
+
+    name: str
+    """Its name."""
+
+    formula: str
+    """The formula, as given."""
+
+    lacking: int
+    """How many securities that are not stale have no value of it."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class FrontierPoint:
     """A portfolio on the efficient frontier."""
 
@@ -5878,7 +5892,10 @@ class ScreenContext:
     """The measures computed."""
 
     fields: list[str]
-    """The names of the fields given."""
+    """The names of the fields given, then of the formulas."""
+
+    formulas: list[FormulaResult] = field(default_factory=list)
+    """The formulas, in order, with how many securities have no value of each."""
 
     sort: Sort | None = None
     """How the matches are sorted."""
@@ -5958,6 +5975,16 @@ class ScreenOptions:
     limit: int | None = None
     """The most matches to keep, after sorting."""
 
+    formulas: dict[str, str] = field(default_factory=dict)
+    """Formulas by name, in order, such as `{"risk_adjusted": "return_1y / volatility"}`: each a
+    numeric field of every security, which rules, the sort and the results take as they take a
+    field. A formula is numbers, the names of measures, numeric fields and earlier formulas, `+ -
+    * /`, unary minus, parentheses, and `abs(x)`, `sqrt(x)`, `log(x)` (natural), `min(a, b, ...)`
+    and `max(a, b, ...)`. A security has no value where an input has none, where the formula
+    divides by zero, takes the square root of a negative number or the logarithm of one at most
+    zero, or where the result is not finite.
+    """
+
 
 @dataclass(frozen=True, kw_only=True)
 class ScreenReport(ReportPage):
@@ -6031,7 +6058,12 @@ class ScreenResults(PrintedResults):
     """The measures computed, in the order of each security's `values`."""
 
     fields: list[str]
-    """The names of the fields given."""
+    """The names of the fields given, then of the formulas, which each security's `fields` give as
+    numbers.
+    """
+
+    formulas: list[FormulaResult] = field(default_factory=list)
+    """The formulas, in order, with how many securities have no value of each."""
 
     rules: list[RuleResult]
     """Each rule, with how many met it."""
@@ -7585,6 +7617,7 @@ __all__ = [
     "FlowKind",
     "FlowSummary",
     "FlowTiming",
+    "FormulaResult",
     "FractionColumn",
     "FractionUnit",
     "Frequency",

@@ -10,8 +10,8 @@ use sha2::{Digest, Sha256};
 
 use finalytics_core::{Date, ValidationReport};
 use finalytics_risk::screening::{
-    Coverage, FieldValue, Measure, MeasureUnit, Op, Order, Rule, RuleResult, RuleValue,
-    ScreenResults, SecurityScreen, Sort, Status,
+    Coverage, FieldValue, FormulaResult, Measure, MeasureUnit, Op, Order, Rule, RuleResult,
+    RuleValue, ScreenResults, SecurityScreen, Sort, Status,
 };
 
 use crate::tables::{Cell, Column, ColumnKind, ReportTable};
@@ -41,8 +41,11 @@ pub struct ScreenContext {
     pub max_carry_days: u32,
     /// The measures computed.
     pub measures: Vec<Measure>,
-    /// The names of the fields given.
+    /// The names of the fields given, then of the formulas.
     pub fields: Vec<String>,
+    /// The formulas, in order, with how many securities have no value of each.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub formulas: Vec<FormulaResult>,
     /// How the matches are sorted.
     pub sort: Option<Sort>,
     /// The most matches kept.
@@ -689,6 +692,7 @@ pub fn screen_report(results: &ScreenResults, version: &str) -> ScreenReport {
             max_carry_days: results.max_carry_days,
             measures: results.measures.clone(),
             fields: results.fields.clone(),
+            formulas: results.formulas.clone(),
             sort: results.sort.clone(),
             limit: results.limit,
             warnings: results.warnings.clone(),
@@ -1538,6 +1542,14 @@ impl ScreenReport {
         if let Some(d) = x.common_start {
             parts.push(format!("Every history starts on {}.", crate::text::date(d)));
         }
+        // Each formula as written, with the securities that have no value of it.
+        for f in &self.context.formulas {
+            let lacking = match f.lacking {
+                0 => String::new(),
+                n => format!("; {} without a value", counted(n, "security", "securities")),
+            };
+            parts.push(format!("{} = {}{lacking}.", f.name, f.formula));
+        }
         for issue in self.context.warnings.issues() {
             parts.push(sentence(&issue.message));
         }
@@ -1710,6 +1722,28 @@ impl ScreenReport {
                 })
                 .collect(),
         ));
+        if !self.context.formulas.is_empty() {
+            out.push(table(
+                "formulas",
+                "Formulas",
+                vec![
+                    col("name", "Name", ColumnKind::Text),
+                    col("formula", "Formula", ColumnKind::Text),
+                    col("lacking", "Without a value", ColumnKind::Integer),
+                ],
+                self.context
+                    .formulas
+                    .iter()
+                    .map(|f| {
+                        vec![
+                            Cell::Text(f.name.clone()),
+                            Cell::Text(f.formula.clone()),
+                            whole(f.lacking),
+                        ]
+                    })
+                    .collect(),
+            ));
+        }
         out
     }
 }

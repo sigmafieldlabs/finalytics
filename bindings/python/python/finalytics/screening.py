@@ -309,6 +309,7 @@ class Universe:
         rules: Sequence[RuleLike] = (),
         sort: SortLike | None = None,
         limit: int | None = None,
+        formulas: Mapping[str, str] | None = None,
         name: str | None = None,
     ) -> _types.Screen:
         """Screens the universe: each security measured on its own closes up to `as_of`, judged
@@ -328,6 +329,12 @@ class Universe:
           of values. A security without the value a rule tests fails it.
         - `sort`: ``(name, order)``, a measure or numeric field and ``"descending"`` or
           ``"ascending"``; `limit`: the most matches to keep.
+        - `formulas`: numeric fields computed for each security, by name, in order, such as
+          ``{"risk_adjusted": "return_1y / volatility"}``, which the rules, the sort and the
+          results then take by name. A formula is numbers, the names of measures, numeric
+          fields and earlier formulas, ``+ - * /``, parentheses, and ``abs``, ``sqrt``, ``log``,
+          ``min`` and ``max``; a security has no value where an input has none or the formula
+          has no finite result, such as on division by zero.
 
         Every problem is reported together, in one :class:`~finalytics.ValidationError`.
         """
@@ -338,6 +345,7 @@ class Universe:
             rules=[_rule(r, k) for k, r in enumerate(rules)],
             sort=_sort(sort),
             limit=None if limit is None else int(limit),
+            formulas={str(k): str(v) for k, v in (formulas or {}).items()},
         )
         result = loads(_types.Screen, call(self._native.screen, dumps(options, "options")))
         if name is not None:

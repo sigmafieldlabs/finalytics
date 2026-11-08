@@ -162,3 +162,27 @@ def test_problems_are_reported_together(universe):
     with pytest.raises(fl.ValidationError) as found:
         universe.screen(sort="sharpe_ratio")
     assert found.value.issues[0].path == "sort"
+
+
+def test_formulas_are_numeric_fields_that_rules_and_the_sort_take(universe):
+    # Given in order: the second uses the first, though its name sorts before it.
+    screen = universe.screen(
+        formulas={"yield_": "1 / pe_ratio", "score": "return_1y * yield_"},
+        rules=[("yield_", ">", 0.02)],
+        sort=("score", "descending"),
+    )
+    r = screen.results
+    assert r.fields[-2:] == ["yield_", "score"]
+    assert [(f.name, f.formula) for f in r.formulas] == [("yield_", "1 / pe_ratio"), ("score", "return_1y * yield_")]
+    for s in r.securities:
+        pe = s.fields.get("pe_ratio")
+        # A stale security is not measured, so it has no value of a formula.
+        if pe and s.status != "stale":
+            assert s.fields["yield_"] == pytest.approx(1 / pe, rel=1e-12)
+        if s.passed:
+            assert s.fields["yield_"] > 0.02
+    assert "yield_ = 1 / pe_ratio" in " ".join(str(screen).split())
+    with pytest.raises(fl.ValidationError) as caught:
+        universe.screen(formulas={"x": "pe_ration * 2"})
+    issue = caught.value.issues[0]
+    assert issue.path == "formulas.x" and "did you mean pe_ratio?" in issue.message

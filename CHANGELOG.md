@@ -9,6 +9,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Formula fields in screening: `formulas={"risk_adjusted": "return_1y / volatility"}` (Python
+  and JavaScript, `.formula(name, formula)` in Rust) adds numeric fields computed for each
+  security from its measures, numeric fields and earlier formulas, which the rules, the sort,
+  the results, the tables and both forms of the report take by name. The formulas are a small
+  language that is evaluated, never run: numbers, names, `+ - * /`, parentheses, and `abs`,
+  `sqrt`, `log`, `min` and `max`. A missing input or a result that is not finite gives no value,
+  counted in the report's data. Problems name the token and its place.
+
 - Goals kept with a portfolio: `portfolio.goals` and `with_goals(goals)`, each goal a plan with
   its name, saved in the portfolio's document (`goals`, absent when there are none, so existing
   documents and their digests are unchanged) and read from a goals file in the style of the

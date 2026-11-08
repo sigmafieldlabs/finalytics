@@ -466,8 +466,10 @@ export interface ScreenColumns {
   last_date: (Date | null)[];
   /** Each measure computed, in order, with every security's value. */
   measures: Partial<Record<Measure, Float64Array>>;
-  /** Each field given, with every security's value: numbers or text. */
+  /** Each field given, then each formula, with every security's value: numbers or text. */
   fields: Record<string, Float64Array | (string | null)[]>;
+  /** The formulas, in order, with how many securities have no value of each. */
+  formulas: FormulaResult[];
   /** Each rule, with how many met it. */
   rules: RuleResult[];
   /** How the matches are sorted. */
@@ -2342,17 +2344,33 @@ impl Universe {
         &self,
         #[wasm_bindgen(unchecked_optional_param_type = "ScreenChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut choices = object(options, &fields::<finalytics::ScreenOptions>(&["name"]))?;
+        // The formulas in the order the object gives them, which JSON read into a map need not
+        // keep: a formula may use those before it.
+        let order: Vec<String> = match property(&options, "formulas") {
+            Ok(f) if f.is_object() => js_sys::Object::keys(f.unchecked_ref::<js_sys::Object>())
+                .iter()
+                .filter_map(|k| k.as_string())
+                .collect(),
+            _ => Vec::new(),
+        };
+        let mut choices = object(
+            options,
+            &fields::<finalytics::ScreenOptions>(&["name", "formulas"]),
+        )?;
         let name = match choices.remove("name") {
             Some(serde_json::Value::String(name)) => Some(name),
             Some(serde_json::Value::Null) | None => None,
             Some(_) => return Err(invalid("options.name", "must be a string")),
         };
-        let options: finalytics::ScreenOptions = finalytics::formats::from_json(
+        let mut options: finalytics::ScreenOptions = finalytics::formats::from_json(
             &serde_json::Value::Object(choices).to_string(),
             "options",
         )
         .map_err(error)?;
+        options
+            .formulas
+            .0
+            .sort_by_key(|(name, _)| order.iter().position(|n| n == name));
         let screen = self.inner.screen_with(&options).map_err(error)?;
         let mut report = screen.report;
         report.name = name;
@@ -2464,6 +2482,7 @@ fn screen_columns(r: &finalytics::ScreenResults) -> Result<JsValue, JsValue> {
         "matched": rows.iter().map(|s| s.matched).collect::<Vec<_>>(),
         "first_date": rows.iter().map(|s| s.first_date).collect::<Vec<_>>(),
         "last_date": rows.iter().map(|s| s.last_date).collect::<Vec<_>>(),
+        "formulas": r.formulas,
         "rules": r.rules,
         "sort": r.sort,
         "limit": r.limit,

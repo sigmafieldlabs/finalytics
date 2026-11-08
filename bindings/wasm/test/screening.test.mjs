@@ -208,3 +208,26 @@ test("every problem is reported together", () => {
     { name: "ValidationError" },
   );
 });
+
+test("formulas are numeric fields that rules and the sort take", () => {
+  // Given in order: the second uses the first, though its name sorts before it.
+  const screen = universe.screen({
+    formulas: { yield_: "1 / pe_ratio", score: "return_1y * yield_" },
+    rules: [{ field: "yield_", op: ">", value: 0.02 }],
+    sort: { field: "score", order: "descending" },
+  });
+  const r = screen.results;
+  assert.deepEqual(Object.keys(r.fields).slice(-2), ["yield_", "score"]);
+  assert.deepEqual(r.formulas.map((f) => f.name), ["yield_", "score"]);
+  r.ids.forEach((id, i) => {
+    const pe = r.fields.pe_ratio[i];
+    // A stale security is not measured, so it has no value of a formula.
+    if (!Number.isNaN(pe) && r.status[i] !== "stale") close(r.fields.yield_[i], 1 / pe, 1e-12, id);
+  });
+  assert.match(screen.toString().split(/\s+/).join(" "), /yield_ = 1 \/ pe_ratio/);
+  assert.throws(() => universe.screen({ formulas: { x: "pe_ration * 2" } }), (e) => {
+    assert.equal(e.issues[0].path, "formulas.x");
+    assert.match(e.issues[0].message, /did you mean pe_ratio\?/);
+    return true;
+  });
+});

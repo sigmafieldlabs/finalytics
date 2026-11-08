@@ -3422,6 +3422,31 @@
       ],
       "description": "When external flows are assumed to happen within the day they are recorded on."
     },
+    "FormulaResult": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "formula": {
+          "type": "string",
+          "description": "The formula, as given."
+        },
+        "lacking": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "How many securities that are not stale have no value of it."
+        }
+      },
+      "required": [
+        "name",
+        "formula",
+        "lacking"
+      ],
+      "description": "A formula, with how many securities have no value of it."
+    },
     "Frequency": {
       "oneOf": [
         {
@@ -11619,7 +11644,14 @@
           "items": {
             "type": "string"
           },
-          "description": "The names of the fields given."
+          "description": "The names of the fields given, then of the formulas."
+        },
+        "formulas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FormulaResult"
+          },
+          "description": "The formulas, in order, with how many securities have no value of each."
         },
         "sort": {
           "anyOf": [
@@ -11809,6 +11841,13 @@
           "minimum": 0,
           "description": "The most matches to keep, after sorting.",
           "default": null
+        },
+        "formulas": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Formulas by name, in order, such as `{\"risk_adjusted\": \"return_1y / volatility\"}`: each\na numeric field of every security, which rules, the sort and the results take as they\ntake a field. A formula is numbers, the names of measures, numeric fields and earlier\nformulas, `+ - * /`, unary minus, parentheses, and `abs(x)`, `sqrt(x)`, `log(x)`\n(natural), `min(a, b, ...)` and `max(a, b, ...)`. A security has no value where an input\nhas none, where the formula divides by zero, takes the square root of a negative number\nor the logarithm of one at most zero, or where the result is not finite."
         }
       },
       "description": "What a screen measures and keeps. Everything is optional: by default every measure the\nuniverse allows, on its latest date, with no rules."
@@ -11942,7 +11981,14 @@
           "items": {
             "type": "string"
           },
-          "description": "The names of the fields given."
+          "description": "The names of the fields given, then of the formulas, which each security's `fields`\ngive as numbers."
+        },
+        "formulas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FormulaResult"
+          },
+          "description": "The formulas, in order, with how many securities have no value of each."
         },
         "rules": {
           "type": "array",

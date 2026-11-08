@@ -224,3 +224,116 @@ fn columns_give_the_same_universe_as_series() {
         assert_eq!(x.values, y.values);
     }
 }
+
+#[test]
+fn formulas_are_numeric_fields_that_rules_and_the_sort_take() {
+    use std::collections::BTreeMap;
+
+    use finalytics::screening::FieldValue;
+
+    let u = universe();
+    // A price-to-earnings ratio for each company, and none for one.
+    let fields: BTreeMap<String, BTreeMap<String, FieldValue>> = u
+        .ids()
+        .iter()
+        .enumerate()
+        .filter(|(k, _)| *k != 3)
+        .map(|(k, id)| {
+            let pe = BTreeMap::from([("pe".to_owned(), FieldValue::Number(8.0 + k as f64))]);
+            (id.clone(), pe)
+        })
+        .collect();
+    let u = u.with_fields(fields).unwrap();
+    let screen = u
+        .screen()
+        .as_of("2007-06-29")
+        .formula("risk_adjusted", "return_1y / volatility")
+        .formula("per_pe", "max(risk_adjusted, 0) / pe")
+        .above("risk_adjusted", 0.5)
+        .sort("per_pe", Order::Descending)
+        .build()
+        .unwrap();
+    let r = &screen.results;
+    assert!(
+        r.fields
+            .ends_with(&["risk_adjusted".to_owned(), "per_pe".to_owned()])
+    );
+    let at = |m: Measure| r.measures.iter().position(|x| *x == m).unwrap();
+    let number = |s: &finalytics::screening::SecurityScreen, name: &str| match s.fields.get(name) {
+        Some(FieldValue::Number(x)) => Some(*x),
+        _ => None,
+    };
+    for s in &r.securities {
+        let expected = match (
+            s.values[at(Measure::Return1y)],
+            s.values[at(Measure::Volatility)],
+        ) {
+            (Some(a), Some(b)) if b != 0.0 => Some(a / b),
+            _ => None,
+        };
+        assert_eq!(number(s, "risk_adjusted"), expected, "{}", s.id);
+        if s.passed {
+            assert!(number(s, "risk_adjusted").unwrap() > 0.5);
+        }
+    }
+    // The company without a ratio has no value of the formula on it, and is counted.
+    let without = &r.securities[3];
+    assert!(number(without, "per_pe").is_none());
+    assert!(r.formulas[1].lacking >= 1);
+    let keys: Vec<f64> = r
+        .matches
+        .iter()
+        .filter_map(|id| number(r.security(id).unwrap(), "per_pe"))
+        .collect();
+    assert!(keys.windows(2).all(|w| w[0] >= w[1]), "{keys:?}");
+    // The report lists each formula with the data, in both forms, and as a table.
+    let text = screen.to_string();
+    assert!(
+        words(&text).contains("risk_adjusted = return_1y / volatility"),
+        "{text}"
+    );
+    assert!(words(&screen.report.to_html(None)).contains("per_pe = max(risk_adjusted, 0) / pe"));
+    assert!(screen.report.tables().iter().any(|t| t.name == "formulas"));
+    assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
+}
+
+#[test]
+fn every_problem_with_the_formulas_is_reported_together() {
+    let u = universe();
+    let Err(finalytics::Error::Validation(report)) = u
+        .screen()
+        .formula("a", "retrun_1y / 2")
+        .formula("b", "c + 1")
+        .formula("c", "sector * 2")
+        .formula("volatility", "1")
+        .formula("d", "return_1y > 1")
+        .build()
+    else {
+        panic!("screened with bad formulas")
+    };
+    let found: Vec<(String, String)> = report
+        .issues()
+        .iter()
+        .map(|i| (i.path.clone(), i.message.clone()))
+        .collect();
+    let paths: Vec<&str> = found.iter().map(|(p, _)| p.as_str()).collect();
+    assert_eq!(
+        paths,
+        [
+            "formulas.a",
+            "formulas.b",
+            "formulas.c",
+            "formulas.volatility",
+            "formulas.d"
+        ],
+        "{found:?}"
+    );
+    assert!(
+        found[0]
+            .1
+            .contains("`retrun_1y` at character 1: unknown name; did you mean return_1y?")
+    );
+    assert!(found[1].1.contains("given after this one"));
+    assert!(found[2].1.contains("sector is text"));
+    assert!(found[4].1.contains("`>` at character 11"));
+}
