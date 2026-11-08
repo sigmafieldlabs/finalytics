@@ -120,3 +120,37 @@ def test_problems_are_reported_together(assets):
     assert {"goal.amount", "fee"} <= paths and any(p.startswith("weights") for p in paths)
     with pytest.raises(fl.ValidationError):
         assets.plan(fl.Target(amount=1, by="2030-06"), weights={"US Equity": 1.0}, inflation=0.02, model="monte")
+
+
+GOALS = """\
+goal,type,amount,by,every,start,end,name,weights,chance,start_value,inflation,simulations
+House,target,150000,2030-06,,,,,,0.8,60000,0.025,1000
+House,saving,2500,,month,,,,,,,,
+House,mix,,,,,,Balanced,US Equity=0.6;Bonds=0.4,,,,
+"""
+
+
+def test_goals_kept_with_a_portfolio_plan_as_they_are(assets):
+    files = {name: fl.datasets.file(f"portfolio/{name}.csv") for name in ("transactions", "instruments", "accounts", "prices", "fx")}
+    portfolio = fl.Portfolio.from_csv(**files, goals=GOALS)
+    [goal] = portfolio.goals
+    assert goal.name == "House" and goal.currency == portfolio.data.base_currency
+    stored = assets.plan(goal)
+    built = assets.plan(
+        fl.Target(name="House", amount=150_000, by="2030-06"),
+        start_value=60_000,
+        flows=[fl.Saving(amount=2_500, every="month")],
+        weights=("Balanced", {"US Equity": 0.6, "Bonds": 0.4}),
+        inflation=0.025,
+        simulations=1_000,
+        currency=portfolio.data.base_currency,
+        name="House",
+    )
+    assert stored.results == built.results
+    # Saved with the portfolio, and planned the same when read back.
+    read = fl.Portfolio.read(portfolio.to_json())
+    assert read.goals == portfolio.goals
+    assert fl.datasets.portfolio().with_goals(read.goals).goals == read.goals
+    with pytest.raises(fl.ValidationError) as caught:
+        assets.plan(goal, seed=3)
+    assert caught.value.issues[0].path == "seed"

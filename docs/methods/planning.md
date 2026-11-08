@@ -23,6 +23,10 @@ chance, the plan when markets do worse, and other investment mixes on the same s
   every month.
 - **Start.** The plan starts in the month after the assets' last return unless `start` says
   otherwise, with `start_value`.
+- **Goals kept with a portfolio.** A plan with its name can be kept with a portfolio
+  (`portfolio.with_goals`, or a goals file; see the [data guide](../data.md#goals)) and is saved in
+  its document. `assets.plan(goal)` plans one as it is, so a saved portfolio and the same history
+  reproduce it.
 
 Each month, the value at its start is recorded; savings are paid in; spending and then any goal
 payment are taken out, each as far as the money goes, whatever order the flows are listed in;

@@ -4355,6 +4355,9 @@ class PortfolioDocument:
     market: DocumentMarketData | None = None
     """Market data stored with the portfolio."""
 
+    goals: list[PlanOptions] = field(default_factory=list)
+    """Goals kept with the portfolio, each a plan with its name, in the order given."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class PortfolioPoint:

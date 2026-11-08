@@ -217,8 +217,9 @@ pub mod performance {
 pub mod formats {
     pub use finalytics_formats::{
         CsvOptions, FORMAT, FORMAT_VERSION, FxSeries, MarketDocument, PortfolioDocument,
-        accounts_from_csv, from_json, fx_from_csv, instruments_from_csv, market_from_csv,
-        portfolio_from_csv, price_columns_from_csv, prices_from_csv, transactions_from_csv,
+        accounts_from_csv, from_json, fx_from_csv, goals_from_csv, instruments_from_csv,
+        market_from_csv, portfolio_from_csv, price_columns_from_csv, prices_from_csv,
+        transactions_from_csv,
     };
 }
 

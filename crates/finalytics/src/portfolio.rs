@@ -23,7 +23,7 @@ use finalytics_reports::{
 };
 use finalytics_risk::{CovarianceMethod, holding_returns, holding_weights};
 
-use crate::{Assets, OptimisationResult};
+use crate::{Assets, OptimisationResult, PlanOptions};
 
 /// A portfolio: its records (base currency, accounts, instruments and transactions), the market
 /// data that values it, and the books kept from them. Everything Finalytics measures about a
@@ -49,6 +49,7 @@ pub struct Portfolio {
     data: PortfolioData,
     market: MarketData,
     books: Books,
+    goals: Vec<PlanOptions>,
 }
 
 /// The CSV files of a portfolio, for [`Portfolio::from_csv`]. Only the transactions are
@@ -63,6 +64,7 @@ pub struct PortfolioCsv<'a> {
     accounts: Option<&'a str>,
     prices: Option<&'a str>,
     fx: Option<&'a str>,
+    goals: Option<&'a str>,
     base_currency: Option<&'a str>,
     options: CsvOptions,
 }
@@ -77,6 +79,7 @@ impl<'a> PortfolioCsv<'a> {
             accounts: None,
             prices: None,
             fx: None,
+            goals: None,
             base_currency: None,
             options: CsvOptions::default(),
         }
@@ -115,6 +118,13 @@ impl<'a> PortfolioCsv<'a> {
         self
     }
 
+    /// The goals kept with the portfolio, one record per row: see
+    /// [`goals_from_csv`](crate::formats::goals_from_csv).
+    pub fn goals(mut self, text: &'a str) -> Self {
+        self.goals = Some(text);
+        self
+    }
+
     /// The field delimiter of every file: a comma by default.
     pub fn delimiter(mut self, delimiter: u8) -> Self {
         self.options.delimiter = delimiter;
@@ -141,7 +151,35 @@ impl Portfolio {
             data,
             market,
             books,
+            goals: Vec::new(),
         })
+    }
+
+    /// The same portfolio with other records or market data, keeping its goals.
+    fn rebuilt(&self, data: PortfolioData, market: MarketData) -> Result<Portfolio> {
+        let mut portfolio = Portfolio::new(data, market)?;
+        portfolio.goals.clone_from(&self.goals);
+        Ok(portfolio)
+    }
+
+    /// The goals kept with the portfolio, each a plan with its name, for
+    /// [`Assets::plan_with`](crate::Assets::plan_with): saved with the portfolio's document and
+    /// read from a goals file.
+    pub fn goals(&self) -> &[PlanOptions] {
+        &self.goals
+    }
+
+    /// The same portfolio with `goals` kept with it in place of its own. Each needs a name, and
+    /// no two the same; a goal without a currency takes the portfolio's base currency.
+    pub fn with_goals(&self, goals: impl IntoIterator<Item = PlanOptions>) -> Result<Portfolio> {
+        let mut goals: Vec<PlanOptions> = goals.into_iter().collect();
+        finalytics_formats::goal_names(&goals).into_result(())?;
+        for goal in &mut goals {
+            goal.currency.get_or_insert(self.data.base_currency);
+        }
+        let mut portfolio = self.clone();
+        portfolio.goals = goals;
+        Ok(portfolio)
     }
 
     /// A portfolio from CSV files. Problems in every file are reported together, with paths
@@ -170,20 +208,50 @@ impl Portfolio {
             files.options,
         );
         let market = market_from_csv(files.prices, files.fx, files.options);
-        match (data, market) {
-            (Ok(data), Ok(market)) => Portfolio::new(data, market),
-            (Err(Error::Validation(mut a)), Err(Error::Validation(b))) => {
-                a.merge("", b);
-                Err(Error::Validation(a))
+        let goals = match files.goals {
+            Some(text) => finalytics_formats::goals_from_csv(text, files.options).map_err(|e| {
+                match e {
+                    // The goals file's problems, by line, apart from the others'.
+                    Error::Validation(report) => {
+                        let mut moved = ValidationReport::new();
+                        moved.merge("goals", report);
+                        Error::Validation(moved)
+                    }
+                    other => other,
+                }
+            }),
+            None => Ok(Vec::new()),
+        };
+        let mut problems = ValidationReport::new();
+        let mut first = None;
+        let mut gather = |e: Error| match e {
+            Error::Validation(report) => problems.merge("", report),
+            other => {
+                first.get_or_insert(other);
             }
-            (Err(e), _) | (_, Err(e)) => Err(e),
+        };
+        let (data, market, goals) = (
+            data.map_err(&mut gather).ok(),
+            market.map_err(&mut gather).ok(),
+            goals.map_err(&mut gather).ok(),
+        );
+        if let Some(e) = first {
+            return Err(e);
+        }
+        match (data, market, goals) {
+            (Some(data), Some(market), Some(goals)) if problems.is_empty() => {
+                Portfolio::new(data, market)?.with_goals(goals)
+            }
+            _ => Err(Error::Validation(problems)),
         }
     }
 
     /// A portfolio from a portfolio document, with the market data it holds, if any.
     pub fn from_document(document: PortfolioDocument) -> Result<Portfolio> {
         let market = document.market.unwrap_or_default();
-        Portfolio::new(document.portfolio, market)
+        let mut portfolio = Portfolio::new(document.portfolio, market)?;
+        portfolio.goals = document.goals;
+        Ok(portfolio)
     }
 
     /// A portfolio from a portfolio document in JSON.
@@ -195,6 +263,7 @@ impl Portfolio {
     pub fn to_document(&self) -> PortfolioDocument {
         let mut document = PortfolioDocument::new(self.data.clone());
         document.market = Some(self.market.clone());
+        document.goals.clone_from(&self.goals);
         document
     }
 
@@ -210,7 +279,7 @@ impl Portfolio {
     ) -> Result<Portfolio> {
         let mut data = self.data.clone();
         data.transactions.extend(transactions);
-        Portfolio::new(data, self.market.clone())
+        self.rebuilt(data, self.market.clone())
     }
 
     /// The same portfolio with the trades of a rebalancing made on its date: each account's
@@ -243,7 +312,7 @@ impl Portfolio {
 
     /// The same portfolio valued with other market data.
     pub fn with_market(&self, market: MarketData) -> Result<Portfolio> {
-        Portfolio::new(self.data.clone(), market)
+        self.rebuilt(self.data.clone(), market)
     }
 
     /// The records: base currency, accounts, instruments and transactions.
@@ -1339,12 +1408,19 @@ impl ReportBuilder<'_> {
 #[derive(Debug, Clone, Default)]
 #[must_use = "the portfolio is made by `build`"]
 pub struct PortfolioBuilder {
-    files: [Option<std::path::PathBuf>; 5],
+    files: [Option<std::path::PathBuf>; 6],
     base_currency: Option<String>,
 }
 
 #[cfg(feature = "io")]
-const FILES: [&str; 5] = ["transactions", "instruments", "accounts", "prices", "fx"];
+const FILES: [&str; 6] = [
+    "transactions",
+    "instruments",
+    "accounts",
+    "prices",
+    "fx",
+    "goals",
+];
 
 #[cfg(feature = "io")]
 impl PortfolioBuilder {
@@ -1376,6 +1452,11 @@ impl PortfolioBuilder {
     /// The exchange rates file, such as a `date` column and a `EUR/USD` column.
     pub fn fx(self, path: impl AsRef<std::path::Path>) -> Self {
         self.file(4, path)
+    }
+
+    /// The goals file: see [`goals_from_csv`](crate::formats::goals_from_csv).
+    pub fn goals(self, path: impl AsRef<std::path::Path>) -> Self {
+        self.file(5, path)
     }
 
     /// The currency results are reported in, such as `"USD"`: that of the first deposit by
@@ -1427,6 +1508,9 @@ impl PortfolioBuilder {
         }
         if let Some(t) = &texts[4] {
             csv = csv.fx(t);
+        }
+        if let Some(t) = &texts[5] {
+            csv = csv.goals(t);
         }
         if let Some(c) = &self.base_currency {
             csv = csv.base_currency(c);

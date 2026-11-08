@@ -14,11 +14,17 @@ readme = "../../README.md"
 
 [features]
 # JSON Schema descriptions of the public types, for the bindings and documentation.
-schema = ["dep:schemars", "finalytics-core/schema", "finalytics-ledger/schema"]
+schema = [
+  "dep:schemars",
+  "finalytics-core/schema",
+  "finalytics-ledger/schema",
+  "finalytics-plan/schema",
+]
 
 [dependencies]
 finalytics-core = { workspace = true }
 finalytics-ledger = { workspace = true }
+finalytics-plan = { workspace = true }
 csv = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

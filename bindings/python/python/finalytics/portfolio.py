@@ -320,6 +320,7 @@ class Portfolio:
         fx: TextOrPath | None = None,
         instruments: TextOrPath | None = None,
         accounts: TextOrPath | None = None,
+        goals: TextOrPath | None = None,
         base_currency: str | None = None,
         delimiter: str = ",",
     ) -> Portfolio:
@@ -338,6 +339,10 @@ class Portfolio:
           given with it in the transactions, or else in the base currency.
         - `accounts`: ``id``, with ``name``, ``lot_method`` and ``class.<scheme>`` columns.
           Without it, each account the transactions name is created.
+        - `goals`: goals kept with the portfolio, one record per row: ``goal`` (its name) and
+          ``type``, a ``target``, ``payments`` or ``projection`` row with the plan's settings,
+          and ``saving``, ``spending``, ``mix``, ``alternative``, ``glide`` and
+          ``alternative_glide`` rows; :attr:`goals` gives them, for :meth:`Assets.plan`.
         - `base_currency`: the currency results are reported in; by default, that of the first
           deposit.
 
@@ -354,6 +359,7 @@ class Portfolio:
             None if prices is None else _text(prices),
             None if fx is None else _text(fx),
             base_currency,
+            None if goals is None else _text(goals),
         )
         return cls._wrap(native)
 
@@ -413,6 +419,17 @@ class Portfolio:
     def with_market(self, market: MarketData) -> Portfolio:
         """The same portfolio valued with other market data."""
         return Portfolio._wrap(call(self._native.with_market, market._native))
+
+    @property
+    def goals(self) -> list[_types.PlanOptions]:
+        """The goals kept with the portfolio, each a plan with its name, for
+        :meth:`Assets.plan`: saved in the portfolio's document and read from a goals file."""
+        return loads(list[_types.PlanOptions], self._native.goals())
+
+    def with_goals(self, goals: Sequence[_types.PlanOptions]) -> Portfolio:
+        """The same portfolio with `goals` kept with it in place of its own: each a plan with a
+        name, no two the same; a goal without a currency takes the base currency."""
+        return Portfolio._wrap(call(self._native.with_goals, dumps(list(goals), "goals")))
 
     def assets(self) -> Assets:
         """The instruments held at the last price date, as :class:`~finalytics.Assets`: their

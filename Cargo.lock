@@ -534,6 +534,7 @@ dependencies = [
  "csv",
  "finalytics-core",
  "finalytics-ledger",
+ "finalytics-plan",
  "schemars",
  "serde",
  "serde_json",

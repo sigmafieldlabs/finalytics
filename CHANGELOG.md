@@ -9,6 +9,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Goals kept with a portfolio: `portfolio.goals` and `with_goals(goals)`, each goal a plan with
+  its name, saved in the portfolio's document (`goals`, absent when there are none, so existing
+  documents and their digests are unchanged) and read from a goals file in the style of the
+  transactions file (`goals=` in Python and JavaScript, `PortfolioCsv::goals` in Rust).
+  `assets.plan(goal)` plans a stored goal as it is (`assets.plan_with(goal)` in Rust), so a
+  saved portfolio and the same history reproduce the plan.
+
 - Reports on some accounts: `accounts=["brokerage"]` (`.accounts(["brokerage"])` in Rust)
   reports on those accounts alone, from the books kept from their transactions. Transfers with
   the accounts left out count as money in and out, and every report says which accounts it

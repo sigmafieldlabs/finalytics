@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use finalytics_core::{Currency, Decimal, Error, Result, TimeSeries, ValidationReport};
 use finalytics_ledger::{InstrumentId, MarketData, PortfolioData};
+use finalytics_plan::PlanOptions;
 use serde::{Deserialize, Serialize};
 
 /// The value of the document's `format` field.
@@ -32,6 +33,8 @@ pub struct PortfolioDocument {
     pub portfolio: PortfolioData,
     /// Market data stored with the portfolio, if any.
     pub market: Option<MarketData>,
+    /// Goals kept with the portfolio, each a plan with its name; none by default.
+    pub goals: Vec<PlanOptions>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -49,6 +52,9 @@ struct DocumentRepr {
     /// Market data stored with the portfolio.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     market: Option<MarketRepr>,
+    /// Goals kept with the portfolio, each a plan with its name, in the order given.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    goals: Vec<PlanOptions>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -189,6 +195,7 @@ impl PortfolioDocument {
         PortfolioDocument {
             portfolio,
             market: None,
+            goals: Vec::new(),
         }
     }
 
@@ -200,6 +207,7 @@ impl PortfolioDocument {
             format_version: FORMAT_VERSION,
             portfolio: self.portfolio.clone(),
             market,
+            goals: self.goals.clone(),
         };
         // Every field serialises to JSON without error: map keys are strings and no float is
         // non-finite.
@@ -260,10 +268,33 @@ impl PortfolioDocument {
 
     fn from_repr(repr: DocumentRepr, mut report: ValidationReport) -> Result<PortfolioDocument> {
         report.merge("portfolio", repr.portfolio.validate());
+        report.merge("", goal_names(&repr.goals));
         let market = repr.market.map(MarketRepr::into_market);
         report.into_result(PortfolioDocument {
             portfolio: repr.portfolio,
             market,
+            goals: repr.goals,
         })
     }
+}
+
+/// The problems with the names of goals kept with a portfolio: each needs one, and no two the
+/// same, so that each can be found by it.
+pub fn goal_names(goals: &[PlanOptions]) -> ValidationReport {
+    let mut report = ValidationReport::new();
+    let mut seen = std::collections::BTreeSet::new();
+    for (i, goal) in goals.iter().enumerate() {
+        match goal.name.as_deref().map(str::trim) {
+            None | Some("") => report.error(format!("goals[{i}].name"), "give the goal a name"),
+            Some(name) => {
+                if !seen.insert(name.to_owned()) {
+                    report.error(
+                        format!("goals[{i}].name"),
+                        format!("another goal is named {name}"),
+                    );
+                }
+            }
+        }
+    }
+    report
 }

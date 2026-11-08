@@ -793,10 +793,10 @@ class Assets:
 
     def plan(
         self,
-        goal: _types.Goal | None = None,
+        goal: _types.Goal | _types.PlanOptions | None = None,
         *,
-        weights: MixLike,
-        inflation: float | Any,
+        weights: MixLike | None = None,
+        inflation: float | Any = None,
         flows: Sequence[_types.PlanFlow] = (),
         start_value: float = 0.0,
         alternatives: Mapping[str, MixLike] | Sequence[MixLike] = (),
@@ -836,7 +836,29 @@ class Assets:
         - `model`: ``"bootstrap"`` (blocks of past months, the default), ``"normal"`` or
           ``"historical"``, or :class:`~finalytics.Bootstrap` with its `block` length.
         - `start`: the first month, the month after the assets' last by default.
+
+        A goal kept with a portfolio (:attr:`Portfolio.goals`), a whole plan with its settings,
+        is planned as it is: ``assets.plan(portfolio.goals[0])``, with no other arguments.
         """
+        if isinstance(goal, _types.PlanOptions):
+            defaults = {
+                "weights": None, "inflation": None, "flows": (), "start_value": 0.0, "alternatives": (),
+                "fee": 0.0, "chance": 0.8, "model": "bootstrap", "expected_returns": None, "start": None,
+                "end": None, "simulations": 10_000, "seed": 0, "currency": None, "name": None,
+            }
+            given = dict(
+                weights=weights, inflation=inflation, flows=flows, start_value=start_value,
+                alternatives=alternatives, fee=fee, chance=chance, model=model,
+                expected_returns=expected_returns, start=start, end=end, simulations=simulations,
+                seed=seed, currency=currency, name=name,
+            )
+            changed = [key for key, value in given.items() if value != defaults[key]]
+            if changed:
+                raise invalid(*(
+                    (key, "a goal kept with a portfolio carries its own settings: change it with "
+                     "dataclasses.replace") for key in changed
+                ))
+            return loads(_types.Plan, call(self._native.plan, dumps(goal, "options")))
         wanted, spare = (chance if isinstance(chance, tuple) else (chance, None))
         if isinstance(model, str):
             model = _named("model", model, _MODELS)
@@ -858,7 +880,7 @@ class Assets:
             end=_month(end),
             start_value=float(start_value),
             flows=list(flows),
-            weights=_mix(weights),
+            weights=None if weights is None else _mix(weights),
             alternatives=mixes,
             fee=float(fee),
             inflation=inflation,

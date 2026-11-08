@@ -119,6 +119,12 @@ export interface PortfolioFiles {
   instruments?: string;
   /** `id`, with `name`, `lot_method` and `class.<scheme>` columns. */
   accounts?: string;
+  /**
+   * Goals kept with the portfolio, one record per row: `goal` (its name) and `type`, a
+   * `target`, `payments` or `projection` row with the plan's settings, and `saving`, `spending`,
+   * `mix`, `alternative`, `glide` and `alternative_glide` rows.
+   */
+  goals?: string;
   /** The currency results are reported in; by default, that of the first deposit. */
   base_currency?: string;
   /** The field delimiter: a comma by default. */
@@ -894,6 +900,8 @@ struct PortfolioFiles {
     #[serde(default)]
     accounts: Option<String>,
     #[serde(default)]
+    goals: Option<String>,
+    #[serde(default)]
     base_currency: Option<String>,
     #[serde(default)]
     delimiter: Option<String>,
@@ -933,6 +941,9 @@ impl Portfolio {
         }
         if let Some(text) = &files.accounts {
             csv = csv.accounts(text);
+        }
+        if let Some(text) = &files.goals {
+            csv = csv.goals(text);
         }
         if let Some(code) = &files.base_currency {
             csv = csv.base_currency(code);
@@ -1016,6 +1027,23 @@ impl Portfolio {
             .with_market(market.inner.clone())
             .map_err(error)?
             .into())
+    }
+
+    /// The goals kept with the portfolio, each a plan with its name, for `Assets.plan`.
+    #[wasm_bindgen(getter, unchecked_return_type = "PlanOptions[]")]
+    pub fn goals(&self) -> Result<JsValue, JsValue> {
+        to_js(self.inner.goals())
+    }
+
+    /// The same portfolio with `goals` kept with it in place of its own: each a plan with a
+    /// name, no two the same.
+    #[wasm_bindgen(js_name = withGoals)]
+    pub fn with_goals(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "PlanOptions[]")] goals: JsValue,
+    ) -> Result<Portfolio, JsValue> {
+        let goals: Vec<finalytics::PlanOptions> = from_js(goals, "goals")?;
+        Ok(self.inner.with_goals(goals).map_err(error)?.into())
     }
 
     /// The instruments held at the last price date, as `Assets`: their price returns in the
@@ -1909,7 +1937,7 @@ impl Assets {
     #[wasm_bindgen(unchecked_return_type = "Result<PlanReport, PlanResults>")]
     pub fn plan(
         &self,
-        #[wasm_bindgen(unchecked_param_type = "PlanChoices")] options: JsValue,
+        #[wasm_bindgen(unchecked_param_type = "PlanChoices | PlanOptions")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
         let mut choices = object(options, &fields::<finalytics::PlanOptions>(&[]))?;
         let mix = |value: serde_json::Value, name: Option<&str>| -> serde_json::Value {

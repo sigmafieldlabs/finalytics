@@ -3116,6 +3116,8 @@ export interface PortfolioDocument {
   portfolio: PortfolioData;
   /** Market data stored with the portfolio. */
   market?: DocumentMarketData | null;
+  /** Goals kept with the portfolio, each a plan with its name, in the order given. */
+  goals?: PlanOptions[];
 }
 
 /** A portfolio's expected return and volatility, for a point on a risk–return chart. */

@@ -280,7 +280,7 @@ impl NativePortfolio {
     }
 
     #[staticmethod]
-    #[pyo3(signature = (transactions, delimiter, instruments=None, accounts=None, prices=None, fx=None, base_currency=None))]
+    #[pyo3(signature = (transactions, delimiter, instruments=None, accounts=None, prices=None, fx=None, base_currency=None, goals=None))]
     #[allow(clippy::too_many_arguments)]
     fn from_csv(
         py: Python<'_>,
@@ -291,6 +291,7 @@ impl NativePortfolio {
         prices: Option<&str>,
         fx: Option<&str>,
         base_currency: Option<&str>,
+        goals: Option<&str>,
     ) -> PyResult<NativePortfolio> {
         let mut files = PortfolioCsv::new(transactions);
         if let [byte] = delimiter.as_bytes() {
@@ -312,6 +313,9 @@ impl NativePortfolio {
         }
         if let Some(code) = base_currency {
             files = files.base_currency(code);
+        }
+        if let Some(text) = goals {
+            files = files.goals(text);
         }
         Ok(released(py, || Portfolio::from_csv(&files))
             .map_err(engine)?
@@ -381,6 +385,15 @@ impl NativePortfolio {
             .with_market(market.inner.clone())
             .map_err(engine)?
             .into())
+    }
+
+    fn goals(&self) -> PyResult<String> {
+        to_json(&self.portfolio.goals().to_vec())
+    }
+
+    fn with_goals(&self, goals: &str) -> PyResult<NativePortfolio> {
+        let goals: Vec<finalytics::PlanOptions> = from_json(goals, "goals")?;
+        Ok(self.portfolio.with_goals(goals).map_err(engine)?.into())
     }
 
     fn assets(&self) -> PyResult<NativeAssets> {

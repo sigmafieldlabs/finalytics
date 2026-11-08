@@ -8625,6 +8625,13 @@
             }
           ],
           "description": "Market data stored with the portfolio."
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanOptions"
+          },
+          "description": "Goals kept with the portfolio, each a plan with its name, in the order given."
         }
       },
       "required": [

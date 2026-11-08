@@ -54,7 +54,7 @@ return ends on, or an array with its dates and labels.
 
 ## A portfolio's files
 
-`Portfolio.from_csv` takes up to five files; only the transactions are required.
+`Portfolio.from_csv` takes up to six files; only the transactions are required.
 
 | File | Required | Holds |
 | --- | --- | --- |
@@ -63,6 +63,7 @@ return ends on, or an array with its dates and labels.
 | `fx` | for other currencies | Exchange rates for instruments and cash not in the base currency |
 | `instruments` | no | Each instrument's kind, currency, name and classifications |
 | `accounts` | no | Each account's name, lot method and classifications |
+| `goals` | no | Goals kept with the portfolio, for planning |
 
 ### Transactions
 
@@ -175,6 +176,33 @@ VTI,fund,USD,Vanguard Total Stock Market ETF,Equity,North America
 rebalancing does not tax. Without an accounts file, each account the transactions name is
 created taxable, with first in, first out.
 
+### Goals
+
+Goals kept with the portfolio, one record per row in the style of the transactions file: `goal`,
+the goal's name, which every row of it repeats, and `type`.
+
+| Type | Columns |
+| --- | --- |
+| `target` | `amount` by the month `by` |
+| `payments` | `amount` every month (or `every` `quarter` or `year`) from `start` to `end` |
+| `projection` | to the month `end`, with no goal |
+| `saving`, `spending` | `amount`, once `on` a month or `every` month, quarter or year from `start` to `end`; `name` and `growth` if given |
+| `mix`, `alternative` | the plan's `weights`, or another mix's to compare, written as `US Equity=0.6;Bonds=0.4`, with `name` |
+| `glide`, `alternative_glide` | one `month` of a glide path and its `weights`; the rows of each path share its `name` |
+
+Each goal has one `target`, `payments` or `projection` row, which also takes the plan's settings:
+`chance` and `spare`, `start_value`, `plan_start` (the first month), `inflation` (a rate a
+year), `fee`, `model` (`bootstrap`, with `block`, `normal` or `historical`), `simulations` and
+`seed`. Months are written `2030-06`. Each goal is a plan, checked when it is planned with the
+assets it names: `assets.plan(portfolio.goals[0])`.
+
+```text
+goal,type,amount,by,every,name,weights,start_value,inflation
+House,target,150000,2030-06,,,,60000,0.025
+House,saving,2500,,month,,,,
+House,mix,,,,Balanced,US Equity=0.6;Bonds=0.4,,
+```
+
 ### Base currency
 
 The currency results are reported in. Without one, it is the currency of the first deposit, or
@@ -186,7 +214,8 @@ A portfolio and its market data can be kept as one JSON document,
 `{"format": "finalytics.portfolio", "format_version": 1, "portfolio": ..., "market": ...}`,
 described by [`schema/portfolio-document.schema.json`](../schema/portfolio-document.schema.json).
 `portfolio.to_json()` writes one and `Portfolio.read(path)` reads it, reporting where a malformed
-document goes wrong.
+document goes wrong. Goals kept with the portfolio are its `goals`, each a plan with its name;
+a document without goals has no `goals` member, so it reads and digests as before.
 
 ## Report options
 

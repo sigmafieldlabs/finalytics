@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { Assets, datasets } from "../pkg/node.js";
+import { Assets, Portfolio, datasets } from "../pkg/node.js";
 
 const assets = new Assets(datasets.assetClassPrices());
 
@@ -72,4 +72,29 @@ test("problems are reported with where they are", () => {
     () => assets.plan({ ...house, colour: "blue" }),
     (e) => e.name === "ValidationError" && e.issues.some((i) => i.path === "options.colour"),
   );
+});
+
+test("goals kept with a portfolio plan as they are", () => {
+  const goals = [
+    "goal,type,amount,by,every,name,weights,chance,start_value,inflation,simulations",
+    "House,target,150000,2030-06,,,,0.8,60000,0.025,1000",
+    "House,saving,2500,,month,,,,,,",
+    "House,mix,,,,Balanced,US Equity=0.6;Bonds=0.4,,,,",
+  ].join("\n");
+  const file = (name) => datasets.file(`portfolio/${name}.csv`);
+  const portfolio = Portfolio.fromCsv({
+    transactions: file("transactions"),
+    instruments: file("instruments"),
+    accounts: file("accounts"),
+    prices: file("prices"),
+    fx: file("fx"),
+    goals,
+  });
+  const [goal] = portfolio.goals;
+  assert.equal(goal.name, "House");
+  const stored = assets.plan(goal);
+  const read = Portfolio.fromJson(portfolio.toJson());
+  assert.deepEqual(read.goals, portfolio.goals);
+  assert.deepEqual(assets.plan(read.goals[0]).results, stored.results);
+  assert.deepEqual(datasets.portfolio().withGoals(read.goals).goals, read.goals);
 });

@@ -1301,3 +1301,366 @@ pub fn fields_from_csv(text: &str, options: CsvOptions) -> Result<FieldTable> {
     }
     finish(report, FieldTable { ids, fields })
 }
+
+/// The weights of a glide path at each of its months.
+type GlidePoints = BTreeMap<finalytics_plan::Month, BTreeMap<String, f64>>;
+
+/// The goal one row of a goals file adds to, and what it adds.
+enum GoalRow {
+    Goal(finalytics_plan::Goal),
+    Projection(finalytics_plan::Month),
+    Flow(finalytics_plan::Flow),
+    Mix(Option<String>, BTreeMap<String, f64>),
+    Alternative(Option<String>, BTreeMap<String, f64>),
+    Glide(
+        Option<String>,
+        finalytics_plan::Month,
+        BTreeMap<String, f64>,
+    ),
+    AlternativeGlide(
+        Option<String>,
+        finalytics_plan::Month,
+        BTreeMap<String, f64>,
+    ),
+}
+
+fn parse_month(text: &str) -> std::result::Result<finalytics_plan::Month, String> {
+    text.parse::<finalytics_plan::Month>()
+        .map_err(|_| format!("{text:?} is not a month: write it as 2030-06"))
+}
+
+fn parse_frequency(text: &str) -> std::result::Result<finalytics_plan::Frequency, String> {
+    match text.to_ascii_lowercase().as_str() {
+        "month" | "monthly" => Ok(finalytics_plan::Frequency::Month),
+        "quarter" | "quarterly" => Ok(finalytics_plan::Frequency::Quarter),
+        "year" | "yearly" => Ok(finalytics_plan::Frequency::Year),
+        _ => Err(format!("{text:?} is not month, quarter or year")),
+    }
+}
+
+fn parse_count(text: &str) -> std::result::Result<u64, String> {
+    text.parse::<u64>()
+        .map_err(|_| format!("{text:?} is not a whole number"))
+}
+
+/// Weights written as `US Equity=0.6;Bonds=0.4`.
+fn parse_weights(text: &str) -> std::result::Result<BTreeMap<String, f64>, String> {
+    let mut weights = BTreeMap::new();
+    for part in text.split(';').map(str::trim).filter(|p| !p.is_empty()) {
+        let Some((asset, weight)) = part.rsplit_once('=') else {
+            return Err(format!(
+                "{part:?} is not an asset and its weight, such as US Equity=0.6"
+            ));
+        };
+        let asset = asset.trim();
+        if asset.is_empty() {
+            return Err(format!("{part:?} names no asset"));
+        }
+        if weights
+            .insert(asset.to_owned(), parse_float(weight.trim())?)
+            .is_some()
+        {
+            return Err(format!("{asset} appears twice"));
+        }
+    }
+    if weights.is_empty() {
+        return Err("gives no weights: write them as US Equity=0.6;Bonds=0.4".to_owned());
+    }
+    Ok(weights)
+}
+
+/// Reads goals for planning, one record per row in the style of the transactions file: `goal`
+/// (the goal's name, which every row of it repeats) and `type`, with the columns each type
+/// takes.
+///
+/// - `target`: `amount` by the month `by`; `payments`: `amount` every month (or `every`
+///   quarter or year) from `start` to `end`; `projection`: to the month `end`, with no goal.
+///   Each goal has one such row, which may also give the plan's settings: `chance` and `spare`,
+///   `start_value`, `plan_start` (the first month), `inflation` (a rate a year), `fee`,
+///   `model` (`bootstrap`, with `block`, `normal` or `historical`), `simulations` and `seed`.
+/// - `saving` and `spending`: `amount`, once `on` a month or `every` month, quarter or year from
+///   `start` to `end`, with `name` and `growth` if given.
+/// - `mix`: the plan's `weights`, written as `US Equity=0.6;Bonds=0.4`, with `name`;
+///   `alternative`: another mix to compare, likewise.
+/// - `glide`: one `month` of the plan's glide path and its `weights`, the path named by `name`;
+///   `alternative_glide`: one month of an alternative glide path, the rows of each grouped by
+///   `name`.
+///
+/// The goals keep the order in which the file first names them. Each plan is checked when it
+/// is made, with the assets it is planned on.
+pub fn goals_from_csv(
+    text: &str,
+    options: CsvOptions,
+) -> Result<Vec<finalytics_plan::PlanOptions>> {
+    use finalytics_plan::{Flow, Goal, Inflation, Mix, Model, PlanOptions};
+    let mut report = ValidationReport::new();
+    let Some(table) = Table::read(text, options, &mut report) else {
+        return Err(Error::Validation(report));
+    };
+    if !table.require(&["goal", "type"], &mut report) {
+        return Err(Error::Validation(report));
+    }
+    struct Building {
+        plan: PlanOptions,
+        defined: Option<u64>,
+        glide: GlidePoints,
+        glide_name: Option<String>,
+        alternative_glides: Vec<(Option<String>, GlidePoints)>,
+    }
+    let mut order: Vec<String> = Vec::new();
+    let mut goals: BTreeMap<String, Building> = BTreeMap::new();
+    for (line, values) in &table.rows {
+        let mut row = Row {
+            table: &table,
+            line: *line,
+            values,
+            report: &mut report,
+        };
+        let Some(goal) = row.required("goal", |t| Ok(t.to_owned())) else {
+            continue;
+        };
+        let kind = row.raw("type").map(str::to_ascii_lowercase);
+        let name = row.raw("name").map(str::to_owned);
+        let read = match kind.as_deref() {
+            Some("target") => {
+                let amount = row.required("amount", parse_float);
+                let by = row.required("by", parse_month);
+                amount.zip(by).map(|(amount, by)| {
+                    GoalRow::Goal(Goal::Target {
+                        name: Some(goal.clone()),
+                        amount,
+                        by,
+                    })
+                })
+            }
+            Some("payments") => {
+                let amount = row.required("amount", parse_float);
+                let every = row.optional("every", parse_frequency);
+                let start = row.required("start", parse_month);
+                let end = row.required("end", parse_month);
+                match (amount, every, start, end) {
+                    (Some(amount), Some(every), Some(start), Some(end)) => {
+                        Some(GoalRow::Goal(Goal::Payments {
+                            name: Some(goal.clone()),
+                            amount,
+                            every: every.unwrap_or_default(),
+                            start,
+                            end,
+                        }))
+                    }
+                    _ => None,
+                }
+            }
+            Some("projection") => row.required("end", parse_month).map(GoalRow::Projection),
+            Some(kind @ ("saving" | "spending")) => {
+                let amount = row.required("amount", parse_float);
+                let on = row.optional("on", parse_month);
+                let every = row.optional("every", parse_frequency);
+                let start = row.optional("start", parse_month);
+                let end = row.optional("end", parse_month);
+                let growth = row.optional("growth", parse_float);
+                match (amount, on, every, start, end, growth) {
+                    (Some(amount), Some(on), Some(every), Some(start), Some(end), Some(growth)) => {
+                        Some(GoalRow::Flow(if kind == "saving" {
+                            Flow::Saving {
+                                name,
+                                amount,
+                                on,
+                                every,
+                                start,
+                                end,
+                                growth,
+                            }
+                        } else {
+                            Flow::Spending {
+                                name,
+                                amount,
+                                on,
+                                every,
+                                start,
+                                end,
+                                growth,
+                            }
+                        }))
+                    }
+                    _ => None,
+                }
+            }
+            Some("mix") => row
+                .required("weights", parse_weights)
+                .map(|w| GoalRow::Mix(name, w)),
+            Some("alternative") => row
+                .required("weights", parse_weights)
+                .map(|w| GoalRow::Alternative(name, w)),
+            Some(kind @ ("glide" | "alternative_glide")) => {
+                let month = row.required("month", parse_month);
+                let weights = row.required("weights", parse_weights);
+                month.zip(weights).map(|(m, w)| {
+                    if kind == "glide" {
+                        GoalRow::Glide(name, m, w)
+                    } else {
+                        GoalRow::AlternativeGlide(name, m, w)
+                    }
+                })
+            }
+            Some(other) => {
+                row.error(
+                    "type",
+                    format!(
+                        "{other:?} is not a goal's row: target, payments, projection, saving, \
+                         spending, mix, alternative, glide or alternative_glide"
+                    ),
+                );
+                None
+            }
+            None => {
+                row.error("type", "is required");
+                None
+            }
+        };
+        // The plan's settings, on the row of its goal.
+        let defines = matches!(read, Some(GoalRow::Goal(_) | GoalRow::Projection(_)));
+        let mut settings = PlanOptions::default();
+        if defines {
+            if let Some(Some(v)) = row.optional("chance", parse_float) {
+                settings.chance = v;
+            }
+            settings.spare = row.optional("spare", parse_float).flatten();
+            if let Some(Some(v)) = row.optional("start_value", parse_float) {
+                settings.start_value = v;
+            }
+            settings.start = row.optional("plan_start", parse_month).flatten();
+            settings.inflation = row
+                .optional("inflation", parse_float)
+                .flatten()
+                .map(|rate| Inflation::Rate { rate });
+            if let Some(Some(v)) = row.optional("fee", parse_float) {
+                settings.fee = v;
+            }
+            let block = row.optional("block", parse_float).flatten();
+            match row.raw("model").map(str::to_ascii_lowercase).as_deref() {
+                None | Some("bootstrap") => {
+                    settings.model = Model::Bootstrap {
+                        block: block.unwrap_or(12.0),
+                    };
+                }
+                Some("normal") => settings.model = Model::Normal,
+                Some("historical") => settings.model = Model::Historical,
+                Some(other) => row.error(
+                    "model",
+                    format!("{other:?} is not bootstrap, normal or historical"),
+                ),
+            }
+            if let Some(Some(v)) = row.optional("simulations", parse_count) {
+                settings.simulations = usize::try_from(v).unwrap_or(usize::MAX);
+            }
+            if let Some(Some(v)) = row.optional("seed", parse_count) {
+                settings.seed = v;
+            }
+        }
+        let Some(read) = read else {
+            continue;
+        };
+        if !goals.contains_key(&goal) {
+            order.push(goal.clone());
+        }
+        let building = goals.entry(goal.clone()).or_insert_with(|| Building {
+            plan: PlanOptions::default(),
+            defined: None,
+            glide: BTreeMap::new(),
+            glide_name: None,
+            alternative_glides: Vec::new(),
+        });
+        match read {
+            GoalRow::Goal(_) | GoalRow::Projection(_) => {
+                if let Some(first) = building.defined {
+                    row.error(
+                        "type",
+                        format!("{goal} already has its goal, on line {first}"),
+                    );
+                    continue;
+                }
+                building.defined = Some(*line);
+                // The settings, with what rows before it gave.
+                settings.flows = std::mem::take(&mut building.plan.flows);
+                settings.weights = building.plan.weights.take();
+                settings.alternatives = std::mem::take(&mut building.plan.alternatives);
+                building.plan = settings;
+                match read {
+                    GoalRow::Goal(g) => building.plan.goal = Some(g),
+                    GoalRow::Projection(end) => building.plan.end = Some(end),
+                    _ => {}
+                }
+            }
+            GoalRow::Flow(flow) => building.plan.flows.push(flow),
+            GoalRow::Mix(name, weights) => {
+                if building.plan.weights.is_some() || !building.glide.is_empty() {
+                    row.error("type", format!("{goal} already has its mix"));
+                    continue;
+                }
+                building.plan.weights = Some(Mix::Fixed { name, weights });
+            }
+            GoalRow::Alternative(name, weights) => building
+                .plan
+                .alternatives
+                .push(Mix::Fixed { name, weights }),
+            GoalRow::Glide(name, month, weights) => {
+                if building.plan.weights.is_some() {
+                    row.error("type", format!("{goal} already has its mix"));
+                    continue;
+                }
+                if name.is_some() {
+                    building.glide_name = name;
+                }
+                if building.glide.insert(month, weights).is_some() {
+                    row.error("month", format!("{goal}'s glide path has {month} twice"));
+                }
+            }
+            GoalRow::AlternativeGlide(name, month, weights) => {
+                let k = match building
+                    .alternative_glides
+                    .iter()
+                    .position(|(n, _)| *n == name)
+                {
+                    Some(k) => k,
+                    None => {
+                        building.alternative_glides.push((name, BTreeMap::new()));
+                        building.alternative_glides.len() - 1
+                    }
+                };
+                let path = &mut building.alternative_glides[k].1;
+                if path.insert(month, weights).is_some() {
+                    row.error("month", format!("the glide path has {month} twice"));
+                }
+            }
+        }
+    }
+    let mut plans = Vec::with_capacity(order.len());
+    for goal in order {
+        let Some(mut building) = goals.remove(&goal) else {
+            continue;
+        };
+        building.plan.name = Some(goal.clone());
+        if building.defined.is_none() {
+            report.error(
+                "goal",
+                format!("{goal} has no target, payments or projection row"),
+            );
+            continue;
+        }
+        if !building.glide.is_empty() {
+            building.plan.weights = Some(Mix::GlidePath {
+                name: building.glide_name,
+                points: building.glide,
+            });
+        }
+        for (name, points) in building.alternative_glides {
+            building
+                .plan
+                .alternatives
+                .push(Mix::GlidePath { name, points });
+        }
+        plans.push(building.plan);
+    }
+    finish(report, plans)
+}

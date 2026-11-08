@@ -28,6 +28,13 @@
         }
       ],
       "description": "Market data stored with the portfolio."
+    },
+    "goals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PlanOptions"
+      },
+      "description": "Goals kept with the portfolio, each a plan with its name, in the order given."
     }
   },
   "required": [
@@ -163,6 +170,147 @@
         }
       },
       "description": "Market data stored in a portfolio document."
+    },
+    "Frequency": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "month",
+          "description": "Every month (the default)."
+        },
+        {
+          "type": "string",
+          "const": "quarter",
+          "description": "Every three months."
+        },
+        {
+          "type": "string",
+          "const": "year",
+          "description": "Every twelve months."
+        }
+      ],
+      "description": "How often a regular amount falls due."
+    },
+    "Goal": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "target"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The goal's name, such as \"House deposit\".",
+              "default": null
+            },
+            "amount": {
+              "type": "number",
+              "format": "double",
+              "description": "The amount, in today's money."
+            },
+            "by": {
+              "$ref": "#/$defs/Month",
+              "description": "The month it is needed by."
+            }
+          },
+          "required": [
+            "type",
+            "amount",
+            "by"
+          ],
+          "description": "An amount by a date, such as a house deposit, the money to start a business, or a\nsavings milestone. Met when the plan is worth at least `amount` at the start of the month\n`by`."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "payments"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The goal's name, such as \"Retirement income\".",
+              "default": null
+            },
+            "amount": {
+              "type": "number",
+              "format": "double",
+              "description": "Each payment, in today's money."
+            },
+            "every": {
+              "$ref": "#/$defs/Frequency",
+              "description": "How often it is paid: every month by default.",
+              "default": "month"
+            },
+            "start": {
+              "$ref": "#/$defs/Month",
+              "description": "The month of the first payment."
+            },
+            "end": {
+              "$ref": "#/$defs/Month",
+              "description": "The month of the last payment, or of the last month the payments run to."
+            }
+          },
+          "required": [
+            "type",
+            "amount",
+            "start",
+            "end"
+          ],
+          "description": "An amount paid regularly from `start` to `end`, such as college fees or retirement\nincome. Met when every payment is made in full."
+        }
+      ],
+      "description": "The goal a plan is tested against."
+    },
+    "Inflation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "rate"
+            },
+            "rate": {
+              "type": "number",
+              "format": "double",
+              "description": "The rate a year."
+            }
+          },
+          "required": [
+            "type",
+            "rate"
+          ],
+          "description": "A fixed rate a year, such as 0.025; 0 keeps every figure in money of the day."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "index"
+            },
+            "prices": {
+              "$ref": "#/$defs/PriceTable",
+              "description": "The index's levels."
+            }
+          },
+          "required": [
+            "type",
+            "prices"
+          ],
+          "description": "A price index, such as the US consumer price index: one column of levels at least\nmonthly over the assets' history. Each simulated month takes the inflation of the same\npast month as its returns."
+        }
+      ],
+      "description": "How prices rise, for amounts in today's money."
     },
     "Instrument": {
       "type": "object",
@@ -316,6 +464,124 @@
       ],
       "description": "A lot named by a sale or transfer, for specific identification."
     },
+    "Mix": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "fixed"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A name for the mix, such as \"Balanced 60/40\".",
+              "default": null
+            },
+            "weights": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number",
+                "format": "double"
+              },
+              "description": "The weights by asset, adding up to one."
+            }
+          },
+          "required": [
+            "type",
+            "weights"
+          ],
+          "description": "The same weights throughout."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "glide_path"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A name for the mix, such as \"Glide path\".",
+              "default": null
+            },
+            "points": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "format": "double"
+                }
+              },
+              "description": "The weights by asset at each month, each set adding up to one."
+            }
+          },
+          "required": [
+            "type",
+            "points"
+          ],
+          "description": "Weights given at some months, moving in a straight line between them and held before the\nfirst and after the last."
+        }
+      ],
+      "description": "What the money is invested in: fixed weights, or weights that change along a glide path.\nThe weights are restored every month."
+    },
+    "Model": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "bootstrap"
+            },
+            "block": {
+              "type": "number",
+              "format": "double",
+              "description": "The average length of a run, in months: 12 by default.",
+              "default": 12.0
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "A stationary block bootstrap (Politis and Romano, 1994): runs of past months, all assets\ntogether, of random length averaging `block` months, wrapping round at the end of the\nhistory. The default, with blocks of 12 months."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "normal"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "A normal distribution with the assets' expected returns and covariance, per month."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "historical"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "description": "Every stretch of the history as long as the plan, each once, in order: as many\nsimulations as there are stretches."
+        }
+      ],
+      "description": "How the simulations draw each month's returns."
+    },
     "Money": {
       "type": "object",
       "properties": {
@@ -331,6 +597,346 @@
         "currency"
       ],
       "description": "An exact decimal amount in one currency.\n\nArithmetic between amounts checks that the currencies match and that no overflow occurs.\nAmounts keep their full precision until they are rounded."
+    },
+    "Month": {
+      "type": "string",
+      "description": "A calendar month, written as \"2030-06\"; a date such as \"2030-06-15\" reads as its month."
+    },
+    "PlanFlow": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "saving"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A name for it in the report, such as \"Monthly saving\".",
+              "default": null
+            },
+            "amount": {
+              "type": "number",
+              "format": "double",
+              "description": "The amount, in today's money."
+            },
+            "on": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Month"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The month of a single payment.",
+              "default": null
+            },
+            "every": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Frequency"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "How often a regular payment is made.",
+              "default": null
+            },
+            "start": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Month"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first month of a regular payment: the plan's start by default.",
+              "default": null
+            },
+            "end": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Month"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last month of a regular payment: by default, the month before a target's date or\nbefore the first goal payment, or the end of a plan without a goal.",
+              "default": null
+            },
+            "growth": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "description": "How the amount grows a year in money of the day: with inflation by default, so that\nit stays the same in today's money; 0 keeps it fixed in money of the day.",
+              "default": null
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "Money paid in."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "spending"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A name for it in the report, such as \"Car\".",
+              "default": null
+            },
+            "amount": {
+              "type": "number",
+              "format": "double",
+              "description": "The amount, in today's money."
+            },
+            "on": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Month"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The month of a single payment.",
+              "default": null
+            },
+            "every": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Frequency"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "How often a regular payment is made.",
+              "default": null
+            },
+            "start": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Month"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first month of a regular payment: the plan's start by default.",
+              "default": null
+            },
+            "end": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Month"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last month of a regular payment: by default, the plan's last month (the month\nbefore a target's date, the last goal payment, or the end of a projection).",
+              "default": null
+            },
+            "growth": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double",
+              "description": "How the amount grows a year in money of the day: with inflation by default.",
+              "default": null
+            }
+          },
+          "required": [
+            "type",
+            "amount"
+          ],
+          "description": "Money taken out, as planned and not scored, such as a car bought along the way. When the\nplan cannot cover it, what is left is paid."
+        }
+      ],
+      "description": "Money paid into the plan, or taken out of it, other than the goal: once, in the month `on`,\nor regularly, `every` month, quarter or year from `start` to `end`."
+    },
+    "PlanOptions": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Goal"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The goal; without one, the plan is a projection to `end`.",
+          "default": null
+        },
+        "chance": {
+          "type": "number",
+          "format": "double",
+          "description": "The chance of meeting the goal wanted, such as 0.8.",
+          "default": 0.8
+        },
+        "spare": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "description": "The chance from which the plan has room to spare: 10 points above `chance` by default,\nat most 0.99.",
+          "default": null
+        },
+        "start": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Month"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first month: the month after the assets' last date by default.",
+          "default": null
+        },
+        "end": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Month"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last month of a projection without a goal.",
+          "default": null
+        },
+        "start_value": {
+          "type": "number",
+          "format": "double",
+          "description": "What the money set aside is worth at the start, in today's money.",
+          "default": 0.0
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanFlow"
+          },
+          "description": "Money paid in and taken out, other than the goal.",
+          "default": []
+        },
+        "weights": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Mix"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What the money is invested in.",
+          "default": null
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Mix"
+          },
+          "description": "Other mixes to compare on the same simulations, each named.",
+          "default": []
+        },
+        "fee": {
+          "type": "number",
+          "format": "double",
+          "description": "The fee a year, as a share of the value, taken monthly.",
+          "default": 0.0
+        },
+        "inflation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Inflation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How prices rise: required, as a rate or an index.",
+          "default": null
+        },
+        "model": {
+          "$ref": "#/$defs/Model",
+          "description": "How each month's returns are drawn: a block bootstrap of 12 months by default.",
+          "default": {
+            "type": "bootstrap",
+            "block": 12.0
+          }
+        },
+        "expected_returns": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Expected returns a year by asset, in place of the history's: they shift the bootstrap's\nreturns and set the normal model's means.",
+          "default": null
+        },
+        "simulations": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The number of simulations: 10,000 by default.",
+          "default": 10000
+        },
+        "seed": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "description": "The seed of the random numbers: the same seed gives the same plan on every platform.",
+          "default": 0
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Currency"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The currency of the amounts, for the report.",
+          "default": null
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The report's title: the goal's name by default.",
+          "default": null
+        }
+      },
+      "description": "What a plan simulates and how."
     },
     "PortfolioData": {
       "type": "object",
@@ -369,6 +975,45 @@
         "transactions"
       ],
       "description": "A portfolio's records: its base currency, accounts, instruments and transactions. With market\ndata, they are everything Finalytics needs to keep the portfolio's books."
+    },
+    "PriceTable": {
+      "type": "object",
+      "properties": {
+        "dates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Date"
+          },
+          "description": "The dates, in increasing order."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The assets, one per column."
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "description": "The prices of each asset, one per date; absent where there is no price."
+        }
+      },
+      "required": [
+        "dates",
+        "labels",
+        "columns"
+      ],
+      "description": "The prices of several assets on the same dates, one column per asset. A missing price is\nwritten as absent (`null`)."
     },
     "TimeSeries": {
       "type": "object",
