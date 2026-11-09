@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - 2026-11-09
+
 ### Added
 
 - `keep_cash` in `optimise`, as in `rebalance`: `keep_cash=True` (`.keep_all_cash()` in Rust)
@@ -1028,7 +1030,8 @@ Finalytics 1.0 is a redesign of the library. See the
 
 The last release of the 0.x series. See the `0.9.x` branch.
 
-[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.5...HEAD
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.6...HEAD
+[1.0.0-rc.6]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.2...v1.0.0-rc.3

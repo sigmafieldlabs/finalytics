@@ -1,6 +1,6 @@
 {
   "name": "finalytics",
-  "version": "1.0.0-rc.5",
+  "version": "1.0.0-rc.6",
   "description": "Portfolio analytics: accounting, performance, risk, optimisation and reports, compiled to WebAssembly.",
   "license": "MIT OR Apache-2.0",
   "author": "Nnamdi Olisaeloka <nnamdi@sigmafieldlabs.com>",

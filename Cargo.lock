@@ -467,7 +467,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "finalytics"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-backtest",
  "finalytics-core",
@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-backtest"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-core",
  "finalytics-risk",
@@ -497,7 +497,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-bench"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "criterion",
  "finalytics",
@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-codegen"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics",
  "schemars",
@@ -515,7 +515,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-core"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "libm",
  "proptest",
@@ -529,7 +529,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-formats"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "csv",
  "finalytics-core",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-fuzz-checks"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics",
  "serde",
@@ -552,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-ledger"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-core",
  "proptest",
@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-opt"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "clarabel",
  "finalytics-core",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-perf"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-core",
  "finalytics-ledger",
@@ -592,7 +592,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-plan"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-core",
  "finalytics-risk",
@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-py"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics",
  "pyo3",
@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-reports"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-backtest",
  "finalytics-core",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-risk"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics-core",
  "finalytics-ledger",
@@ -644,7 +644,7 @@ dependencies = [
 
 [[package]]
 name = "finalytics-wasm"
-version = "1.0.0-rc.5"
+version = "1.0.0-rc.6"
 dependencies = [
  "finalytics",
  "js-sys",
