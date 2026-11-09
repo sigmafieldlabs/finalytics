@@ -749,10 +749,13 @@ impl Assets {
             if !self.takes_label(asset) {
                 report.error(at, unknown_asset(asset));
                 known = false;
-            } else if signed && !w.is_finite() {
-                report.error(at, format!("must be a finite number, not {w}"));
-                numbers = false;
-            } else if !signed && !(w.is_finite() && *w >= 0.0) {
+            } else if signed {
+                // Weights that may be negative, such as short positions, need only be finite.
+                if !w.is_finite() {
+                    report.error(at, format!("must be a finite number, not {w}"));
+                    numbers = false;
+                }
+            } else if !(w.is_finite() && *w >= 0.0) {
                 report.error(at, format!("must be a weight of zero or more, not {w}"));
                 numbers = false;
             }
