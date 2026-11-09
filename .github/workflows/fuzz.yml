@@ -59,11 +59,13 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-fuzz
-      # Optimised, with debug assertions so that integer overflow fails the run.
+      # Optimised, with debug assertions so that integer overflow fails the run. The target is
+      # named: the cargo-fuzz the action installs is built for musl and would build for it,
+      # where the address sanitizer cannot run.
       - name: Run the target, starting from the checked-in corpus
         run: |
           mkdir -p "fuzz/work/$TARGET"
-          cargo fuzz run -O -a "$TARGET" "fuzz/work/$TARGET" "fuzz/corpus/$TARGET" -- \
+          cargo fuzz run -O -a --target x86_64-unknown-linux-gnu "$TARGET" "fuzz/work/$TARGET" "fuzz/corpus/$TARGET" -- \
             -max_total_time="$SECONDS_PER_TARGET" -rss_limit_mb=2048 -timeout=10
       - name: Keep the failing input
         if: failure()
