@@ -99,8 +99,10 @@ pub struct WeightChange {
 pub struct OptimisationContext {
     /// The engine's version.
     pub version: String,
-    /// A SHA-256 digest of the estimates and limits, in hexadecimal: the same inputs give the
-    /// same report.
+    /// A SHA-256 digest of every input, in hexadecimal: the estimates, the method with its
+    /// parameters and limits, and any weights given. The same inputs give the same report, and
+    /// different inputs a different digest; the title, which printing can also give, is not
+    /// one of them.
     pub digest: String,
     /// The method's name, such as "Maximum Sharpe".
     pub method: String,
@@ -323,10 +325,13 @@ pub struct OptimisationInputs<'a> {
     /// The groups with limits: name, assets, smallest and largest total weight.
     pub groups: Vec<(String, Vec<String>, f64, f64)>,
     pub resampling: Option<ResamplingSummary>,
-    /// The weights held now, by asset, the risk-free asset as cash.
+    /// The weights held now, by asset, the cash included.
     pub current_weights: Option<&'a BTreeMap<String, f64>>,
-    /// A benchmark's weights by asset, the risk-free asset as cash.
+    /// A benchmark's weights by asset, the cash included.
     pub benchmark_weights: Option<&'a BTreeMap<String, f64>>,
+    /// Everything else the report was made from, as text, such as the options and given weights
+    /// as JSON: the digest covers it, so that different inputs give different digests.
+    pub options: String,
 }
 
 /// The optimisation report from what the `finalytics` crate assembles.
@@ -490,6 +495,7 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
         hash.update(l.as_bytes());
     }
     hash.update(inputs.risk_free_rate.to_le_bytes());
+    hash.update(inputs.options.as_bytes());
     let digest = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
     Ok(OptimisationReport {
         context: OptimisationContext {

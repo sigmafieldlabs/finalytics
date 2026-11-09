@@ -168,9 +168,12 @@ fn the_frontier_is_drawn_when_asked_for() {
             .all(|p| p.volatility >= s.volatility - 1e-3
                 || p.expected_return <= s.expected_return + 1e-9)
     );
-    // The frontier changes the report, not the weights.
+    // The frontier changes the report, and so its digest, not the weights.
     assert_eq!(result.results, without.results);
-    assert_eq!(r.context, without.report.context);
+    assert_ne!(r.context.digest, without.report.context.digest);
+    let mut context = r.context.clone();
+    context.digest.clone_from(&without.report.context.digest);
+    assert_eq!(context, without.report.context);
     let page = r.to_html(None);
     assert!(page.contains("The efficient frontier") && !page.contains(".with_frontier()"));
     // The option is left out of JSON when it is off, so options read as before.

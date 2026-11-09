@@ -287,6 +287,7 @@ impl Assets {
                 resampling: None,
                 current_weights: None,
                 benchmark_weights: None,
+                options: serde_json::to_string(&(weights, options)).unwrap_or_default(),
             })?;
         Ok(GivenWeights { report, results })
     }

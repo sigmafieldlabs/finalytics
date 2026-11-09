@@ -56,6 +56,14 @@ market data, as the engine writes it (see the portfolio document's format). The 
 the same digest in Rust, Python and JavaScript, so a saved report can be shown to come from the
 inputs it claims, and a report computed again from them gives the same numbers.
 
+The optimisation, backtest and comparison reports carry a digest of their inputs too
+(`context.digest`, printed at the foot of each page): the assets' returns and the settings that
+turn them into estimates, and everything the verb was given, as the engine reads it, the
+method with its parameters and limits, current and benchmark weights, fixed and given weights,
+the benchmark, the validation and the money. Different inputs give different digests, so a
+cache or a provenance check can key on it. The title is not an input: printing can give a
+report another.
+
 ## Shapes for charts
 
 Series over time carry a name, a unit (money in a currency, a fraction, a ratio, an index level

@@ -248,3 +248,23 @@ test("a portfolio's assets are documented with their cash", async () => {
   assert.ok(doc.includes("cashAssets") && doc.includes("EUR cash") && doc.includes("risk-free asset"), doc);
   assert.deepEqual(household.cashAssets, ["USD cash", "EUR cash"]);
 });
+
+test("different inputs give different digests", () => {
+  const d = (r) => r.report.context.digest;
+  const sixty = { "US Equity": 0.6, Bonds: 0.4 };
+  const forty = { "US Equity": 0.4, Bonds: 0.6 };
+  const pairs = [
+    [bills.backtest({ method: "minimum_variance" }), bills.backtest({ method: "risk_parity" })],
+    [bills.backtest({ weights: sixty }), bills.backtest({ weights: forty })],
+    [bills.backtest({ method: "minimum_variance" }), bills.backtest({ method: "minimum_variance", benchmark: sixty })],
+    [bills.compare({ methods: ["minimum_variance"] }), bills.compare({ methods: ["minimum_variance"], max_weight: 0.3 })],
+    [bills.optimise({ method: "target_return", target: 0.06 }), bills.optimise({ method: "target_return", target: 0.07 })],
+    [
+      bills.optimise({ method: "minimum_variance" }),
+      bills.optimise({ method: "minimum_variance", current_weights: holding(bills, "T-Bills") }),
+    ],
+    [bills.evaluate({ weights: sixty }), bills.evaluate({ weights: forty })],
+  ];
+  pairs.forEach(([a, b], k) => assert.notEqual(d(a), d(b), `pair ${k}`));
+  assert.equal(d(bills.backtest({ method: "minimum_variance" })), d(bills.backtest({ method: "minimum_variance" })));
+});

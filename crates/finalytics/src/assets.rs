@@ -1232,6 +1232,7 @@ impl Assets {
                 .then_some(&options.current_weights),
             benchmark_weights: (!options.benchmark_weights.is_empty())
                 .then_some(&options.benchmark_weights),
+            options: serde_json::to_string(options).unwrap_or_default(),
         })
     }
 

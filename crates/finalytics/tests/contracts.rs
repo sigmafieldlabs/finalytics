@@ -706,3 +706,102 @@ fn a_backtest_is_titled_with_the_name_given() {
     let unnamed = assets.backtest(Method::MinimumVariance).build().unwrap();
     assert_eq!(unnamed.report.name, None);
 }
+
+#[test]
+fn different_inputs_give_different_digests() {
+    let assets = with_bills();
+    let backtest =
+        |b: finalytics::backtest::BacktestBuilder<'_>| b.build().unwrap().report.context.digest;
+    let sixty = [("US Equity", 0.6), ("Bonds", 0.4)];
+    let forty = [("US Equity", 0.4), ("Bonds", 0.6)];
+    let pairs = [
+        (
+            backtest(assets.backtest(Method::MinimumVariance)),
+            backtest(assets.backtest(Method::RiskParity)),
+        ),
+        (
+            backtest(assets.backtest(sixty)),
+            backtest(assets.backtest(forty)),
+        ),
+        (
+            backtest(assets.backtest(Method::MinimumVariance)),
+            backtest(assets.backtest(Method::MinimumVariance).benchmark(sixty)),
+        ),
+        (
+            assets
+                .compare([Method::MinimumVariance])
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+            assets
+                .compare([Method::MinimumVariance])
+                .max_weight(0.3)
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+        ),
+        (
+            assets
+                .optimise(Method::TargetReturn)
+                .target(0.06)
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+            assets
+                .optimise(Method::TargetReturn)
+                .target(0.07)
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+        ),
+        (
+            assets
+                .optimise(Method::MinimumVariance)
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+            assets
+                .optimise(Method::MinimumVariance)
+                .current_weights(holding(&assets, "T-Bills"))
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+        ),
+        (
+            assets
+                .evaluate(sixty)
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+            assets
+                .evaluate(forty)
+                .build()
+                .unwrap()
+                .report
+                .context
+                .digest,
+        ),
+    ];
+    for (k, (a, b)) in pairs.iter().enumerate() {
+        assert_ne!(a, b, "pair {k}");
+    }
+    // The same inputs give the same digest.
+    assert_eq!(
+        backtest(assets.backtest(Method::MinimumVariance)),
+        backtest(assets.backtest(Method::MinimumVariance))
+    );
+}

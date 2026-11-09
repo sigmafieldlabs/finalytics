@@ -45,6 +45,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   another currency counts in the tracking error, with its risk; and a backtest holds such cash
   as the asset it is, moving with its exchange rate.
 
+
 - The backtest and comparison reports echoed fixed weights, and a benchmark's weights, without
   their cash and with every asset they left out at zero: `{"US Equity": 0.55, "Bonds": 0.35,
   "T-Bills": 0.1}` came back as five assets adding up to 0.9. The reports' weights are now those
@@ -64,9 +65,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that takes weights or values by asset; rebalancing targets said "is not an instrument of the
   portfolio". Current and benchmark weights and `evaluate`, like fixed weights, report weights
   that do not add up to one beside an unknown label, and fixed weights say where the cash goes
-  as the others do ("give T-Bills, the risk-free asset, any cash"). Limits and risk budgets that name cash in another currency say that
-  optimisation does not choose it, and expected returns for the risk-free asset or `Cash` point
-  to `risk_free_rate`.
+  as the others do ("give T-Bills, the risk-free asset, any cash"). Limits and risk budgets that
+  name cash in another currency say that optimisation does not choose it, and expected returns
+  for the risk-free asset or `Cash` point to `risk_free_rate`.
+
+- The digests of the optimisation, backtest and comparison reports (`context.digest`, printed as
+  the inputs at the foot of each page) now cover every input: the strategies, their weights and
+  options, the benchmark, the validation and the money for backtests and comparisons, and the
+  method's parameters, the current and benchmark weights and the given weights for `optimise`
+  and `evaluate`. Different inputs gave the same digest, such as minimum variance and risk
+  parity, or a target return of 6% and of 7%. Every such digest changes.
+
+
 
 ## [1.0.0-rc.5] - 2026-11-09
 

@@ -85,6 +85,11 @@ pub struct BacktestSetup {
     /// Money paid in or taken out on dates, when the backtest follows money.
     #[serde(default)]
     pub flows: Vec<CashFlow>,
+    /// Everything else the backtest was given, as text, such as its options as JSON: the
+    /// strategies, their weights and options, the benchmark and the validation. The digest
+    /// covers it, so that different inputs give different digests.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub inputs: String,
 }
 
 impl BacktestSetup {
@@ -103,7 +108,15 @@ impl BacktestSetup {
             origin: None,
             start_value: None,
             flows: Vec::new(),
+            inputs: String::new(),
         }
+    }
+
+    /// The same setup with the rest of what the backtest was given, as text, for the digest.
+    #[must_use]
+    pub fn with_inputs(mut self, inputs: String) -> BacktestSetup {
+        self.inputs = inputs;
+        self
     }
 
     /// The same setup following money: each run starts with `start_value` (zero if absent) and
@@ -138,8 +151,10 @@ impl BacktestSetup {
 pub struct BacktestContext {
     /// The engine's version.
     pub version: String,
-    /// A SHA-256 digest of the assets' returns and the settings, in hexadecimal: the same
-    /// inputs give the same report.
+    /// A SHA-256 digest of every input, in hexadecimal: the assets' returns and the cash's,
+    /// the strategies with their weights and options, the benchmark, the validation and the
+    /// money. The same inputs give the same report, and different inputs a different digest;
+    /// the title, which printing can also give, is not one of them.
     pub digest: String,
     /// The assets the strategies hold, other than the risk-free asset.
     pub assets: Vec<String>,
@@ -529,7 +544,7 @@ impl<'a> Inputs<'a> {
         let ppy = backtest.periods_per_year;
         let context = BacktestContext {
             version: env!("CARGO_PKG_VERSION").to_owned(),
-            digest: digest(backtest, returns),
+            digest: digest(backtest, returns, setup),
             assets: returns.labels().to_vec(),
             risk_free_asset: setup.risk_free_asset.clone(),
             periods_per_year: ppy,
@@ -936,8 +951,10 @@ fn months(dates: &[Date], returns: &[f64]) -> Grid {
     }
 }
 
-/// A SHA-256 digest of the assets' returns, the cash returns, the dates and the settings.
-fn digest(backtest: &BacktestResults, returns: &ReturnsTable) -> String {
+/// A SHA-256 digest of every input: the assets' returns, the cash returns, the dates, the
+/// settings, and the setup, with the strategies, their weights and options, the benchmark and
+/// the money.
+fn digest(backtest: &BacktestResults, returns: &ReturnsTable, setup: &BacktestSetup) -> String {
     let mut hash = Sha256::new();
     for date in &backtest.dates {
         hash.update(date.to_string().as_bytes());
@@ -956,6 +973,7 @@ fn digest(backtest: &BacktestResults, returns: &ReturnsTable) -> String {
             .unwrap_or_default()
             .as_bytes(),
     );
+    hash.update(serde_json::to_string(setup).unwrap_or_default().as_bytes());
     hash.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 

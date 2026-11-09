@@ -377,8 +377,10 @@ export interface BacktestContext {
   /** The engine's version. */
   version: string;
   /**
-   * A SHA-256 digest of the assets' returns and the settings, in hexadecimal: the same
-   * inputs give the same report.
+   * A SHA-256 digest of every input, in hexadecimal: the assets' returns and the cash's,
+   * the strategies with their weights and options, the benchmark, the validation and the
+   * money. The same inputs give the same report, and different inputs a different digest;
+   * the title, which printing can also give, is not one of them.
    */
   digest: string;
   /** The assets the strategies hold, other than the risk-free asset. */
@@ -2414,8 +2416,10 @@ export interface OptimisationContext {
   /** The engine's version. */
   version: string;
   /**
-   * A SHA-256 digest of the estimates and limits, in hexadecimal: the same inputs give the
-   * same report.
+   * A SHA-256 digest of every input, in hexadecimal: the estimates, the method with its
+   * parameters and limits, and any weights given. The same inputs give the same report, and
+   * different inputs a different digest; the title, which printing can also give, is not
+   * one of them.
    */
   digest: string;
   /** The method's name, such as "Maximum Sharpe". */

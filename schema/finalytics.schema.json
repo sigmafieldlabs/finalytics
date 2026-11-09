@@ -817,7 +817,7 @@
         },
         "digest": {
           "type": "string",
-          "description": "A SHA-256 digest of the assets' returns and the settings, in hexadecimal: the same\ninputs give the same report."
+          "description": "A SHA-256 digest of every input, in hexadecimal: the assets' returns and the cash's,\nthe strategies with their weights and options, the benchmark, the validation and the\nmoney. The same inputs give the same report, and different inputs a different digest;\nthe title, which printing can also give, is not one of them."
         },
         "assets": {
           "type": "array",
@@ -6612,7 +6612,7 @@
         },
         "digest": {
           "type": "string",
-          "description": "A SHA-256 digest of the estimates and limits, in hexadecimal: the same inputs give the\nsame report."
+          "description": "A SHA-256 digest of every input, in hexadecimal: the estimates, the method with its\nparameters and limits, and any weights given. The same inputs give the same report, and\ndifferent inputs a different digest; the title, which printing can also give, is not\none of them."
         },
         "method": {
           "type": "string",

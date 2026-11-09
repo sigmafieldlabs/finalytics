@@ -259,3 +259,26 @@ def test_a_portfolios_assets_are_documented_with_their_cash(household):
     doc = fl.Portfolio.assets.__doc__
     assert "cash_assets" in doc and "EUR cash" in doc and "risk-free asset" in doc
     assert household.cash_assets == ["USD cash", "EUR cash"]
+
+
+def test_different_inputs_give_different_digests(bills):
+    def d(result):
+        return result.report.context.digest
+
+    sixty, forty = {"US Equity": 0.6, "Bonds": 0.4}, {"US Equity": 0.4, "Bonds": 0.6}
+    pairs = [
+        (bills.backtest(method="minimum_variance"), bills.backtest(method="risk_parity")),
+        (bills.backtest(weights=sixty), bills.backtest(weights=forty)),
+        (bills.backtest(method="minimum_variance"), bills.backtest(method="minimum_variance", benchmark=sixty)),
+        (bills.compare(methods=["minimum_variance"]), bills.compare(methods=["minimum_variance"], max_weight=0.3)),
+        (bills.optimise(method="target_return", target=0.06), bills.optimise(method="target_return", target=0.07)),
+        (
+            bills.optimise(method="minimum_variance"),
+            bills.optimise(method="minimum_variance", current_weights=_holding(bills, "T-Bills")),
+        ),
+        (bills.evaluate(sixty), bills.evaluate(forty)),
+    ]
+    for k, (a, b) in enumerate(pairs):
+        assert d(a) != d(b), k
+    assert d(bills.backtest(method="minimum_variance")) == d(bills.backtest(method="minimum_variance"))
+

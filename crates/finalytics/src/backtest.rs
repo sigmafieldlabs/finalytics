@@ -496,6 +496,7 @@ impl Assets {
         .with_mean_returns(self.mean_method())
         .with_origin(self.origin())
         .with_money(options.start_value, options.flows.clone())
+        .with_inputs(serde_json::to_string(options).unwrap_or_default())
     }
 
     /// Fixed weights by asset, checked by the rule every input of weights follows, as one weight
