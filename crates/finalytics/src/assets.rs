@@ -1261,6 +1261,19 @@ impl Assets {
             .ok()
             .and_then(|v| v.as_str().map(str::to_owned))
             .unwrap_or_default();
+        // A method that takes no limits solves without the benchmark's cash in another currency
+        // (see `problem_unchecked`); the report measures the tracking error with it, at zero.
+        let extra = self.benchmark_cash(options, &labels);
+        let (labels, expected, covariance) = if extra.is_empty() {
+            (labels, expected, covariance)
+        } else {
+            let mut expected = expected;
+            expected.extend(self.expected_of(&extra)?);
+            let mut labels = labels;
+            labels.extend(extra);
+            let covariance = self.covariance_of(&labels)?;
+            (labels, expected, covariance)
+        };
         finalytics_reports::optimisation_report(finalytics_reports::OptimisationInputs {
             method: options.method.label().to_owned(),
             description: options.method.description().to_owned(),
@@ -1885,6 +1898,20 @@ impl Assets {
         self.problem_unchecked(options)
     }
 
+    /// The cash in other currencies that `options`' benchmark weights hold and `labels` do not.
+    fn benchmark_cash(&self, options: &OptimiseOptions, labels: &[String]) -> Vec<String> {
+        options
+            .benchmark_weights
+            .iter()
+            .filter(|(l, w)| {
+                **w != 0.0
+                    && self.held_cash.iter().any(|&i| self.labels()[i] == **l)
+                    && !labels.contains(l)
+            })
+            .map(|(l, _)| l.clone())
+            .collect()
+    }
+
     /// The problem `options` describe, whose options were checked before.
     fn problem_unchecked(&self, options: &OptimiseOptions) -> Result<(Problem, Vec<String>)> {
         let returns = self.risky_returns()?;
@@ -1899,17 +1926,13 @@ impl Assets {
         let kept = self.kept_cash(options);
         labels.extend(kept.iter().map(|(l, _)| l.clone()));
         // Cash in another currency that a benchmark holds, which optimisation does not choose:
-        // held at zero, so that the tracking error counts the benchmark's risk in it.
-        let watched: Vec<String> = options
-            .benchmark_weights
-            .iter()
-            .filter(|(l, w)| {
-                **w != 0.0
-                    && self.held_cash.iter().any(|&i| self.labels()[i] == **l)
-                    && !labels.contains(l)
-            })
-            .map(|(l, _)| l.clone())
-            .collect();
+        // held at zero, so that the tracking error counts the benchmark's risk in it. A method
+        // that takes no limits takes no asset held at zero; its report adds the cash instead.
+        let watched = if options.method.takes_limits() {
+            self.benchmark_cash(options, &labels)
+        } else {
+            Vec::new()
+        };
         labels.extend(watched.iter().cloned());
         let rate = options.risk_free_rate.unwrap_or(self.risk_free_rate);
         let mut expected = self.expected_of(&labels)?;

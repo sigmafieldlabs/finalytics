@@ -529,6 +529,90 @@ fn bounds_and_groups_refuse_the_cash_in_favour_of_cash_limits() {
 }
 
 #[test]
+fn methods_without_limits_take_a_benchmark_that_holds_cash_in_another_currency() {
+    let portfolio = datasets::portfolio();
+    let assets = household();
+    let mix: std::collections::BTreeMap<String, f64> = portfolio
+        .weights()
+        .unwrap()
+        .into_iter()
+        .map(|(k, w)| (k.to_string(), w))
+        .collect();
+    assert!(mix.contains_key("EUR cash"));
+    for method in [
+        Method::EqualWeight,
+        Method::InverseVolatility,
+        Method::RiskParity,
+        Method::HierarchicalRiskParity,
+    ] {
+        let optimised = assets
+            .optimise(method)
+            .benchmark_weights(mix.clone())
+            .build()
+            .unwrap_or_else(|e| panic!("{method:?}: {e}"));
+        // The tracking error counts the benchmark's euro cash, as for a method with limits.
+        let weights = optimised.results.weights.as_ref().unwrap();
+        assert!(!weights.contains_key("EUR cash"), "{method:?} {weights:?}");
+        let covariance = assets.covariance().unwrap().matrix;
+        let labels = covariance.labels().to_vec();
+        let active: Vec<f64> = labels
+            .iter()
+            .map(|l| weights.get(l).copied().unwrap_or(0.0) - mix.get(l).copied().unwrap_or(0.0))
+            .collect();
+        let n = labels.len();
+        let variance: f64 = (0..n)
+            .map(|i| {
+                (0..n)
+                    .map(|j| active[i] * covariance.get(i, j) * active[j])
+                    .sum::<f64>()
+            })
+            .sum();
+        let reported = optimised
+            .report
+            .summary
+            .as_ref()
+            .unwrap()
+            .tracking_error
+            .unwrap();
+        assert!(
+            (reported - variance.sqrt()).abs() < 1e-12,
+            "{method:?}: {reported} {}",
+            variance.sqrt()
+        );
+    }
+    // A comparison applies the limit on the tracking error to the methods that take it, and
+    // the benchmark's euro cash still counts in it.
+    let compared = assets
+        .compare([Method::MaximumSharpe, Method::EqualWeight])
+        .benchmark_weights(mix.clone())
+        .max_tracking_error(0.03)
+        .walk_forward(Years(1))
+        .build()
+        .unwrap();
+    assert_eq!(compared.report.strategies.len(), 2);
+    let tested = assets
+        .backtest(Method::EqualWeight)
+        .benchmark_weights(mix.clone())
+        .walk_forward(Years(1))
+        .build();
+    assert!(tested.is_ok(), "{:?}", tested.err());
+    let limited = assets
+        .optimise(Method::MaximumSharpe)
+        .benchmark_weights(mix.clone())
+        .max_tracking_error(0.03)
+        .build()
+        .unwrap();
+    let te = limited
+        .report
+        .summary
+        .as_ref()
+        .unwrap()
+        .tracking_error
+        .unwrap();
+    assert!(te <= 0.03 + 1e-6, "{te}");
+}
+
+#[test]
 fn the_cash_a_mix_holds_in_another_currency_is_measured_in_every_verb() {
     let portfolio = datasets::portfolio();
     let assets = household();

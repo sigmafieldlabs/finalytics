@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Equal weight, inverse volatility, risk parity, risk budgeting and hierarchical risk parity
+  refused `benchmark_weights` that held cash in another currency, such as `portfolio.weights()`
+  with its `EUR cash`, saying that they "take no other constraints"; so did a comparison or
+  backtest with one of them and such a benchmark. The engine held that cash at zero in their
+  problem so that the tracking error counted its risk. They now solve without it, and their
+  report measures the tracking error with it, as for the other methods.
+
 ## [1.0.0-rc.6] - 2026-11-09
 
 ### Added
