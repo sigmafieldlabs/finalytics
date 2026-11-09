@@ -7,6 +7,7 @@ a pandas Series), one return per period::
 
     import finalytics as fl
 
+    returns = [0.010, -0.004, 0.007, -0.012, 0.003, 0.006, -0.002, 0.004, -0.008, 0.005]
     stats = fl.risk.statistics(returns, periods_per_year=252, risk_free_rate=0.03)
     tail = fl.risk.tail_risk(returns, confidence=0.99, method="cornish_fisher")
 """

@@ -28,6 +28,8 @@ def methods() -> list[_types.MethodInfo]:
 
     ::
 
+        import finalytics as fl
+
         cvar = next(m for m in fl.methods() if m.method == "minimum_cvar")
         [p.name for p in cvar.parameters]   # ['confidence', 'target', 'risk_free_rate', ...]
     """
@@ -441,7 +443,8 @@ class Assets:
         frontier: bool = False,
         name: str | None = None,
     ) -> _types.Optimisation:
-        """The optimisation of the risky assets by `method`, fully invested: the weights in
+        """The optimisation of the risky assets by `method`, fully invested in them unless `cash`
+        limits let it hold cash or `keep_cash` keeps the cash held: the weights in
         ``result.results.weights``, and the optimisation report in ``result.report``, which
         ``print(result)`` prints and ``result.show()`` shows. `name` titles the report. The
         methods:

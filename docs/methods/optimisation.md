@@ -315,14 +315,28 @@ Python, `methods()` in JavaScript) describes every method this way: each input's
 default, and the range of values allowed, with whether either end of it is allowed. The checks on
 the options read the same descriptions.
 
-One rule applies to an option a method does not use, in every verb. An optimisation, and a
-backtest of one method, refuse it, naming the option and the method:
+An option a method does not use is treated alike in the verbs that optimise. An optimisation,
+and a backtest of one method, refuse it, naming the option and the method:
 `options.target: minimum variance does not use target`. A comparison gives its options to every
 method it compares, so it applies each option to the methods that take it and notes, for each
 other method, the options that do not apply to it (`The limits on cash do not apply.`); it
 refuses an option that none of its methods takes, naming them all, in the words an
 optimisation of each would use (`maximum Sharpe does not take cash: …`). Fixed weights take no
-limits or parameters.
+limits or parameters. The frontier (`frontier`) takes only the limits, and refuses a method and
+the methods' parameters.
+
+Four options are shared by every method, as `methods()` lists them: `risk_free_rate`,
+`expected_returns`, `current_weights` and `benchmark_weights`. They shape the optimisation report
+(its Sharpe ratios, expected returns, trades and tracking error) and the fit of the methods that
+use them, such as maximum Sharpe's `risk_free_rate`. In a backtest or a comparison they change
+only those fits: a backtest measures its Sharpe ratios against the cash returns, so
+`risk_free_rate` changes maximum Sharpe's weights but not the ratio the report shows.
+
+Every problem with the options is reported together, at the option given, under `options` in
+every verb and language: `options.max_weight` in an optimisation, `options.fee_bps` in a
+rebalancing, `options.methods[1]` for a comparison's second method. A value that cannot be read,
+such as an unknown method or a number that is not finite, is reported with the problems of the
+others; with an unknown method, only the checks that do not depend on the method run.
 
 ```python
 >>> import finalytics as fl

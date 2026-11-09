@@ -2,7 +2,12 @@
 
 ::
 
+    import finalytics as fl
     import finalytics.pandas as flpd
+
+    performance = fl.datasets.portfolio().performance()
+    universe = fl.Universe(fl.datasets.file("portfolio/prices.csv"), benchmark="BENCH")
+    screen = universe.screen()
 
     flpd.returns(performance)                  # a Series indexed by date
     flpd.frame(performance.contributions())   # a DataFrame, one row per holding

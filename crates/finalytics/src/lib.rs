@@ -88,6 +88,25 @@
 //! Records that are complete as they stand, such as an [`opt::Bound`] or an [`opt::GroupLimit`],
 //! are built directly. Enumerations that may gain variants, such as [`opt::Objective`], are
 //! non-exhaustive too, so a `match` on one needs a wildcard arm.
+//!
+//! # Names across languages
+//!
+//! An option has the same name in Rust, Python and JavaScript, with one exception: a Rust
+//! builder takes an option of several values one value at a time, under a singular name, where
+//! Python takes a keyword and JavaScript a field with the whole set. `group` and `class_limit`
+//! add to `groups`, `budget` to `budgets`, `expected_return` to `expected_returns`, `scenario`
+//! to `scenarios`, `formula` to `formulas`, `alternative` to `alternatives` and `flow` to
+//! `flows`; `asset_bounds(asset, min, max)` and `benchmark_weight(holding, weight)` add one
+//! asset or holding, and `with_frontier()` asks for the frontier. The options that take a whole
+//! set of weights, such as `current_weights` and `benchmark_weights`, take it in every language.
+//!
+//! Every problem with the options is reported together, at the option's path under `options`,
+//! such as `options.max_weight`, in every language.
+//!
+//! A model checked when it is built gives its parts through methods rather than fields, so that
+//! it cannot be changed into one that fails its checks: [`risk::FactorModel::exposures`],
+//! [`risk::FactorModel::factors`] and the other accessors, where Python and JavaScript, whose
+//! values cannot be held to their checks, read the fields of its JSON form.
 
 /// The raw results of an optimisation, a comparison, a backtest, a rebalancing, a plan or a
 /// screen, given as JSON, as text. The Python and JavaScript packages use it; from Rust, display the results.

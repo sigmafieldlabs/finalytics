@@ -206,8 +206,9 @@ export interface ResultsMethods {
 }
 
 /**
- * What `Assets.optimise`, `Assets.compare`, `Assets.backtest`, `Assets.plan` and
- * `Universe.screen` return: the report and the raw results. `${result}` is the report as text, and `result.show()` shows it as a page.
+ * What `Assets.optimise`, `Assets.evaluate`, `Assets.compare`, `Assets.backtest`, `Assets.plan`,
+ * `Portfolio.rebalance` and `Universe.screen` return: the report and the raw results.
+ * `${result}` is the report as text, and `result.show()` shows it as a page.
  */
 export interface Result<R, D> {
   /** The report. */
@@ -1686,7 +1687,8 @@ impl Assets {
         self.inner.risk_free_asset().map(str::to_owned)
     }
 
-    /// The assets optimisation chooses among: all but the cash.
+    /// The assets optimisation chooses among by default: all but the cash. With `cash` limits,
+    /// it holds the risk-free asset, or cash at the risk-free rate, beside them.
     #[wasm_bindgen(getter, js_name = riskyAssets)]
     pub fn risky_assets(&self) -> Vec<String> {
         self.inner
@@ -1696,8 +1698,9 @@ impl Assets {
             .collect()
     }
 
-    /// The cash among the assets, which optimisation does not choose: the risk-free asset, if
-    /// any, then cash in other currencies, such as a portfolio's euro cash.
+    /// The cash among the assets: the risk-free asset, if any, then cash in other currencies,
+    /// such as a portfolio's euro cash. Optimisation holds the risk-free asset only with `cash`
+    /// limits, keeps cash at its current weight with `keep_cash`, and otherwise invests it.
     #[wasm_bindgen(getter, js_name = cashAssets)]
     pub fn cash_assets(&self) -> Vec<String> {
         self.inner
@@ -1748,7 +1751,8 @@ impl Assets {
     }
 
     /// The optimisation of the risky assets by the method of `options` (the largest Sharpe
-    /// ratio by default), fully invested, within its limits: the optimisation report in
+    /// ratio by default), fully invested in them unless `cash` limits let it hold cash or
+    /// `keep_cash` keeps the cash held, within its limits: the optimisation report in
     /// `report`, and the weights, in the order of the assets, with the solver's solution in
     /// `results`.
     #[wasm_bindgen(unchecked_return_type = "Result<OptimisationReport, OptimisationResult>")]

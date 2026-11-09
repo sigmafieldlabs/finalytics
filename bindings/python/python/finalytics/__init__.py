@@ -13,10 +13,13 @@ many securities to screen, each on its own dates::
     portfolio = fl.Portfolio.from_csv(
         transactions="transactions.csv",
         prices="prices.csv",
+        fx="fx.csv",
+        instruments="instruments.csv",
+        accounts="accounts.csv",
     )
-    report = portfolio.report(benchmark="SPY")
+    report = portfolio.report(benchmark="BENCH")
 
-    assets = fl.Assets(prices, risk_free_asset="T-Bills")
+    assets = fl.Assets(fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
     result = assets.optimise(method="maximum_sharpe", max_weight=0.4)
     backtest = assets.compare(
         methods=["equal_weight", "minimum_variance", "maximum_sharpe"],
@@ -31,12 +34,15 @@ many securities to screen, each on its own dates::
         inflation=0.025,
     )
 
-    universe = fl.Universe(prices, fields=fundamentals, benchmark="SPY")
+    universe = fl.Universe("prices.csv", fields="instruments.csv", benchmark="BENCH")
     screen = universe.screen(
-        rules=[("return_1y", ">", 0.1), ("sector", "not_in", ["Utilities"])],
+        rules=[("return_1y", ">", 0.0), ("class.asset_class", "not_in", ["Fixed income"])],
         sort=("sharpe_ratio", "descending"),
         limit=20,
     )
+
+The files are the sample household's, which ``fl.datasets.file("portfolio/prices.csv")`` and the
+like give as text.
 """
 
 from importlib.metadata import version as _distribution_version

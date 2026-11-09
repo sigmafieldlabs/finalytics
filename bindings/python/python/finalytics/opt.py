@@ -4,13 +4,25 @@
 
     import finalytics as fl
 
-    problem = fl.opt.Problem.from_covariance(cov, expected_returns=mu)
+    labels = ["stocks", "bonds", "gold"]
+    cov = [[0.04, 0.006, 0.0], [0.006, 0.01, 0.001], [0.0, 0.001, 0.02]]
+    mu = [0.08, 0.04, 0.06]
+    problem = fl.opt.Problem.from_covariance(cov, labels=labels, expected_returns=mu)
     solution = problem.solve(fl.opt.MaximumSharpe(risk_free_rate=0.03))
 
 Black–Litterman expected returns blend the returns implied by market weights with views::
 
-    estimate = fl.opt.black_litterman(cov, [fl.opt.View(portfolio={"bonds": 1.0}, expected_return=0.05)],
-                                      market_weights=weights, risk_aversion=2.5)
+    import finalytics as fl
+
+    labels = ["stocks", "bonds", "gold"]
+    cov = [[0.04, 0.006, 0.0], [0.006, 0.01, 0.001], [0.0, 0.001, 0.02]]
+    estimate = fl.opt.black_litterman(
+        cov,
+        [fl.opt.View(portfolio={"bonds": 1.0}, expected_return=0.05)],
+        market_weights=[0.6, 0.3, 0.1],
+        risk_aversion=2.5,
+        labels=labels,
+    )
     solution = fl.opt.Problem.from_black_litterman(estimate).solve(fl.opt.MeanVariance(risk_aversion=2.5))
 """
 
