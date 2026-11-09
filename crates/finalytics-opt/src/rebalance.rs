@@ -531,6 +531,9 @@ pub fn rebalance(
     // sized on the account's value; when the fees would take the base-currency cash below
     // zero, purchases are sized again on a value less the shortfall, so that the trades fit the
     // cash the account has.
+    // The smallest change in a holding that is a trade, as a share of the account's value.
+    let dust = Decimal::new(1, 9);
+    let value_base_all = value_base;
     let attempt = |investable: Decimal,
                    trims: &BTreeMap<InstrumentId, Decimal>|
      -> Result<Planned> {
@@ -578,6 +581,15 @@ pub fn rebalance(
                 continue;
             }
             let value_base = (quantity.abs() * unit.base).round_dp(10);
+            // A change too small to settle, under one minor unit of the instrument's currency
+            // or a billionth of the account's value, is no trade: what is left of the noise in
+            // weights that are meant to stay as they are.
+            let minor = Decimal::new(1, unit.currency.minor_units());
+            if weight > 0.0
+                && (quantity.abs() * unit.local < minor || value_base < dust * value_base_all)
+            {
+                continue;
+            }
             if value_base < options.minimum_trade {
                 warnings.warning(
                     format!("trades.{id}"),

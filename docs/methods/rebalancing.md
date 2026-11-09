@@ -13,7 +13,11 @@ rates, plus cash):
    x$ in the base currency, the trade is $(w V - q u) / u$ units, where $q$ is the quantity held
    and $w$ the target (zero for an instrument held but not listed, which is sold entirely). With
    whole units, each trade is rounded towards zero. Sales are capped at the quantity held, and
-   trades worth less than the minimum trade are left out (and noted in the warnings).
+   trades worth less than the minimum trade are left out (and noted in the warnings). A change
+   too small to settle, worth less than one minor unit of the instrument's currency or less than
+   $10^{-9} V$, is no trade: targets that equal the weights held, or an optimisation's weights
+   for the assets it did not trade, trade nothing, rather than fractions of a unit that would
+   each pay a fee.
 2. **Fees.** Each trade pays $\max(\text{minimum}, \text{per trade} + \text{rate} \times
    \text{value})$ in the instrument's currency, rounded to its minor units (no fees by default).
    A purchase is reduced so that it and its fee fit the target; a sale pays its fee from the

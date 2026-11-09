@@ -26,6 +26,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sent NaN weights without a risk-free asset (and could not invest with one). With nothing
   invested, a refit now enters from cash, as the first fit does.
 
+- Rebalancing to an optimisation traded every instrument: the assets the optimisation did not
+  trade were within about 1e-10 of their current weights, and each difference became a separate
+  trade of a fraction of a unit, paying the minimum fee, so the optimisation's `max_trades` and
+  `min_trade` did not hold in the trades. An optimisation's weights for the assets it does not
+  trade are now their current weights exactly, and `rebalance` treats a change worth less than
+  one minor unit of the instrument's currency, or a billionth of the account's value, as no
+  trade.
+
 ## [1.0.0-rc.5] - 2026-11-09
 
 ### Added

@@ -73,3 +73,53 @@ test("a refit after fits that held only cash enters from cash", () => {
   assert.ok(strategy.failures.length > 0);
   assert.ok(strategy.out_of_sample.trades.some((t) => t.refit && t.turnover > 0.5 + 1e-9));
 });
+
+/** The household's own weights, its euro cash counted with the dollar cash. */
+function folded() {
+  const out = {};
+  for (const [key, w] of Object.entries(portfolio.weights())) {
+    const to = household.riskyAssets.includes(key) ? key : household.riskFreeAsset;
+    out[to] = (out[to] ?? 0) + w;
+  }
+  return out;
+}
+
+test("rebalancing to an optimisation trades what it traded and nothing else", () => {
+  const optimisation = household.optimise({
+    method: "minimum_variance",
+    current_weights: folded(),
+    max_turnover: 0.1,
+    max_trades: 2,
+    min_trade: 0.02,
+  });
+  const traded = optimisation.report.trades.trades.filter((t) => !t.cash).map((t) => t.asset).sort();
+  assert.equal(traded.length, 2);
+  const rebalancing = portfolio.rebalance(optimisation);
+  const value = Number(rebalancing.results.value_base);
+  const trades = rebalancing.results.accounts.flatMap((a) => a.trades);
+  assert.deepEqual([...new Set(trades.map((t) => t.instrument))].sort(), traded);
+  assert.ok(trades.every((t) => Number(t.value_base) / value > 1e-6));
+  const after = rebalancing.results.weights_after;
+  for (const [asset, w] of Object.entries(optimisation.results.weights)) {
+    assert.ok(Math.abs((after[asset] ?? 0) - w) < 1e-9, `${asset}: ${after[asset]} for ${w}`);
+  }
+});
+
+test("rebalancing to the weights held trades nothing", () => {
+  const rebalancing = portfolio.rebalance(portfolio.weights());
+  assert.ok(rebalancing.results.accounts.every((a) => a.trades.length === 0 && a.conversions.length === 0));
+});
+
+test("a change too small to settle is no trade", () => {
+  let sign = 1;
+  const nudged = {};
+  for (const [key, w] of Object.entries(portfolio.weights())) {
+    sign = -sign;
+    nudged[key] = key.endsWith(" cash") ? w : w + sign * 1e-11;
+  }
+  assert.ok(portfolio.rebalance(nudged).results.accounts.every((a) => a.trades.length === 0));
+  const moved = { ...portfolio.weights() };
+  moved.VTI -= 1e-6;
+  moved.BND += 1e-6;
+  assert.ok(portfolio.rebalance(moved).results.accounts.reduce((s, a) => s + a.trades.length, 0) >= 2);
+});

@@ -85,3 +85,51 @@ def test_a_refit_after_fits_that_held_only_cash_enters_from_cash(bills):
     strategy = backtest.results.strategies[0]
     assert strategy.failures
     assert any(t.refit and t.turnover > 0.5 + 1e-9 for t in strategy.out_of_sample.trades)
+
+
+def _folded(portfolio, assets):
+    """The household's own weights, its euro cash counted with the dollar cash."""
+    out = {}
+    for key, w in portfolio.weights().items():
+        to = key if key in assets.risky_assets else assets.risk_free_asset
+        out[to] = out.get(to, 0) + w
+    return out
+
+
+def test_rebalancing_to_an_optimisation_trades_what_it_traded_and_nothing_else(portfolio, household):
+    optimisation = household.optimise(
+        method="minimum_variance",
+        current_weights=_folded(portfolio, household),
+        max_turnover=0.1,
+        max_trades=2,
+        min_trade=0.02,
+    )
+    traded = sorted(t.asset for t in optimisation.report.trades.trades if not t.cash)
+    assert len(traded) == 2
+    rebalancing = portfolio.rebalance(optimisation)
+    value = float(rebalancing.results.value_base)
+    trades = [t for a in rebalancing.results.accounts for t in a.trades]
+    assert sorted({t.instrument for t in trades}) == traded
+    assert all(float(t.value_base) / value > 1e-6 for t in trades)
+    after = rebalancing.results.weights_after
+    for asset, w in optimisation.results.weights.items():
+        assert after.get(asset, 0) == pytest.approx(w, abs=1e-9), asset
+
+
+def test_rebalancing_to_the_weights_held_trades_nothing(portfolio):
+    rebalancing = portfolio.rebalance(portfolio.weights())
+    assert all(not a.trades and not a.conversions for a in rebalancing.results.accounts)
+
+
+def test_a_change_too_small_to_settle_is_no_trade(portfolio):
+    nudged = {}
+    sign = 1.0
+    for key, w in portfolio.weights().items():
+        sign = -sign
+        nudged[key] = w + sign * 1e-11 if not key.endswith(" cash") else w
+    rebalancing = portfolio.rebalance(nudged)
+    assert all(not a.trades for a in rebalancing.results.accounts)
+    moved = dict(portfolio.weights())
+    moved["VTI"] -= 1e-6
+    moved["BND"] += 1e-6
+    assert sum(len(a.trades) for a in portfolio.rebalance(moved).results.accounts) >= 2
