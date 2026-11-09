@@ -55,7 +55,7 @@ pub use black_litterman::{
 pub use frontier::FrontierPoint;
 pub use problem::{
     AssetBound, Bound, Constraints, FactorExposureLimit, GroupLimit, Linkage, Objective, Problem,
-    ReturnUncertainty, TrackingErrorLimit, TradeLimits, Turnover,
+    ReturnUncertainty, TRADED, TrackingErrorLimit, TradeLimits, Turnover,
 };
 pub use rebalance::{
     Fees, KeptCash, ProposedConversion, ProposedTrade, Rebalance, RebalanceOptions,

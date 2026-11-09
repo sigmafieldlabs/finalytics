@@ -136,6 +136,13 @@ re-optimised. This repeats until the limits hold. The result satisfies the limit
 guaranteed to be the best portfolio that does, and fixing assets can make the other constraints
 infeasible. A change in weight below $10^{-7}$ counts as no trade.
 
+`Assets.optimise` and the frontier give the solver's weights exactly where the solver is only
+close: each within its bounds, one within $10^{-7}$ of the weight held now (with
+`current_weights`) at that weight, another within $10^{-7}$ of zero at zero, and the others
+scaled, within their bounds, to add up to one. The expected return and volatility are those of
+the weights given. So the engine's weights are always valid weights: a target for rebalancing,
+the current weights of another optimisation, or fixed weights.
+
 ### Group limits by class
 
 A group limit names its assets, or a classification of them: the group is then the assets

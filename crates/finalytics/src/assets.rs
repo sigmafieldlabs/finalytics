@@ -1119,22 +1119,33 @@ impl Assets {
     }
 
     /// Solves the optimisation `options` describe, without a report: the weights a backtest
-    /// refits.
+    /// fits. The options are checked first.
     pub(crate) fn solve(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
+        self.check_options(options, false).into_result(())?;
+        self.solve_checked(options)
+    }
+
+    /// Solves the optimisation `options` describe, whose options were checked before: a
+    /// backtest's refit, whose current weights are those the run holds rather than the user's.
+    pub(crate) fn refit(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
+        self.solve_checked(options)
+    }
+
+    fn solve_checked(&self, options: &OptimiseOptions) -> Result<OptimisationResult> {
         let rf = options.risk_free_rate.unwrap_or(self.risk_free_rate);
-        let (mut problem, labels) = self.problem(options)?;
+        let (mut problem, labels) = self.problem_unchecked(options)?;
         // The floor on expected return of the downside methods; the frontier and the report's
         // estimates do not have it.
         if options.method.uses_scenarios() {
             problem.constraints.min_return = options.target;
         }
         let objective = objective(options, rf, &labels)?;
-        let solution = problem
+        let mut solution = problem
             .solve(&objective)
             .map_err(|e| user_paths(e, options))?;
         // Resampling once the estimates themselves have a solution: without one, the status
         // says why.
-        let resampled = match options.resample.filter(|_| options.method.resamples()) {
+        let mut resampled = match options.resample.filter(|_| options.method.resamples()) {
             Some(samples) if solution.status.has_solution() => {
                 let resampling = Resampling::new(samples, self.returns.observations(), 0)
                     .with_periods_per_year(self.periods_per_year);
@@ -1146,6 +1157,27 @@ impl Assets {
             }
             _ => None,
         };
+        // The weights as the engine gives them: exact where the solver is only close.
+        let current = (!options.current_weights.is_empty()).then(|| {
+            labels
+                .iter()
+                .map(|l| options.current_weights.get(l).copied().unwrap_or(0.0))
+                .collect::<Vec<f64>>()
+        });
+        if let Some(w) = solution.weights.as_mut() {
+            clean_weights(w, &problem, current.as_deref());
+            let (expected, volatility) = figures(&problem, w);
+            solution.expected_return = expected;
+            solution.volatility = volatility;
+        }
+        if let Some(r) = resampled.as_mut()
+            && let Some(w) = r.weights.as_mut()
+        {
+            clean_weights(w, &problem, current.as_deref());
+            let (expected, volatility) = figures(&problem, w);
+            r.expected_return = expected;
+            r.volatility = volatility;
+        }
         let (status, chosen, expected_return, volatility) = match &resampled {
             Some(r) => (
                 if r.weights.is_some() {
@@ -1196,13 +1228,24 @@ impl Assets {
         options: &OptimiseOptions,
     ) -> Result<Vec<FrontierPortfolio>> {
         let (problem, labels) = self.problem(options)?;
+        let current = (!options.current_weights.is_empty()).then(|| {
+            labels
+                .iter()
+                .map(|l| options.current_weights.get(l).copied().unwrap_or(0.0))
+                .collect::<Vec<f64>>()
+        });
         Ok(problem
             .frontier(points)?
             .into_iter()
-            .map(|p| FrontierPortfolio {
-                expected_return: p.expected_return,
-                volatility: p.volatility,
-                weights: labels.iter().cloned().zip(p.weights).collect(),
+            .map(|p| {
+                let mut w = p.weights;
+                clean_weights(&mut w, &problem, current.as_deref());
+                let (expected, volatility) = figures(&problem, &w);
+                FrontierPortfolio {
+                    expected_return: expected.unwrap_or(p.expected_return),
+                    volatility: volatility.unwrap_or(p.volatility),
+                    weights: labels.iter().cloned().zip(w).collect(),
+                }
             })
             .collect())
     }
@@ -1644,6 +1687,11 @@ impl Assets {
     /// are checked first, by [`Assets::check_options`].
     fn problem(&self, options: &OptimiseOptions) -> Result<(Problem, Vec<String>)> {
         self.check_options(options, false).into_result(())?;
+        self.problem_unchecked(options)
+    }
+
+    /// The problem `options` describe, whose options were checked before.
+    fn problem_unchecked(&self, options: &OptimiseOptions) -> Result<(Problem, Vec<String>)> {
         let returns = self.risky_returns()?;
         let mut labels = returns.labels().to_vec();
         // With limits on cash, the cash is one of the choices, riskless: the risk-free asset,
@@ -2396,6 +2444,92 @@ fn rehome(error: Error, path: &str, report: &mut ValidationReport) -> Result<()>
         report.error(path, issue.message.clone());
     }
     Ok(())
+}
+
+/// Makes the solver's weights `w` of `problem` exact where the solver is only close, so that
+/// the engine's own weights pass its own checks: each within its bounds; a weight within the
+/// no-trade tolerance ([`TRADED`](finalytics_opt::TRADED)) of the weight held now, when
+/// `current` gives those, at that weight, so that an asset not traded is not traded by a
+/// fraction; another within the tolerance of zero at zero; and what that changes in their total
+/// taken up by the other weights in proportion, so that they add up to the budget.
+pub(crate) fn clean_weights(w: &mut [f64], problem: &Problem, current: Option<&[f64]>) {
+    let tolerance = finalytics_opt::TRADED;
+    let constraints = &problem.constraints;
+    let bounds: Vec<(f64, f64)> = problem
+        .labels
+        .iter()
+        .map(|label| {
+            let mut limits = constraints
+                .asset_bounds
+                .iter()
+                .filter(|b| &b.asset == label)
+                .peekable();
+            if limits.peek().is_none() {
+                return (constraints.bounds.min, constraints.bounds.max);
+            }
+            limits.fold((f64::NEG_INFINITY, f64::INFINITY), |(lo, hi), b| {
+                (lo.max(b.min), hi.min(b.max))
+            })
+        })
+        .collect();
+    let mut fixed = vec![false; w.len()];
+    for (i, weight) in w.iter_mut().enumerate() {
+        let (lo, hi) = bounds[i];
+        if lo <= hi {
+            *weight = weight.clamp(lo, hi);
+        }
+        if let Some(c) = current.and_then(|c| c.get(i))
+            && (*weight - c).abs() < tolerance
+            && (lo..=hi).contains(c)
+        {
+            *weight = *c;
+            fixed[i] = true;
+        } else if weight.abs() < tolerance && (lo..=hi).contains(&0.0) {
+            *weight = 0.0;
+            fixed[i] = true;
+        } else if *weight == lo || *weight == hi {
+            fixed[i] = lo == hi;
+        }
+    }
+    // The gap is taken up by the weights free to move, not held as they are and with room
+    // before their bounds, in proportion; one that reaches a bound stops there, and the rest
+    // take what it leaves.
+    for _ in 0..=w.len() {
+        let gap = constraints.budget - w.iter().sum::<f64>();
+        if gap.abs() <= f64::EPSILON || !gap.is_finite() {
+            return;
+        }
+        let free: Vec<usize> = (0..w.len())
+            .filter(|&i| {
+                let (lo, hi) = bounds[i];
+                !fixed[i] && w[i] > 0.0 && if gap > 0.0 { w[i] < hi } else { w[i] > lo }
+            })
+            .collect();
+        let total: f64 = free.iter().map(|&i| w[i]).sum();
+        if total <= 0.0 {
+            return;
+        }
+        for i in free {
+            let (lo, hi) = bounds[i];
+            w[i] = (w[i] + gap * w[i] / total).clamp(lo.min(hi), hi.max(lo));
+        }
+    }
+}
+
+/// The annual expected return and volatility of weights `w` on the estimates of `problem`.
+fn figures(problem: &Problem, w: &[f64]) -> (Option<f64>, Option<f64>) {
+    let expected = problem
+        .expected_returns
+        .as_ref()
+        .map(|mu| mu.iter().zip(w).map(|(m, w)| m * w).sum::<f64>());
+    let volatility = problem.covariance.as_ref().map(|c| {
+        let n = w.len();
+        let variance: f64 = (0..n)
+            .map(|i| w[i] * (0..n).map(|j| c.get(i, j) * w[j]).sum::<f64>())
+            .sum();
+        variance.max(0.0).sqrt()
+    });
+    (expected, volatility)
 }
 
 /// The largest effective number of assets, `1 / sum w^2`, of fully invested weights within

@@ -410,8 +410,9 @@ fn the_limits_are_the_optimisers_constraints() {
         .max_tracking_error(0.04)
         .build()
         .unwrap();
+    // To the no-trade tolerance, within which the engine makes a weight exact.
     let weights = result.results.weights.unwrap();
     for (a, w) in risky.iter().zip(by_hand.weights.unwrap()) {
-        assert!((weights[*a] - w).abs() < 1e-12, "{a}: {} {w}", weights[*a]);
+        assert!((weights[*a] - w).abs() < 1e-7, "{a}: {} {w}", weights[*a]);
     }
 }

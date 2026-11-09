@@ -14,6 +14,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   report now splits the expected shortfall over every weight, the cash's included, on the
   returns the method minimised.
 
+- An optimisation's weights could fall a little below zero, of the order of 1e-13, and the engine
+  then refused its own output: `portfolio.rebalance(optimisation)`, the weights given back as
+  `current_weights`, and walk-forward backtests with trade limits, whose refits checked the
+  weights the run held as if they had been given. The weights of `optimise` and the frontier are
+  now within their bounds, at zero or the current weight where the solver was within 1e-7 of
+  it, and add up to one; their expected return and volatility are those of the weights given.
+  A refit starts from the weights the run holds without checking them as user input.
+
 ## [1.0.0-rc.5] - 2026-11-09
 
 ### Added

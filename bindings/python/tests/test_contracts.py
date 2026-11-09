@@ -42,3 +42,35 @@ def test_minimum_cvar_with_cash_reports_the_shortfall_of_every_weight(shapes):
         assert shares == pytest.approx(1, abs=1e-6), shape
         assert any(a.asset == cash for a in result.report.allocation), shape
 
+
+def _walk_forward(assets):
+    return fl.WalkForward(years=1 if assets.periods_per_year > 100 else 5)
+
+
+def test_the_engines_own_weights_pass_its_own_checks(portfolio, household, bills):
+    cases = [
+        dict(method="minimum_cdar"),
+        dict(method="mean_variance", risk_aversion=3, max_weight=0.35),
+        dict(method="minimum_variance", cash=(0, 0)),
+    ]
+    for case in cases:
+        result = household.optimise(**case)
+        weights = result.results.weights
+        assert all(w >= 0 for w in weights.values()), case
+        assert all(w == 0 or w >= 1e-7 for w in weights.values()), case
+        assert sum(weights.values()) == pytest.approx(1, abs=1e-12)
+        valued = household.evaluate(weights)
+        assert valued.results.volatility == pytest.approx(result.results.volatility, abs=1e-12)
+        # A target for rebalancing, and current weights for another optimisation.
+        portfolio.rebalance(result)
+        household.optimise(method="minimum_variance", current_weights=weights)
+    capped = bills.optimise(method="maximum_sharpe", max_weight=0.3)
+    assert all(w <= 0.3 for w in capped.results.weights.values())
+
+
+def test_a_walk_forward_refits_from_the_weights_it_holds_without_checking_them_as_given(shapes):
+    for shape, assets in shapes.items():
+        wf = _walk_forward(assets)
+        assets.backtest(method="mean_variance", risk_aversion=3, min_trade=0.01, validation=wf)
+        assets.backtest(method="minimum_cdar", max_turnover=0.5, validation=wf)
+

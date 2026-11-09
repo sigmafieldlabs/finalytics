@@ -31,3 +31,35 @@ test("minimum CVaR with cash reports the shortfall of every weight", () => {
     assert.ok(result.report.allocation.some((a) => a.asset === cash), shape);
   }
 });
+
+const walkForward = (assets) => ({ walk_forward: { years: assets.periodsPerYear > 100 ? 1 : 5 } });
+
+test("the engine's own weights pass its own checks", () => {
+  const cases = [
+    { method: "minimum_cdar" },
+    { method: "mean_variance", risk_aversion: 3, max_weight: 0.35 },
+    { method: "minimum_variance", cash: { min: 0, max: 0 } },
+  ];
+  for (const options of cases) {
+    const result = household.optimise(options);
+    const weights = result.results.weights;
+    const values = Object.values(weights);
+    assert.ok(values.every((w) => w >= 0), JSON.stringify(weights));
+    assert.ok(values.every((w) => w === 0 || w >= 1e-7), JSON.stringify(weights));
+    assert.ok(Math.abs(values.reduce((s, w) => s + w, 0) - 1) < 1e-12);
+    const valued = household.evaluate({ weights });
+    assert.ok(Math.abs(valued.results.volatility - result.results.volatility) < 1e-12);
+    portfolio.rebalance(result);
+    household.optimise({ method: "minimum_variance", current_weights: weights });
+  }
+  const capped = bills.optimise({ method: "maximum_sharpe", max_weight: 0.3 });
+  assert.ok(Object.values(capped.results.weights).every((w) => w <= 0.3));
+});
+
+test("a walk-forward refits from the weights it holds without checking them as given", () => {
+  for (const [shape, assets] of Object.entries(shapes)) {
+    const validation = walkForward(assets);
+    assert.doesNotThrow(() => assets.backtest({ method: "mean_variance", risk_aversion: 3, min_trade: 0.01, validation }), shape);
+    assert.doesNotThrow(() => assets.backtest({ method: "minimum_cdar", max_turnover: 0.5, validation }), shape);
+  }
+});

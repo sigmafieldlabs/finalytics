@@ -301,7 +301,9 @@ impl Assets {
                                     }
                                 }
                             }
-                            Ok(weights_of(self.window(rows)?.solve(&options)?))
+                            // The options were checked above; the weights a refit starts from
+                            // are the run's own, not the user's.
+                            Ok(weights_of(self.window(rows)?.refit(&options)?))
                         }))
                     } else {
                         Plan::Fit(Box::new(move |rows| {

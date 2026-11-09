@@ -957,7 +957,7 @@ fn check_bound(min: f64, max: f64, path: &str, report: &mut ValidationReport) {
 
 /// A change in weight below this counts as no trade: well above the solver's tolerance, so that
 /// an asset held at its current weight is not mistaken for a small trade.
-pub(crate) const TRADED: f64 = 1e-7;
+pub const TRADED: f64 = 1e-7;
 
 pub(crate) fn check_vector(values: &[f64], n: usize, path: &str, report: &mut ValidationReport) {
     if values.len() != n {
