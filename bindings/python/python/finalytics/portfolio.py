@@ -432,9 +432,14 @@ class Portfolio:
         return Portfolio._wrap(call(self._native.with_goals, dumps(list(goals), "goals")))
 
     def assets(self) -> Assets:
-        """The instruments held at the last price date, as :class:`~finalytics.Assets`: their
-        price returns in the base currency on the portfolio's dates, for statistics and
-        optimisation."""
+        """The holdings at the last price date, as :class:`~finalytics.Assets`: their returns in
+        the base currency on the portfolio's dates, for statistics and optimisation. The
+        instruments are the assets optimisation chooses among (``risky_assets``); the cash is there
+        too (``cash_assets``), so that the portfolio's own :meth:`weights` can be valued and
+        optimised from on the same estimates: base-currency cash, such as ``"USD cash"``, as the
+        risk-free asset, riskless and earning nothing, and cash in other currencies, such as
+        ``"EUR cash"``, moving with its exchange rate. The returns start on the first date every
+        instrument has a price, as the overview report's estimates do."""
         from finalytics.assets import Assets
 
         return Assets._wrap(call(self._native.assets))

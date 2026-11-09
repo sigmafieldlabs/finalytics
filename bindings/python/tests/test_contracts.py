@@ -254,3 +254,8 @@ def test_a_backtest_is_titled_with_the_name_given(bills):
     assert fixed.report.name == "Mine" and "Mine" in str(fixed)
     assert bills.backtest(method="minimum_variance").report.name is None
 
+
+def test_a_portfolios_assets_are_documented_with_their_cash(household):
+    doc = fl.Portfolio.assets.__doc__
+    assert "cash_assets" in doc and "EUR cash" in doc and "risk-free asset" in doc
+    assert household.cash_assets == ["USD cash", "EUR cash"]

@@ -1051,8 +1051,14 @@ impl Portfolio {
         Ok(self.inner.with_goals(goals).map_err(error)?.into())
     }
 
-    /// The instruments held at the last price date, as `Assets`: their price returns in the
-    /// base currency on the portfolio's dates, for statistics and optimisation.
+    /// The holdings at the last price date, as `Assets`: their returns in the base currency on
+    /// the portfolio's dates, for statistics and optimisation. The instruments are the assets
+    /// optimisation chooses among (`riskyAssets`); the cash is there too (`cashAssets`), so that
+    /// the portfolio's own `weights()` can be valued and optimised from on the same estimates:
+    /// base-currency cash, such as `USD cash`, as the risk-free asset, riskless and earning
+    /// nothing, and cash in other currencies, such as `EUR cash`, moving with its exchange rate.
+    /// The returns start on the first date every instrument has a price, as the overview
+    /// report's estimates do.
     pub fn assets(&self) -> Result<Assets, JsValue> {
         Ok(Assets {
             inner: self.inner.assets().map_err(error)?,

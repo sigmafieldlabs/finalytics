@@ -415,6 +415,17 @@ impl Portfolio {
     /// asset, riskless and earning nothing, and cash in other currencies, such as `EUR cash`,
     /// moving with its exchange rate. The returns start on the first date every instrument has
     /// a price, as the overview report's estimates do.
+    ///
+    /// ```
+    /// let portfolio = finalytics::datasets::portfolio();
+    /// let assets = portfolio.assets()?;
+    /// assert_eq!(assets.risk_free_asset(), Some("USD cash"));
+    /// assert_eq!(assets.cash_assets(), ["USD cash", "EUR cash"]);
+    /// // The portfolio's own weights, its cash included, are valued on the same estimates.
+    /// let valued = assets.evaluate(portfolio.weights()?).build()?;
+    /// assert!(valued.results.volatility > 0.0);
+    /// # Ok::<(), finalytics::Error>(())
+    /// ```
     pub fn assets(&self) -> Result<Assets> {
         self.assets_on(self.date_or_last(None)?, &[])
     }

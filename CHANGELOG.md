@@ -53,6 +53,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A backtest given a name (`name="Mine"`) used it for the strategy and the report's title but
   left `report.name` empty, where `optimise`, `compare` and `evaluate` put it. It is now there.
 
+- The Python and JavaScript documentation of `Portfolio.assets()` said it holds the instruments
+  alone; it holds the portfolio's cash too, as the Rust documentation says: base-currency cash as
+  the risk-free asset and cash in other currencies, so that the portfolio's own weights can be
+  valued and optimised from.
+
 ### Changed
 
 - One message for a label that is not one of the assets, `unknown asset Nope`, in every input

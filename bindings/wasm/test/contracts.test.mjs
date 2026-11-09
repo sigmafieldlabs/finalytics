@@ -3,6 +3,7 @@
 // asset), the asset classes with T-bills as the risk-free asset, and the asset classes without
 // them at a 2% rate.
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
 import * as fl from "../pkg/node.js";
@@ -237,4 +238,13 @@ test("a backtest is titled with the name given", () => {
   assert.equal(fixed.report.name, "Mine");
   assert.ok(`${fixed}`.includes("Mine"));
   assert.equal(bills.backtest({ method: "minimum_variance" }).report.name ?? null, null);
+});
+
+test("a portfolio's assets are documented with their cash", async () => {
+  const types = await readFile(new URL("../pkg/finalytics.d.ts", import.meta.url), "utf8");
+  const at = types.indexOf("  assets(): Assets;");
+  assert.ok(at > 0);
+  const doc = types.slice(types.lastIndexOf("/**", at), at);
+  assert.ok(doc.includes("cashAssets") && doc.includes("EUR cash") && doc.includes("risk-free asset"), doc);
+  assert.deepEqual(household.cashAssets, ["USD cash", "EUR cash"]);
 });
