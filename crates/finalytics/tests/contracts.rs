@@ -1085,3 +1085,26 @@ fn misspelt_fields_are_refused_at_every_depth() {
         report
     );
 }
+
+#[test]
+fn equal_weight_is_not_labelled_under_the_weights() {
+    let assets = with_bills();
+    let label = ">Equal weight</text>";
+    // Equal weight's own weights sit on its point: the legend names it, and no label does.
+    let page = assets
+        .optimise(Method::EqualWeight)
+        .build()
+        .unwrap()
+        .report
+        .to_html(None);
+    assert!(!page.contains(label));
+    assert!(page.contains("Equal weight</span>"));
+    // Apart, it is labelled.
+    let page = assets
+        .optimise(Method::MinimumVariance)
+        .build()
+        .unwrap()
+        .report
+        .to_html(None);
+    assert!(page.contains(label));
+}

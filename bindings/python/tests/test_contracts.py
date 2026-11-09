@@ -352,3 +352,10 @@ def test_misspelt_fields_are_refused_at_every_depth(portfolio, tmp_path):
     with pytest.raises(fl.ValidationError) as found:
         fl.Portfolio.read(path)
     assert "nmae" in str(found.value)
+
+
+def test_equal_weight_is_not_labelled_under_the_weights(bills):
+    label = ">Equal weight</text>"
+    page = bills.optimise(method="equal_weight").report.to_html()
+    assert label not in page and "Equal weight</span>" in page
+    assert label in bills.optimise(method="minimum_variance").report.to_html()

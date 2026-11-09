@@ -1567,7 +1567,11 @@ impl OptimisationReport {
                     }),
             );
         }
-        if let Some((ex, ey)) = equal_at {
+        // Equal weight's point under the weights' dot would put its label beside that dot, where
+        // it reads as the weights' own; the legend names it.
+        if let Some((ex, ey)) = equal_at
+            && (ex - weights_at.0).hypot(ey - weights_at.1) >= 14.0
+        {
             wanted.push((ex, ey, "Equal weight".to_owned(), false));
         }
         for (cx, cy, text, bold) in wanted {

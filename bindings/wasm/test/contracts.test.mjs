@@ -336,3 +336,10 @@ test("misspelt fields are refused at every depth", () => {
   document.goals = [{ goal: { type: "target", amount: 1000, by: "2030-01", nmae: "House" } }];
   assert.throws(() => fl.Portfolio.fromJson(JSON.stringify(document)), says("nmae"));
 });
+
+test("equal weight is not labelled under the weights", () => {
+  const label = ">Equal weight</text>";
+  const page = bills.optimise({ method: "equal_weight" }).toHtml();
+  assert.ok(!page.includes(label) && page.includes("Equal weight</span>"));
+  assert.ok(bills.optimise({ method: "minimum_variance" }).toHtml().includes(label));
+});

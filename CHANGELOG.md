@@ -52,6 +52,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   report is built, with the other options, at `options.benchmark_weights` and
   `options.expected_returns`.
 
+- The optimisation report's chart labelled equal weight's point beside the weights' dot when
+  the two nearly coincided, as for equal weight itself or given weights close to it, so the label
+  read as the weights'. The label is left out then; the legend names the point.
+
 - The backtest and comparison reports echoed fixed weights, and a benchmark's weights, without
   their cash and with every asset they left out at zero: `{"US Equity": 0.55, "Bonds": 0.35,
   "T-Bills": 0.1}` came back as five assets adding up to 0.9. The reports' weights are now those

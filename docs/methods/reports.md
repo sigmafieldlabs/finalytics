@@ -43,7 +43,9 @@ or dark theme, and one report to a printed page. `theme="light"` or `"dark"` (`t
 `save_html` and `show` in Python; the last argument of `toHtml`, `saveHtml` and `show` in
 JavaScript; `report.with_theme(Theme::Dark)` in Rust) keeps the page in one theme whatever the
 reader's setting. On a narrow screen, charts keep a width at which their text can be read and
-scroll sideways, as wide tables do, with a shadow at the edge that has more to see. Both show
+scroll sideways, as wide tables do, with a shadow at the edge that has more to see. A chart's
+points are labelled where a label overlaps nothing, and a point hidden under another, such as
+equal weight's under the weights an optimisation chose, is named by the legend alone. Both show
 the report's figures as computed, and both are built in the engine, so they are the same in
 every language. A table too wide for the text's columns is split into several, each repeating its
 first column; a heading too long for a line wraps between its parts, and the columns of a
