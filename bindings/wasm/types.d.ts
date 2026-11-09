@@ -83,7 +83,7 @@ export interface AccountTrades {
   taxable: boolean;
   /** Its value before the trades. */
   value_base: number;
-  /** The value traded as a share of its value. */
+  /** The one-way turnover: half the changes in each holding's weight, cash included. */
   turnover: number;
   /** Sales, then purchases. */
   trades: TradeRow[];
@@ -3436,8 +3436,8 @@ export interface Rebalance {
   /** Each holding's weight after the trades. */
   weights_after: Record<string, number>;
   /**
-   * The one-way turnover: half the value traded, sales and purchases, as a share of the
-   * account's value.
+   * The one-way turnover: half the sum of the changes in weight, cash included, as
+   * optimisation counts it and its `max_turnover` limits.
    */
   turnover: number;
   /** The gain the sales would realise in the base currency, after fees. */
@@ -3575,8 +3575,9 @@ export interface RebalanceResults {
   /** Each holding's weight in the combined value after the trades. */
   weights_after: Record<string, number>;
   /**
-   * The one-way turnover of all the accounts: half the value traded, as a share of their
-   * combined value.
+   * The one-way turnover of all the accounts: half the sum of the changes in each holding's
+   * weight in their combined value, cash included, as optimisation counts it and its
+   * `max_turnover` limits.
    */
   turnover: number;
   /** The gain the sales would realise in the base currency, after fees. */
@@ -3633,7 +3634,10 @@ export interface RebalanceSummary {
   sales: number;
   /** The number of purchases. */
   purchases: number;
-  /** The value traded as a share of the combined value. */
+  /**
+   * The one-way turnover: half the changes in each holding's weight in the combined value,
+   * cash included.
+   */
   turnover: number;
   /** The value traded. */
   traded_base: number;

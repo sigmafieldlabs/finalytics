@@ -182,7 +182,7 @@
         "turnover": {
           "type": "number",
           "format": "double",
-          "description": "The value traded as a share of its value."
+          "description": "The one-way turnover: half the changes in each holding's weight, cash included."
         },
         "trades": {
           "type": "array",
@@ -9438,7 +9438,7 @@
         "turnover": {
           "type": "number",
           "format": "double",
-          "description": "The one-way turnover: half the value traded, sales and purchases, as a share of the\naccount's value."
+          "description": "The one-way turnover: half the sum of the changes in weight, cash included, as\noptimisation counts it and its `max_turnover` limits."
         },
         "realised_gain_base": {
           "description": "The gain the sales would realise in the base currency, after fees.",
@@ -9746,7 +9746,7 @@
         "turnover": {
           "type": "number",
           "format": "double",
-          "description": "The one-way turnover of all the accounts: half the value traded, as a share of their\ncombined value."
+          "description": "The one-way turnover of all the accounts: half the sum of the changes in each holding's\nweight in their combined value, cash included, as optimisation counts it and its\n`max_turnover` limits."
         },
         "realised_gain_base": {
           "description": "The gain the sales would realise in the base currency, after fees.",
@@ -9918,7 +9918,7 @@
         "turnover": {
           "type": "number",
           "format": "double",
-          "description": "The value traded as a share of the combined value."
+          "description": "The one-way turnover: half the changes in each holding's weight in the combined value,\ncash included."
         },
         "traded_base": {
           "type": "number",

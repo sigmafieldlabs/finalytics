@@ -288,14 +288,9 @@ fn selling_everything_not_in_the_targets() {
         .map(|t| (t.instrument.as_str(), t.quantity))
         .collect();
     assert_eq!(sold, [("SAP", dec("40")), ("SPY", dec("150"))]);
-    // Sales of 75,000 and 9,240 dollars, and a purchase of the whole 112,940; turnover is
-    // one-way, half the value traded.
-    let traded = 75_000.0 + 9_240.0 + 112_940.0;
-    assert!(
-        (plan.turnover - traded / 112_940.0 / 2.0).abs() < 1e-12,
-        "{}",
-        plan.turnover
-    );
+    // Sales of 75,000 and 9,240 dollars, and a purchase of the whole 112,940, the cash included:
+    // everything moves, so the one-way turnover, half the changes in weight with the cash, is 1.
+    assert!((plan.turnover - 1.0).abs() < 1e-12, "{}", plan.turnover);
 }
 
 #[test]

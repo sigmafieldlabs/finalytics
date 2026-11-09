@@ -395,7 +395,8 @@ def test_the_workstations_optimisation_is_traded_exactly_with_the_cash_kept(port
     assert kept.report.trades.count <= 4 and kept.report.trades.turnover <= 0.15 + 1e-9
     rebalancing = portfolio.rebalance(kept, keep_cash=True)
     _reaches(kept, rebalancing, 4, CENT)
-    assert rebalancing.results.turnover == pytest.approx(kept.report.trades.turnover, abs=1e-9)
+    # Both turnovers count the cash; the euros converted to the cent leave up to half a cent.
+    assert rebalancing.results.turnover == pytest.approx(kept.report.trades.turnover, abs=1e-8)
     exact = optimise(True, euro_fund_held=True)
     rebalancing = portfolio.rebalance(exact, keep_cash=True)
     assert all(not a.conversions for a in rebalancing.results.accounts)

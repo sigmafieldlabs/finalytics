@@ -111,7 +111,8 @@ pub struct RebalanceSummary {
     pub sales: usize,
     /// The number of purchases.
     pub purchases: usize,
-    /// The value traded as a share of the combined value.
+    /// The one-way turnover: half the changes in each holding's weight in the combined value,
+    /// cash included.
     pub turnover: f64,
     /// The value traded.
     pub traded_base: f64,
@@ -163,7 +164,7 @@ pub struct AccountTrades {
     pub taxable: bool,
     /// Its value before the trades.
     pub value_base: f64,
-    /// The value traded as a share of its value.
+    /// The one-way turnover: half the changes in each holding's weight, cash included.
     pub turnover: f64,
     /// Sales, then purchases.
     pub trades: Vec<TradeRow>,

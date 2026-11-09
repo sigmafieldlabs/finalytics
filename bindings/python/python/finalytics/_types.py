@@ -219,7 +219,7 @@ class AccountTrades:
     """Its value before the trades."""
 
     turnover: float
-    """The value traded as a share of its value."""
+    """The one-way turnover: half the changes in each holding's weight, cash included."""
 
     trades: list[TradeRow]
     """Sales, then purchases."""
@@ -4778,8 +4778,8 @@ class Rebalance:
     """Each holding's weight after the trades."""
 
     turnover: float
-    """The one-way turnover: half the value traded, sales and purchases, as a share of the account's
-    value.
+    """The one-way turnover: half the sum of the changes in weight, cash included, as optimisation
+    counts it and its `max_turnover` limits.
     """
 
     realised_gain_base: decimal.Decimal
@@ -4946,8 +4946,9 @@ class RebalanceResults(PrintedResults):
     """Each holding's weight in the combined value after the trades."""
 
     turnover: float
-    """The one-way turnover of all the accounts: half the value traded, as a share of their combined
-    value.
+    """The one-way turnover of all the accounts: half the sum of the changes in each holding's
+    weight in their combined value, cash included, as optimisation counts it and its
+    `max_turnover` limits.
     """
 
     realised_gain_base: decimal.Decimal
@@ -5046,7 +5047,9 @@ class RebalanceSummary:
     """The number of purchases."""
 
     turnover: float
-    """The value traded as a share of the combined value."""
+    """The one-way turnover: half the changes in each holding's weight in the combined value, cash
+    included.
+    """
 
     traded_base: float
     """The value traded."""

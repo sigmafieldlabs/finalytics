@@ -185,8 +185,9 @@ fn the_workstations_optimisation_is_traded_exactly_with_the_cash_kept() {
     );
     let rebalancing = portfolio.rebalance(&kept).keep_all_cash().build().unwrap();
     reaches(&kept, &rebalancing, 4, CENT);
-    // With the cash kept, the rebalancing's turnover is the optimisation's.
-    assert!((rebalancing.results.turnover - trades.turnover).abs() < 1e-9);
+    // The rebalancing's turnover is the optimisation's, both counting the cash, to what the
+    // conversion leaves behind.
+    assert!((rebalancing.results.turnover - trades.turnover).abs() < CENT);
     // The same weights, rebalanced without keeping the cash, reach the same portfolio.
     reaches(&kept, &portfolio.rebalance(&kept).build().unwrap(), 4, CENT);
     // Without a conversion, exactly.
@@ -206,6 +207,8 @@ fn the_workstations_optimisation_is_traded_exactly_with_the_cash_kept() {
     assert!(weights.keys().all(|a| !a.ends_with(" cash")), "{weights:?}");
     let rebalancing = portfolio.rebalance(&invested).build().unwrap();
     reaches(&invested, &rebalancing, 4, CENT);
+    let limited = invested.report.trades.as_ref().unwrap().turnover;
+    assert!((rebalancing.results.turnover - limited).abs() < CENT);
     reaches(
         &optimise(false, true),
         &portfolio.rebalance(&optimise(false, true)).build().unwrap(),

@@ -325,8 +325,8 @@ pub struct Rebalance {
     pub weights_before: BTreeMap<HoldingKey, f64>,
     /// Each holding's weight after the trades.
     pub weights_after: BTreeMap<HoldingKey, f64>,
-    /// The one-way turnover: half the value traded, sales and purchases, as a share of the
-    /// account's value.
+    /// The one-way turnover: half the sum of the changes in weight, cash included, as
+    /// optimisation counts it and its `max_turnover` limits.
     pub turnover: f64,
     /// The gain the sales would realise in the base currency, after fees.
     pub realised_gain_base: Decimal,
@@ -786,7 +786,6 @@ pub fn rebalance(
         );
     }
 
-    let traded: Decimal = sales.iter().chain(&purchases).map(|t| t.value_base).sum();
     let realised_gain_base = sales.iter().filter_map(|t| t.realised_gain_base).sum();
     let fees_base = sales
         .iter()
@@ -796,6 +795,7 @@ pub fn rebalance(
         .round_dp(10);
     let tax_base = taxed.map(|_| sales.iter().filter_map(|t| t.tax_base).sum());
     let weights_after = weights(&quantities, &cash);
+    let turnover = turnover(&weights_before, &weights_after);
     sales.extend(purchases);
     Ok(Rebalance {
         account: account.clone(),
@@ -805,7 +805,7 @@ pub fn rebalance(
         conversions,
         weights_before,
         weights_after,
-        turnover: to_f64(traded) / to_f64(value_base) / 2.0,
+        turnover,
         realised_gain_base,
         fees_base,
         tax_base,
@@ -824,6 +824,19 @@ struct Planned {
     warnings: ValidationReport,
 }
 
+/// The one-way turnover between two sets of weights: half the sum of the changes, cash
+/// included, the figure optimisation's `max_turnover` limits.
+fn turnover(before: &BTreeMap<HoldingKey, f64>, after: &BTreeMap<HoldingKey, f64>) -> f64 {
+    let changed: f64 = before
+        .keys()
+        .chain(after.keys().filter(|k| !before.contains_key(*k)))
+        .map(|k| {
+            (after.get(k).copied().unwrap_or(0.0) - before.get(k).copied().unwrap_or(0.0)).abs()
+        })
+        .sum();
+    changed / 2.0
+}
+
 /// The trades that move several accounts together to target weights of their combined value,
 /// one proposal per account.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -840,8 +853,9 @@ pub struct RebalanceResults {
     pub weights_before: BTreeMap<HoldingKey, f64>,
     /// Each holding's weight in the combined value after the trades.
     pub weights_after: BTreeMap<HoldingKey, f64>,
-    /// The one-way turnover of all the accounts: half the value traded, as a share of their
-    /// combined value.
+    /// The one-way turnover of all the accounts: half the sum of the changes in each holding's
+    /// weight in their combined value, cash included, as optimisation counts it and its
+    /// `max_turnover` limits.
     pub turnover: f64,
     /// The gain the sales would realise in the base currency, after fees.
     pub realised_gain_base: Decimal,
@@ -1027,14 +1041,12 @@ fn combine(
         }
         out
     };
-    let traded: f64 = proposals
-        .iter()
-        .map(|p| p.turnover * to_f64(p.value_base))
-        .sum();
+    let weights_before = combine(|p| &p.weights_before, |p| p.value_base);
+    let weights_after = combine(|p| &p.weights_after, |p| p.value_base - p.fees_base);
     RebalanceResults {
-        weights_before: combine(|p| &p.weights_before, |p| p.value_base),
-        weights_after: combine(|p| &p.weights_after, |p| p.value_base - p.fees_base),
-        turnover: traded / to_f64(value_base),
+        turnover: turnover(&weights_before, &weights_after),
+        weights_before,
+        weights_after,
         realised_gain_base: proposals.iter().map(|p| p.realised_gain_base).sum(),
         fees_base: proposals.iter().map(|p| p.fees_base).sum(),
         tax_base: options

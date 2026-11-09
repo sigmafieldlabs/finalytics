@@ -48,9 +48,9 @@ rates, plus cash):
    rounding of units and conversions; a target for kept cash at another weight is refused, and
    the report lists what was kept.
 5. **Result.** The proposal lists the sales, then the purchases, and the conversions, with the
-   weights before and after, the turnover (one-way: half the value traded, sales and purchases,
-   over $V$), the realised gain, the fees, the estimated tax, and warnings for carried prices or a
-   shortfall of base-currency cash. The rebalance report sets it out with the weights before, at the target
+   weights before and after, the turnover (one-way: half the sum of the changes in weight, cash
+   included, as optimisation counts it and its `max_turnover` limits), the realised gain, the
+   fees, the estimated tax, and warnings for carried prices or a shortfall of base-currency cash. The rebalance report sets it out with the weights before, at the target
    and after, and the volatility and expected return before and after, from the holdings'
    annualised returns with the Ledoit–Wolf covariance and historical means, cash riskless.
 
@@ -119,7 +119,7 @@ weights before and after, turnover, realised gains, fees and tax.
 ... )
 >>> [plan] = proposal.results.accounts
 >>> plan.value_base, round(plan.turnover, 6), plan.realised_gain_base
-(Decimal('112500'), 0.306947, Decimal('1850'))
+(Decimal('112500'), 0.449449, Decimal('1850'))
 >>> for trade in plan.trades:
 ...     print(trade.side, trade.instrument, trade.quantity, trade.value_base, [(l.lot, l.quantity) for l in trade.lots])
 sell SPY 37 18500 [('t3', Decimal('37'))]
