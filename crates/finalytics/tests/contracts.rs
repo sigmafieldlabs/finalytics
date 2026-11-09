@@ -151,3 +151,43 @@ fn a_walk_forward_refits_from_the_weights_it_holds_without_checking_them_as_give
             .unwrap_or_else(|e| panic!("{shape} minimum CDaR: {e}"));
     }
 }
+
+#[test]
+fn a_refit_after_fits_that_held_only_cash_enters_from_cash() {
+    let classes = with_bills();
+    let column = classes
+        .labels()
+        .iter()
+        .position(|l| l == "US Equity")
+        .unwrap();
+    let returns = finalytics::risk::ReturnsTable::new(
+        vec!["US Equity".to_owned()],
+        vec![classes.returns().columns()[column].clone()],
+    )
+    .unwrap();
+    let one = Assets::builder()
+        .returns(classes.dates().to_vec(), returns)
+        .risk_free_rate(0.02)
+        .build()
+        .unwrap();
+    // A target the early windows cannot reach: their fits find no weights, and hold cash.
+    let target = one.mean_returns()[0];
+    let backtest = one
+        .backtest(Method::TargetReturn)
+        .target(target)
+        .max_turnover(0.5)
+        .walk_forward(Years(5))
+        .build()
+        .unwrap();
+    let run = backtest.results.strategies[0]
+        .out_of_sample
+        .as_ref()
+        .unwrap();
+    assert!(!backtest.results.strategies[0].failures.is_empty());
+    // Once a window reaches the target, the refit enters from cash, beyond the turnover limit.
+    let entered = run
+        .trades
+        .iter()
+        .find(|t| t.refit && t.turnover > 0.5 + 1e-9);
+    assert!(entered.is_some(), "{:?}", run.trades);
+}

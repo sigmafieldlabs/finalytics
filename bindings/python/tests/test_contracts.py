@@ -74,3 +74,14 @@ def test_a_walk_forward_refits_from_the_weights_it_holds_without_checking_them_a
         assets.backtest(method="mean_variance", risk_aversion=3, min_trade=0.01, validation=wf)
         assets.backtest(method="minimum_cdar", max_turnover=0.5, validation=wf)
 
+
+def test_a_refit_after_fits_that_held_only_cash_enters_from_cash(bills):
+    column = bills.labels.index("US Equity")
+    one = fl.Assets.from_returns(
+        bills.returns[:, [column]], dates=bills.dates, labels=["US Equity"], risk_free_rate=0.02
+    )
+    target = one.mean_returns()["US Equity"]
+    backtest = one.backtest(method="target_return", target=target, max_turnover=0.5, validation=fl.WalkForward(years=5))
+    strategy = backtest.results.strategies[0]
+    assert strategy.failures
+    assert any(t.refit and t.turnover > 0.5 + 1e-9 for t in strategy.out_of_sample.trades)

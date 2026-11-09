@@ -63,3 +63,13 @@ test("a walk-forward refits from the weights it holds without checking them as g
     assert.doesNotThrow(() => assets.backtest({ method: "minimum_cdar", max_turnover: 0.5, validation }), shape);
   }
 });
+
+test("a refit after fits that held only cash enters from cash", () => {
+  const column = bills.labels.indexOf("US Equity");
+  const one = fl.Assets.fromReturns(bills.dates, ["US Equity"], [bills.returns[column]], { risk_free_rate: 0.02 });
+  const target = one.meanReturns()["US Equity"];
+  const backtest = one.backtest({ method: "target_return", target, max_turnover: 0.5, validation: { walk_forward: { years: 5 } } });
+  const strategy = backtest.results.strategies[0];
+  assert.ok(strategy.failures.length > 0);
+  assert.ok(strategy.out_of_sample.trades.some((t) => t.refit && t.turnover > 0.5 + 1e-9));
+});

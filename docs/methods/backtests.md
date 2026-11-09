@@ -56,7 +56,9 @@ fitting):
   held over the same periods: that is its run in sample.
 
 A fit that finds no weights keeps the weights held, without trading, and the reports list it;
-a method that never found weights holds cash.
+a method that never found weights holds cash. With limits on the trades, each refit starts from
+the weights the run holds then, as the engine left them; with nothing invested, as after fits
+that found no weights, it enters from cash, as the first fit does, without the limits.
 
 ## Money in and out
 

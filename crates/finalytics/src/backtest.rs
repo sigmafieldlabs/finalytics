@@ -267,6 +267,9 @@ impl Assets {
                     let plan = if trading {
                         Plan::Refit(Box::new(move |rows, held: Option<&[f64]>| {
                             let mut options = method.clone();
+                            // With nothing invested, as after fits that found no weights, a
+                            // refit enters from cash, as the first fit does.
+                            let held = held.filter(|h| h.iter().sum::<f64>() > 1e-9);
                             match held {
                                 // From the weights held, the risk-free asset holding the rest.
                                 Some(held) => {

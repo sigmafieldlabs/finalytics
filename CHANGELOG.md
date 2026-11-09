@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it, and add up to one; their expected return and volatility are those of the weights given.
   A refit starts from the weights the run holds without checking them as user input.
 
+- A walk-forward refit with trade limits after fits that found no weights, holding only cash,
+  sent NaN weights without a risk-free asset (and could not invest with one). With nothing
+  invested, a refit now enters from cash, as the first fit does.
+
 ## [1.0.0-rc.5] - 2026-11-09
 
 ### Added
