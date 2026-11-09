@@ -41,8 +41,10 @@ outputs are the engine's own.
   construction and counts time as actual/365. Statistics of a series of returns annualise with
   the number of periods a year (252 for daily returns by default).
 - **Errors.** Invalid input is reported with every problem at once, each with a path to where it
-  is (`transactions[14].quantity`, `returns[3]`). A computation that is not defined for valid
-  input, such as a ratio over a dispersion of zero, returns no value rather than a NaN.
+  is (`transactions[14].quantity`, `returns[3]`). A field the engine does not know is refused
+  at any depth, in options and documents alike, so that a misspelt limit, such as a group's
+  `maxx`, is an error rather than no limit. A computation that is not defined for valid input,
+  such as a ratio over a dispersion of zero, returns no value rather than a NaN.
 
 ## How the checks work
 

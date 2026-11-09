@@ -1016,3 +1016,72 @@ fn report_options_that_name_holdings_are_checked_when_the_report_is_built() {
         .unwrap();
     assert!(report.risk.holdings.unwrap().tracking_error.is_some());
 }
+
+#[test]
+fn misspelt_fields_are_refused_at_every_depth() {
+    use finalytics::formats::from_json;
+    let refused = |text: &str, kind: &str, field: &str| {
+        let error = match kind {
+            "optimise" => from_json::<finalytics::OptimiseOptions>(text, "options").map(|_| ()),
+            "backtest" => {
+                from_json::<finalytics::backtest::BacktestOptions>(text, "options").map(|_| ())
+            }
+            "plan" => from_json::<finalytics::PlanOptions>(text, "options").map(|_| ()),
+            "report" => {
+                from_json::<finalytics::reports::ReportOptions>(text, "options").map(|_| ())
+            }
+            "screen" => from_json::<finalytics::ScreenOptions>(text, "options").map(|_| ()),
+            _ => unreachable!(),
+        }
+        .expect_err(text)
+        .to_string();
+        assert!(error.contains(field), "{text}: {error}");
+    };
+    refused(r#"{"max_wieght": 0.4}"#, "optimise", "max_wieght");
+    refused(
+        r#"{"groups": {"Bonds": {"assets": ["Bonds"], "maxx": 0.2}}}"#,
+        "optimise",
+        "maxx",
+    );
+    refused(r#"{"bounds": {"min": 0, "mx": 0.5}}"#, "optimise", "mx");
+    refused(
+        r#"{"uncertainty": {"type": "ellipsoid", "size": 0.5, "sise": 1}}"#,
+        "optimise",
+        "sise",
+    );
+    refused(
+        r#"{"validation": {"type": "walk_forward", "yeers": 5}}"#,
+        "backtest",
+        "yeers",
+    );
+    refused(
+        r#"{"flows": [{"date": "2020-01-31", "ammount": 5}]}"#,
+        "backtest",
+        "ammount",
+    );
+    refused(
+        r#"{"goal": {"type": "target", "amount": 1000, "by": "2030-01", "nmae": "House"}}"#,
+        "plan",
+        "nmae",
+    );
+    refused(r#"{"grup_by": ["asset_class"]}"#, "report", "grup_by");
+    refused(r#"{"limt": 5}"#, "screen", "limt");
+    // The options as written by the engine read back as they are.
+    let options = with_bills()
+        .optimise(Method::MaximumSharpe)
+        .max_weight(0.4)
+        .group("Equity", &["US Equity", "Intl Equity"], 0.3, 0.6)
+        .options()
+        .clone();
+    let text = serde_json::to_string(&options).unwrap();
+    assert_eq!(
+        from_json::<finalytics::OptimiseOptions>(&text, "options").unwrap(),
+        options
+    );
+    let report = datasets::report_options();
+    let text = serde_json::to_string(&report).unwrap();
+    assert_eq!(
+        from_json::<finalytics::reports::ReportOptions>(&text, "options").unwrap(),
+        report
+    );
+}

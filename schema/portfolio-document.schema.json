@@ -195,6 +195,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -227,6 +228,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -274,6 +276,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -293,6 +296,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -468,6 +472,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -498,6 +503,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -536,6 +542,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -564,6 +571,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "A normal distribution with the assets' expected returns and covariance, per month."
         },
         {
@@ -577,6 +585,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "Every stretch of the history as long as the plan, each once, in order: as many\nsimulations as there are stretches."
         }
       ],
@@ -606,6 +615,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -690,6 +700,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -777,6 +788,7 @@
     },
     "PlanOptions": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "goal": {
           "anyOf": [

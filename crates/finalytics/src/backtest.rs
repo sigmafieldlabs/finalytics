@@ -93,7 +93,7 @@ use finalytics_opt::Bound;
 /// A strategy to backtest.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Strategy {
     /// An optimisation, refitted as the validation says. The limits of `options` apply to the
@@ -158,7 +158,7 @@ impl Strategy {
 /// What the strategies are compared with.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Benchmark {
     /// Fixed weights by asset, held and rebalanced as the strategies are, with the same costs.
@@ -183,7 +183,7 @@ pub enum Benchmark {
 /// What a backtest tests and how.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[non_exhaustive]
 pub struct BacktestOptions {
     /// The strategies, in the order of the results.

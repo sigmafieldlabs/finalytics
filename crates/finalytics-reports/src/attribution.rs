@@ -41,6 +41,7 @@ pub struct BenchmarkPeriod {
 
 /// What the attribution report compares the portfolio with.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct AttributionInputs {
     /// The instrument classification scheme that defines the segments, such as `asset_class`.

@@ -321,3 +321,18 @@ test("report options that name holdings are checked when the report is built", (
   assert.throws(() => portfolio.overviewReport({ benchmark_weights: { Nope: 1 } }));
   assert.ok(portfolio.report({ benchmark_weights: { VTI: 0.6, BND: 0.4 } }).risk.holdings.tracking_error);
 });
+
+test("misspelt fields are refused at every depth", () => {
+  const says = (field) => (e) => e.message.includes(field);
+  assert.throws(() => bills.optimise({ method: "minimum_variance", groups: { Bonds: { assets: ["Bonds"], maxx: 0.2 } } }), says("maxx"));
+  assert.throws(() => bills.optimise({ method: "minimum_variance", bounds: { min: 0, mx: 0.5 } }), says("mx"));
+  assert.throws(() => bills.backtest({ method: "minimum_variance", validation: { walk_forward: { yeers: 5 } } }), says("yeers"));
+  assert.throws(() => bills.backtest({ method: "minimum_variance", flows: [{ date: "2020-01-31", ammount: 5 }] }), says("ammount"));
+  assert.throws(
+    () => bills.plan({ goal: { type: "target", amount: 1000, by: "2030-01", nmae: "House" }, weights: { "US Equity": 1 }, inflation: 0.02, simulations: 100 }),
+    says("nmae"),
+  );
+  const document = JSON.parse(portfolio.toJson());
+  document.goals = [{ goal: { type: "target", amount: 1000, by: "2030-01", nmae: "House" } }];
+  assert.throws(() => fl.Portfolio.fromJson(JSON.stringify(document)), says("nmae"));
+});

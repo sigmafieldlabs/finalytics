@@ -31,6 +31,7 @@ const HELD: usize = 7;
 
 /// Money paid into a backtest's runs (a positive amount) or taken out (a negative one) on a date.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct CashFlow {
     /// The date: the money moves at the end of the period it falls in.

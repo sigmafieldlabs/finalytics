@@ -34,6 +34,7 @@ pub enum ScenarioDefinition {
 
 /// A scenario with a name, such as "Equities -20%" or "2008".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct NamedScenario {
     /// The name.

@@ -864,6 +864,7 @@ pub enum RuleValue {
 /// assert_eq!(rule.field.as_deref(), Some("sector"));
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Rule {
@@ -974,6 +975,7 @@ pub enum Order {
 /// How matches are sorted: by a measure or a numeric field, one way or the other. Securities
 /// without a value come last.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Sort {
@@ -1082,7 +1084,7 @@ impl schemars::JsonSchema for Formulas {
 /// universe allows, on its latest date, with no rules.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[non_exhaustive]
 pub struct ScreenOptions {
     /// The date measured to: the latest date in the universe by default.

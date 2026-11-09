@@ -2,6 +2,8 @@
 the sample household's assets (five funds, euro cash, and dollar cash as the risk-free asset), the
 asset classes with T-bills as the risk-free asset, and the asset classes without them at a 2% rate."""
 
+import json
+
 import pytest
 
 import finalytics as fl
@@ -336,3 +338,17 @@ def test_report_options_that_name_holdings_are_checked_when_the_report_is_built(
     assert issues(expected_returns={"Nope": 0.03})[0][0] == "options.expected_returns.Nope"
     report = portfolio.report(benchmark_weights={"VTI": 0.6, "BND": 0.4})
     assert report.risk.holdings.tracking_error is not None
+
+
+def test_misspelt_fields_are_refused_at_every_depth(portfolio, tmp_path):
+    # The dataclasses take no field they do not have.
+    with pytest.raises(TypeError):
+        fl.Target(amount=1000, by="2030-01", nmae="House")
+    # A document read as JSON is checked at every depth.
+    document = json.loads(portfolio.to_json())
+    document["goals"] = [{"goal": {"type": "target", "amount": 1000, "by": "2030-01", "nmae": "House"}}]
+    path = tmp_path / "portfolio.json"
+    path.write_text(json.dumps(document))
+    with pytest.raises(fl.ValidationError) as found:
+        fl.Portfolio.read(path)
+    assert "nmae" in str(found.value)

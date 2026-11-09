@@ -10,7 +10,7 @@ use finalytics_core::Date;
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "schema", schemars(rename = "RebalanceSchedule"))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Rebalance {
     /// At the end of each month.
@@ -81,7 +81,7 @@ impl Rebalance {
 /// history they had not seen.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Validation {
     /// Weights fitted once to the whole history and tested on it: what the strategy would have

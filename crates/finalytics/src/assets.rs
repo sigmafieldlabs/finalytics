@@ -261,6 +261,7 @@ impl Method {
 /// A group of assets whose total weight is limited: the assets listed, or those classed as the
 /// group's name under a classification, such as the group "Equity" under `asset_class`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct AssetGroup {
     /// The assets in the group; or give `classification`.
@@ -286,7 +287,7 @@ fn one() -> f64 {
 /// the portfolio with the largest Sharpe ratio, fully invested and long only.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[non_exhaustive]
 pub struct OptimiseOptions {
     /// The method: the largest Sharpe ratio by default.

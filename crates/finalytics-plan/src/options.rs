@@ -48,7 +48,7 @@ impl Frequency {
 /// The goal a plan is tested against.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Goal {
     /// An amount by a date, such as a house deposit, the money to start a business, or a
@@ -95,7 +95,7 @@ impl Goal {
 /// or regularly, `every` month, quarter or year from `start` to `end`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[cfg_attr(feature = "schema", schemars(rename = "PlanFlow"))]
 #[non_exhaustive]
 pub enum Flow {
@@ -239,7 +239,7 @@ impl Flow {
 /// The weights are restored every month.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Mix {
     /// The same weights throughout.
@@ -289,7 +289,7 @@ impl Mix {
 /// How prices rise, for amounts in today's money.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Inflation {
     /// A fixed rate a year, such as 0.025; 0 keeps every figure in money of the day.
@@ -309,7 +309,7 @@ pub enum Inflation {
 /// How the simulations draw each month's returns.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum Model {
     /// A stationary block bootstrap (Politis and Romano, 1994): runs of past months, all assets
@@ -340,7 +340,7 @@ impl Default for Model {
 /// What a plan simulates and how.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[non_exhaustive]
 pub struct PlanOptions {
     /// The goal; without one, the plan is a projection to `end`.

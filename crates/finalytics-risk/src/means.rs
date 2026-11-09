@@ -15,7 +15,7 @@ use crate::matrix::ReturnsTable;
 /// has 0.94.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum MeanMethod {
     /// Each asset's average return.

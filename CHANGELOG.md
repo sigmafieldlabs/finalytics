@@ -97,6 +97,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   weights did not apply to a method when others had. A method that takes no limits, given
   `cash`, is said to take none rather than to keep its ratio.
 
+- Fields that options and documents do not have are refused at every depth, as the options'
+  top level already was in Python and JavaScript: a group's misspelt `maxx`, which left the group
+  without a limit, a goal's `nmae`, a walk-forward's `yeers`, and in Rust a misspelt top-level
+  field of `ReportOptions`, `OptimiseOptions` or `BacktestOptions` read from JSON. JSON with
+  extra members, which was read as if they were not there, is now refused, naming the member.
+
 ## [1.0.0-rc.5] - 2026-11-09
 
 ### Added

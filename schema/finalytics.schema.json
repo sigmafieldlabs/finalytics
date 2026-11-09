@@ -581,6 +581,7 @@
     },
     "AssetGroup": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "assets": {
           "type": "array",
@@ -701,6 +702,7 @@
     },
     "AttributionInputs": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "scheme": {
           "type": "string",
@@ -949,6 +951,7 @@
     },
     "BacktestOptions": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "strategies": {
           "type": "array",
@@ -1133,6 +1136,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -1163,6 +1167,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -1362,6 +1367,7 @@
     },
     "Bound": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "min": {
           "type": "number",
@@ -1461,6 +1467,7 @@
     },
     "CashFlow": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "date": {
           "$ref": "#/$defs/Date",
@@ -2066,10 +2073,12 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The sample covariance, with divisor n - 1."
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -2098,6 +2107,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The empirical covariance (divisor n) shrunk towards a multiple of the identity with the\nintensity of Ledoit and Wolf (2004)."
         },
         {
@@ -2111,6 +2121,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The empirical covariance (divisor n) shrunk towards a multiple of the identity with the\noracle approximating shrinkage intensity of Chen, Wiesel, Eldar and Hero (2010)."
         },
         {
@@ -2124,10 +2135,12 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The empirical covariance (divisor n) shrunk towards the matrix with the same variances\nand every correlation the average sample correlation, with the intensity of Ledoit and\nWolf (2004, \"Honey, I shrunk the sample covariance matrix\")."
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -2157,6 +2170,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The sample correlation with the eigenvalues of noise replaced by their average: those\nbelow the Marchenko–Pastur edge `(1 + sqrt(n / t))^2` of a random correlation matrix\nof `n` assets and `t` returns. The variances are the sample's."
         },
         {
@@ -2170,6 +2184,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The analytical nonlinear shrinkage of Ledoit and Wolf (2020): each eigenvalue of the\nsample covariance (divisor t - 1) shrunk by a kernel estimate of the spectral density,\nfor many assets against few returns."
         }
       ],
@@ -3547,6 +3562,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -3579,6 +3595,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -4762,6 +4779,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -4781,6 +4799,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -5283,6 +5302,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "Each asset's average return."
         },
         {
@@ -5296,10 +5316,12 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "The averages shrunk towards their grand mean, `(1 - c) m + c g`, with the intensity of\nEfron and Morris (1973), `c = (n - 3) / (t (m - g)' S^-1 (m - g))` between 0 and 1, for\n`n` assets, `t` returns and the sample covariance `S`. It needs more returns than assets,\nand at least four assets to shrink."
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -5892,6 +5914,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -5922,6 +5945,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -6062,6 +6086,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -6090,6 +6115,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "A normal distribution with the assets' expected returns and covariance, per month."
         },
         {
@@ -6103,6 +6129,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "Every stretch of the history as long as the plan, each once, in order: as many\nsimulations as there are stretches."
         }
       ],
@@ -6231,6 +6258,7 @@
     },
     "NamedScenario": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
@@ -7007,6 +7035,7 @@
     },
     "OptimiseOptions": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "method": {
           "$ref": "#/$defs/Method",
@@ -8058,6 +8087,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -8142,6 +8172,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -8229,6 +8260,7 @@
     },
     "PlanOptions": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "goal": {
           "anyOf": [
@@ -9735,6 +9767,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "At the end of each month."
         },
         {
@@ -9748,6 +9781,7 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "At the end of each quarter (the default)."
         },
         {
@@ -9761,10 +9795,12 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "At the end of each year."
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -9793,10 +9829,12 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "Never: the portfolio buys its target weights once and holds them (buy and hold)."
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -10095,6 +10133,7 @@
     },
     "ReportOptions": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "as_of": {
           "anyOf": [
@@ -10453,6 +10492,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -10484,6 +10524,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -10703,6 +10744,7 @@
     },
     "Rule": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "measure": {
           "anyOf": [
@@ -11781,6 +11823,7 @@
     },
     "ScreenOptions": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "as_of": {
           "anyOf": [
@@ -12770,6 +12813,7 @@
     },
     "Sort": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "measure": {
           "anyOf": [
@@ -12995,6 +13039,7 @@
       "oneOf": [
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -13044,6 +13089,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -14221,10 +14267,12 @@
           "required": [
             "type"
           ],
+          "additionalProperties": false,
           "description": "Weights fitted once to the whole history and tested on it: what the strategy would have\ndone with perfect knowledge of the period. The default."
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",
@@ -14243,6 +14291,7 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "type": {
               "type": "string",

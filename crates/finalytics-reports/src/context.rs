@@ -40,7 +40,7 @@ pub enum ReportKind {
 /// ignored, so one set of options can serve every screen.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[non_exhaustive]
 pub struct ReportOptions {
     /// The date of the report: the last price date by default.

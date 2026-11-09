@@ -14,7 +14,7 @@ use crate::matrix::{Matrix, ReturnsTable};
 /// decay has 0.94.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum CovarianceMethod {
     /// The sample covariance, with divisor n - 1.

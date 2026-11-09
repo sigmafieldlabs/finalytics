@@ -215,7 +215,8 @@ A portfolio and its market data can be kept as one JSON document,
 described by [`schema/portfolio-document.schema.json`](../schema/portfolio-document.schema.json).
 `portfolio.to_json()` writes one and `Portfolio.read(path)` reads it, reporting where a malformed
 document goes wrong. Goals kept with the portfolio are its `goals`, each a plan with its name;
-a document without goals has no `goals` member, so it reads and digests as before.
+a document without goals has no `goals` member, so it reads and digests as before. A member the
+format does not have is refused, at any depth, as it is in options.
 
 ## Report options
 

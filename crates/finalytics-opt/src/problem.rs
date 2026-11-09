@@ -12,6 +12,7 @@ use crate::linalg::Factor;
 
 /// Lower and upper limits on a weight.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Bound {
     /// The smallest weight allowed; negative for a short position.
@@ -200,7 +201,7 @@ impl Constraints {
 /// optimisation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 #[non_exhaustive]
 pub enum ReturnUncertainty {
     /// An ellipsoid around the estimates, `(mu - m)' S^-1 (mu - m) <= size^2`: the worst case
