@@ -112,12 +112,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rust: `ReportOptions::benchmark` is a `ReportBenchmark`, an instrument or a blend; an
   instrument converts with `.into()`, as in `options.benchmark = Some(id.into())`. The JSON form
   of an instrument, its identifier, is unchanged.
+
 - The sample portfolio's instruments list BENCH, its benchmark, in USD.
 
-- The npm package's WebAssembly engine is a fifth smaller, about 1.6 MB gzipped rather than
-  2.0 MB, and no slower: the build leaves out the functions' names, which only debugging uses,
-  and optimises the module with Binaryen's `wasm-opt`. Errors are unchanged; only the stack trace
-  of an internal failure shows function numbers rather than names.
+- The npm package's WebAssembly engine is smaller, about 1.7 MB gzipped with this release's
+  additions rather than 2.0 MB, and no slower: the build leaves out the functions' names, which
+  only debugging uses, and optimises the module with Binaryen's `wasm-opt`. Errors are
+  unchanged; only the stack trace of an internal failure shows function numbers rather than
+  names. Building the package from source needs `wasm-opt` from Binaryen version 123, which
+  `scripts/install-binaryen.sh` installs and checks against its pinned checksum.
+
 - One rule for an option a method does not use, in every verb. `optimise` and a single
   `backtest` refuse it, as before. `compare` applies each option to the methods that take it and
   notes in the report each method it does not apply to (such as "Maximum Sharpe: the confidence
@@ -129,6 +133,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - limits or parameters given to `compare` with fixed weights alone, or to a Rust `backtest` of
     fixed weights, which were dropped, are now refused ("fixed weights take no limits or
     parameters"), as Python and JavaScript already refused them for `backtest`.
+
 - A risk aversion must be above zero, as the solver requires: zero was let through the checks
   and refused by the solver.
 
@@ -146,10 +151,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   strategies, such as `[Strategy::weights("60/40", [...]), Method::MinimumVariance.into()]`, and
   `.method()` adds one in turn; in Python `methods` takes `("60/40", {...})` pairs, and in
   JavaScript `{ name, weights }` objects.
+
 - JavaScript: typed arrays, such as `Float64Array`, are read wherever an input holds arrays of
   numbers: `Assets.fromReturns` took them by its types but refused them ("invalid type: map,
   expected a sequence"), and so did returns tables, matrices and the other structured inputs. A
   number that is not finite in one is reported at its index.
+
 - Every report table's title is a valid Excel sheet name (at most 31 characters, none of
   `[ ] : * ? / \`, and unique within the report), so that the tables of a report export to one
   workbook: "Holdings: return and risk" is now "Return and risk by holding", "Value at risk and
