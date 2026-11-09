@@ -40,7 +40,7 @@ test("the mean estimator sets the expected returns", () => {
   const weighted = new Assets(prices, { mean_returns: { type: "ewma", decay: 0.97 } });
   assert.equal(Object.keys(weighted.meanReturns()).length, 6);
   assert.deepEqual(paths(() => new Assets(prices, { mean_returns: { type: "ewma", decay: 2 } })), [
-    "mean_returns.decay",
+    "options.mean_returns.decay",
   ]);
 });
 
@@ -109,6 +109,6 @@ test("walk-forward refits every so many periods", () => {
   assert.match(result.report.toText(), /rebalanced every 12 periods/);
   assert.deepEqual(
     paths(() => assets.backtest({ method: "minimum_variance", rebalance: { every: { periods: 0 } } })),
-    ["rebalance.periods"],
+    ["options.rebalance.periods"],
   );
 });

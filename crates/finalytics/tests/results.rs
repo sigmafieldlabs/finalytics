@@ -262,7 +262,7 @@ fn a_rebalance_has_a_report_and_raw_results() {
         panic!("built with a fee that is not a number");
     };
     let paths: Vec<&str> = report.issues().iter().map(|i| i.path.as_str()).collect();
-    assert_eq!(paths, ["fee_bps", "long_term_after_days"]);
+    assert_eq!(paths, ["options.fee_bps", "options.long_term_after_days"]);
     assert_eq!(r.context.method.as_deref(), Some("Minimum variance"));
     assert_eq!(r.context.limits, ["5% to 40% in each asset"]);
     // The report's figures are the proposal's.

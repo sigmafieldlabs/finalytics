@@ -166,7 +166,11 @@ def dumps(value: Any, name: str = "") -> str:
             raise
     from finalytics._errors import invalid
 
-    raise invalid(*((path, f"must be a finite number, not {number}") for path, number in found[:20]))
+    def written(x: float) -> str:
+        # As the engine writes a number that is not finite.
+        return "NaN" if x != x else ("Infinity" if x > 0 else "-Infinity")
+
+    raise invalid(*((path, f"must be a finite number, not {written(number)}") for path, number in found[:20]))
 
 
 def _non_finite(data: Any, path: str, found: list[tuple[str, float]]) -> None:

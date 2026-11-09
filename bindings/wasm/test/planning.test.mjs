@@ -66,7 +66,7 @@ test("plain choices: a chance and its room, mixes by name, a price index and a m
 test("problems are reported with where they are", () => {
   assert.throws(
     () => assets.plan({ ...house, fee: 2, weights: { Nope: 1 } }),
-    (e) => e.name === "ValidationError" && e.issues.some((i) => i.path === "fee"),
+    (e) => e.name === "ValidationError" && e.issues.some((i) => i.path === "options.fee"),
   );
   assert.throws(
     () => assets.plan({ ...house, colour: "blue" }),

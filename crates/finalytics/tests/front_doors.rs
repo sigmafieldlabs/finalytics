@@ -378,7 +378,7 @@ fn a_portfolio_hands_its_holdings_to_the_optimiser() {
                 .accounts(["ira", "isa"])
                 .build()
         ),
-        ["accounts.isa"]
+        ["options.accounts[1]"]
     );
     let unknown = paths(portfolio.rebalance([("VTI", 0.5), ("XYZ", 0.5)]).build());
     assert!(

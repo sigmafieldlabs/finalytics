@@ -557,6 +557,20 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
     if value.is_undefined() {
         return Err(invalid(name, "is missing"));
     }
+    let (text, found) = json_text(value, name)?;
+    if !found.is_empty() {
+        let mut report = ValidationReport::new();
+        for (path, x) in found {
+            report.error(path, format!("must be a finite number, not {x}"));
+        }
+        return Err(error(Error::Validation(report)));
+    }
+    finalytics::formats::from_json(&text, name).map_err(error)
+}
+
+/// `value` as JSON text, with the paths of the numbers in it that are not finite, which the
+/// text writes as null.
+fn json_text(value: JsValue, name: &str) -> Result<(String, Vec<(String, f64)>), JsValue> {
     // JSON has no NaN or Infinity: written as JSON they would become null, read as absent.
     // Prices are the exception, where a missing price may be given as NaN.
     let mut found = Vec::new();
@@ -567,13 +581,6 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
         non_finite(&value, name, &mut found, &mut typed, 0);
         typed
     };
-    if !found.is_empty() {
-        let mut report = ValidationReport::new();
-        for (path, x) in found {
-            report.error(path, format!("must be a finite number, not {x}"));
-        }
-        return Err(error(Error::Validation(report)));
-    }
     // A typed array, such as a `Float64Array`, is written as JSON as an object keyed by index;
     // it is written as the array of numbers it holds instead.
     let text = if typed {
@@ -593,7 +600,7 @@ fn from_js<T: DeserializeOwned>(value: JsValue, name: &str) -> Result<T, JsValue
     let text: String = text
         .map_err(|_| invalid(name, "cannot be written as JSON"))?
         .into();
-    finalytics::formats::from_json(&text, name).map_err(error)
+    Ok((text, found))
 }
 
 /// The paths of the numbers in `value` that are not finite, with the numbers: at most 20, as
@@ -671,6 +678,35 @@ fn optional<T: DeserializeOwned + Default>(value: JsValue, name: &str) -> Result
     } else {
         from_js(value, name)
     }
+}
+
+/// `assets` with the settings `options` gives, every problem with them reported together.
+fn with_settings(
+    assets: finalytics::Assets,
+    options: JsValue,
+) -> Result<finalytics::Assets, JsValue> {
+    if options.is_undefined() || options.is_null() {
+        return Ok(assets);
+    }
+    let (text, found) = json_text(options, "options")?;
+    let Ok(serde_json::Value::Object(mut map)) = serde_json::from_str(&text) else {
+        return Err(invalid("options", "must be an object"));
+    };
+    let mut pending = ValidationReport::new();
+    for (path, x) in found {
+        pending.error(path.clone(), format!("must be a finite number, not {x}"));
+        let rest = path.strip_prefix("options.").unwrap_or(&path);
+        map.remove(&rest[..rest.find(['.', '[']).unwrap_or(rest.len())]);
+    }
+    finalytics::formats::together(
+        pending,
+        &serde_json::Value::Object(map).to_string(),
+        "options",
+        &[],
+        |o: finalytics::AssetSettings| o.apply(assets.clone()),
+        |o, _| finalytics::formats::problems(o.apply(assets.clone())),
+    )
+    .map_err(error)
 }
 
 fn named<T: DeserializeOwned>(text: &str, name: &str) -> Result<T, JsValue> {
@@ -1104,21 +1140,20 @@ impl Portfolio {
         &self,
         #[wasm_bindgen(unchecked_optional_param_type = "ReportChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut choices = object(
+        let (mut choices, mut pending) = object(
             options,
             &fields::<finalytics::reports::ReportOptions>(&["name", "accounts"]),
         )?;
-        let name = match choices.remove("name") {
-            Some(serde_json::Value::String(name)) => Some(name),
-            Some(serde_json::Value::Null) | None => None,
-            Some(_) => return Err(invalid("options.name", "must be a string")),
-        };
-        let options: finalytics::reports::ReportOptions = finalytics::formats::from_json(
+        let name = given_name(&mut choices, &mut pending);
+        let mut report = finalytics::formats::together(
+            pending,
             &serde_json::Value::Object(choices).to_string(),
             "options",
+            &[],
+            |o: finalytics::reports::ReportOptions| self.inner.report_with(&o),
+            |o, _| finalytics::formats::problems(self.inner.report_with(&o)),
         )
         .map_err(error)?;
-        let mut report = self.inner.report_with(&options).map_err(error)?;
         report.name = name;
         to_js(&report)
     }
@@ -1448,10 +1483,30 @@ impl Portfolio {
         #[wasm_bindgen(unchecked_optional_param_type = "RebalanceChoices")] choices: JsValue,
     ) -> Result<JsValue, JsValue> {
         let targets: serde_json::Value = from_js(targets, "targets")?;
-        let targets = finalytics::targets_from_json(&targets.to_string()).map_err(error)?;
-        let choices: finalytics::RebalanceChoices = optional(choices, "choices")?;
-        let builder = choices.apply(self.inner.rebalance(targets));
-        to_js(&builder.build().map_err(error)?)
+        let choices: finalytics::RebalanceChoices = optional(choices, "options")?;
+        match finalytics::targets_from_json(&targets.to_string()) {
+            Ok(targets) => {
+                let builder = choices.apply(self.inner.rebalance(targets));
+                to_js(&builder.build().map_err(error)?)
+            }
+            Err(Error::Validation(mut report)) => {
+                // The choices are checked too, on no targets, so that every problem is
+                // reported together.
+                let none = finalytics::targets_from_json("{}").map_err(error)?;
+                let found = finalytics::formats::problems(
+                    choices.apply(self.inner.rebalance(none)).build(),
+                );
+                for issue in found.issues() {
+                    if !issue.path.starts_with("targets")
+                        && !report.issues().iter().any(|i| i.path == issue.path)
+                    {
+                        report.error(issue.path.clone(), issue.message.clone());
+                    }
+                }
+                Err(error(Error::Validation(report)))
+            }
+            Err(e) => Err(error(e)),
+        }
     }
 
     /// What `shocks` would do to the holdings, with their risk before and after if the choices
@@ -1546,9 +1601,8 @@ impl Assets {
     ) -> Result<Assets, JsValue> {
         let prices: finalytics::PriceTable = from_js(prices, "prices")?;
         let assets = finalytics::Assets::from_prices(&prices).map_err(error)?;
-        let options: finalytics::AssetSettings = optional(options, "options")?;
         Ok(Assets {
-            inner: options.apply(assets).map_err(error)?,
+            inner: with_settings(assets, options)?,
         })
     }
 
@@ -1559,9 +1613,8 @@ impl Assets {
         #[wasm_bindgen(unchecked_optional_param_type = "AssetsOptions")] options: JsValue,
     ) -> Result<Assets, JsValue> {
         let assets = finalytics::Assets::from_csv(text).map_err(error)?;
-        let options: finalytics::AssetSettings = optional(options, "options")?;
         Ok(Assets {
-            inner: options.apply(assets).map_err(error)?,
+            inner: with_settings(assets, options)?,
         })
     }
 
@@ -1578,9 +1631,8 @@ impl Assets {
         let table = ReturnsTable::new(labels, columns).map_err(error)?;
         let assets =
             finalytics::Assets::from_returns(parse_dates(dates, "dates")?, table).map_err(error)?;
-        let options: finalytics::AssetSettings = optional(options, "options")?;
         Ok(Assets {
-            inner: options.apply(assets).map_err(error)?,
+            inner: with_settings(assets, options)?,
         })
     }
 
@@ -1704,21 +1756,20 @@ impl Assets {
         &self,
         #[wasm_bindgen(unchecked_optional_param_type = "OptimiseChoices")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut options = object(
+        let (mut options, mut pending) = object(
             options,
             &fields::<finalytics::OptimiseOptions>(&["frontier", "name"]),
         )?;
-        let name = match options.remove("name") {
-            Some(serde_json::Value::String(name)) => Some(name),
-            Some(serde_json::Value::Null) | None => None,
-            Some(_) => return Err(invalid("options.name", "must be a string")),
-        };
-        let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
+        let name = given_name(&mut options, &mut pending);
+        let mut result = finalytics::formats::together(
+            pending,
             &serde_json::Value::Object(options).to_string(),
             "options",
+            &["method"],
+            |o: finalytics::OptimiseOptions| self.inner.optimise_with(&o),
+            |o, decided| self.inner.check_options(&o, decided),
         )
         .map_err(error)?;
-        let mut result = self.inner.optimise_with(&options).map_err(error)?;
         result.report.name = name;
         let value = to_js(&result)?;
         if let Some(weights) = &result.results.weights {
@@ -1740,30 +1791,60 @@ impl Assets {
     ) -> Result<JsValue, JsValue> {
         let mut allowed = fields::<finalytics::OptimiseOptions>(&["weights", "frontier", "name"]);
         allowed.retain(|name| name != "method");
-        let mut options = object(options, &allowed)?;
-        let name = match options.remove("name") {
-            Some(serde_json::Value::String(name)) => Some(name),
-            Some(serde_json::Value::Null) | None => None,
-            Some(_) => return Err(invalid("options.name", "must be a string")),
+        let (mut options, mut pending) = object(options, &allowed)?;
+        let name = given_name(&mut options, &mut pending);
+        let weights: Option<BTreeMap<String, f64>> = match options.remove("weights") {
+            Some(weights) => {
+                match finalytics::formats::from_json(&weights.to_string(), "options.weights") {
+                    Ok(weights) => Some(weights),
+                    Err(Error::Validation(r)) => {
+                        pending.merge("", r);
+                        None
+                    }
+                    Err(e) => return Err(error(e)),
+                }
+            }
+            None if pending
+                .issues()
+                .iter()
+                .any(|i| i.path.starts_with("options.weights")) =>
+            {
+                None
+            }
+            None => {
+                pending.error(
+                    "options.weights",
+                    "give the weights by asset, adding up to one",
+                );
+                None
+            }
         };
-        let Some(weights) = options.remove("weights") else {
-            return Err(invalid(
-                "options.weights",
-                "give the weights by asset, adding up to one",
-            ));
-        };
-        let weights: BTreeMap<String, f64> =
-            finalytics::formats::from_json(&weights.to_string(), "options.weights")
-                .map_err(error)?;
-        let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
+        let mut result = finalytics::formats::together(
+            pending,
             &serde_json::Value::Object(options).to_string(),
             "options",
+            &[],
+            |o: finalytics::OptimiseOptions| match &weights {
+                Some(weights) => self.inner.evaluate_with(weights, &o),
+                None => Err(Error::Validation(ValidationReport::new())),
+            },
+            |o, _| {
+                // The weights' own checks, with an empty set when they did not read.
+                let empty = BTreeMap::new();
+                finalytics::formats::problems(
+                    self.inner
+                        .evaluate_with(weights.as_ref().unwrap_or(&empty), &o),
+                )
+                .issues()
+                .iter()
+                .filter(|i| weights.is_some() || !i.path.starts_with("options.weights"))
+                .fold(ValidationReport::new(), |mut r, i| {
+                    r.error(i.path.clone(), i.message.clone());
+                    r
+                })
+            },
         )
         .map_err(error)?;
-        let mut result = self
-            .inner
-            .evaluate_with(&weights, &options)
-            .map_err(error)?;
         result.report.name = name;
         let value = to_js(&result)?;
         let results = js_sys::Reflect::get(&value, &"results".into())?;
@@ -1800,18 +1881,19 @@ impl Assets {
                 .collect(),
             _ => Vec::new(),
         };
-        let mut choices = object(options, &allowed)?;
+        let (mut choices, mut report) = object(options, &allowed)?;
         let methods = choices.remove("methods");
         let fixed = choices.remove("weights");
+        let methods_given = methods.is_some();
         if methods.is_none() && fixed.is_none() {
-            return Err(invalid(
+            report.error(
                 "options.methods",
                 "give the methods to compare, or fixed weights",
-            ));
+            );
         }
-        // Each item of `methods` is a method's name or fixed weights with a name, in order.
-        let mut report = ValidationReport::new();
-        let mut listed: Vec<Listed> = Vec::new();
+        // Each item of `methods` is a method's name or fixed weights with a name, in order;
+        // each strategy keeps the path it was given at.
+        let mut listed: Vec<(Listed, String)> = Vec::new();
         match methods {
             Some(serde_json::Value::Array(items)) => {
                 for (k, item) in items.into_iter().enumerate() {
@@ -1839,13 +1921,13 @@ impl Assets {
                                 &weights.to_string(),
                                 &format!("{path}.weights"),
                             ) {
-                                Ok(w) => listed.push(Err((name, w))),
+                                Ok(w) => listed.push((Err((name, w)), path)),
                                 Err(Error::Validation(r)) => report.merge("", r),
                                 Err(e) => return Err(error(e)),
                             }
                         }
                         other => match finalytics::formats::from_json(&other.to_string(), &path) {
-                            Ok(method) => listed.push(Ok(method)),
+                            Ok(method) => listed.push((Ok(method), path)),
                             Err(Error::Validation(r)) => report.merge("", r),
                             Err(e) => return Err(error(e)),
                         },
@@ -1869,33 +1951,34 @@ impl Assets {
             },
             None => BTreeMap::new(),
         };
-        report.into_result(()).map_err(error)?;
         for name in &order {
             if let Some(weights) = fixed.remove(name) {
-                listed.push(Err((name.clone(), weights)));
+                listed.push((
+                    Err((name.clone(), weights)),
+                    format!("options.weights.{name}"),
+                ));
             }
         }
-        listed.extend(fixed.into_iter().map(Err));
-        let name = match choices.remove("name") {
-            Some(serde_json::Value::String(name)) => Some(name),
-            Some(serde_json::Value::Null) | None => None,
-            Some(_) => return Err(invalid("options.name", "must be a string")),
-        };
+        listed.extend(
+            fixed
+                .into_iter()
+                .map(|(name, w)| (Err((name.clone(), w)), format!("options.weights.{name}"))),
+        );
+        let name = given_name(&mut choices, &mut report);
         let mut settings = settings(&mut choices)?;
-        let limits = limits(choices)?;
-        if !listed.iter().any(Result::is_ok) && !limits.is_empty() {
-            let mut report = ValidationReport::new();
+        let limits = good_limits(choices, &mut report);
+        if !methods_given && !listed.is_empty() && !limits.is_empty() {
             for key in limits.keys() {
                 report.error(
                     format!("options.{key}"),
                     "fixed weights take no limits or parameters",
                 );
             }
-            return Err(error(Error::Validation(report)));
         }
+        let origins: Vec<String> = listed.iter().map(|(_, path)| path.clone()).collect();
         let strategies = listed
             .into_iter()
-            .map(|strategy| match strategy {
+            .map(|(strategy, _)| match strategy {
                 Ok(method) => {
                     let mut options = limits.clone();
                     options.insert("method".to_owned(), serde_json::json!(method));
@@ -1911,8 +1994,7 @@ impl Assets {
             serde_json::Value::Array(strategies),
         );
         let mut comparison = self
-            .inner
-            .compare_with(&backtest_options(settings)?)
+            .run_backtest(settings, report, &origins, |inner, o| inner.compare_with(o))
             .map_err(error)?;
         comparison.report.name = name;
         to_js(&comparison)
@@ -1930,46 +2012,51 @@ impl Assets {
     ) -> Result<JsValue, JsValue> {
         let mut allowed = fields::<finalytics::OptimiseOptions>(&["weights", "name"]);
         allowed.extend(SETTINGS.map(str::to_owned));
-        let mut choices = object(options, &allowed)?;
+        let (mut choices, mut report) = object(options, &allowed)?;
         let method = choices.remove("method");
         let weights = choices.remove("weights");
         let name = choices.remove("name").unwrap_or(serde_json::Value::Null);
         let mut settings = settings(&mut choices)?;
         let strategy = match (method, weights) {
             (Some(method), None) => {
-                let mut options = limits(choices)?;
+                let mut options = good_limits(choices, &mut report);
                 options.insert("method".to_owned(), method);
-                serde_json::json!({ "type": "optimise", "name": name, "options": options })
+                Some(serde_json::json!({ "type": "optimise", "name": name, "options": options }))
             }
             (None, Some(weights)) => {
-                let mut report = ValidationReport::new();
                 for key in choices.keys() {
                     report.error(
                         format!("options.{key}"),
                         "fixed weights take no limits or parameters",
                     );
                 }
-                report.into_result(()).map_err(error)?;
-                serde_json::json!({ "type": "weights", "name": name, "weights": weights })
+                Some(serde_json::json!({ "type": "weights", "name": name, "weights": weights }))
             }
             (None, None) => {
-                return Err(invalid("options.method", "give a method, or fixed weights"));
+                if !report.issues().iter().any(|i| {
+                    i.path.starts_with("options.method") || i.path.starts_with("options.weights")
+                }) {
+                    report.error("options.method", "give a method, or fixed weights");
+                }
+                None
             }
             (Some(_), Some(_)) => {
-                return Err(invalid(
+                report.error(
                     "options.weights",
                     "give a method or fixed weights, not both",
-                ));
+                );
+                None
             }
         };
         settings.insert(
             "strategies".to_owned(),
-            serde_json::Value::Array(vec![strategy]),
+            serde_json::Value::Array(strategy.into_iter().collect()),
         );
         to_js(
             &self
-                .inner
-                .backtest_with(&backtest_options(settings)?)
+                .run_backtest(settings, report, &["options".to_owned()], |inner, o| {
+                    inner.backtest_with(o)
+                })
                 .map_err(error)?,
         )
     }
@@ -1982,7 +2069,7 @@ impl Assets {
         &self,
         #[wasm_bindgen(unchecked_param_type = "PlanChoices | PlanOptions")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        let mut choices = object(options, &fields::<finalytics::PlanOptions>(&[]))?;
+        let (mut choices, pending) = object(options, &fields::<finalytics::PlanOptions>(&[]))?;
         let mix = |value: serde_json::Value, name: Option<&str>| -> serde_json::Value {
             let mut mix = match value {
                 serde_json::Value::Object(map) if map.contains_key("type") => map,
@@ -2048,12 +2135,16 @@ impl Assets {
         {
             goal.entry("name").or_insert(name);
         }
-        let options: finalytics::PlanOptions = finalytics::formats::from_json(
+        let plan = finalytics::formats::together(
+            pending,
             &serde_json::Value::Object(choices).to_string(),
             "options",
+            &[],
+            |o: finalytics::PlanOptions| self.inner.plan_with(&o),
+            |o, _| finalytics::formats::problems(self.inner.plan_with(&o)),
         )
         .map_err(error)?;
-        to_js(&self.inner.plan_with(&options).map_err(error)?)
+        to_js(&plan)
     }
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
@@ -2067,22 +2158,21 @@ impl Assets {
     ) -> Result<JsValue, JsValue> {
         // The options of `optimise`, each checked by name; the engine refuses those the
         // frontier does not use.
-        let mut options = object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
+        let (mut options, mut pending) =
+            object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
         if options.remove("method").is_some() {
-            return Err(invalid(
-                "options.method",
-                "the frontier does not use method",
-            ));
+            pending.error("options.method", "the frontier does not use method");
         }
-        let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
+        let points = points.unwrap_or(20);
+        let points = finalytics::formats::together(
+            pending,
             &serde_json::Value::Object(options).to_string(),
             "options",
+            &[],
+            |o: finalytics::OptimiseOptions| self.inner.frontier(points, &o),
+            |o, _| finalytics::formats::problems(self.inner.frontier(points, &o)),
         )
         .map_err(error)?;
-        let points = self
-            .inner
-            .frontier(points.unwrap_or(20), &options)
-            .map_err(error)?;
         let value = to_js(&points)?;
         // Each portfolio's weights in the order of the assets, rather than of their names.
         let array = js_sys::Array::from(&value);
@@ -2094,6 +2184,50 @@ impl Assets {
             )?;
         }
         Ok(value)
+    }
+
+    /// Runs `verb` on a backtest's `settings`, reporting every problem together: those in
+    /// `report`, found before, those reading the settings, and those the run finds, each at
+    /// the path it was given at (`origins` holds each strategy's).
+    fn run_backtest<R>(
+        &self,
+        settings: serde_json::Map<String, serde_json::Value>,
+        mut report: ValidationReport,
+        origins: &[String],
+        verb: impl FnOnce(
+            &finalytics::Assets,
+            &finalytics::backtest::BacktestOptions,
+        ) -> finalytics::Result<R>,
+    ) -> finalytics::Result<R> {
+        let text = serde_json::Value::Object(settings).to_string();
+        let (found, read) = finalytics::formats::from_json_by_field::<
+            finalytics::backtest::BacktestOptions,
+        >(&text, "options");
+        report.merge("", read);
+        let Some(options) = found else {
+            return Err(Error::Validation(report));
+        };
+        if options.strategies.is_empty() && !report.is_empty() {
+            return Err(Error::Validation(report));
+        }
+        match verb(&self.inner, &options) {
+            Ok(found) if report.is_empty() => Ok(found),
+            Err(Error::Validation(found)) => {
+                for issue in given_paths(&found, origins).issues() {
+                    if report.issues().iter().any(|i| i.path == issue.path) {
+                        continue;
+                    }
+                    if issue.severity == finalytics::Severity::Warning {
+                        report.warning(issue.path.clone(), issue.message.clone());
+                    } else {
+                        report.error(issue.path.clone(), issue.message.clone());
+                    }
+                }
+                Err(Error::Validation(report))
+            }
+            Err(e) if report.is_empty() => Err(e),
+            _ => Err(Error::Validation(report)),
+        }
     }
 
     /// `values` by asset as an object whose keys are in the order of the assets.
@@ -2401,25 +2535,27 @@ impl Universe {
                 .collect(),
             _ => Vec::new(),
         };
-        let mut choices = object(
+        let (mut choices, mut pending) = object(
             options,
             &fields::<finalytics::ScreenOptions>(&["name", "formulas"]),
         )?;
-        let name = match choices.remove("name") {
-            Some(serde_json::Value::String(name)) => Some(name),
-            Some(serde_json::Value::Null) | None => None,
-            Some(_) => return Err(invalid("options.name", "must be a string")),
+        let name = given_name(&mut choices, &mut pending);
+        let ordered = |mut options: finalytics::ScreenOptions| {
+            options
+                .formulas
+                .0
+                .sort_by_key(|(name, _)| order.iter().position(|n| n == name));
+            options
         };
-        let mut options: finalytics::ScreenOptions = finalytics::formats::from_json(
+        let screen = finalytics::formats::together(
+            pending,
             &serde_json::Value::Object(choices).to_string(),
             "options",
+            &[],
+            |o: finalytics::ScreenOptions| self.inner.screen_with(&ordered(o)),
+            |o, _| finalytics::formats::problems(self.inner.screen_with(&ordered(o))),
         )
         .map_err(error)?;
-        options
-            .formulas
-            .0
-            .sort_by_key(|(name, _)| order.iter().position(|n| n == name));
-        let screen = self.inner.screen_with(&options).map_err(error)?;
         let mut report = screen.report;
         report.name = name;
         let value = js_sys::Object::new();
@@ -2452,8 +2588,9 @@ impl Universe {
                 "give the fields with the columns, as columns.fields",
             ));
         }
-        let mut choices = object(options, &allowed)?;
+        let (mut choices, pending) = object(options, &allowed)?;
         choices.remove("fields");
+        pending.into_result(()).map_err(error)?;
         let settings: finalytics::UniverseSettings = finalytics::formats::from_json(
             &serde_json::Value::Object(choices).to_string(),
             "options",
@@ -2591,14 +2728,6 @@ fn screen_columns(r: &finalytics::ScreenResults) -> Result<JsValue, JsValue> {
     Ok(value)
 }
 
-/// The options of a backtest, from the JSON of `BacktestOptions`.
-fn backtest_options(
-    options: serde_json::Map<String, serde_json::Value>,
-) -> Result<finalytics::backtest::BacktestOptions, JsValue> {
-    finalytics::formats::from_json(&serde_json::Value::Object(options).to_string(), "options")
-        .map_err(error)
-}
-
 /// How `Assets.compare` and `Assets.backtest` run.
 const SETTINGS: [&str; 7] = [
     "validation",
@@ -2624,20 +2753,76 @@ fn fields<T: Serialize + Default>(extra: &[&str]) -> Vec<String> {
 fn object(
     value: JsValue,
     allowed: &[String],
-) -> Result<serde_json::Map<String, serde_json::Value>, JsValue> {
+) -> Result<(serde_json::Map<String, serde_json::Value>, ValidationReport), JsValue> {
+    let mut report = ValidationReport::new();
     if value.is_undefined() || value.is_null() {
-        return Ok(serde_json::Map::new());
+        return Ok((serde_json::Map::new(), report));
     }
-    let serde_json::Value::Object(map) = from_js(value, "options")? else {
+    let (text, found) = json_text(value, "options")?;
+    let Ok(serde_json::Value::Object(mut map)) = serde_json::from_str(&text) else {
         return Err(invalid("options", "must be an object"));
     };
-    let mut report = ValidationReport::new();
-    for key in map.keys() {
-        if !allowed.contains(key) {
-            report.error(format!("options.{key}"), "is not an option");
+    // Each problem found here is reported, and its option left out, so that the checks of the
+    // others can report theirs with it.
+    let unknown: Vec<String> = map
+        .keys()
+        .filter(|k| !allowed.contains(k))
+        .cloned()
+        .collect();
+    for key in unknown {
+        let near = allowed.iter().find(|a| close(a, &key));
+        match near {
+            Some(near) => report.error(
+                format!("options.{key}"),
+                format!("is not an option; did you mean {near}?"),
+            ),
+            None => report.error(format!("options.{key}"), "is not an option"),
+        }
+        map.remove(&key);
+    }
+    for (path, x) in found {
+        report.error(path.clone(), format!("must be a finite number, not {x}"));
+        let rest = path.strip_prefix("options.").unwrap_or(&path);
+        let key = &rest[..rest.find(['.', '[']).unwrap_or(rest.len())];
+        map.remove(key);
+    }
+    Ok((map, report))
+}
+
+/// The report's title from `options.name`, taken out of the options: a string, or nothing.
+fn given_name(
+    options: &mut serde_json::Map<String, serde_json::Value>,
+    pending: &mut ValidationReport,
+) -> Option<String> {
+    match options.remove("name") {
+        Some(serde_json::Value::String(name)) => Some(name),
+        Some(serde_json::Value::Null) | None => None,
+        Some(_) => {
+            pending.error("options.name", "must be a string");
+            None
         }
     }
-    report.into_result(map).map_err(error)
+}
+
+/// Whether `given` is a near miss of `name`: one edit apart, or two in a longer name.
+fn close(name: &str, given: &str) -> bool {
+    let (a, b): (Vec<char>, Vec<char>) = (name.chars().collect(), given.chars().collect());
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for i in 1..=a.len() {
+        let mut previous = row[0];
+        row[0] = i;
+        for j in 1..=b.len() {
+            let here = row[j];
+            row[j] = if a[i - 1] == b[j - 1] {
+                previous
+            } else {
+                1 + previous.min(row[j]).min(row[j - 1])
+            };
+            previous = here;
+        }
+    }
+    let distance = row[b.len()];
+    distance <= if a.len() > 6 { 2 } else { 1 }
 }
 
 /// The settings of a backtest, taken out of `choices`, in the form of `BacktestOptions`. A
@@ -2706,15 +2891,71 @@ fn tagged(value: serde_json::Value) -> serde_json::Value {
     }
 }
 
-/// The limits and parameters left in `choices`, checked as `OptimiseOptions` so that a problem
-/// is reported where it was given.
-fn limits(
-    choices: serde_json::Map<String, serde_json::Value>,
-) -> Result<serde_json::Map<String, serde_json::Value>, JsValue> {
+/// The limits and parameters in `choices` that read as an optimisation's, each problem with
+/// the others added to `report` and its option left out.
+fn good_limits(
+    mut choices: serde_json::Map<String, serde_json::Value>,
+    report: &mut ValidationReport,
+) -> serde_json::Map<String, serde_json::Value> {
     let text = serde_json::Value::Object(choices.clone()).to_string();
-    finalytics::formats::from_json::<finalytics::OptimiseOptions>(&text, "options")
-        .map_err(error)?;
-    Ok(choices)
+    let (_, read) =
+        finalytics::formats::from_json_by_field::<finalytics::OptimiseOptions>(&text, "options");
+    for issue in read.issues() {
+        let rest = issue.path.strip_prefix("options.").unwrap_or(&issue.path);
+        let key = &rest[..rest.find(['.', '[']).unwrap_or(rest.len())];
+        choices.remove(key);
+    }
+    report.merge("", read);
+    choices
+}
+
+/// A strategy's problems at the paths it was given at: `strategies[k]` is the `k`th of
+/// `origins`, its fixed weights under it as given, its options under `options`; a benchmark's
+/// weights are at `options.benchmark`; and a setting is under `options`.
+fn given_paths(found: &ValidationReport, origins: &[String]) -> ValidationReport {
+    let mut report = ValidationReport::new();
+    for issue in found.issues() {
+        let path = &issue.path;
+        let mapped = if let Some(rest) = path.strip_prefix("strategies[") {
+            let (k, rest) = rest.split_once(']').unwrap_or((rest, ""));
+            let origin = k
+                .parse::<usize>()
+                .ok()
+                .and_then(|k| origins.get(k))
+                .cloned()
+                .unwrap_or_else(|| "options".to_owned());
+            if let Some(inner) = rest.strip_prefix(".options") {
+                format!("options{inner}")
+            } else if let Some(inner) = rest.strip_prefix(".weights") {
+                if origin.starts_with("options.weights.") || origin == "options" {
+                    format!(
+                        "{origin}{}",
+                        if origin == "options" {
+                            format!(".weights{inner}")
+                        } else {
+                            inner.to_owned()
+                        }
+                    )
+                } else {
+                    format!("{origin}.weights{inner}")
+                }
+            } else {
+                format!("{origin}{rest}")
+            }
+        } else if let Some(rest) = path.strip_prefix("benchmark.weights") {
+            format!("options.benchmark{rest}")
+        } else if path.is_empty() || path.starts_with("options") {
+            path.clone()
+        } else {
+            format!("options.{path}")
+        };
+        if issue.severity == finalytics::Severity::Warning {
+            report.warning(mapped, issue.message.clone());
+        } else {
+            report.error(mapped, issue.message.clone());
+        }
+    }
+    report
 }
 
 /// Datasets for examples, tests and practice: a two-account household holding five real funds,
@@ -3231,12 +3472,20 @@ pub fn factor_model(
 }
 
 fn report_options(value: JsValue) -> Result<finalytics::reports::ReportOptions, JsValue> {
-    let options = object(
+    let (options, pending) = object(
         value,
         &fields::<finalytics::reports::ReportOptions>(&["accounts"]),
     )?;
-    finalytics::formats::from_json(&serde_json::Value::Object(options).to_string(), "options")
-        .map_err(error)
+    let (found, read) = finalytics::formats::from_json_by_field(
+        &serde_json::Value::Object(options).to_string(),
+        "options",
+    );
+    let mut report = pending;
+    report.merge("", read);
+    match found {
+        Some(options) if report.is_empty() => Ok(options),
+        _ => Err(error(Error::Validation(report))),
+    }
 }
 
 /// Every optimisation method with what it takes: its parameters, with their defaults and the

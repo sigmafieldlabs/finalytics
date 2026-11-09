@@ -40,6 +40,79 @@ pub fn from_json<T: DeserializeOwned>(text: &str, root: &str) -> Result<T> {
     Err(Error::Validation(report))
 }
 
+/// Reads a value of type `T` from a JSON object field by field, so that every field's problem
+/// is reported together, and builds the value from the fields that read, so that the checks
+/// that follow can report theirs too.
+///
+/// Returns the value and the problems with the fields, under `root`. The value is `None` when
+/// it cannot be built without the fields that failed, such as when one of them is required,
+/// or when the text is not an object; the problems then say why. With no problems, this is
+/// [`from_json`].
+pub fn from_json_by_field<T: DeserializeOwned>(
+    text: &str,
+    root: &str,
+) -> (Option<T>, ValidationReport) {
+    let error = match from_json::<T>(text, root) {
+        Ok(found) => return (Some(found), ValidationReport::new()),
+        Err(Error::Validation(report)) => report,
+        Err(other) => {
+            let mut report = ValidationReport::new();
+            report.error(root, other.to_string());
+            report
+        }
+    };
+    let Ok(serde_json::Value::Object(fields)) = serde_json::from_str::<serde_json::Value>(text)
+    else {
+        return (None, error);
+    };
+    let mut report = ValidationReport::new();
+    let mut good = serde_json::Map::new();
+    for (key, value) in fields {
+        let alone: serde_json::Value = [(key.clone(), value.clone())].into_iter().collect();
+        match from_json::<T>(&alone.to_string(), root) {
+            Ok(_) => {
+                good.insert(key, value);
+            }
+            Err(Error::Validation(found)) => {
+                // A field read alone may fail only because others are required: it is good.
+                let own = join(root, &key);
+                let issues: Vec<_> = found
+                    .issues()
+                    .iter()
+                    .filter(|i| {
+                        i.path == own
+                            || i.path.starts_with(&format!("{own}."))
+                            || i.path.starts_with(&format!("{own}["))
+                    })
+                    .cloned()
+                    .collect();
+                if issues.is_empty() {
+                    good.insert(key, value);
+                } else {
+                    for issue in issues {
+                        if issue.severity == finalytics_core::Severity::Warning {
+                            report.warning(issue.path, issue.message);
+                        } else {
+                            report.error(issue.path, issue.message);
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                good.insert(key, value);
+            }
+        }
+    }
+    if report.is_empty() {
+        // Every field reads alone, but not together: the problem is between them.
+        return (None, error);
+    }
+    match from_json::<T>(&serde_json::Value::Object(good).to_string(), root) {
+        Ok(found) => (Some(found), report),
+        Err(_) => (None, report),
+    }
+}
+
 fn join(outer: &str, inner: &str) -> String {
     match (outer.is_empty(), inner.is_empty()) {
         (_, true) => outer.to_owned(),
@@ -53,6 +126,48 @@ fn join(outer: &str, inner: &str) -> String {
 /// validation report, as written by [`ValidationReport`]'s `Display`, is split into its issues.
 fn add_issues(report: &mut ValidationReport, path: &str, message: &str) {
     let message = without_location(message);
+    if let Some((field, _)) = message
+        .strip_prefix("unknown field `")
+        .and_then(|rest| rest.split_once('`'))
+    {
+        // The path may already end at the field.
+        let at = if path == field || path.ends_with(&format!(".{field}")) {
+            path.to_owned()
+        } else {
+            join(path, field)
+        };
+        report.error(at, "is not an option");
+        return;
+    }
+    if let Some((given, rest)) = message
+        .strip_prefix("unknown variant `")
+        .and_then(|rest| rest.split_once('`'))
+    {
+        let known = rest
+            .strip_prefix(", expected one of ")
+            .or_else(|| rest.strip_prefix(", expected "))
+            .map(|list| list.replace('`', ""));
+        let message = match known {
+            Some(list) => format!("{given} is not one of {list}"),
+            None => format!("{given} is not one of the choices"),
+        };
+        report.error(path, message);
+        return;
+    }
+    if let Some(given) = message
+        .strip_prefix("invalid value: integer `")
+        .and_then(|rest| {
+            rest.strip_suffix("`, expected usize")
+                .or_else(|| rest.strip_suffix("`, expected u32"))
+                .or_else(|| rest.strip_suffix("`, expected u64"))
+        })
+    {
+        report.error(
+            path,
+            format!("must be a whole number of zero or more, not {given}"),
+        );
+        return;
+    }
     let mut lines = message.lines();
     if !lines
         .next()

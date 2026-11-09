@@ -163,7 +163,7 @@ def test_problems_are_reported_together(universe):
     assert [i.path for i in found.value.issues] == ["risk_free_rate", "benchmark"]
     with pytest.raises(fl.ValidationError) as found:
         universe.screen(sort="sharpe_ratio")
-    assert found.value.issues[0].path == "sort"
+    assert found.value.issues[0].path == "options.sort"
 
 
 def test_formulas_are_numeric_fields_that_rules_and_the_sort_take(universe):

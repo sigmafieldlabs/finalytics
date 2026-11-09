@@ -45,7 +45,7 @@ def _rule(rule: RuleLike, k: int) -> _types.Rule:
     try:
         name, op, value = rule
     except (TypeError, ValueError):
-        raise invalid((f"rules[{k}]", "give a rule as (name, op, value), such as (\"return_1y\", \">\", 0.1)")) from None
+        raise invalid((f"options.rules[{k}]", "give a rule as (name, op, value), such as (\"return_1y\", \">\", 0.1)")) from None
     target = _target(name)
     if op in ("in", "not_in"):
         values = [value] if isinstance(value, str) else [str(v) for v in value]
@@ -60,7 +60,7 @@ def _sort(sort: SortLike | None) -> _types.Sort | None:
     if sort is None or isinstance(sort, _types.Sort):
         return sort
     if isinstance(sort, str):
-        raise invalid(("sort", f"give the order too, such as ({sort!r}, \"descending\")"))
+        raise invalid(("options.sort", f"give the order too, such as ({sort!r}, \"descending\")"))
     name, order = sort
     return _types.Sort(**_target(name), order=order)
 

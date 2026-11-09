@@ -117,7 +117,7 @@ def test_problems_are_reported_together(assets):
             fee=2,
         )
     paths = {issue.path for issue in caught.value.issues}
-    assert {"goal.amount", "fee"} <= paths and any(p.startswith("weights") for p in paths)
+    assert {"options.goal.amount", "options.fee"} <= paths and any(p.startswith("options.weights") for p in paths)
     with pytest.raises(fl.ValidationError):
         assets.plan(fl.Target(amount=1, by="2030-06"), weights={"US Equity": 1.0}, inflation=0.02, model="monte")
 

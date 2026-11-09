@@ -121,7 +121,7 @@ pub fn overview_report(
     source: &Source,
     options: &ReportOptions,
 ) -> Result<OverviewReport> {
-    let chosen = crate::context::chosen_books(books, options)?;
+    let chosen = crate::context::chosen_books_checked(books, market, source, options)?;
     let books: &Books = &chosen;
     let cx = Context::new(books, market, source, options)?;
     let values = books.value_series(&cx.dates, market)?;

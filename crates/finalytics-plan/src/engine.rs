@@ -686,7 +686,8 @@ fn check_mix(mix: &Mix, assets: &[String], path: &str, report: &mut ValidationRe
         }
     };
     match mix {
-        Mix::Fixed { weights, .. } => check(weights, &format!("{path}.weights"), report),
+        // Fixed weights are the mix itself, as the packages take them.
+        Mix::Fixed { weights, .. } => check(weights, path, report),
         Mix::GlidePath { points, .. } => {
             if points.is_empty() {
                 report.error(

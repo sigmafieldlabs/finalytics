@@ -1461,11 +1461,8 @@ impl Assets {
     /// fully invested portfolio can meet, and the parameters the method needs. With `single`,
     /// when one method is asked for, a parameter the method does not use is a problem too; a
     /// comparison applies each to the methods that take it.
-    pub(crate) fn check_options(
-        &self,
-        options: &OptimiseOptions,
-        single: bool,
-    ) -> ValidationReport {
+    #[doc(hidden)]
+    pub fn check_options(&self, options: &OptimiseOptions, single: bool) -> ValidationReport {
         let mut report = ValidationReport::new();
         let risky = self.risky_assets();
         let n = risky.len();
@@ -2646,25 +2643,30 @@ impl AssetSettings {
 
     /// `assets` with these settings, every problem with them reported together.
     pub fn apply(&self, mut assets: Assets) -> Result<Assets> {
+        // The settings' own checks, the risk-free asset and the classes are reported together;
+        // a setting with a problem is left out while the others are checked.
         let mut report = ValidationReport::new();
         self.check(&mut report);
-        report.into_result(())?;
-        if let Some(periods) = self.periods_per_year {
+        let bad = |name: &str| report.issues().iter().any(|i| i.path.starts_with(name));
+        if let Some(periods) = self.periods_per_year.filter(|_| !bad("periods_per_year")) {
             assets = assets.with_periods_per_year(periods);
         }
-        if let Some(method) = self.covariance {
+        if let Some(method) = self.covariance.filter(|_| !bad("covariance")) {
             assets = assets.with_covariance(method);
         }
-        if let Some(rate) = self.risk_free_rate {
+        if let Some(rate) = self.risk_free_rate.filter(|_| !bad("risk_free_rate")) {
             assets = assets.with_risk_free_rate(rate);
         }
-        if let Some(asset) = &self.risk_free_asset {
-            assets = assets.with_risk_free_asset(asset)?;
-        }
-        if let Some(method) = self.mean_returns {
+        if let Some(method) = self.mean_returns.filter(|_| !bad("mean_returns")) {
             assets.mean_method = method;
         }
-        let mut report = ValidationReport::new();
+        if let Some(asset) = &self.risk_free_asset {
+            match assets.clone().with_risk_free_asset(asset) {
+                Ok(with) => assets = with,
+                Err(Error::Validation(found)) => report.merge("", found),
+                Err(e) => return Err(e),
+            }
+        }
         for (scheme, classes) in self.classes.iter().flatten() {
             match assets.clone().with_classes(scheme, classes.clone()) {
                 Ok(with) => assets = with,

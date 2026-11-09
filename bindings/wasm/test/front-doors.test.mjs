@@ -69,7 +69,7 @@ test("given weights are valued as optimisation values its own", () => {
   assert.equal(framed.report.name, "Sixty forty");
   assert.match(fl.resultsText(framed.results), /Evaluation · Given weights/);
   assert.throws(() => assets.evaluate({ weights: { "US Equity": 0.6 }, max_weight: 0.5 }), (e) => {
-    assert.deepEqual(e.issues.map((i) => i.path), ["options.max_weight", "weights"]);
+    assert.deepEqual(e.issues.map((i) => i.path), ["options.max_weight", "options.weights"]);
     return true;
   });
 });

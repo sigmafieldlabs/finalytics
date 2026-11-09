@@ -8,14 +8,14 @@ import json
 import math
 import os
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, get_args
 
 import numpy as np
 
 from finalytics import _arrays, _finalytics, _types
 from finalytics._arrays import DateArray
 from finalytics._convert import dumps, loads
-from finalytics._errors import call, invalid
+from finalytics._errors import ValidationError, call, invalid, validation
 
 __all__ = ["Assets", "methods"]
 
@@ -49,6 +49,10 @@ GroupLike = _types.AssetGroup | tuple[Sequence[str] | str, float, float]
 :class:`~finalytics.types.AssetGroup`, an ``(assets, min, max)`` triple, or a
 ``(classification, min, max)`` triple, such as ``("asset_class", 0, 0.6)`` for the group named
 ``"Equity"``: the assets classed as the group's name under the classification."""
+
+
+_METHODS: tuple[str, ...] = get_args(_types.Method)
+"""The methods' names, in the order the engine lists them."""
 
 
 def _covariance(method: str | _types.CovarianceMethod) -> str:
@@ -166,17 +170,43 @@ class Assets:
         mean_returns: str | _types.MeanMethod,
         classes: Mapping[str, Mapping[str, str]] | None = None,
     ) -> Any:
+        # A setting the package cannot read is reported with the engine's problems with the
+        # others, and left out.
+        pending: list[_types.Issue] = []
+
+        def read(name: str, convert: Any, value: Any) -> Any:
+            try:
+                return json.loads(convert(value))
+            except ValidationError as error:
+                pending.extend(dataclasses.replace(i, path=f"options.{name}") for i in error.issues)
+                return None
+
+        def number(name: str, value: float | None) -> float | None:
+            if value is None:
+                return None
+            if not math.isfinite(float(value)):
+                message = f"must be a finite number, not {_number(float(value))}"
+                pending.append(_types.Issue(path=f"options.{name}", message=message, severity="error"))
+                return None
+            return float(value)
+
         settings = {
-            "risk_free_rate": None if risk_free_rate is None else float(risk_free_rate),
+            "risk_free_rate": number("risk_free_rate", risk_free_rate),
             "risk_free_asset": risk_free_asset,
-            "periods_per_year": None if periods_per_year is None else float(periods_per_year),
-            "covariance": json.loads(_covariance(covariance)),
-            "mean_returns": json.loads(_mean(mean_returns)),
+            "periods_per_year": number("periods_per_year", periods_per_year),
+            "covariance": read("covariance", _covariance, covariance),
+            "mean_returns": read("mean_returns", _mean, mean_returns),
             "classes": None
             if classes is None
             else {str(k): {str(a): str(c) for a, c in v.items()} for k, v in classes.items()},
         }
-        return call(native.with_settings, dumps(settings))
+        try:
+            configured = call(native.with_settings, dumps(settings))
+        except ValidationError as error:
+            raise validation(pending + list(error.issues)) from None
+        if pending:
+            raise validation(pending)
+        return configured
 
     @classmethod
     def _wrap(cls, native: Any) -> Assets:
@@ -320,9 +350,11 @@ class Assets:
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
         keep_cash: bool | Sequence[str] = False,
+        pending: list[tuple[str, str]] | None = None,
     ) -> _types.OptimiseOptions:
         # Numbers JSON cannot hold, named by keyword: a comparison or backtest repeats the
-        # options in each strategy.
+        # options in each strategy. With `pending`, each is added to it and its option left
+        # out, so that the engine's checks of the others are reported with it.
         numbers = {
             "risk_free_rate": risk_free_rate,
             "target": target,
@@ -339,11 +371,12 @@ class Assets:
         numbers.update({f"current_weights.{k}": v for k, v in (current_weights or {}).items()})
         numbers.update({f"benchmark_weights.{k}": v for k, v in (benchmark_weights or {}).items()})
         bad = [(k, float(v)) for k, v in numbers.items() if v is not None and not math.isfinite(float(v))]
-        if bad:
-            raise invalid(*((f"options.{k}", f"must be a finite number, not {v}") for k, v in bad))
+        problems = [(f"options.{k}", f"must be a finite number, not {_number(v)}") for k, v in bad]
+        if bad and pending is None:
+            raise invalid(*problems)
         if isinstance(keep_cash, str):
             raise invalid(("options.keep_cash", f"must be True or a list of currencies, such as [{keep_cash!r}]"))
-        return _types.OptimiseOptions(
+        options = _types.OptimiseOptions(
             method=method,
             risk_free_rate=risk_free_rate,
             target=target,
@@ -368,6 +401,16 @@ class Assets:
             keep_cash=keep_cash if isinstance(keep_cash, bool) else [str(c) for c in keep_cash],
             cash=None if cash is None else _bound(cash),
         )
+        if bad and pending is not None:
+            pending.extend(problems)
+            defaults = {f.name: f for f in dataclasses.fields(_types.OptimiseOptions)}
+            left_out = {}
+            for name in {k.split(".")[0] for k, _ in bad}:
+                field = defaults[name]
+                has_factory = field.default_factory is not dataclasses.MISSING
+                left_out[name] = field.default_factory() if has_factory else field.default
+            options = dataclasses.replace(options, **left_out)
+        return options
 
     def optimise(
         self,
@@ -467,8 +510,10 @@ class Assets:
         seconds for hundreds of assets; without it, the report shows the weights against each
         asset and equal weight.
         """
+        pending: list[tuple[str, str]] = []
         options = self._options(
             method,
+            pending=pending,
             risk_free_rate=risk_free_rate,
             target=target,
             risk_aversion=risk_aversion,
@@ -493,7 +538,10 @@ class Assets:
             keep_cash=keep_cash,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
-        result = loads(_types.Optimisation, call(self._native.optimise, dumps(options, "options")))
+        result = loads(
+            _types.Optimisation,
+            _together(pending, ["options"], lambda: call(self._native.optimise, dumps(options, "options"))),
+        )
         results = result.results
         if results.weights is not None:
             # In the order of the assets, rather than of their names, with any cash at the
@@ -535,11 +583,13 @@ class Assets:
         else.
         """
         given = {str(k): float(v) for k, v in weights.items()}
-        bad = [(k, v) for k, v in given.items() if not math.isfinite(v)]
-        if bad:
-            raise invalid(*((f"weights.{k}", f"must be a finite number, not {v}") for k, v in bad))
+        pending = [(f"options.weights.{k}", f"must be a finite number, not {_number(v)}")
+                   for k, v in given.items() if not math.isfinite(v)]
+        if pending:
+            given = {k: v for k, v in given.items() if math.isfinite(v)}
         options = self._options(
             "minimum_variance",
+            pending=pending,
             risk_free_rate=risk_free_rate,
             bounds=bounds,
             max_weight=max_weight,
@@ -550,7 +600,9 @@ class Assets:
             cash=cash,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
-        text = call(self._native.evaluate, dumps(given, "weights"), dumps(options, "options"))
+        text = _together(
+            pending, ["options"], lambda: call(self._native.evaluate, dumps(given, "weights"), dumps(options, "options"))
+        )
         result = loads(_types.GivenWeights, text)
         # In the order of the assets, rather than of their names.
         order = {label: i for i, label in enumerate(self.labels)}
@@ -592,8 +644,10 @@ class Assets:
         method and none of the methods' parameters; `risk_free_rate` is the return of
         ``"Cash"``, for assets without a risk-free asset whose frontier holds cash, and
         `keep_cash` holds the cash of `current_weights` at its weight on every portfolio."""
+        pending: list[tuple[str, str]] = []
         options = self._options(
             "minimum_variance",
+            pending=pending,
             risk_free_rate=risk_free_rate,
             bounds=bounds,
             max_weight=max_weight,
@@ -610,7 +664,12 @@ class Assets:
             cash=cash,
             keep_cash=keep_cash,
         )
-        return loads(list[_types.FrontierPortfolio], call(self._native.frontier, int(points), dumps(options, "options")))
+        return loads(
+            list[_types.FrontierPortfolio],
+            _together(
+                pending, ["options"], lambda: call(self._native.frontier, int(points), dumps(options, "options"))
+            ),
+        )
 
     def compare(
         self,
@@ -707,33 +766,45 @@ class Assets:
             cash=cash,
             keep_cash=keep_cash,
         )
+        # Numbers JSON cannot hold are reported with the engine's problems, their limits left out.
+        pending: list[tuple[str, str]] = _finite_limits(self, limits)
         if isinstance(methods, str):
-            raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
+            raise invalid(("options.methods", f"must be a list of methods, such as [{methods!r}]"))
+        # Each strategy keeps the path it was given at, so that its problems are reported there.
         strategies: list[Any] = []
+        origins: list[str] = []
         for k, item in enumerate(methods):
             if isinstance(item, _types.FixedWeights):
                 strategies.append(item)
             elif isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str):
                 label, held = item
                 if not isinstance(held, Mapping):
-                    raise invalid((f"methods[{k}]", "fixed weights are a name and weights by asset"))
+                    raise invalid((f"options.methods[{k}]", "fixed weights are a name and weights by asset"))
                 strategies.append(_types.FixedWeights(name=label, weights={a: float(v) for a, v in held.items()}))
+            elif isinstance(item, str) and item not in _METHODS:
+                # Reported with the others, as the engine words it; the other methods still run.
+                pending.append((f"options.methods[{k}]", f"{item} is not one of {', '.join(_METHODS)}"))
+                continue
             else:
                 strategies.append(_types.OptimisedStrategy(options=self._options(item, **limits)))
-        strategies += [
-            _types.FixedWeights(name=label, weights={k: float(v) for k, v in held.items()})
-            for label, held in (weights or {}).items()
-        ]
+            origins.append(f"options.methods[{k}]")
+        for label, held in (weights or {}).items():
+            strategies.append(_types.FixedWeights(name=label, weights={k: float(v) for k, v in held.items()}))
+            origins.append(f"options.weights.{label}")
+        if not strategies and not pending:
+            raise invalid(("options.methods", "give the methods to compare, or fixed weights"))
         if not strategies:
-            raise invalid(("methods", "give the methods to compare, or fixed weights"))
+            raise invalid(*pending)
         if not any(isinstance(s, _types.OptimisedStrategy) for s in strategies):
             given = [key for key, value in limits.items() if value is not None and value is not False]
-            if given:
-                raise invalid(*((f"options.{key}", "fixed weights take no limits or parameters") for key in given))
+            pending += [(f"options.{key}", "fixed weights take no limits or parameters") for key in given]
         options = _backtest_options(
             strategies, validation, rebalance, trading_cost_bps, benchmark, benchmark_name, start_value, flows
         )
-        result = loads(_types.Comparison, call(self._native.compare, dumps(options, "options")))
+        result = loads(
+            _types.Comparison,
+            _together(pending, origins, lambda: call(self._native.compare, dumps(options, "options"))),
+        )
         if name is not None:
             result = dataclasses.replace(result, report=dataclasses.replace(result.report, name=name))
         return result
@@ -781,9 +852,9 @@ class Assets:
         names the strategy and titles the report. The other keywords are as for
         :meth:`compare`; fixed weights take no limits or parameters."""
         if method is None and weights is None:
-            raise invalid(("method", "give a method, or fixed weights"))
+            raise invalid(("options.method", "give a method, or fixed weights"))
         if method is not None and weights is not None:
-            raise invalid(("weights", "give a method or fixed weights, not both"))
+            raise invalid(("options.weights", "give a method or fixed weights, not both"))
         limits = dict(
             max_weight=max_weight,
             bounds=bounds,
@@ -808,10 +879,10 @@ class Assets:
             keep_cash=keep_cash,
         )
         strategy: Any
+        pending: list[tuple[str, str]] = _finite_limits(self, limits)
         if weights is not None:
             given = [key for key, value in limits.items() if value is not None and value is not False]
-            if given:
-                raise invalid(*((f"options.{key}", "fixed weights take no limits or parameters") for key in given))
+            pending += [(f"options.{key}", "fixed weights take no limits or parameters") for key in given]
             strategy = _types.FixedWeights(name=name, weights={k: float(v) for k, v in weights.items()})
         else:
             assert method is not None
@@ -819,7 +890,10 @@ class Assets:
         options = _backtest_options(
             [strategy], validation, rebalance, trading_cost_bps, benchmark, benchmark_name, start_value, flows
         )
-        return loads(_types.Backtest, call(self._native.backtest, dumps(options, "options")))
+        return loads(
+            _types.Backtest,
+            _together(pending, ["options"], lambda: call(self._native.backtest, dumps(options, "options"))),
+        )
 
     def plan(
         self,
@@ -949,7 +1023,7 @@ def _backtest_options(
         benchmark = _types.BenchmarkPrices(prices=_price_table(benchmark))
     if benchmark_name is not None:
         if benchmark is None:
-            raise invalid(("benchmark_name", "names a benchmark: give the benchmark too"))
+            raise invalid(("options.benchmark_name", "names a benchmark: give the benchmark too"))
         benchmark = dataclasses.replace(benchmark, name=benchmark_name)
     items = flows.items() if isinstance(flows, Mapping) else flows
     return _types.BacktestOptions(
@@ -1018,5 +1092,68 @@ def _named(option: str, name: str, choices: Mapping[str, Any]) -> Any:
     """The choice called `name` for `option`."""
     if name not in choices:
         known = ", ".join(repr(choice) for choice in choices)
-        raise invalid((option, f"{name!r} is not one of {known}"))
+        raise invalid((f"options.{option}", f"{name!r} is not one of {known}"))
     return choices[name]
+
+
+def _together(pending: list[tuple[str, str]], origins: list[str], run: Any) -> Any:
+    """`run()`, a backtest or comparison, with the problems in `pending` reported beside the
+    engine's, each at the path it was given at."""
+    try:
+        found = run()
+    except ValidationError as error:
+        seen = [path for path, _ in pending]
+        issues = [_types.Issue(path=p, message=m, severity="error") for p, m in pending]
+        issues += [i for i in _as_given(error.issues, origins) if not any(_related(i.path, p) for p in seen)]
+        raise validation(issues) from None
+    if pending:
+        raise invalid(*pending)
+    return found
+
+
+def _as_given(issues: list[_types.Issue], origins: list[str]) -> list[_types.Issue]:
+    """`issues` at the paths they were given at: the `k`th strategy at the `k`th of `origins`,
+    its options under ``options``, and a benchmark's weights at ``options.benchmark``."""
+    found = []
+    for issue in issues:
+        path = issue.path
+        if path.startswith("options.strategies["):
+            k, _, rest = path[len("options.strategies["):].partition("]")
+            origin = origins[int(k)] if k.isdigit() and int(k) < len(origins) else "options"
+            if rest.startswith(".options"):
+                inner = rest[len(".options"):]
+                path = origin if inner == ".method" else "options" + inner
+            elif rest.startswith(".weights") and origin.startswith("options.weights."):
+                path = origin + rest[len(".weights"):]
+            elif rest.startswith(".weights") and origin == "options":
+                path = "options" + rest
+            else:
+                path = origin + rest
+        elif path.startswith("options.benchmark.weights"):
+            path = "options.benchmark" + path[len("options.benchmark.weights"):]
+        found.append(dataclasses.replace(issue, path=path))
+    return found
+
+
+def _related(a: str, b: str) -> bool:
+    """Whether paths `a` and `b` are the same, or one is within the other."""
+    return a == b or any(x.startswith(y + c) for x, y in ((a, b), (b, a)) for c in ".[")
+
+
+def _number(x: float) -> str:
+    """A number as the engine writes one that is not finite: NaN, Infinity or -Infinity."""
+    if math.isnan(x):
+        return "NaN"
+    if math.isinf(x):
+        return "Infinity" if x > 0 else "-Infinity"
+    return repr(x)
+
+
+def _finite_limits(assets: Assets, limits: dict[str, Any]) -> list[tuple[str, str]]:
+    """The problems with numbers in `limits` that are not finite; each such limit is left out
+    of `limits`, so that the engine checks the others."""
+    found: list[tuple[str, str]] = []
+    assets._options("minimum_variance", pending=found, **limits)
+    for path, _ in found:
+        limits[path.split(".")[1]] = None
+    return found

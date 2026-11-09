@@ -262,6 +262,27 @@ pub(crate) fn chosen_books<'a>(
         })
 }
 
+/// [`chosen_books`], with the other options' problems reported beside an unknown account, so
+/// that every problem is reported together.
+pub(crate) fn chosen_books_checked<'a>(
+    books: &'a Books,
+    market: &MarketData,
+    source: &Source,
+    options: &ReportOptions,
+) -> Result<Cow<'a, Books>> {
+    match chosen_books(books, options) {
+        Err(Error::Validation(mut report)) => {
+            let mut rest = options.clone();
+            rest.accounts.clear();
+            if let Err(Error::Validation(found)) = Context::new(books, market, source, &rest) {
+                report.merge("", found);
+            }
+            Err(Error::Validation(report))
+        }
+        other => other,
+    }
+}
+
 /// The accounts books keep, in words: "Brokerage only (1 of 2 accounts). 3 transfers with
 /// Retirement count as money in and out."
 fn describe_scope(
@@ -410,33 +431,53 @@ impl<'a> Context<'a> {
                 );
             }
         }
-        report.into_result(())?;
-
+        // The dates are checked with the other options, so that every problem is reported
+        // together, each at the option given: a date before the books start is the report's
+        // date's problem unless a start was given.
         let all: BTreeSet<Date> = market
             .all_prices()
             .flat_map(|(_, s)| s.dates().iter().copied())
             .collect();
         let as_of = match options.as_of {
-            Some(d) => d,
-            None => *all.iter().next_back().ok_or_else(|| {
-                invalid(
-                    "options.as_of",
-                    "give a date: the market data has no prices",
-                )
-            })?,
+            Some(d) => Some(d),
+            None => {
+                let last = all.iter().next_back().copied();
+                if last.is_none() {
+                    report.error(
+                        "options.as_of",
+                        "give a date: the market data has no prices",
+                    );
+                }
+                last
+            }
         };
         let first_transaction = books.events().iter().map(|e| e.date).min();
-        let start = options
-            .start
-            .or(first_transaction)
-            .or_else(|| all.iter().next().copied())
-            .unwrap_or(as_of);
-        if start > as_of {
-            return Err(invalid(
-                "options.start",
-                format!("{start} is after the report's date, {as_of}"),
-            ));
+        let start = as_of.map(|as_of| {
+            options
+                .start
+                .or(first_transaction)
+                .or_else(|| all.iter().next().copied())
+                .unwrap_or(as_of)
+        });
+        if let (Some(start), Some(as_of)) = (start, as_of)
+            && start > as_of
+        {
+            if options.start.is_some() {
+                report.error(
+                    "options.start",
+                    format!("{start} is after the report's date, {as_of}"),
+                );
+            } else {
+                report.error(
+                    "options.as_of",
+                    format!("{as_of} is before the portfolio starts, on {start}"),
+                );
+            }
         }
+        report.into_result(())?;
+        let (Some(as_of), Some(start)) = (as_of, start) else {
+            return Err(invalid("options.as_of", "give a date"));
+        };
         let mut dates: Vec<Date> = all
             .iter()
             .copied()

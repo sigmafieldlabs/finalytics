@@ -43,7 +43,7 @@ def test_the_mean_estimator_sets_the_expected_returns(assets):
     assert "James–Stein mean expected returns" in result.report.to_text()
     with pytest.raises(fl.ValidationError) as caught:
         fl.Assets(fl.datasets.asset_class_prices(), mean_returns="shrunk")
-    assert paths(caught) == ["mean_returns"]
+    assert paths(caught) == ["options.mean_returns"]
 
 
 def test_the_new_covariance_estimators_are_chosen_by_name(assets):
@@ -55,10 +55,10 @@ def test_the_new_covariance_estimators_are_chosen_by_name(assets):
         assert chosen.optimise(method="minimum_variance").results.status == "optimal"
     with pytest.raises(fl.ValidationError) as caught:
         fl.Assets(prices, covariance="statistical")
-    assert paths(caught) == ["covariance"]
+    assert paths(caught) == ["options.covariance"]
     with pytest.raises(fl.ValidationError) as caught:
         fl.Assets(prices.iloc[:10], covariance="nonlinear_shrinkage")
-    assert paths(caught) == ["covariance"]
+    assert paths(caught) == ["options.covariance"]
 
 
 def test_the_downside_methods_minimise_what_they_say(assets):
@@ -119,4 +119,4 @@ def test_walk_forward_refits_every_so_many_periods(assets):
     assert "rebalanced every 12 periods" in result.report.to_text()
     with pytest.raises(fl.ValidationError) as caught:
         assets.backtest(method="minimum_variance", rebalance=fl.Every(periods=0))
-    assert paths(caught) == ["rebalance.periods"]
+    assert paths(caught) == ["options.rebalance.periods"]

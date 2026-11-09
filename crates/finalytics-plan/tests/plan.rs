@@ -402,8 +402,8 @@ fn every_problem_is_reported_together() {
         "goal.amount",
         "goal.by",
         "flows[0].on",
-        "weights.weights.Z",
-        "weights.weights",
+        "weights.Z",
+        "weights: add up to",
     ] {
         assert!(text.contains(path), "{path} missing from {text}");
     }

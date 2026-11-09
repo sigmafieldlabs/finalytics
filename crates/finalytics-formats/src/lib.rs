@@ -18,4 +18,4 @@ pub use csv_import::{
     portfolio_from_csv, price_columns_from_csv, prices_from_csv, transactions_from_csv,
 };
 pub use document::{FORMAT, FORMAT_VERSION, MarketDocument, PortfolioDocument, goal_names};
-pub use json::from_json;
+pub use json::{from_json, from_json_by_field};

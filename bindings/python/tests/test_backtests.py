@@ -139,25 +139,25 @@ def test_an_index_as_the_benchmark():
 def test_mistakes_name_the_option(assets):
     with pytest.raises(fl.ValidationError) as found:
         assets.backtest(name="none")
-    assert [(i.path, i.message) for i in found.value.issues] == [("method", "give a method, or fixed weights")]
+    assert [(i.path, i.message) for i in found.value.issues] == [("options.method", "give a method, or fixed weights")]
     with pytest.raises(fl.ValidationError) as found:
         assets.backtest(method="equal_weight", weights={"Bonds": 1.0})
-    assert [i.path for i in found.value.issues] == ["weights"]
+    assert [i.path for i in found.value.issues] == ["options.weights"]
     with pytest.raises(fl.ValidationError) as found:
         assets.backtest(weights={"Bonds": 1.0}, max_weight=0.4)
     assert [i.path for i in found.value.issues] == ["options.max_weight"]
     with pytest.raises(fl.ValidationError, match="'weekly' is not one of 'monthly'") as found:
         assets.compare(methods=["equal_weight"], rebalance="weekly")
-    assert [i.path for i in found.value.issues] == ["rebalance"]
+    assert [i.path for i in found.value.issues] == ["options.rebalance"]
     with pytest.raises(fl.ValidationError) as found:
         assets.compare(methods="minimum_variance")
     assert [(i.path, i.message) for i in found.value.issues] == [
-        ("methods", "must be a list of methods, such as ['minimum_variance']")
+        ("options.methods", "must be a list of methods, such as ['minimum_variance']")
     ]
     with pytest.raises(fl.ValidationError) as found:
         assets.compare(methods=["minimum_variance"], validation=fl.WalkForward(years=50))
     assert [(i.path, i.message) for i in found.value.issues] == [
-        ("validation.years", "the window is 600 periods, but the data has 360 periods: it must leave periods to test")
+        ("options.validation.years", "the window is 600 periods, but the data has 360 periods: it must leave periods to test")
     ]
     # A number JSON cannot hold, where it is.
     with pytest.raises(fl.ValidationError) as found:
@@ -170,7 +170,7 @@ def test_mistakes_name_the_option(assets):
         assets.compare(methods=["equal_weight"], objective="maximum_sharpe")
     with pytest.raises(fl.ValidationError) as found:
         assets.backtest(method="equal_weight", validation=fl.Holdout(start="2099-01-01"))
-    assert [i.path for i in found.value.issues] == ["validation.start"]
+    assert [i.path for i in found.value.issues] == ["options.validation.start"]
     with pytest.raises(fl.ValidationError) as found:
         assets.optimise(method="risk_parity", budgets={"Bonds": 1.0})
     assert [i.path for i in found.value.issues] == ["options.budgets"]
@@ -243,7 +243,7 @@ def test_fixed_weights_are_compared_with_methods(assets):
     assert [s.name for s in only.report.strategies] == ["All bonds", "60/40"]
     with pytest.raises(fl.ValidationError) as found:
         assets.compare()
-    assert [i.path for i in found.value.issues] == ["methods"]
+    assert [i.path for i in found.value.issues] == ["options.methods"]
 
 
 def test_fixed_weights_are_not_called_in_sample_and_keep_their_names():
@@ -302,7 +302,7 @@ def test_a_comparison_keeps_the_order_given(assets):
     assert at == sorted(at), at
     with pytest.raises(fl.ValidationError) as raised:
         assets.compare(methods=[("Bad", ["Bonds"])])
-    assert raised.value.issues[0].path == "methods[0]"
+    assert raised.value.issues[0].path == "options.methods[0]"
 
 
 def test_one_rule_for_options_a_method_does_not_use(assets):

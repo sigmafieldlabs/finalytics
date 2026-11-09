@@ -84,13 +84,15 @@ def test_mistakes_name_the_option(prices):
     for rate in (0.02, 0.0):
         with pytest.raises(fl.ValidationError) as caught:
             fl.Assets(prices, risk_free_rate=rate, risk_free_asset="T-Bills")
-        assert [i.path for i in caught.value.issues] == ["risk_free_rate"]
+        assert [i.path for i in caught.value.issues] == ["options.risk_free_rate"]
     with pytest.raises(fl.ValidationError) as caught:
         fl.Assets(prices, periods_per_year=0, risk_free_rate=float("nan"))
-    assert [i.path for i in caught.value.issues] == ["risk_free_rate"]
+    # Every problem together: the number JSON cannot hold, and the engine's with the other.
+    assert [i.path for i in caught.value.issues] == ["options.risk_free_rate", "options.periods_per_year"]
+    assert caught.value.issues[0].message == "must be a finite number, not NaN"
     with pytest.raises(fl.ValidationError) as caught:
         fl.Assets(prices, periods_per_year=0)
-    assert [i.path for i in caught.value.issues] == ["periods_per_year"]
+    assert [i.path for i in caught.value.issues] == ["options.periods_per_year"]
     ewma = fl.Assets(prices, covariance="ewma")
     assert ewma.covariance().method == fl.types.Ewma(decay=0.94)
 
@@ -160,7 +162,7 @@ def test_given_weights_are_valued_as_optimisation_values_its_own():
     assert "Evaluation · Given weights" in str(framed.results)
     with pytest.raises(fl.ValidationError) as caught:
         assets.evaluate({"US Equity": 0.6}, max_weight=0.5)
-    assert [i.path for i in caught.value.issues] == ["options.max_weight", "weights"]
+    assert [i.path for i in caught.value.issues] == ["options.max_weight", "options.weights"]
 
 
 def test_a_portfolio_from_transactions_alone():

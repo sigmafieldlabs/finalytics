@@ -91,7 +91,7 @@ fn a_target_for_kept_cash_at_another_weight_and_a_currency_that_is_not_one_are_r
     else {
         panic!("a currency code is needed")
     };
-    assert_eq!(found.issues()[0].path, "keep_cash[0]");
+    assert_eq!(found.issues()[0].path, "options.keep_cash[0]");
 }
 
 /// The weights a portfolio holds now, by asset label.

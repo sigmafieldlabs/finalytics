@@ -411,29 +411,7 @@ pub fn rebalance(
     let mut problems = ValidationReport::new();
     let mut warnings = ValidationReport::new();
     check_targets(books, targets, &mut problems);
-    if options.minimum_trade < Decimal::ZERO {
-        problems.error("options.minimum_trade", "must not be negative");
-    }
-    let f = &options.fees;
-    for (value, name) in [
-        (f.rate, "rate"),
-        (f.per_trade, "per_trade"),
-        (f.minimum, "minimum"),
-    ] {
-        if value < Decimal::ZERO {
-            problems.error(format!("options.fees.{name}"), "must not be negative");
-        }
-    }
-    if let Some(tax) = &options.tax {
-        for (value, name) in [(tax.short_term, "short_term"), (tax.long_term, "long_term")] {
-            if value < Decimal::ZERO || value > Decimal::ONE {
-                problems.error(format!("options.tax.{name}"), "must be between 0 and 1");
-            }
-        }
-        if tax.long_term_after_days < 0 {
-            problems.error("options.tax.long_term_after_days", "must not be negative");
-        }
-    }
+    check_costs(options, &mut problems);
     if problems.has_errors() {
         return Err(Error::Validation(problems));
     }
@@ -867,6 +845,32 @@ pub struct RebalanceResults {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub kept_cash: Vec<KeptCash>,
 }
+/// The problems with the minimum trade, the fees and the tax rates of `options`.
+fn check_costs(options: &RebalanceOptions, problems: &mut ValidationReport) {
+    if options.minimum_trade < Decimal::ZERO {
+        problems.error("options.minimum_trade", "must not be negative");
+    }
+    let f = &options.fees;
+    for (value, name) in [
+        (f.rate, "rate"),
+        (f.per_trade, "per_trade"),
+        (f.minimum, "minimum"),
+    ] {
+        if value < Decimal::ZERO {
+            problems.error(format!("options.fees.{name}"), "must not be negative");
+        }
+    }
+    if let Some(tax) = &options.tax {
+        for (value, name) in [(tax.short_term, "short_term"), (tax.long_term, "long_term")] {
+            if value < Decimal::ZERO || value > Decimal::ONE {
+                problems.error(format!("options.tax.{name}"), "must be between 0 and 1");
+            }
+        }
+        if tax.long_term_after_days < 0 {
+            problems.error("options.tax.long_term_after_days", "must not be negative");
+        }
+    }
+}
 
 /// Proposes the trades that move `accounts` together to `targets`: a weight for each holding, as
 /// a share of the accounts' combined value at `date`, as for [`rebalance`].
@@ -900,7 +904,21 @@ pub fn rebalance_accounts(
     // The targets as given: spread across the accounts, they would be clipped to each one's
     // share and their problems hidden.
     check_targets(books, targets, &mut report);
-    report.into_result(())?;
+    check_costs(options, &mut report);
+    if report.has_errors() {
+        // The cash to keep is checked too, so that every problem is reported together.
+        if !options.keep_cash.is_empty()
+            && let Err(Error::Validation(found)) =
+                keeping_cash(books, market, date, accounts, targets, &options.keep_cash)
+        {
+            for issue in found.issues() {
+                if !report.issues().iter().any(|i| i.path == issue.path) {
+                    report.error(issue.path.clone(), issue.message.clone());
+                }
+            }
+        }
+        return Err(Error::Validation(report));
+    }
     if !options.keep_cash.is_empty() {
         let (kept_targets, kept) =
             keeping_cash(books, market, date, accounts, targets, &options.keep_cash)?;

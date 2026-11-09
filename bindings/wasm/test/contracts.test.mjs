@@ -378,7 +378,8 @@ test("the workstation's optimisation is traded exactly with the cash kept", () =
   assert.ok(kept.report.trades.count <= 4 && kept.report.trades.turnover <= 0.15 + 1e-9);
   let rebalancing = portfolio.rebalance(kept, { keep_cash: true });
   reaches(kept, rebalancing, 4, CENT);
-  assert.ok(Math.abs(rebalancing.results.turnover - kept.report.trades.turnover) < 1e-9);
+  // Both turnovers count the cash; the euros converted to the cent leave up to half a cent.
+  assert.ok(Math.abs(rebalancing.results.turnover - kept.report.trades.turnover) < CENT);
   const exact = optimise(true, true);
   rebalancing = portfolio.rebalance(exact, { keep_cash: true });
   assert.ok(rebalancing.results.accounts.every((a) => a.conversions.length === 0));

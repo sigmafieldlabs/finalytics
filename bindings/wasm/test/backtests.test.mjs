@@ -172,7 +172,7 @@ test("mistakes are reported where they were made", () => {
   assert.deepEqual(paths(() => assets.backtest({ name: "none" })), ["options.method"]);
   assert.deepEqual(
     paths(() => assets.backtest({ method: "equal_weight", validation: { holdout: { start: "2099-01-01" } } })),
-    ["validation.start"],
+    ["options.validation.start"],
   );
   assert.deepEqual(paths(() => assets.optimise({ objective: "minimum_variance" })), ["options.objective"]);
   assert.deepEqual(paths(() => assets.frontier(5, { max_wieght: 0.4 })), ["options.max_wieght"]);
@@ -216,7 +216,7 @@ test("a rebalance has a report and the raw results", () => {
   assert.equal(result.report.context.method, "Minimum variance");
   assert.deepEqual(result.report.context.fees, { rate: "0.0005", per_trade: "0", minimum: "1" });
   assert.deepEqual(result.report.context.tax, { short_term: "0.37", long_term: "0.2", long_term_after_days: 365 });
-  assert.deepEqual(paths(() => portfolio.rebalance(target, { fees: { rate: "0.001" } })), ["choices.fees"]);
+  assert.deepEqual(paths(() => portfolio.rebalance(target, { fees: { rate: "0.001" } })), ["options.fees"]);
   const after = portfolio.withRebalance(result);
   assert.ok(Number(after.valuation().total_base) > 0);
 });

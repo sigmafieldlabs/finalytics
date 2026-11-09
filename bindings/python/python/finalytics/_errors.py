@@ -32,9 +32,14 @@ class ValidationError(FinalyticsError, ValueError):
 def invalid(*problems: tuple[str, str]) -> ValidationError:
     """A :class:`ValidationError` for problems found before calling the engine, each a path
     (the keyword, such as ``returns``) and a message, worded as the engine words its own."""
-    issues = [Issue(path=path, message=message, severity="error") for path, message in problems]
-    lines = "".join(f"\n  error: {i.path}: {i.message}" for i in issues)
-    return ValidationError(f"validation found {len(issues)} error(s){lines}", issues)
+    return validation([Issue(path=path, message=message, severity="error") for path, message in problems])
+
+
+def validation(issues: list[Issue]) -> ValidationError:
+    """A :class:`ValidationError` for `issues`, worded as the engine words its own."""
+    errors = sum(i.severity == "error" for i in issues)
+    lines = "".join(f"\n  {i.severity}: {i.path}: {i.message}" for i in issues)
+    return ValidationError(f"validation found {errors} error(s){lines}", issues)
 
 
 def call(function: Callable[..., T], *args) -> T:

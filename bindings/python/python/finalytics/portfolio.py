@@ -580,7 +580,7 @@ class Portfolio:
         default the targets are shares of the whole value, cash included.
         """
         if isinstance(keep_cash, str):
-            raise invalid(("keep_cash", f"must be True or a list of currencies, such as [{keep_cash!r}]"))
+            raise invalid(("options.keep_cash", f"must be True or a list of currencies, such as [{keep_cash!r}]"))
         choices = {
             "accounts": [a.id for a in self.data.accounts] if accounts is None else list(accounts),
             "as_of": self._date_or_last_price(as_of),

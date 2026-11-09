@@ -128,7 +128,7 @@ test("a screen prints, lays out as a page and turns into tables", () => {
   const page = `${screen}`;
   assert.ok(page.includes("FINALYTICS  ·  SCREEN") && page.includes("Momentum"));
   assert.ok(page.split("\n").every((line) => line.length <= 80));
-  assert.ok(r.toText().startsWith("ScreenResults · as of 2026-10-30 · 5 of 21 securities matched"));
+  assert.ok(r.toText().startsWith("ScreenResults · as of 2026-10-30 · 5 of 20 securities matched"));
   assert.ok(screen.toHtml().startsWith("<!doctype html>"));
   assert.deepEqual(
     reportTables(screen.report).map((t) => t.name),
@@ -157,7 +157,9 @@ test("a universe from series and from CSV, with fields in the options", () => {
   const fromCsv = Universe.fromCsv(csv, { benchmark: "A", fields: "id,sector,pe_ratio\nA,Energy,12\nB,Utilities,\n" });
   assert.equal(fromCsv.benchmark, "A");
   assert.deepEqual(fromCsv.fields, ["sector", "pe_ratio"]);
-  const screen = fromCsv.screen({ rules: [{ field: "sector", op: "in", values: ["Energy"] }] });
+  // The benchmark is screened only when asked for.
+  assert.deepEqual(fromCsv.screen().results.ids, ["B"]);
+  const screen = fromCsv.screen({ rules: [{ field: "sector", op: "in", values: ["Energy"] }], include_benchmark: true });
   assert.deepEqual(screen.results.matches, ["A"]);
   assert.deepEqual(screen.results.status, ["measured", "measured"]);
   assert.deepEqual(Array.from(screen.results.fields.pe_ratio), [12, NaN]);
@@ -180,7 +182,7 @@ test("every problem is reported together", () => {
       assert.equal(error.name, "ValidationError");
       assert.deepEqual(
         error.issues.map((i) => i.path),
-        ["measures[0]", "rules[0].measure", "rules[1].op", "rules[2].value", "sort.field", "limit"],
+        ["options.measures[0]", "options.rules[0].measure", "options.rules[1].op", "options.rules[2].value", "options.sort.field", "options.limit"],
       );
       return true;
     },
@@ -226,7 +228,7 @@ test("formulas are numeric fields that rules and the sort take", () => {
   });
   assert.match(screen.toString().split(/\s+/).join(" "), /yield_ = 1 \/ pe_ratio/);
   assert.throws(() => universe.screen({ formulas: { x: "pe_ration * 2" } }), (e) => {
-    assert.equal(e.issues[0].path, "formulas.x");
+    assert.equal(e.issues[0].path, "options.formulas.x");
     assert.match(e.issues[0].message, /did you mean pe_ratio\?/);
     return true;
   });

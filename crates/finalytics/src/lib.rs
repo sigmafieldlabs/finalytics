@@ -222,6 +222,130 @@ pub mod formats {
         market_from_csv, portfolio_from_csv, price_columns_from_csv, prices_from_csv,
         transactions_from_csv,
     };
+
+    #[doc(hidden)]
+    pub use finalytics_formats::from_json_by_field;
+
+    /// Reads `T` from `text` and runs the verb `run` on it. When a field does not read, every
+    /// problem is reported together instead: those of the fields that did not read, those in
+    /// `pending`, found before reading and left out of `text`, and those `check` finds in the
+    /// fields that read. The Python and JavaScript packages use it.
+    ///
+    /// `check` gets whether every field in `deciding` read, as the method does for the checks
+    /// of the others: without it, it checks only what does not depend on them. Its problems
+    /// at or under a field that did not read are left out, as that field's own is reported.
+    #[doc(hidden)]
+    pub fn together<T, R>(
+        pending: crate::ValidationReport,
+        text: &str,
+        root: &str,
+        deciding: &[&str],
+        run: impl FnOnce(T) -> crate::Result<R>,
+        check: impl FnOnce(T, bool) -> crate::ValidationReport,
+    ) -> crate::Result<R>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let (found, fields) = finalytics_formats::from_json_by_field::<T>(text, root);
+        let mut read = pending;
+        read.merge("", fields);
+        let given: Vec<String> = match serde_json::from_str(text) {
+            Ok(serde_json::Value::Object(map)) => map.keys().cloned().collect(),
+            _ => Vec::new(),
+        };
+        let Some(value) = found else {
+            return Err(crate::Error::Validation(read));
+        };
+        if read.is_empty() {
+            return run(value).map_err(|e| match e {
+                crate::Error::Validation(found) => {
+                    crate::Error::Validation(rooted(&found, root, &given))
+                }
+                other => other,
+            });
+        }
+        let under = |path: &str, field: &str| {
+            path == field
+                || path.starts_with(&format!("{field}."))
+                || path.starts_with(&format!("{field}["))
+        };
+        let failed: Vec<String> = read
+            .issues()
+            .iter()
+            .map(|i| {
+                let rest = i.path.strip_prefix(root).unwrap_or(&i.path);
+                let rest = rest.trim_start_matches('.');
+                let end = rest.find(['.', '[']).unwrap_or(rest.len());
+                if root.is_empty() {
+                    rest[..end].to_owned()
+                } else {
+                    format!("{root}.{}", &rest[..end])
+                }
+            })
+            .collect();
+        let decided = !deciding.iter().any(|d| {
+            let field = if root.is_empty() {
+                (*d).to_owned()
+            } else {
+                format!("{root}.{d}")
+            };
+            failed.contains(&field)
+        });
+        let mut report = read;
+        let found = rooted(&check(value, decided), root, &given);
+        {
+            for issue in found.issues() {
+                if failed.iter().any(|f| under(&issue.path, f))
+                    || report.issues().iter().any(|i| i.path == issue.path)
+                {
+                    continue;
+                }
+                if issue.severity == crate::Severity::Warning {
+                    report.warning(issue.path.clone(), issue.message.clone());
+                } else {
+                    report.error(issue.path.clone(), issue.message.clone());
+                }
+            }
+        }
+        Err(crate::Error::Validation(report))
+    }
+
+    /// `found` with every path of an option put under `root`, as the options were given: one
+    /// rule for every verb.
+    fn rooted(
+        found: &crate::ValidationReport,
+        root: &str,
+        given: &[String],
+    ) -> crate::ValidationReport {
+        // Paths of the data, such as the targets or the prices, keep theirs.
+        const DATA: [&str; 5] = ["targets", "prices", "market", "transactions", "portfolio"];
+        let mut report = crate::ValidationReport::new();
+        for issue in found.issues() {
+            let first = &issue.path[..issue.path.find(['.', '[']).unwrap_or(issue.path.len())];
+            let option = given.iter().any(|g| g == first) || !DATA.contains(&first);
+            let path = if !root.is_empty() && !first.is_empty() && first != root && option {
+                format!("{root}.{}", issue.path)
+            } else {
+                issue.path.clone()
+            };
+            if issue.severity == crate::Severity::Warning {
+                report.warning(path, issue.message.clone());
+            } else {
+                report.error(path, issue.message.clone());
+            }
+        }
+        report
+    }
+
+    /// The problems a run of a verb found, for [`together`]'s `check` where the verb has no
+    /// checks of its own to call.
+    #[doc(hidden)]
+    pub fn problems<R>(run: crate::Result<R>) -> crate::ValidationReport {
+        match run {
+            Err(crate::Error::Validation(report)) => report,
+            _ => crate::ValidationReport::new(),
+        }
+    }
 }
 
 /// Risk analytics: statistics, drawdowns, value at risk and expected shortfall, covariance

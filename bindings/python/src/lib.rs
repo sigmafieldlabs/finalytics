@@ -67,6 +67,27 @@ fn from_json<T: DeserializeOwned>(text: &str, name: &str) -> PyResult<T> {
     finalytics::formats::from_json(text, name).map_err(engine)
 }
 
+/// Reads the options `text` and runs `run` on them, every problem reported together: see
+/// `finalytics::formats::together`.
+fn together<T: DeserializeOwned, R>(
+    text: &str,
+    deciding: &[&str],
+    run: impl FnOnce(T) -> finalytics::Result<R>,
+    check: impl FnOnce(T, bool) -> finalytics::ValidationReport,
+) -> PyResult<R> {
+    finalytics::formats::together(
+        finalytics::ValidationReport::new(),
+        text,
+        "options",
+        deciding,
+        run,
+        check,
+    )
+    .map_err(engine)
+}
+
+use finalytics::formats::problems;
+
 /// Parses a name such as `"start_of_day"` or `"fifo"` as the enum value it names.
 fn named<T: DeserializeOwned>(text: &str, name: &str) -> PyResult<T> {
     serde_json::from_value(serde_json::Value::String(text.to_owned()))
@@ -403,9 +424,14 @@ impl NativePortfolio {
     }
 
     fn report_all(&self, py: Python<'_>, options: &str) -> PyResult<String> {
-        let options: finalytics::reports::ReportOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(&self.portfolio.report_with(&options).map_err(engine)?)
+            let report = together(
+                options,
+                &[],
+                |o: finalytics::reports::ReportOptions| self.portfolio.report_with(&o),
+                |o, _| problems(self.portfolio.report_with(&o)),
+            )?;
+            to_json(&report)
         })
     }
 
@@ -614,8 +640,25 @@ impl NativePortfolio {
     }
 
     fn rebalance_accounts(&self, py: Python<'_>, targets: &str, choices: &str) -> PyResult<String> {
-        let targets = finalytics::targets_from_json(targets).map_err(engine)?;
-        let choices: finalytics::RebalanceChoices = from_json(choices, "choices")?;
+        let choices: finalytics::RebalanceChoices = from_json(choices, "options")?;
+        let targets = match finalytics::targets_from_json(targets) {
+            Ok(targets) => targets,
+            Err(finalytics::Error::Validation(mut report)) => {
+                // The choices are checked too, on no targets, so that every problem is
+                // reported together.
+                let none = finalytics::targets_from_json("{}").map_err(engine)?;
+                let found = problems(choices.apply(self.portfolio.rebalance(none)).build());
+                for issue in found.issues() {
+                    if !issue.path.starts_with("targets")
+                        && !report.issues().iter().any(|i| i.path == issue.path)
+                    {
+                        report.error(issue.path.clone(), issue.message.clone());
+                    }
+                }
+                return Err(engine(finalytics::Error::Validation(report)));
+            }
+            Err(e) => return Err(engine(e)),
+        };
         released(py, || {
             let builder = choices.apply(self.portfolio.rebalance(targets));
             to_json(&builder.build().map_err(engine)?)
@@ -739,10 +782,15 @@ impl NativeAssets {
 
     /// The same assets with `settings` (JSON), every problem with them reported together.
     fn with_settings(&self, py: Python<'_>, settings: &str) -> PyResult<NativeAssets> {
-        let settings: finalytics::AssetSettings = from_json(settings, "settings")?;
-        Ok(NativeAssets {
-            inner: released(py, || settings.apply(self.inner.clone())).map_err(engine)?,
-        })
+        let inner = released(py, || {
+            together(
+                settings,
+                &[],
+                |o: finalytics::AssetSettings| o.apply(self.inner.clone()),
+                |o, _| problems(o.apply(self.inner.clone())),
+            )
+        })?;
+        Ok(NativeAssets { inner })
     }
 
     fn labels(&self) -> Vec<String> {
@@ -815,50 +863,75 @@ impl NativeAssets {
     }
 
     fn optimise(&self, py: Python<'_>, options: &str) -> PyResult<String> {
-        let options: OptimiseOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(&self.inner.optimise_with(&options).map_err(engine)?)
+            let result = together(
+                options,
+                &["method"],
+                |o: OptimiseOptions| self.inner.optimise_with(&o),
+                |o, decided| self.inner.check_options(&o, decided),
+            )?;
+            to_json(&result)
         })
     }
 
     fn evaluate(&self, py: Python<'_>, weights: &str, options: &str) -> PyResult<String> {
         let weights: BTreeMap<String, f64> = from_json(weights, "weights")?;
-        let options: OptimiseOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(
-                &self
-                    .inner
-                    .evaluate_with(&weights, &options)
-                    .map_err(engine)?,
-            )
+            let result = together(
+                options,
+                &[],
+                |o: OptimiseOptions| self.inner.evaluate_with(&weights, &o),
+                |o, _| problems(self.inner.evaluate_with(&weights, &o)),
+            )?;
+            to_json(&result)
         })
     }
 
     fn frontier(&self, py: Python<'_>, points: usize, options: &str) -> PyResult<String> {
-        let options: OptimiseOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(&self.inner.frontier(points, &options).map_err(engine)?)
+            let result = together(
+                options,
+                &[],
+                |o: OptimiseOptions| self.inner.frontier(points, &o),
+                |o, _| problems(self.inner.frontier(points, &o)),
+            )?;
+            to_json(&result)
         })
     }
 
     fn compare(&self, py: Python<'_>, options: &str) -> PyResult<String> {
-        let options: BacktestOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(&self.inner.compare_with(&options).map_err(engine)?)
+            let result = together(
+                options,
+                &[],
+                |o: BacktestOptions| self.inner.compare_with(&o),
+                |o, _| problems(self.inner.compare_with(&o)),
+            )?;
+            to_json(&result)
         })
     }
 
     fn backtest(&self, py: Python<'_>, options: &str) -> PyResult<String> {
-        let options: BacktestOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(&self.inner.backtest_with(&options).map_err(engine)?)
+            let result = together(
+                options,
+                &[],
+                |o: BacktestOptions| self.inner.backtest_with(&o),
+                |o, _| problems(self.inner.backtest_with(&o)),
+            )?;
+            to_json(&result)
         })
     }
 
     fn plan(&self, py: Python<'_>, options: &str) -> PyResult<String> {
-        let options: PlanOptions = from_json(options, "options")?;
         released(py, || {
-            to_json(&self.inner.plan_with(&options).map_err(engine)?)
+            let result = together(
+                options,
+                &[],
+                |o: PlanOptions| self.inner.plan_with(&o),
+                |o, _| problems(self.inner.plan_with(&o)),
+            )?;
+            to_json(&result)
         })
     }
 }

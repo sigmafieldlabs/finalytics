@@ -917,6 +917,45 @@ struct PlainCosts {
 }
 
 /// `value` as a decimal, as it is written: 0.37 is exactly 0.37.
+/// A rebalancing's problems at the paths of the choices given, under `options` as every
+/// verb's are: `fee_bps` rather than the fee rate it becomes, `tax[0]` and `tax[1]` for the
+/// short- and long-term rates. The targets keep theirs.
+fn as_given(found: &ValidationReport) -> ValidationReport {
+    const NAMES: [(&str, &str); 7] = [
+        ("options.fees.rate", "fee_bps"),
+        ("options.fees.per_trade", "fee_per_trade"),
+        ("options.fees.minimum", "minimum_fee"),
+        ("options.tax.long_term_after_days", "long_term_after_days"),
+        ("options.tax.short_term", "tax[0]"),
+        ("options.tax.long_term", "tax[1]"),
+        ("options.minimum_trade", "minimum_trade"),
+    ];
+    let mut report = ValidationReport::new();
+    for issue in found.issues() {
+        let path = &issue.path;
+        let named = NAMES.iter().find_map(|(inner, given)| {
+            path.strip_prefix(inner)
+                .map(|rest| format!("{given}{rest}"))
+        });
+        let path = match named {
+            Some(given) => format!("options.{given}"),
+            None if path.starts_with("targets") || path.starts_with("options") => path.clone(),
+            None if path.is_empty() => path.clone(),
+            None => format!(
+                "options.{}",
+                path.replace("tax.short_term", "tax[0]")
+                    .replace("tax.long_term", "tax[1]")
+            ),
+        };
+        if issue.severity == finalytics_core::Severity::Warning {
+            report.warning(path, issue.message.clone());
+        } else {
+            report.error(path, issue.message.clone());
+        }
+    }
+    report
+}
+
 fn decimal(value: f64, path: &str, report: &mut ValidationReport) -> Decimal {
     match format!("{value}").parse::<Decimal>() {
         Ok(d) if value.is_finite() => d,
@@ -1085,14 +1124,15 @@ impl RebalanceBuilder<'_> {
         let accounts: Vec<AccountId> = match &self.accounts {
             Some(ids) => ids
                 .iter()
-                .filter_map(|id| match id.parse::<AccountId>() {
+                .enumerate()
+                .filter_map(|(k, id)| match id.parse::<AccountId>() {
                     Ok(account) if known.iter().any(|a| a.id == account) => Some(account),
                     _ => {
                         let names: Vec<&str> = known.iter().map(|a| a.id.as_str()).collect();
                         report.error(
-                            format!("accounts.{id}"),
+                            format!("accounts[{k}]"),
                             format!(
-                                "is not an account of the portfolio; its accounts are {}",
+                                "unknown account {id}; the accounts are {}",
                                 names.join(", ")
                             ),
                         );
@@ -1134,14 +1174,38 @@ impl RebalanceBuilder<'_> {
                 }
             }
         }
-        report.into_result(())?;
-        let mut rebalancing = self.portfolio.rebalancing(
-            &accounts,
-            self.portfolio.date_or_last(date)?,
-            &targets,
-            (self.targets.method.clone(), self.targets.limits.clone()),
-            &options,
-        )?;
+        let run = |accounts: &[AccountId]| -> Result<Rebalancing> {
+            self.portfolio.rebalancing(
+                accounts,
+                self.portfolio.date_or_last(date)?,
+                &targets,
+                (self.targets.method.clone(), self.targets.limits.clone()),
+                &options,
+            )
+        };
+        if report.has_errors() {
+            // The checks of the trades, fees, tax and cash kept run on what is valid, so that
+            // every problem is reported together.
+            let every: Vec<AccountId>;
+            let on = if accounts.is_empty() {
+                every = known.iter().map(|a| a.id.clone()).collect();
+                &every
+            } else {
+                &accounts
+            };
+            if let Err(Error::Validation(found)) = run(on) {
+                for issue in found.issues() {
+                    if !report.issues().iter().any(|i| i.path == issue.path) {
+                        report.error(issue.path.clone(), issue.message.clone());
+                    }
+                }
+            }
+            return Err(Error::Validation(as_given(&report)));
+        }
+        let mut rebalancing = run(&accounts).map_err(|e| match e {
+            Error::Validation(found) => Error::Validation(as_given(&found)),
+            other => other,
+        })?;
         rebalancing.report.name.clone_from(&self.name);
         Ok(rebalancing)
     }
