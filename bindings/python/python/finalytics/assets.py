@@ -319,6 +319,7 @@ class Assets:
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
+        keep_cash: bool | Sequence[str] = False,
     ) -> _types.OptimiseOptions:
         # Numbers JSON cannot hold, named by keyword: a comparison or backtest repeats the
         # options in each strategy.
@@ -340,6 +341,8 @@ class Assets:
         bad = [(k, float(v)) for k, v in numbers.items() if v is not None and not math.isfinite(float(v))]
         if bad:
             raise invalid(*((f"options.{k}", f"must be a finite number, not {v}") for k, v in bad))
+        if isinstance(keep_cash, str):
+            raise invalid(("options.keep_cash", f"must be True or a list of currencies, such as [{keep_cash!r}]"))
         return _types.OptimiseOptions(
             method=method,
             risk_free_rate=risk_free_rate,
@@ -362,6 +365,7 @@ class Assets:
             max_trades=None if max_trades is None else int(max_trades),
             benchmark_weights={k: float(v) for k, v in (benchmark_weights or {}).items()},
             max_tracking_error=None if max_tracking_error is None else float(max_tracking_error),
+            keep_cash=keep_cash if isinstance(keep_cash, bool) else [str(c) for c in keep_cash],
             cash=None if cash is None else _bound(cash),
         )
 
@@ -390,6 +394,7 @@ class Assets:
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
+        keep_cash: bool | Sequence[str] = False,
         frontier: bool = False,
         name: str | None = None,
     ) -> _types.Optimisation:
@@ -450,6 +455,13 @@ class Assets:
         rate. The frontier then includes the cash. Without it, the weights are fully invested
         in the risky assets. The Sharpe and diversification methods take no limits on cash.
 
+        ``keep_cash=True`` keeps every currency's cash held now at its current weight, and
+        ``keep_cash=["USD"]`` that of the currencies named, as :meth:`Portfolio.rebalance` keeps
+        it: the rest is optimised, and the limits are measured on the whole portfolio, so that
+        ``portfolio.rebalance(result, keep_cash=True)`` trades what they allow. The weights hold
+        the kept cash at its weight. It needs `current_weights`, and the cash it keeps takes no
+        `cash` limits.
+
         ``frontier=True`` draws the efficient frontier under the same limits in the report. It
         takes 30 more optimisations, so it adds time that grows with the number of assets, to
         seconds for hundreds of assets; without it, the report shows the weights against each
@@ -478,6 +490,7 @@ class Assets:
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
             cash=cash,
+            keep_cash=keep_cash,
         )
         options = dataclasses.replace(options, frontier=bool(frontier))
         result = loads(_types.Optimisation, call(self._native.optimise, dumps(options, "options")))
@@ -570,13 +583,15 @@ class Assets:
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
+        keep_cash: bool | Sequence[str] = False,
         risk_free_rate: float | None = None,
     ) -> list[_types.FrontierPortfolio]:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
         the least variance to the one with the largest expected return, under the limits given
         as for :meth:`optimise`, trade and tracking-error limits and cash included. It takes no
         method and none of the methods' parameters; `risk_free_rate` is the return of
-        ``"Cash"``, for assets without a risk-free asset whose frontier holds cash."""
+        ``"Cash"``, for assets without a risk-free asset whose frontier holds cash, and
+        `keep_cash` holds the cash of `current_weights` at its weight on every portfolio."""
         options = self._options(
             "minimum_variance",
             risk_free_rate=risk_free_rate,
@@ -593,6 +608,7 @@ class Assets:
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
             cash=cash,
+            keep_cash=keep_cash,
         )
         return loads(list[_types.FrontierPortfolio], call(self._native.frontier, int(points), dumps(options, "options")))
 
@@ -627,6 +643,7 @@ class Assets:
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
+        keep_cash: bool | Sequence[str] = False,
         start_value: float | None = None,
         flows: FlowsLike = (),
     ) -> _types.Comparison:
@@ -664,7 +681,8 @@ class Assets:
         The limits and parameters are those of :meth:`optimise`; they apply to every method
         that takes them. `max_turnover`, `min_trade` and `max_trades` limit the trades at each
         refit of a walk-forward validation, from the weights held then (the first fit enters
-        from cash); `max_tracking_error` applies at every fit.
+        from cash), and `keep_cash` keeps the cash held at each refit; `max_tracking_error`
+        applies at every fit.
         """
         limits = dict(
             max_weight=max_weight,
@@ -687,6 +705,7 @@ class Assets:
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
             cash=cash,
+            keep_cash=keep_cash,
         )
         if isinstance(methods, str):
             raise invalid(("methods", f"must be a list of methods, such as [{methods!r}]"))
@@ -708,7 +727,7 @@ class Assets:
         if not strategies:
             raise invalid(("methods", "give the methods to compare, or fixed weights"))
         if not any(isinstance(s, _types.OptimisedStrategy) for s in strategies):
-            given = [key for key, value in limits.items() if value is not None]
+            given = [key for key, value in limits.items() if value is not None and value is not False]
             if given:
                 raise invalid(*((f"options.{key}", "fixed weights take no limits or parameters") for key in given))
         options = _backtest_options(
@@ -750,6 +769,7 @@ class Assets:
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
+        keep_cash: bool | Sequence[str] = False,
         start_value: float | None = None,
         flows: FlowsLike = (),
     ) -> _types.Backtest:
@@ -785,10 +805,11 @@ class Assets:
             benchmark_weights=benchmark_weights,
             max_tracking_error=max_tracking_error,
             cash=cash,
+            keep_cash=keep_cash,
         )
         strategy: Any
         if weights is not None:
-            given = [key for key, value in limits.items() if value is not None]
+            given = [key for key, value in limits.items() if value is not None and value is not False]
             if given:
                 raise invalid(*((f"options.{key}", "fixed weights take no limits or parameters") for key in given))
             strategy = _types.FixedWeights(name=name, weights={k: float(v) for k, v in weights.items()})

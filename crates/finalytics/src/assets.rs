@@ -7,7 +7,7 @@ pub use evaluate::{Evaluate, Evaluation, GivenWeights};
 
 use serde::{Deserialize, Serialize};
 
-use finalytics_core::{Date, Decimal, Error, Result, ValidationReport};
+use finalytics_core::{Currency, Date, Decimal, Error, Result, ValidationReport};
 use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_ledger::HoldingKey;
 use finalytics_opt::{
@@ -283,6 +283,29 @@ fn one() -> f64 {
     1.0
 }
 
+/// The cash to keep as it is: every currency's (`true`), or that of the currencies named, such
+/// as `["USD"]`. Rebalancing keeps it as it is, the targets sharing the rest of the value;
+/// optimisation holds it at its current weight and optimises the rest.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+pub enum KeepCash {
+    /// Every currency's cash, when true; none when false.
+    All(bool),
+    /// The cash of these currencies, by ISO 4217 code, such as `["USD"]`.
+    Currencies(Vec<String>),
+}
+
+impl KeepCash {
+    /// Whether it keeps any cash: true, or a list that names a currency.
+    pub fn keeps_any(&self) -> bool {
+        match self {
+            KeepCash::All(all) => *all,
+            KeepCash::Currencies(list) => !list.is_empty(),
+        }
+    }
+}
+
 /// The method, its parameters and the limits on the weights. Everything is optional: by default
 /// the portfolio with the largest Sharpe ratio, fully invested and long only.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -345,6 +368,15 @@ pub struct OptimiseOptions {
     pub benchmark_weights: BTreeMap<String, f64>,
     /// The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03.
     pub max_tracking_error: Option<f64>,
+    /// The cash held now to keep at its current weight, as rebalancing keeps it: every
+    /// currency's (`true`) or that of the currencies named (`["USD"]`), at its weight in
+    /// `current_weights`. The rest of the portfolio is optimised, and the
+    /// limits are measured on the whole of it, so that rebalancing to the weights with the same
+    /// cash kept trades what the limits allow. The cash of a currency is the asset named for it,
+    /// such as `EUR cash`; `true` also keeps a risk-free asset that is not, such as T-bills, and
+    /// `Cash` at the risk-free rate. It needs `current_weights`, and the cash it keeps takes no
+    /// `cash` limits.
+    pub keep_cash: Option<KeepCash>,
     /// The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may
     /// hold cash beside the risky assets, riskless, and the frontier includes it. The cash is
     /// the risk-free asset, earning its return, or, without one, an asset named `Cash` earning
@@ -784,15 +816,32 @@ impl Assets {
     }
 
     /// The weight of the cash held now that optimisation invests: every cash in
-    /// `current_weights` but the cash `options` let it choose.
+    /// `current_weights` but the cash `options` let it choose and the cash they keep.
     fn invested_cash(&self, options: &OptimiseOptions) -> f64 {
         let chosen = self.cash_choice(options);
         options
             .current_weights
             .iter()
-            .filter(|(l, _)| self.is_cash_label(l) && chosen.as_deref() != Some(l.as_str()))
+            .filter(|(l, _)| {
+                self.is_cash_label(l)
+                    && chosen.as_deref() != Some(l.as_str())
+                    && !keeps(options.keep_cash.as_ref(), l)
+            })
             .map(|(_, w)| *w)
             .sum()
+    }
+
+    /// The cash `options` keep at its current weight: each cash of `current_weights` that
+    /// `keep_cash` names, with its weight now.
+    pub(crate) fn kept_cash(&self, options: &OptimiseOptions) -> Vec<(String, f64)> {
+        options
+            .current_weights
+            .iter()
+            .filter(|(l, w)| {
+                **w > 0.0 && self.is_cash_label(l) && keeps(options.keep_cash.as_ref(), l)
+            })
+            .map(|(l, w)| (l.clone(), *w))
+            .collect()
     }
 
     /// The same assets with `labels` held as cash in other currencies: estimated and valued with
@@ -1468,6 +1517,9 @@ impl Assets {
             lowest += b.min;
             highest += b.max;
         }
+        let kept: f64 = self.kept_cash(options).iter().map(|(_, w)| w).sum();
+        lowest += kept;
+        highest += kept;
         for (asset, b) in &options.asset_bounds {
             let path = format!("options.asset_bounds.{asset}");
             if known(asset) {
@@ -1489,13 +1541,13 @@ impl Assets {
                         "the {n} assets{} can hold at most {:.4} of the portfolio together, so \
                          it cannot be fully invested; with {n} assets the largest weight must be \
                          at least {:.4}",
-                        if options.cash.is_some() {
+                        if options.cash.is_some() || kept > 0.0 {
                             " and cash"
                         } else {
                             ""
                         },
                         highest,
-                        1.0 / n as f64
+                        (1.0 - kept) / n as f64
                     ),
                 );
             } else if lowest > 1.0 + 1e-9 {
@@ -1640,6 +1692,36 @@ impl Assets {
                 report.error(
                     format!("options.{field}"),
                     "limits trades from the weights held now: give current_weights too",
+                );
+            }
+        }
+        if let Some(keep) = options.keep_cash.as_ref().filter(|k| k.keeps_any()) {
+            if options.current_weights.is_empty() {
+                report.error(
+                    "options.keep_cash",
+                    "keeps the cash held now at its weight: give current_weights too",
+                );
+            }
+            if let KeepCash::Currencies(list) = keep {
+                for (k, code) in list.iter().enumerate() {
+                    if code.parse::<Currency>().is_err() {
+                        report.error(
+                            format!("options.keep_cash[{k}]"),
+                            format!("{code:?} is not a currency code, such as USD"),
+                        );
+                    }
+                }
+            }
+            if options.cash.is_some()
+                && let Some(chosen) = self.cash_choice(options)
+                && keeps(Some(keep), &chosen)
+            {
+                report.error(
+                    "options.cash",
+                    format!(
+                        "keep_cash keeps {chosen} at its current weight, so it takes no limits: \
+                         give cash or keep_cash for it, not both"
+                    ),
                 );
             }
         }
@@ -1801,12 +1883,19 @@ impl Assets {
         if let Some((rf, _)) = &cash {
             labels.push(rf.clone());
         }
+        // The cash kept, held at its current weight, as one of the assets.
+        let kept = self.kept_cash(options);
+        labels.extend(kept.iter().map(|(l, _)| l.clone()));
         // Cash in another currency that a benchmark holds, which optimisation does not choose:
         // held at zero, so that the tracking error counts the benchmark's risk in it.
         let watched: Vec<String> = options
             .benchmark_weights
             .iter()
-            .filter(|(l, w)| **w != 0.0 && self.held_cash.iter().any(|&i| self.labels()[i] == **l))
+            .filter(|(l, w)| {
+                **w != 0.0
+                    && self.held_cash.iter().any(|&i| self.labels()[i] == **l)
+                    && !labels.contains(l)
+            })
             .map(|(l, _)| l.clone())
             .collect();
         labels.extend(watched.iter().cloned());
@@ -1842,6 +1931,13 @@ impl Assets {
                 asset: rf.clone(),
                 min: bound.min,
                 max: bound.max,
+            });
+        }
+        for (label, weight) in &kept {
+            constraints.asset_bounds.push(AssetBound {
+                asset: label.clone(),
+                min: *weight,
+                max: *weight,
             });
         }
         for label in &watched {
@@ -1920,6 +2016,21 @@ impl Assets {
             problem = problem.with_scenarios(ReturnsTable::new(labels.clone(), columns)?);
         }
         Ok((problem, labels))
+    }
+}
+
+/// Whether `keep` keeps the cash `label`: every cash for `true`, and for a list of currencies
+/// the cash named for one of them, such as `EUR cash`.
+pub(crate) fn keeps(keep: Option<&KeepCash>, label: &str) -> bool {
+    match keep {
+        Some(KeepCash::All(all)) => *all,
+        Some(KeepCash::Currencies(list)) => match label.parse::<HoldingKey>() {
+            Ok(HoldingKey::Cash(currency)) => list
+                .iter()
+                .any(|code| code.parse::<Currency>().ok() == Some(currency)),
+            _ => false,
+        },
+        None => false,
     }
 }
 
@@ -2251,6 +2362,27 @@ impl Optimise<'_> {
     /// in `Cash` earning the risk-free rate.
     pub fn cash(mut self, min: f64, max: f64) -> Self {
         self.options.cash = Some(Bound { min, max });
+        self
+    }
+
+    /// Keeps the cash of `currencies`, such as `["USD"]`, at its current weight, as
+    /// [`RebalanceBuilder::keep_cash`](crate::RebalanceBuilder::keep_cash) keeps it: the rest is
+    /// optimised, and the limits are measured on the whole portfolio. It needs the current
+    /// weights.
+    pub fn keep_cash<S: AsRef<str>>(mut self, currencies: impl IntoIterator<Item = S>) -> Self {
+        self.options.keep_cash = Some(KeepCash::Currencies(
+            currencies
+                .into_iter()
+                .map(|c| c.as_ref().to_owned())
+                .collect(),
+        ));
+        self
+    }
+
+    /// Keeps every currency's cash at its current weight, as [`Optimise::keep_cash`] does for
+    /// some.
+    pub fn keep_all_cash(mut self) -> Self {
+        self.options.keep_cash = Some(KeepCash::All(true));
         self
     }
 

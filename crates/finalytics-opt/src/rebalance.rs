@@ -31,9 +31,11 @@ pub struct RebalanceOptions {
     /// Tax rates on realised gains. When given, each sale takes the lots that cost the least tax,
     /// losses first, and the tax is estimated.
     pub tax: Option<TaxRates>,
-    /// Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest
-    /// of the value, so the trades neither invest that cash nor add to it. None by default: the
-    /// targets are shares of the whole value, and base-currency cash takes what they leave.
+    /// Currencies whose cash the rebalancing keeps as it is: the other targets share the rest of
+    /// the value, so the trades neither invest that cash nor add to it. Targets that leave the
+    /// kept cash out are shares of the rest; targets that give it its weight now are shares of
+    /// the whole value. None by default: the targets are shares of the whole value, and
+    /// base-currency cash takes what they leave.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keep_cash: Vec<Currency>,
 }
@@ -69,9 +71,12 @@ pub struct KeptCash {
 /// Target weights by holding.
 type Targets = Vec<(HoldingKey, f64)>;
 
-/// The targets with the cash of `keep` kept: each target a share of the value of `accounts`
-/// other than that cash, and each kept balance at its own share, so that no trade invests it or
-/// adds to it. A target that names kept cash is a problem in `report`.
+/// The targets with the cash of `keep` kept: the other targets share the value of `accounts`
+/// other than that cash in proportion, and each kept balance takes its own share, so that no
+/// trade invests it or adds to it. The targets may be shares of that rest, adding up to one
+/// without the kept cash, or shares of the whole value that give the kept cash its weight now,
+/// as an optimisation that kept the same cash gives them; a target for kept cash at another
+/// weight is a problem in `report`.
 fn keeping_cash(
     books: &Books,
     market: &MarketData,
@@ -80,18 +85,6 @@ fn keeping_cash(
     targets: &[(HoldingKey, f64)],
     keep: &[Currency],
 ) -> Result<(Targets, Vec<KeptCash>)> {
-    let mut report = ValidationReport::new();
-    for (holding, _) in targets {
-        if let HoldingKey::Cash(c) = holding
-            && keep.contains(c)
-        {
-            report.error(
-                format!("targets.{holding}"),
-                format!("{c} cash is kept as it is, so it takes no target"),
-            );
-        }
-    }
-    report.into_result(())?;
     let valuation = books.value_on(date, market)?;
     let total: f64 = valuation
         .positions
@@ -128,9 +121,42 @@ fn keeping_cash(
             });
         }
     }
+    let mut report = ValidationReport::new();
+    let mut named = 0.0;
+    for (holding, target) in targets {
+        if let HoldingKey::Cash(c) = holding
+            && keep.contains(c)
+        {
+            let now = kept
+                .iter()
+                .find(|k| k.currency == *c)
+                .map_or(0.0, |k| k.weight);
+            if (target - now).abs() > 1e-6 {
+                report.error(
+                    format!("targets.{holding}"),
+                    format!(
+                        "{c} cash is kept as it is, at {:.4}% of the value now, so its target is \
+                         that or none, not {:.4}%",
+                        now * 100.0,
+                        target * 100.0
+                    ),
+                );
+            }
+            named += target;
+        }
+    }
+    report.into_result(())?;
     let rest = 1.0 - kept.iter().map(|k| k.weight).sum::<f64>();
-    let mut out: Vec<(HoldingKey, f64)> =
-        targets.iter().map(|(k, w)| (k.clone(), w * rest)).collect();
+    let scale = if named > 0.0 {
+        rest / (1.0 - named)
+    } else {
+        rest
+    };
+    let mut out: Vec<(HoldingKey, f64)> = targets
+        .iter()
+        .filter(|(k, _)| !matches!(k, HoldingKey::Cash(c) if keep.contains(c)))
+        .map(|(k, w)| (k.clone(), w * scale))
+        .collect();
     let base = books.base_currency();
     // Base-currency cash takes what the targets leave, its own share among it; cash in another
     // currency is converted to its target, so its target is its share.

@@ -215,6 +215,39 @@ to value the portfolio, and only the risk-free asset can be chosen, with `cash` 
 
 ```
 
+### Keeping the cash
+
+`keep_cash=True` holds every currency's cash in `current_weights` at its current weight, and
+`keep_cash=["USD"]` the cash of the currencies named (the asset named for the currency, such as
+`USD cash`; `True` also keeps a risk-free asset that is not cash in a currency, such as T-bills,
+and `Cash` at the risk-free rate). The kept cash is one of the assets, fixed at its weight $k$:
+riskless when it is the risk-free asset, and with its own risk and return when it is cash in
+another currency. The rest, $1 - k$, is optimised, and every limit is measured on the whole
+portfolio: the largest weight, the groups, the turnover and the number of trades, the tracking
+error. The weights hold the kept cash at its weight and add up to one, so rebalancing to them
+with the same cash kept (`portfolio.rebalance(result, keep_cash=True)`) trades what the limits
+allow, and its turnover is the optimisation's. It needs `current_weights` and is listed with the
+limits of every method that takes limits. The cash it keeps takes no `cash` limits: keeping the
+risk-free asset's currency and limiting cash are refused together; keeping cash in another
+currency and limiting the risk-free asset are not. The frontier holds the kept cash at its weight
+at every point; in a walk-forward backtest, each refit keeps the cash the run holds then, and the
+first fit enters from cash.
+
+```python
+>>> import finalytics as fl
+>>> portfolio = fl.datasets.portfolio()
+>>> current = portfolio.weights()
+>>> result = portfolio.assets().optimise(
+...     method="maximum_sharpe", current_weights=current, max_trades=4, max_turnover=0.15, keep_cash=True
+... )
+>>> result.results.weights["EUR cash"] == current["EUR cash"]
+True
+>>> trades = portfolio.rebalance(result, keep_cash=True).results.accounts
+>>> len({t.instrument for account in trades for t in account.trades}) <= 4
+True
+
+```
+
 ### Weights by asset
 
 Every input that takes weights by asset follows one rule: the current and benchmark weights of
@@ -297,7 +330,7 @@ limits or parameters.
 >>> [(p.name, p.required, p.default) for p in cvar.parameters[:2]]
 [('confidence', False, 0.95), ('target', False, None)]
 >>> [p.name for p in cvar.limits]
-['max_weight', 'bounds', 'asset_bounds', 'groups', 'min_effective_assets', 'max_turnover', 'max_tracking_error', 'cash']
+['max_weight', 'bounds', 'asset_bounds', 'groups', 'min_effective_assets', 'max_turnover', 'max_tracking_error', 'keep_cash', 'cash']
 >>> confidence = cvar.parameters[0]
 >>> confidence.min, confidence.min_exclusive, confidence.max, confidence.max_exclusive
 (0.0, True, 1.0, True)

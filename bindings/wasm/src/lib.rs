@@ -87,10 +87,12 @@ export interface RebalanceChoices {
   long_term_after_days?: number;
   /**
    * `true` keeps every currency's cash as it is, and `["USD"]` that of the currencies named: the
-   * targets are then shares of the rest of the value, so the trades neither invest that cash nor
-   * add to it. By default the targets are shares of the whole value, cash included.
+   * other targets then share the rest of the value, so the trades neither invest that cash nor
+   * add to it. Targets that leave the kept cash out are shares of the rest; targets that give it
+   * its weight now, as an optimisation with the same `keep_cash` gives them, are shares of the
+   * whole value. By default the targets are shares of the whole value, cash included.
    */
-  keep_cash?: boolean | string[];
+  keep_cash?: KeepCash;
 }
 
 /**
@@ -249,6 +251,7 @@ export type FrontierOptions = Partial<
     | "max_turnover"
     | "min_trade"
     | "max_trades"
+    | "keep_cash"
     | "benchmark_weights"
     | "max_tracking_error"
   >

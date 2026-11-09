@@ -91,7 +91,7 @@ Op = Literal["<", "<=", ">", ">=", "between", "in", "not_in"]
 Order = Literal["ascending", "descending"]
 """Which way matches are sorted."""
 
-ParameterKind = Literal["number", "count", "choice", "by_asset", "bound", "bounds_by_asset", "groups", "uncertainty"]
+ParameterKind = Literal["number", "count", "choice", "by_asset", "bound", "bounds_by_asset", "groups", "currencies", "uncertainty"]
 """The kind of value an option takes."""
 
 ReportKind = Literal["holdings", "overview", "performance", "risk", "attribution", "scenarios"]
@@ -2728,6 +2728,13 @@ class Issue:
     """How serious the problem is."""
 
 
+KeepCash = Union[bool, list[str]]
+"""The cash to keep as it is: every currency's (`true`), or that of the currencies named, such as
+`["USD"]`. Rebalancing keeps it as it is, the targets sharing the rest of the value; optimisation
+holds it at its current weight and optimises the rest.
+"""
+
+
 @dataclass(frozen=True, kw_only=True)
 class KeptCash:
     """Cash a rebalancing kept as it was."""
@@ -3726,6 +3733,16 @@ class OptimiseOptions:
 
     max_tracking_error: float | None = None
     """The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03."""
+
+    keep_cash: KeepCash | None = None
+    """The cash held now to keep at its current weight, as rebalancing keeps it: every currency's
+    (`true`) or that of the currencies named (`["USD"]`), at its weight in `current_weights`. The
+    rest of the portfolio is optimised, and the limits are measured on the whole of it, so that
+    rebalancing to the weights with the same cash kept trades what the limits allow. The cash of
+    a currency is the asset named for it, such as `EUR cash`; `true` also keeps a risk-free asset
+    that is not, such as T-bills, and `Cash` at the risk-free rate. It needs `current_weights`,
+    and the cash it keeps takes no `cash` limits.
+    """
 
     cash: Bound | None = None
     """The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may hold
@@ -4872,9 +4889,11 @@ class RebalanceOptions:
     """
 
     keep_cash: list[str] = field(default_factory=list)
-    """Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest of
-    the value, so the trades neither invest that cash nor add to it. None by default: the targets
-    are shares of the whole value, and base-currency cash takes what they leave.
+    """Currencies whose cash the rebalancing keeps as it is: the other targets share the rest of the
+    value, so the trades neither invest that cash nor add to it. Targets that leave the kept cash
+    out are shares of the rest; targets that give it its weight now are shares of the whole
+    value. None by default: the targets are shares of the whole value, and base-currency cash
+    takes what they leave.
     """
 
 
@@ -6561,7 +6580,7 @@ class OptimisedStrategy:
     name: str | None = None
     """The name in the results; the method's own by default, such as `Maximum Sharpe`."""
 
-    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}, current_weights={}, max_turnover=None, min_trade=None, max_trades=None, benchmark_weights={}, max_tracking_error=None, cash=None))
+    options: OptimiseOptions = field(default_factory=lambda: OptimiseOptions(method="maximum_sharpe", risk_free_rate=None, target=None, risk_aversion=None, uncertainty=None, confidence=None, budgets=None, linkage=None, bounds=None, max_weight=None, asset_bounds={}, groups={}, min_effective_assets=None, resample=None, expected_returns={}, current_weights={}, max_turnover=None, min_trade=None, max_trades=None, benchmark_weights={}, max_tracking_error=None, keep_cash=None, cash=None))
     """The method, its parameters and the limits on the weights."""
 
 
@@ -7682,6 +7701,7 @@ __all__ = [
     "InverseVolatility",
     "Issue",
     "JamesSteinMean",
+    "KeepCash",
     "KeptCash",
     "LedoitWolf",
     "LevelUnit",

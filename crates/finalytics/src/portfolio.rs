@@ -851,18 +851,7 @@ pub struct RebalanceBuilder<'a> {
     name: Option<String>,
     options: RebalanceOptions,
     plain: PlainCosts,
-    keep: Option<KeepCash>,
-}
-
-/// The cash a rebalancing keeps: every currency's, or those named.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(untagged)]
-#[doc(hidden)]
-pub enum KeepCash {
-    /// Every currency's cash, when true.
-    All(bool),
-    /// The cash of these currencies, such as `["USD"]`.
-    Currencies(Vec<String>),
+    keep: Option<crate::KeepCash>,
 }
 
 /// A rebalancing's choices as JSON gives them, with the names of the builder's methods: the
@@ -882,7 +871,7 @@ pub struct RebalanceChoices {
     pub minimum_fee: Option<f64>,
     pub tax: Option<(f64, f64)>,
     pub long_term_after_days: Option<u32>,
-    pub keep_cash: Option<KeepCash>,
+    pub keep_cash: Option<crate::KeepCash>,
 }
 
 impl RebalanceChoices {
@@ -1033,10 +1022,12 @@ impl RebalanceBuilder<'_> {
         self
     }
 
-    /// Keeps the cash of `currencies`, such as `["USD"]`, as it is: the targets are shares of
-    /// the rest of the value, so the trades neither invest that cash nor add to it.
+    /// Keeps the cash of `currencies`, such as `["USD"]`, as it is: the other targets share the
+    /// rest of the value, so the trades neither invest that cash nor add to it. Targets that
+    /// leave the kept cash out are shares of the rest; targets that give it its weight now, as
+    /// an optimisation that kept the same cash gives them, are shares of the whole value.
     pub fn keep_cash<S: AsRef<str>>(mut self, currencies: impl IntoIterator<Item = S>) -> Self {
-        self.keep = Some(KeepCash::Currencies(
+        self.keep = Some(crate::KeepCash::Currencies(
             currencies
                 .into_iter()
                 .map(|c| c.as_ref().to_owned())
@@ -1047,7 +1038,7 @@ impl RebalanceBuilder<'_> {
 
     /// Keeps every currency's cash as it is, as [`RebalanceBuilder::keep_cash`] does for some.
     pub fn keep_all_cash(mut self) -> Self {
-        self.keep = Some(KeepCash::All(true));
+        self.keep = Some(crate::KeepCash::All(true));
         self
     }
 
@@ -1119,7 +1110,7 @@ impl RebalanceBuilder<'_> {
         };
         let mut options = self.plain.apply(self.options.clone(), &mut report);
         match &self.keep {
-            Some(KeepCash::All(true)) => {
+            Some(crate::KeepCash::All(true)) => {
                 let held: BTreeSet<Currency> = self
                     .portfolio
                     .books
@@ -1130,8 +1121,8 @@ impl RebalanceBuilder<'_> {
                     .collect();
                 options.keep_cash = held.into_iter().collect();
             }
-            Some(KeepCash::All(false)) | None => {}
-            Some(KeepCash::Currencies(list)) => {
+            Some(crate::KeepCash::All(false)) | None => {}
+            Some(crate::KeepCash::Currencies(list)) => {
                 for (k, text) in list.iter().enumerate() {
                     match text.parse::<Currency>() {
                         Ok(c) => options.keep_cash.push(c),

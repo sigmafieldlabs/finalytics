@@ -38,12 +38,15 @@ rates, plus cash):
    converted, through the base currency, to its target balance (zero when not listed), rounded to
    the currency's minor units. Cash in the base currency takes whatever weight the targets leave.
 
-   To keep cash as it is (`keep_cash`, for every currency or those named), the targets are read
-   as shares of the value other than the cash kept: each weight $w_i$ becomes $w_i (1 - k)$,
-   with $k$ the kept cash's share of $V$, and each kept balance takes its own share as its
-   target. So the trades neither invest the cash nor add to it, other than by the rounding of
-   units and conversions; a target that names kept cash is refused, and the report lists what
-   was kept.
+   To keep cash as it is (`keep_cash`, for every currency or those named), the other targets
+   share the value other than the cash kept, in proportion: each weight $w_i$ becomes
+   $w_i (1 - k) / (1 - t)$, with $k$ the kept cash's share of $V$ and $t$ the targets' weight
+   for it, and each kept balance takes its own share as its target. Targets that leave the kept
+   cash out ($t = 0$) are shares of the rest; targets that give it its weight now ($t = k$), as
+   an optimisation that kept the same cash gives them, are shares of the whole value and are
+   traded as they are. So the trades neither invest the cash nor add to it, other than by the
+   rounding of units and conversions; a target for kept cash at another weight is refused, and
+   the report lists what was kept.
 5. **Result.** The proposal lists the sales, then the purchases, and the conversions, with the
    weights before and after, the turnover (one-way: half the value traded, sales and purchases,
    over $V$), the realised gain, the fees, the estimated tax, and warnings for carried prices or a

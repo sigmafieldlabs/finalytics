@@ -359,3 +359,67 @@ def test_equal_weight_is_not_labelled_under_the_weights(bills):
     page = bills.optimise(method="equal_weight").report.to_html()
     assert label not in page and "Equal weight</span>" in page
     assert label in bills.optimise(method="minimum_variance").report.to_html()
+
+
+# The euro fund is bought with euros converted to the cent, which leaves up to half a cent of the
+# conversion behind: 7e-9 of the household's value. Without a conversion, the weights are reached
+# to the precision of the arithmetic.
+CENT = 1e-8
+
+
+def _reaches(optimisation, rebalancing, trades, tolerance):
+    value = float(rebalancing.results.value_base)
+    made = [t for a in rebalancing.results.accounts for t in a.trades]
+    assert len({t.instrument for t in made}) <= trades
+    assert all(float(t.value_base) / value > 1e-6 for t in made)
+    after = rebalancing.results.weights_after
+    for asset, w in optimisation.results.weights.items():
+        assert after.get(asset, 0) == pytest.approx(w, abs=tolerance), asset
+
+
+def test_the_workstations_optimisation_is_traded_exactly_with_the_cash_kept(portfolio, household):
+    current = portfolio.weights()
+
+    def optimise(keep, euro_fund_held=False):
+        options = dict(method="maximum_sharpe", current_weights=current, max_trades=4, max_turnover=0.15)
+        if keep:
+            options["keep_cash"] = True
+        if euro_fund_held:
+            options["asset_bounds"] = {"EXSA": (current["EXSA"], current["EXSA"])}
+        return household.optimise(**options)
+
+    kept = optimise(True)
+    for asset, w in current.items():
+        if asset.endswith(" cash"):
+            assert kept.results.weights[asset] == w
+    assert kept.report.trades.count <= 4 and kept.report.trades.turnover <= 0.15 + 1e-9
+    rebalancing = portfolio.rebalance(kept, keep_cash=True)
+    _reaches(kept, rebalancing, 4, CENT)
+    assert rebalancing.results.turnover == pytest.approx(kept.report.trades.turnover, abs=1e-9)
+    exact = optimise(True, euro_fund_held=True)
+    rebalancing = portfolio.rebalance(exact, keep_cash=True)
+    assert all(not a.conversions for a in rebalancing.results.accounts)
+    _reaches(exact, rebalancing, 4, 1e-12)
+    invested = optimise(False)
+    assert not any(a.endswith(" cash") for a in invested.results.weights)
+    _reaches(invested, portfolio.rebalance(invested), 4, CENT)
+
+
+def test_keeping_cash_is_checked_with_the_other_options(portfolio, household):
+    current = portfolio.weights()
+    with pytest.raises(fl.ValidationError) as found:
+        household.optimise(method="minimum_variance", keep_cash=True, max_weight=2)
+    assert [i.path for i in found.value.issues] == ["options.max_weight", "options.keep_cash"]
+    with pytest.raises(fl.ValidationError) as found:
+        household.optimise(method="minimum_variance", current_weights=current, keep_cash="USD")
+    assert found.value.issues[0].path == "options.keep_cash"
+    with pytest.raises(fl.ValidationError) as found:
+        household.optimise(method="minimum_variance", current_weights=current, keep_cash=True, cash=(0, 0.2))
+    assert found.value.issues[0].path == "options.cash"
+    kept = household.optimise(method="minimum_variance", current_weights=current, keep_cash=["EUR"], cash=(0, 0.1))
+    assert kept.results.weights["EUR cash"] == current["EUR cash"]
+    points = household.frontier(points=4, current_weights=current, keep_cash=["EUR"])
+    assert all(p.weights["EUR cash"] == current["EUR cash"] for p in points)
+    for info in fl.methods():
+        names = [p.name for p in info.limits]
+        assert ("keep_cash" in names) == ("max_turnover" in names), info.label

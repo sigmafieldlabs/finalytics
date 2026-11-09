@@ -573,9 +573,11 @@ class Portfolio:
         not taxable, such as a retirement account, pays none.
 
         ``keep_cash=True`` keeps every currency's cash as it is, and ``keep_cash=["USD"]`` that
-        of the currencies named: the targets are then shares of the rest of the value, so the
-        trades neither invest that cash nor add to it. By default the targets are shares of the
-        whole value, cash included.
+        of the currencies named: the other targets then share the rest of the value, so the
+        trades neither invest that cash nor add to it. Targets that leave the kept cash out are
+        shares of the rest; targets that give it its weight now, as an optimisation with the same
+        `keep_cash` gives them, are shares of the whole value and are traded as they are. By
+        default the targets are shares of the whole value, cash included.
         """
         if isinstance(keep_cash, str):
             raise invalid(("keep_cash", f"must be True or a list of currencies, such as [{keep_cash!r}]"))

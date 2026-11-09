@@ -1932,6 +1932,13 @@ export interface Issue {
   severity: Severity;
 }
 
+/**
+ * The cash to keep as it is: every currency's (`true`), or that of the currencies named, such
+ * as `["USD"]`. Rebalancing keeps it as it is, the targets sharing the rest of the value;
+ * optimisation holds it at its current weight and optimises the rest.
+ */
+export type KeepCash = boolean | string[];
+
 /** Cash a rebalancing kept as it was. */
 export interface KeptCash {
   /** The currency. */
@@ -2658,6 +2665,17 @@ export interface OptimiseOptions {
   /** The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03. */
   max_tracking_error?: number | null;
   /**
+   * The cash held now to keep at its current weight, as rebalancing keeps it: every
+   * currency's (`true`) or that of the currencies named (`["USD"]`), at its weight in
+   * `current_weights`. The rest of the portfolio is optimised, and the
+   * limits are measured on the whole of it, so that rebalancing to the weights with the same
+   * cash kept trades what the limits allow. The cash of a currency is the asset named for it,
+   * such as `EUR cash`; `true` also keeps a risk-free asset that is not, such as T-bills, and
+   * `Cash` at the risk-free rate. It needs `current_weights`, and the cash it keeps takes no
+   * `cash` limits.
+   */
+  keep_cash?: KeepCash | null;
+  /**
    * The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may
    * hold cash beside the risky assets, riskless, and the frontier includes it. The cash is
    * the risk-free asset, earning its return, or, without one, an asset named `Cash` earning
@@ -2723,7 +2741,7 @@ export interface OverviewReport {
 }
 
 /** The kind of value an option takes. */
-export type ParameterKind = "number" | "count" | "choice" | "by_asset" | "bound" | "bounds_by_asset" | "groups" | "uncertainty";
+export type ParameterKind = "number" | "count" | "choice" | "by_asset" | "bound" | "bounds_by_asset" | "groups" | "currencies" | "uncertainty";
 
 /** What a goal of payments comes to. */
 export interface PaymentsOutcome {
@@ -3508,9 +3526,11 @@ export interface RebalanceOptions {
    */
   tax?: TaxRates | null;
   /**
-   * Currencies whose cash the rebalancing keeps as it is: the targets are shares of the rest
-   * of the value, so the trades neither invest that cash nor add to it. None by default: the
-   * targets are shares of the whole value, and base-currency cash takes what they leave.
+   * Currencies whose cash the rebalancing keeps as it is: the other targets share the rest of
+   * the value, so the trades neither invest that cash nor add to it. Targets that leave the
+   * kept cash out are shares of the rest; targets that give it its weight now are shares of
+   * the whole value. None by default: the targets are shares of the whole value, and
+   * base-currency cash takes what they leave.
    */
   keep_cash?: Currency[];
 }

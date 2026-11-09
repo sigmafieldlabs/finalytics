@@ -84,6 +84,14 @@ export async function example(worker: Worker): Promise<void> {
   const optimisationText: string = `${result}` + result.results.toText() + result.toText("Named");
   const saved: string = assets.optimise({ method: "minimum_variance", name: "Defensive" }).saveHtml("page.html");
   const frontierWeights: Record<string, number> = assets.frontier(5)[0].weights;
+  const held: Record<string, number> = books.weights();
+  const keptCash: OptimisationResult = books.assets().optimise({
+    method: "maximum_sharpe",
+    current_weights: held,
+    max_trades: 4,
+    keep_cash: ["EUR"],
+  }).results;
+  const keptFrontier = books.assets().frontier(5, { current_weights: held, keep_cash: true });
   const rebalanced = books.rebalance(result);
   // @ts-expect-error: an unknown method is rejected.
   assets.optimise({ method: "maximum_profit" });

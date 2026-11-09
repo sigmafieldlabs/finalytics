@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::assets::{Method, OptimiseOptions};
+use crate::assets::{KeepCash, Method, OptimiseOptions};
 
 /// The kind of value an option takes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -27,6 +27,8 @@ pub enum ParameterKind {
     BoundsByAsset,
     /// Groups of assets with limits on their total weight, by group name.
     Groups,
+    /// Currencies, by ISO 4217 code, such as `["USD"]`, or `true` for every one.
+    Currencies,
     /// The uncertainty of expected returns: an ellipsoid or a box.
     Uncertainty,
 }
@@ -371,6 +373,14 @@ impl Method {
                 )
                 .above(0.0)
                 .needs("benchmark_weights"),
+                of_kind(
+                    "keep_cash",
+                    ParameterKind::Currencies,
+                    "The cash held now to keep at its current weight, every currency's (true) or \
+                     that of the currencies named, such as [\"USD\"]: the rest is optimised, and \
+                     the limits are measured on the whole portfolio.",
+                )
+                .needs("current_weights"),
             ]
         } else {
             Vec::new()
@@ -463,6 +473,10 @@ pub(crate) fn given(options: &OptimiseOptions) -> Vec<&'static str> {
         ("benchmark_weights", !options.benchmark_weights.is_empty()),
         ("max_tracking_error", options.max_tracking_error.is_some()),
         ("cash", options.cash.is_some()),
+        (
+            "keep_cash",
+            options.keep_cash.as_ref().is_some_and(KeepCash::keeps_any),
+        ),
     ];
     flags
         .into_iter()
@@ -495,6 +509,7 @@ pub(crate) fn without(options: &mut OptimiseOptions, name: &str) {
         "benchmark_weights" => options.benchmark_weights.clear(),
         "max_tracking_error" => options.max_tracking_error = None,
         "cash" => options.cash = None,
+        "keep_cash" => options.keep_cash = None,
         _ => {}
     }
 }
@@ -513,6 +528,7 @@ pub(crate) fn is_limit(name: &str) -> bool {
             | "max_trades"
             | "max_tracking_error"
             | "cash"
+            | "keep_cash"
     )
 }
 
@@ -569,6 +585,7 @@ pub(crate) fn in_words(name: &str) -> String {
         "cash" => "the limits on cash".to_owned(),
         "min_trade" => "the smallest trade".to_owned(),
         "max_trades" => "the largest number of trades".to_owned(),
+        "keep_cash" => "keeping the cash".to_owned(),
         other => format!("the {}", other.replace('_', " ")),
     }
 }

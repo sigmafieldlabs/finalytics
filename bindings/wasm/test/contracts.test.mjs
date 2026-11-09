@@ -343,3 +343,65 @@ test("equal weight is not labelled under the weights", () => {
   assert.ok(!page.includes(label) && page.includes("Equal weight</span>"));
   assert.ok(bills.optimise({ method: "minimum_variance" }).toHtml().includes(label));
 });
+
+// The euro fund is bought with euros converted to the cent, which leaves up to half a cent of the
+// conversion behind: 7e-9 of the household's value. Without a conversion, the weights are reached
+// to the precision of the arithmetic.
+const CENT = 1e-8;
+
+function reaches(optimisation, rebalancing, trades, tolerance) {
+  const value = Number(rebalancing.results.value_base);
+  const made = rebalancing.results.accounts.flatMap((a) => a.trades);
+  assert.ok(new Set(made.map((t) => t.instrument)).size <= trades);
+  assert.ok(made.every((t) => Number(t.value_base) / value > 1e-6));
+  const after = rebalancing.results.weights_after;
+  for (const [asset, w] of Object.entries(optimisation.results.weights)) {
+    assert.ok(Math.abs((after[asset] ?? 0) - w) < tolerance, `${asset}: ${after[asset]} for ${w}`);
+  }
+}
+
+test("the workstation's optimisation is traded exactly with the cash kept", () => {
+  const current = portfolio.weights();
+  const optimise = (keep, euroFundHeld = false) =>
+    household.optimise({
+      method: "maximum_sharpe",
+      current_weights: current,
+      max_trades: 4,
+      max_turnover: 0.15,
+      ...(keep ? { keep_cash: true } : {}),
+      ...(euroFundHeld ? { asset_bounds: { EXSA: { min: current.EXSA, max: current.EXSA } } } : {}),
+    });
+  const kept = optimise(true);
+  for (const [asset, w] of Object.entries(current)) {
+    if (asset.endsWith(" cash")) assert.equal(kept.results.weights[asset], w, asset);
+  }
+  assert.ok(kept.report.trades.count <= 4 && kept.report.trades.turnover <= 0.15 + 1e-9);
+  let rebalancing = portfolio.rebalance(kept, { keep_cash: true });
+  reaches(kept, rebalancing, 4, CENT);
+  assert.ok(Math.abs(rebalancing.results.turnover - kept.report.trades.turnover) < 1e-9);
+  const exact = optimise(true, true);
+  rebalancing = portfolio.rebalance(exact, { keep_cash: true });
+  assert.ok(rebalancing.results.accounts.every((a) => a.conversions.length === 0));
+  reaches(exact, rebalancing, 4, 1e-12);
+  const invested = optimise(false);
+  assert.ok(Object.keys(invested.results.weights).every((a) => !a.endsWith(" cash")));
+  reaches(invested, portfolio.rebalance(invested), 4, CENT);
+});
+
+test("keeping cash is checked with the other options", () => {
+  const current = portfolio.weights();
+  assert.throws(() => household.optimise({ method: "minimum_variance", keep_cash: true, max_weight: 2 }), (e) =>
+    e.issues.map((i) => i.path).join() === "options.max_weight,options.keep_cash");
+  assert.throws(() => household.optimise({ method: "minimum_variance", current_weights: current, keep_cash: ["dollars"] }), (e) =>
+    e.issues[0].path === "options.keep_cash[0]");
+  assert.throws(() => household.optimise({ method: "minimum_variance", current_weights: current, keep_cash: true, cash: { min: 0, max: 0.2 } }), (e) =>
+    e.issues[0].path === "options.cash");
+  const kept = household.optimise({ method: "minimum_variance", current_weights: current, keep_cash: ["EUR"], cash: { min: 0, max: 0.1 } });
+  assert.equal(kept.results.weights["EUR cash"], current["EUR cash"]);
+  const points = household.frontier(4, { current_weights: current, keep_cash: ["EUR"] });
+  assert.ok(points.every((p) => p.weights["EUR cash"] === current["EUR cash"]));
+  for (const info of fl.methods()) {
+    const names = info.limits.map((p) => p.name);
+    assert.equal(names.includes("keep_cash"), names.includes("max_turnover"), info.label);
+  }
+});

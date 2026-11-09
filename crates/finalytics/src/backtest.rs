@@ -286,9 +286,11 @@ impl Assets {
                                         .filter(|(a, w)| *w != 0.0 || !self.is_cash_label(a))
                                         .collect();
                                     let cash = 1.0 - held.iter().sum::<f64>();
-                                    let holds_cash = self
-                                        .risk_free_asset()
-                                        .or(options.cash.map(|_| crate::assets::CASH));
+                                    let holds_cash =
+                                        self.risk_free_asset().or((options.cash.is_some()
+                                            || options.keep_cash.is_some())
+                                        .then_some(crate::assets::CASH)
+                                        .filter(|_| self.cash_at_rate()));
                                     if let Some(rf) = holds_cash
                                         && cash > 1e-12
                                     {
@@ -303,9 +305,12 @@ impl Assets {
                                         }
                                     }
                                 }
-                                // A first fit enters from cash, without limits on its trades.
+                                // A first fit enters from cash, without limits on its trades
+                                // and keeping none of it.
                                 None => {
-                                    for name in ["max_turnover", "min_trade", "max_trades"] {
+                                    for name in
+                                        ["max_turnover", "min_trade", "max_trades", "keep_cash"]
+                                    {
                                         crate::methods::without(&mut options, name);
                                     }
                                 }
@@ -644,6 +649,23 @@ pub(crate) fn limits(options: &OptimiseOptions, refits: bool) -> Vec<String> {
             pct(te)
         ));
     }
+    match options.keep_cash.as_ref().filter(|k| k.keeps_any()) {
+        Some(crate::KeepCash::All(_)) => out.push(if refits {
+            "The cash held kept at each refit".to_owned()
+        } else {
+            "The cash held now kept at its weight".to_owned()
+        }),
+        Some(crate::KeepCash::Currencies(list)) => out.push(format!(
+            "{} cash kept at {}",
+            list.join(", "),
+            if refits {
+                "each refit"
+            } else {
+                "its weight now"
+            }
+        )),
+        None => {}
+    }
     out
 }
 
@@ -692,9 +714,16 @@ fn applicable(options: &OptimiseOptions) -> (OptimiseOptions, Vec<String>) {
     (method, notes)
 }
 
-/// Whether `options` limit the trades from the weights held: by turnover, size or number.
+/// Whether `options` limit the trades from the weights held, by turnover, size or number, or
+/// keep the cash held.
 fn trades_limited(options: &OptimiseOptions) -> bool {
-    options.max_turnover.is_some() || options.min_trade.is_some() || options.max_trades.is_some()
+    options.max_turnover.is_some()
+        || options.min_trade.is_some()
+        || options.max_trades.is_some()
+        || options
+            .keep_cash
+            .as_ref()
+            .is_some_and(crate::KeepCash::keeps_any)
 }
 
 /// Adds to `report` the problems with the trade limits of `strategies`: a backtest trades from
@@ -714,12 +743,17 @@ fn trade_limits(strategies: &[Strategy], walk_forward: bool, report: &mut Valida
             );
         }
         if !walk_forward {
-            for name in ["max_turnover", "min_trade", "max_trades"] {
+            for name in ["max_turnover", "min_trade", "max_trades", "keep_cash"] {
                 if crate::methods::given(options).contains(&name) {
                     found.error(
                         format!("options.{name}"),
-                        "limits the trades at each refit of a walk-forward validation; in sample \
-                         and on a holdout, the weights are fitted once, from cash",
+                        if name == "keep_cash" {
+                            "keeps the cash held at each refit of a walk-forward validation; in \
+                             sample and on a holdout, the weights are fitted once, from cash"
+                        } else {
+                            "limits the trades at each refit of a walk-forward validation; in \
+                             sample and on a holdout, the weights are fitted once, from cash"
+                        },
                     );
                 }
             }
@@ -1163,6 +1197,28 @@ macro_rules! common_setters {
             /// earning the risk-free rate.
             pub fn cash(mut self, min: f64, max: f64) -> Self {
                 self.common.options.cash = Some(Bound { min, max });
+                self
+            }
+
+            /// Keeps the cash of `currencies`, such as `["USD"]`, at each refit of a walk-forward
+            /// validation, at its weight then, as one optimisation keeps it; the first fit
+            /// enters from cash.
+            pub fn keep_cash<S: AsRef<str>>(
+                mut self,
+                currencies: impl IntoIterator<Item = S>,
+            ) -> Self {
+                self.common.options.keep_cash = Some(crate::KeepCash::Currencies(
+                    currencies
+                        .into_iter()
+                        .map(|c| c.as_ref().to_owned())
+                        .collect(),
+                ));
+                self
+            }
+
+            /// Keeps every currency's cash at each refit, as [`Self::keep_cash`] does for some.
+            pub fn keep_all_cash(mut self) -> Self {
+                self.common.options.keep_cash = Some(crate::KeepCash::All(true));
                 self
             }
 

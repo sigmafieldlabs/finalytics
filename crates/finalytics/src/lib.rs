@@ -172,7 +172,7 @@ pub mod prelude {
 
 pub use assets::{
     AssetGroup, AssetSettings, AssetStatistics, Assets, AssetsBuilder, Evaluate, Evaluation,
-    FrontierPortfolio, GivenWeights, Method, Optimisation, OptimisationResult, Optimise,
+    FrontierPortfolio, GivenWeights, KeepCash, Method, Optimisation, OptimisationResult, Optimise,
     OptimiseOptions,
 };
 pub use backtest::{Backtest, BacktestResults, Comparison};

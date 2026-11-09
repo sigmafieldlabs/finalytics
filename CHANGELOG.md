@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `keep_cash` in `optimise`, as in `rebalance`: `keep_cash=True` (`.keep_all_cash()` in Rust)
+  holds every currency's cash in `current_weights` at its current weight, and
+  `keep_cash=["USD"]` (`.keep_cash(["USD"])`) that of the currencies named, and optimises the
+  rest, with every limit measured on the whole portfolio. The weights hold the kept cash, so
+  `portfolio.rebalance(result, keep_cash=True)` trades what the limits allow, and its turnover is
+  the optimisation's. It needs `current_weights`, takes no `cash` limits on the cash it keeps,
+  and applies to the frontier and to each refit of a walk-forward backtest (`keep_cash` in
+  `compare` and `backtest`). `methods()` lists it with the limits of every method that takes
+  limits, as a new kind of option, `currencies`; `finalytics::KeepCash` is its type in Rust.
+
 ### Fixed
 
 - Minimum CVaR with limits on cash, such as `cash=(0, 0.2)`, failed in its report ("weights: 6
@@ -106,6 +118,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   without a limit, a goal's `nmae`, a walk-forward's `yeers`, and in Rust a misspelt top-level
   field of `ReportOptions`, `OptimiseOptions` or `BacktestOptions` read from JSON. JSON with
   extra members, which was read as if they were not there, is now refused, naming the member.
+
+- `rebalance` with `keep_cash` takes targets that give the kept cash its weight now, as an
+  optimisation that kept the same cash gives them, as shares of the whole value; targets that
+  leave the kept cash out are shares of the rest, as before. A target for kept cash at another
+  weight is still refused, now saying the weight it has.
 
 ## [1.0.0-rc.5] - 2026-11-09
 
