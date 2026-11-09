@@ -1031,6 +1031,7 @@ Finalytics 1.0 is a redesign of the library. See the
 The last release of the 0.x series. See the `0.9.x` branch.
 
 [Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.6...HEAD
+[1.0.0-rc.6]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.6...v1.0.0-rc.6
 [1.0.0-rc.6]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.3...v1.0.0-rc.4
