@@ -322,3 +322,17 @@ def test_a_comparison_refuses_and_notes_options_in_the_words_of_one_optimisation
     )
     assert comparison.report.strategies[0].notes == ["The target and the limits on cash do not apply."]
 
+
+def test_report_options_that_name_holdings_are_checked_when_the_report_is_built(portfolio):
+    def issues(**options):
+        with pytest.raises(fl.ValidationError) as found:
+            portfolio.report(**options)
+        return [(i.path, i.message) for i in found.value.issues]
+
+    assert issues(benchmark_weights={"Nope": 1}) == [("options.benchmark_weights.Nope", "unknown asset Nope")]
+    assert issues(benchmark_weights={"BENCH": 1})[0][1].startswith("BENCH is not held on ")
+    found = issues(benchmark_weights={"VTI": 0.3})
+    assert found[0][0] == "options.benchmark_weights" and found[0][1].startswith("add up to 0.3, not one")
+    assert issues(expected_returns={"Nope": 0.03})[0][0] == "options.expected_returns.Nope"
+    report = portfolio.report(benchmark_weights={"VTI": 0.6, "BND": 0.4})
+    assert report.risk.holdings.tracking_error is not None

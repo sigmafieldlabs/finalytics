@@ -27,7 +27,10 @@ day, the covariance estimator (Ledoit–Wolf), the confidences of tail risk (95%
 window of rolling statistics (63 periods), the number of histogram bins (30), the length of top
 lists (10), the long-term holding period (365 days), expected returns for the frontier, benchmark
 weights for the tracking error, the benchmark segments for attribution and the scenarios. Each
-report uses the options that concern it.
+report uses the options that concern it. The options that name holdings, the expected returns and
+the tracking error's benchmark weights, are checked when the report is built, with the others:
+each must be held at the report's date (`unknown asset Nope` for a name that is not a holding),
+and the benchmark weights must add up to one with the cash, as every input of weights does.
 
 ## Printed and HTML reports
 

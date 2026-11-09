@@ -974,3 +974,45 @@ fn a_comparison_refuses_and_notes_options_in_the_words_of_one_optimisation() {
         ["Fully invested and long only; the limits on weights do not apply."]
     );
 }
+
+#[test]
+fn report_options_that_name_holdings_are_checked_when_the_report_is_built() {
+    let portfolio = datasets::portfolio();
+    let paths =
+        |r: Result<finalytics::PortfolioReport, finalytics::Error>| -> Vec<(String, String)> {
+            let Err(finalytics::Error::Validation(report)) = r else {
+                panic!("accepted");
+            };
+            report
+                .issues()
+                .iter()
+                .map(|i| (i.path.clone(), i.message.clone()))
+                .collect()
+        };
+    let found = paths(portfolio.report().benchmark_weight("Nope", 1.0).build());
+    assert_eq!(
+        found,
+        [(
+            "options.benchmark_weights.Nope".to_owned(),
+            "unknown asset Nope".to_owned()
+        )]
+    );
+    let found = paths(portfolio.report().benchmark_weight("BENCH", 1.0).build());
+    assert!(found[0].1.starts_with("BENCH is not held on "), "{found:?}");
+    let found = paths(portfolio.report().benchmark_weight("VTI", 0.3).build());
+    assert_eq!(found[0].0, "options.benchmark_weights");
+    assert!(
+        found[0].1.starts_with("add up to 0.3, not one"),
+        "{found:?}"
+    );
+    let found = paths(portfolio.report().expected_return("Nope", 0.03).build());
+    assert_eq!(found[0].0, "options.expected_returns.Nope");
+    // Weights of what is held, adding up to one, give the tracking error in the risk report.
+    let report = portfolio
+        .report()
+        .benchmark_weight("VTI", 0.6)
+        .benchmark_weight("BND", 0.4)
+        .build()
+        .unwrap();
+    assert!(report.risk.holdings.unwrap().tracking_error.is_some());
+}

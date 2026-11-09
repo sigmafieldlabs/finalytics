@@ -449,6 +449,7 @@ impl<'a> Context<'a> {
             dates.push(as_of);
         }
         let base = books.base_currency();
+        held_options(books, options, as_of, base)?;
         let benchmark = options
             .benchmark
             .as_ref()
@@ -549,6 +550,75 @@ pub(crate) enum UnitValue {
 }
 
 /// Percentages in words, such as "55%".
+/// Checks the options that name holdings by what is held at the report's date, `as_of`, so that
+/// they are refused when the report is built rather than dropping a section: the tracking
+/// error's benchmark weights, adding up to one with the cash, and the expected returns.
+fn held_options(books: &Books, options: &ReportOptions, as_of: Date, base: Currency) -> Result<()> {
+    if options.benchmark_weights.is_empty() && options.expected_returns.is_empty() {
+        return Ok(());
+    }
+    let holdings = books.holdings_on(as_of);
+    let held = |key: &HoldingKey| match key {
+        HoldingKey::Instrument(id) => holdings
+            .positions()
+            .iter()
+            .any(|p| &p.instrument == id && !p.quantity.is_zero()),
+        HoldingKey::Cash(c) => {
+            *c == base
+                || holdings
+                    .cash()
+                    .any(|(_, cash, amount)| cash == *c && !amount.is_zero())
+        }
+    };
+    let known = |key: &HoldingKey| match key {
+        HoldingKey::Instrument(id) => books.instrument(id).is_some(),
+        HoldingKey::Cash(_) => true,
+    };
+    let mut report = ValidationReport::new();
+    let mut check = |key: &HoldingKey, value: f64, path: String| {
+        if !known(key) {
+            report.error(path, format!("unknown asset {key}"));
+            false
+        } else if !held(key) {
+            report.error(
+                path,
+                format!(
+                    "{} is not held on {as_of}, so its risk is not estimated",
+                    label(key)
+                ),
+            );
+            false
+        } else if !value.is_finite() {
+            report.error(path, format!("must be a finite number, not {value}"));
+            false
+        } else {
+            true
+        }
+    };
+    let mut fine = true;
+    for (key, w) in &options.benchmark_weights {
+        fine &= check(key, *w, format!("options.benchmark_weights.{key}"));
+    }
+    for (id, r) in &options.expected_returns {
+        check(
+            &HoldingKey::Instrument(id.clone()),
+            *r,
+            format!("options.expected_returns.{id}"),
+        );
+    }
+    let total: f64 = options.benchmark_weights.values().sum();
+    if fine && !options.benchmark_weights.is_empty() && (total - 1.0).abs() > 1e-6 {
+        report.error(
+            "options.benchmark_weights",
+            format!(
+                "add up to {total}, not one; give {}, the risk-free asset, any cash",
+                HoldingKey::Cash(base)
+            ),
+        );
+    }
+    report.into_result(())
+}
+
 fn share_words(w: f64) -> String {
     let text = format!("{:.2}", w * 100.0);
     format!("{}%", text.trim_end_matches('0').trim_end_matches('.'))

@@ -302,3 +302,22 @@ test("a comparison refuses and notes options in the words of one optimisation", 
   const comparison = bills.compare({ methods: ["maximum_sharpe", "minimum_variance", "target_return"], cash, max_weight: 0.5, target: 0.05 });
   assert.deepEqual(comparison.report.strategies[0].notes, ["The target and the limits on cash do not apply."]);
 });
+
+test("report options that name holdings are checked when the report is built", () => {
+  const issues = (options) => {
+    try {
+      portfolio.report(options);
+    } catch (e) {
+      return e.issues.map((i) => [i.path, i.message]);
+    }
+    assert.fail("accepted");
+  };
+  assert.deepEqual(issues({ benchmark_weights: { Nope: 1 } }), [["options.benchmark_weights.Nope", "unknown asset Nope"]]);
+  assert.ok(issues({ benchmark_weights: { BENCH: 1 } })[0][1].startsWith("BENCH is not held on "));
+  const total = issues({ benchmark_weights: { VTI: 0.3 } });
+  assert.equal(total[0][0], "options.benchmark_weights");
+  assert.ok(total[0][1].startsWith("add up to 0.3, not one"));
+  assert.equal(issues({ expected_returns: { Nope: 0.03 } })[0][0], "options.expected_returns.Nope");
+  assert.throws(() => portfolio.overviewReport({ benchmark_weights: { Nope: 1 } }));
+  assert.ok(portfolio.report({ benchmark_weights: { VTI: 0.6, BND: 0.4 } }).risk.holdings.tracking_error);
+});

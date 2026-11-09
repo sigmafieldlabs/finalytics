@@ -45,6 +45,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   another currency counts in the tracking error, with its risk; and a backtest holds such cash
   as the asset it is, moving with its exchange rate.
 
+- A report's `benchmark_weights` (for the tracking error) that named a holding not held, or did
+  not add up to one, and `expected_returns` for a holding not held, were accepted: the first was
+  caught inside the risk estimate and turned into a warning that dropped the holdings' risk from
+  the overview and the risk report, and the others changed nothing. They are now refused when the
+  report is built, with the other options, at `options.benchmark_weights` and
+  `options.expected_returns`.
 
 - The backtest and comparison reports echoed fixed weights, and a benchmark's weights, without
   their cash and with every asset they left out at zero: `{"US Equity": 0.55, "Bonds": 0.35,
