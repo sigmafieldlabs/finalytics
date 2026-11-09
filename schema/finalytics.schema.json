@@ -713,7 +713,7 @@
           "items": {
             "$ref": "#/$defs/BenchmarkPeriod"
           },
-          "description": "The benchmark's segments in each period, such as each month. Without them, they are\nderived from a blended benchmark: one period for each calendar month of the report, each\nsegment's weight the sum of its holdings' weights and its return their weighted return\nover the month, by the classification `scheme` of the portfolio's instruments.",
+          "description": "The benchmark's segments in each period, such as each month. Without them, they are\nderived from a blended benchmark: one period for each calendar month of the report, each\nsegment's weight the sum of its holdings' weights and its return their weighted return\nover the month, by the classification `scheme` of the portfolio's instruments. A period\nthat reaches past the report's start or date is clipped to it, with a warning, and the\nbenchmark's figures are used as given; one wholly outside the report is left out.",
           "default": []
         },
         "linking": {

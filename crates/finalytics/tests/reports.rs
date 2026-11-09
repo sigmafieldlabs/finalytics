@@ -493,6 +493,52 @@ fn attribution_from_the_books() {
     assert!(r.time_weighted.is_some());
     every_table_is_rectangular(&r.tables());
 
+    // Periods that reach past the report are clipped to it, with a warning; one wholly outside
+    // it is left out, and with none inside it the report is refused.
+    let given = options.attribution.clone();
+    options.start = Some(d("2026-09-15"));
+    options.as_of = Some(d("2026-10-15"));
+    let r = attribution_report(&books, &market, &source, &options).unwrap();
+    let first = r.provenance.start;
+    assert_eq!(r.periods.len(), 2);
+    assert_eq!(r.periods[0].start, first);
+    assert_eq!(r.periods[1].end, d("2026-10-15"));
+    let paths: Vec<&str> = r
+        .provenance
+        .warnings
+        .issues()
+        .iter()
+        .filter(|i| i.message.contains("past the report"))
+        .map(|i| i.path.as_str())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "options.attribution.periods[0]",
+            "options.attribution.periods[1]"
+        ]
+    );
+    options.start = Some(d("2026-10-01"));
+    options.as_of = None;
+    let r = attribution_report(&books, &market, &source, &options).unwrap();
+    assert_eq!(r.periods.len(), 1);
+    assert!(
+        r.provenance
+            .warnings
+            .issues()
+            .iter()
+            .any(|i| i.path == "options.attribution.periods[0]" && i.message.contains("left out"))
+    );
+    if let Some(inputs) = options.attribution.as_mut() {
+        inputs.periods.truncate(1);
+    }
+    let Err(err) = attribution_report(&books, &market, &source, &options) else {
+        panic!("no period falls within the report");
+    };
+    assert!(err.to_string().contains("no period falls within"), "{err}");
+    options.start = None;
+    options.attribution = given;
+
     options.attribution = None;
     assert!(attribution_report(&books, &market, &source, &options).is_err());
 }

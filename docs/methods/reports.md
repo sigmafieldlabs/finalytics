@@ -164,7 +164,11 @@ benchmark's return, so it has no selection effect; a segment the benchmark does 
 as cash, takes the portfolio's own return, so it has only an allocation effect. The attribution's
 portfolio return in each period is $\sum_i w_i r_i$, which leaves out trading within the
 period; the report gives the time-weighted return over the same span beside it, and shorter
-periods, such as months, bring the two closer.
+periods, such as months, bring the two closer. Segments given by period may reach past the
+report: a period that starts before the report's start or ends after its date is attributed
+over the part within the report, with the benchmark's figures as given, and a warning says so; a
+period wholly outside the report is left out with a warning, and a report with none inside is
+refused.
 
 **Scenarios.** Every scenario runs on the holdings on the report's date with the holdings'
 covariance as its risk model, and may stress it. A scenario that cannot be run is reported with

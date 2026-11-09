@@ -531,7 +531,9 @@ class AttributionInputs:
     """The benchmark's segments in each period, such as each month. Without them, they are derived
     from a blended benchmark: one period for each calendar month of the report, each segment's
     weight the sum of its holdings' weights and its return their weighted return over the month,
-    by the classification `scheme` of the portfolio's instruments.
+    by the classification `scheme` of the portfolio's instruments. A period that reaches past the
+    report's start or date is clipped to it, with a warning, and the benchmark's figures are used
+    as given; one wholly outside the report is left out.
     """
 
     linking: Linking = "carino"

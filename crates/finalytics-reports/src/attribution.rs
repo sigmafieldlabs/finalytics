@@ -50,7 +50,9 @@ pub struct AttributionInputs {
     /// The benchmark's segments in each period, such as each month. Without them, they are
     /// derived from a blended benchmark: one period for each calendar month of the report, each
     /// segment's weight the sum of its holdings' weights and its return their weighted return
-    /// over the month, by the classification `scheme` of the portfolio's instruments.
+    /// over the month, by the classification `scheme` of the portfolio's instruments. A period
+    /// that reaches past the report's start or date is clipped to it, with a warning, and the
+    /// benchmark's figures are used as given; one wholly outside the report is left out.
     #[serde(default)]
     pub periods: Vec<BenchmarkPeriod>,
     /// How the periods are linked: Cariño's method by default.
@@ -118,26 +120,59 @@ pub fn attribution_report(
     } else {
         inputs
     };
-    let mut report = ValidationReport::new();
+    // Periods that reach past the report are clipped to it, and the report says so; the
+    // benchmark's figures are used as given. Periods wholly outside it are left out.
     let first = cx.dates[0];
+    let mut clipped: Vec<(String, String)> = Vec::new();
+    let mut kept: Vec<BenchmarkPeriod> = Vec::with_capacity(inputs.periods.len());
     for (k, p) in inputs.periods.iter().enumerate() {
+        let path = format!("options.attribution.periods[{k}]");
+        if p.end <= first || p.start >= cx.as_of {
+            clipped.push((
+                path,
+                format!(
+                    "{} to {} is outside the report, {first} to {}, and is left out",
+                    p.start, p.end, cx.as_of
+                ),
+            ));
+            continue;
+        }
+        let mut period = p.clone();
         if p.start < first {
-            report.error(
-                format!("options.attribution.periods[{k}].start"),
-                format!("{} is before the first valuation, {first}", p.start),
-            );
+            period.start = first;
         }
         if p.end > cx.as_of {
-            report.error(
-                format!("options.attribution.periods[{k}].end"),
-                format!("{} is after the report's date, {}", p.end, cx.as_of),
-            );
+            period.end = cx.as_of;
         }
+        if period.start != p.start || period.end != p.end {
+            clipped.push((
+                path,
+                format!(
+                    "{} to {} reaches past the report, {first} to {}: attributed from {} to {}, \
+                     with the benchmark's figures as given",
+                    p.start, p.end, cx.as_of, period.start, period.end
+                ),
+            ));
+        }
+        kept.push(period);
     }
-    report.into_result(())?;
+    if kept.is_empty() {
+        return Err(invalid(
+            "options.attribution.periods",
+            format!("no period falls within the report, {first} to {}", cx.as_of),
+        ));
+    }
+    let inputs = &AttributionInputs {
+        scheme: inputs.scheme.clone(),
+        periods: kept,
+        linking: inputs.linking,
+    };
     let mut report = ValidationReport::new();
     let holdings = books.holding_series(&cx.dates, market)?;
     let mut warnings = holdings.warnings.clone();
+    for (path, message) in clipped {
+        warnings.warning(path, message);
+    }
     let index = |date: Date| cx.dates.partition_point(|&d| d <= date).saturating_sub(1);
     let segment_of: Vec<String> = holdings
         .lines
