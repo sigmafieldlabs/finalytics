@@ -76,6 +76,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and `evaluate`. Different inputs gave the same digest, such as minimum variance and risk
   parity, or a target return of 6% and of 7%. Every such digest changes.
 
+- `Assets.frontier` refuses what it does not use, in the words of the rule every verb follows
+  (`options.target: the frontier does not use target`): a method (in JavaScript), a method's
+  parameters, resampling, and the risk-free rate unless it is the return of `Cash` on a frontier
+  that holds cash. It accepted them and did nothing. Python's `frontier` takes `risk_free_rate`
+  for that case. In TypeScript, `frontier` takes `FrontierOptions`, the limits and the options
+  they use, rather than `Partial<OptimiseOptions>`, and the options of `compare` and `backtest`
+  (`OptimiseLimits`) no longer include `current_weights`, which backtests refuse.
 
 
 ## [1.0.0-rc.5] - 2026-11-09

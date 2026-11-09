@@ -570,12 +570,16 @@ class Assets:
         benchmark_weights: Mapping[str, float] | None = None,
         max_tracking_error: float | None = None,
         cash: BoundLike | None = None,
+        risk_free_rate: float | None = None,
     ) -> list[_types.FrontierPortfolio]:
         """The efficient frontier: `points` portfolios of the risky assets, from the one with
         the least variance to the one with the largest expected return, under the limits given
-        as for :meth:`optimise`, trade and tracking-error limits and cash included."""
+        as for :meth:`optimise`, trade and tracking-error limits and cash included. It takes no
+        method and none of the methods' parameters; `risk_free_rate` is the return of
+        ``"Cash"``, for assets without a risk-free asset whose frontier holds cash."""
         options = self._options(
-            "maximum_sharpe",
+            "minimum_variance",
+            risk_free_rate=risk_free_rate,
             bounds=bounds,
             max_weight=max_weight,
             asset_bounds=asset_bounds,

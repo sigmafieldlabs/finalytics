@@ -805,3 +805,74 @@ fn different_inputs_give_different_digests() {
         backtest(assets.backtest(Method::MinimumVariance))
     );
 }
+
+#[test]
+fn the_frontier_refuses_what_it_does_not_use() {
+    let assets = with_bills();
+    let refused = |result: Result<Vec<finalytics::FrontierPortfolio>, finalytics::Error>| {
+        let Err(finalytics::Error::Validation(report)) = result else {
+            panic!("accepted: {result:?}");
+        };
+        report
+            .issues()
+            .iter()
+            .map(|i| (i.path.clone(), i.message.clone()))
+            .collect::<Vec<_>>()
+    };
+    let found = refused(
+        assets
+            .optimise(Method::TargetReturn)
+            .target(0.1)
+            .risk_aversion(3.0)
+            .resample(50)
+            .frontier(5),
+    );
+    assert_eq!(
+        found,
+        [
+            (
+                "options.target".to_owned(),
+                "the frontier does not use target".to_owned()
+            ),
+            (
+                "options.risk_aversion".to_owned(),
+                "the frontier does not use risk_aversion".to_owned()
+            ),
+            (
+                "options.resample".to_owned(),
+                "the frontier does not use resample".to_owned()
+            ),
+        ]
+    );
+    // The risk-free rate is the return of Cash, where cash limits hold it.
+    let found = refused(
+        assets
+            .optimise(Method::MinimumVariance)
+            .risk_free_rate(0.03)
+            .frontier(5),
+    );
+    assert_eq!(found[0].0, "options.risk_free_rate");
+    let rate = at_a_rate();
+    let points = rate
+        .optimise(Method::MinimumVariance)
+        .risk_free_rate(0.03)
+        .cash(0.0, 1.0)
+        .frontier(5)
+        .unwrap();
+    assert!(
+        (points[0].expected_return - 0.03).abs() < 1e-4,
+        "{:?}",
+        points[0]
+    );
+    // The method is not used, nor needed: target return draws the frontier without a target.
+    let points = assets
+        .optimise(Method::TargetReturn)
+        .max_weight(0.5)
+        .current_weights(holding(&assets, "T-Bills"))
+        .max_turnover(0.5)
+        .benchmark_weights(holding(&assets, "T-Bills"))
+        .expected_return("Gold", 0.05)
+        .frontier(5)
+        .unwrap();
+    assert_eq!(points.len(), 5);
+}

@@ -282,3 +282,20 @@ def test_different_inputs_give_different_digests(bills):
         assert d(a) != d(b), k
     assert d(bills.backtest(method="minimum_variance")) == d(bills.backtest(method="minimum_variance"))
 
+
+def test_the_frontier_refuses_what_it_does_not_use(bills, rate):
+    with pytest.raises(TypeError):
+        bills.frontier(points=5, target=0.1)
+    with pytest.raises(fl.ValidationError) as found:
+        bills.frontier(points=5, risk_free_rate=0.03)
+    assert [(i.path, i.message) for i in found.value.issues] == [
+        ("options.risk_free_rate", "the frontier does not use risk_free_rate")
+    ]
+    points = rate.frontier(points=5, risk_free_rate=0.03, cash=(0, 1))
+    assert points[0].expected_return == pytest.approx(0.03, abs=1e-4)
+    current = _holding(bills, "T-Bills")
+    points = bills.frontier(
+        points=5, max_weight=0.5, current_weights=current, max_turnover=0.5, benchmark_weights=current
+    )
+    assert len(points) == 5
+

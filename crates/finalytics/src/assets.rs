@@ -770,6 +770,18 @@ impl Assets {
             .collect()
     }
 
+    /// Whether the frontier uses the option `name` of `options`: the limits on weights and
+    /// trades, the expected returns, the current and benchmark weights, and the risk-free rate
+    /// where `Cash` earns it.
+    pub(crate) fn frontier_uses(&self, options: &OptimiseOptions, name: &str) -> bool {
+        crate::methods::is_limit(name)
+            || matches!(
+                name,
+                "expected_returns" | "current_weights" | "benchmark_weights"
+            )
+            || (name == "risk_free_rate" && self.cash_at_rate() && options.cash.is_some())
+    }
+
     /// The weight of the cash held now that optimisation invests: every cash in
     /// `current_weights` but the cash `options` let it choose.
     fn invested_cash(&self, options: &OptimiseOptions) -> f64 {
@@ -1332,14 +1344,34 @@ impl Assets {
     }
 
     /// The efficient frontier: `points` portfolios from the one with the least variance to the
-    /// one with the largest expected return, under the limits of `options` (its method is not
-    /// used), each with its weights by asset.
+    /// one with the largest expected return, under the limits of `options`, each with its
+    /// weights by asset. The frontier takes the limits, the expected returns, and the current
+    /// and benchmark weights the limits start from; its method is not used, and it refuses a
+    /// method's parameters, which it does not use either.
     pub fn frontier(
         &self,
         points: usize,
         options: &OptimiseOptions,
     ) -> Result<Vec<FrontierPortfolio>> {
-        let (problem, labels) = self.problem(options)?;
+        let mut report = ValidationReport::new();
+        for name in crate::methods::given(options) {
+            if !self.frontier_uses(options, name) {
+                report.error(
+                    format!("options.{name}"),
+                    format!("the frontier does not use {name}"),
+                );
+            }
+        }
+        if options.frontier {
+            report.error("options.frontier", "the frontier does not use frontier");
+        }
+        // Each point is the least variance for its expected return, whatever the method.
+        let mut options = options.clone();
+        options.method = Method::MinimumVariance;
+        report.merge("", self.check_options(&options, false));
+        report.into_result(())?;
+        let options = &options;
+        let (problem, labels) = self.problem_unchecked(options)?;
         let current = (!options.current_weights.is_empty()).then(|| {
             labels
                 .iter()

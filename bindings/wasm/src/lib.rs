@@ -223,8 +223,36 @@ export interface Result<R, D> {
   toString(): string;
 }
 
-/** The limits on the weights and the methods' parameters, as for `Assets.optimise`. */
-export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method" | "frontier">;
+/**
+ * The limits on the weights and the methods' parameters, as for `Assets.optimise`; a backtest
+ * trades from the weights it holds, so it takes no current weights.
+ */
+export type OptimiseLimits = Omit<Partial<OptimiseOptions>, "method" | "frontier" | "current_weights">;
+
+/**
+ * The options of `Assets.frontier`: the limits it is drawn under, as for `Assets.optimise`, the
+ * expected returns, and the current and benchmark weights the limits start from. The risk-free
+ * rate is the return of `Cash`, where cash limits hold it.
+ */
+export type FrontierOptions = Partial<
+  Pick<
+    OptimiseOptions,
+    | "bounds"
+    | "max_weight"
+    | "asset_bounds"
+    | "groups"
+    | "min_effective_assets"
+    | "cash"
+    | "expected_returns"
+    | "risk_free_rate"
+    | "current_weights"
+    | "max_turnover"
+    | "min_trade"
+    | "max_trades"
+    | "benchmark_weights"
+    | "max_tracking_error"
+  >
+>;
 
 /** The options of `Assets.optimise`: those of `OptimiseOptions`, with the report's title. */
 export interface OptimiseChoices extends Partial<OptimiseOptions> {
@@ -2026,16 +2054,23 @@ impl Assets {
     }
 
     /// The efficient frontier: `points` portfolios (20 by default) of the risky assets, under
-    /// the limits of `options`.
+    /// the limits of `options`. It refuses a method and the methods' parameters, which it does
+    /// not use.
     #[wasm_bindgen(unchecked_return_type = "FrontierPortfolio[]")]
     pub fn frontier(
         &self,
         points: Option<usize>,
-        #[wasm_bindgen(unchecked_optional_param_type = "Partial<OptimiseOptions>")]
-        options: JsValue,
+        #[wasm_bindgen(unchecked_optional_param_type = "FrontierOptions")] options: JsValue,
     ) -> Result<JsValue, JsValue> {
-        // The same options as `optimise`, each checked by name.
-        let options = object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
+        // The options of `optimise`, each checked by name; the engine refuses those the
+        // frontier does not use.
+        let mut options = object(options, &fields::<finalytics::OptimiseOptions>(&[]))?;
+        if options.remove("method").is_some() {
+            return Err(invalid(
+                "options.method",
+                "the frontier does not use method",
+            ));
+        }
         let options: finalytics::OptimiseOptions = finalytics::formats::from_json(
             &serde_json::Value::Object(options).to_string(),
             "options",

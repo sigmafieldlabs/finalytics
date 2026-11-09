@@ -87,6 +87,8 @@ export async function example(worker: Worker): Promise<void> {
   const rebalanced = books.rebalance(result);
   // @ts-expect-error: an unknown method is rejected.
   assets.optimise({ method: "maximum_profit" });
+  // @ts-expect-error: the frontier takes limits, not a method.
+  assets.frontier(5, { method: "maximum_sharpe" });
   const compared = assets.compare({
     methods: ["equal_weight", "risk_parity"],
     max_weight: 0.4,

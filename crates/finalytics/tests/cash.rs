@@ -106,10 +106,9 @@ fn limits_on_cash_let_optimisation_hold_the_risk_free_asset() {
     // Without the limits, the risky assets hold everything, as before.
     let invested = assets.optimise(Method::MinimumVariance).build().unwrap();
     assert!(!invested.results.weights.unwrap().contains_key("T-Bills"));
-    // The frontier then starts from all cash, riskless.
+    // The frontier then starts from all cash, riskless. It takes the limits alone.
     let frontier = assets
         .optimise(Method::MeanVariance)
-        .risk_aversion(3.0)
         .cash(0.0, 1.0)
         .frontier(10)
         .unwrap();

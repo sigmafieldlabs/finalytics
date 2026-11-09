@@ -268,3 +268,15 @@ test("different inputs give different digests", () => {
   pairs.forEach(([a, b], k) => assert.notEqual(d(a), d(b), `pair ${k}`));
   assert.equal(d(bills.backtest({ method: "minimum_variance" })), d(bills.backtest({ method: "minimum_variance" })));
 });
+
+test("the frontier refuses what it does not use", () => {
+  for (const [option, value] of [["target", 0.1], ["risk_aversion", 3], ["resample", 50], ["confidence", 0.9], ["method", "equal_weight"]]) {
+    assert.throws(() => bills.frontier(5, { [option]: value }), (e) =>
+      e.issues.some((i) => i.path === `options.${option}` && i.message === `the frontier does not use ${option}`), option);
+  }
+  assert.throws(() => bills.frontier(5, { risk_free_rate: 0.03 }), (e) => e.issues[0].path === "options.risk_free_rate");
+  const points = rate.frontier(5, { risk_free_rate: 0.03, cash: { min: 0, max: 1 } });
+  assert.ok(Math.abs(points[0].expected_return - 0.03) < 1e-4);
+  const current = holding(bills, "T-Bills");
+  assert.equal(bills.frontier(5, { max_weight: 0.5, current_weights: current, max_turnover: 0.5, benchmark_weights: current }).length, 5);
+});

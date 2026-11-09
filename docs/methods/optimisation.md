@@ -264,6 +264,11 @@ for the assets' own estimates; see [robust and resampled optimisation](robust-op
 `frontier(points)` solves `target_return` for targets evenly spaced from the minimum-variance
 portfolio's expected return to the largest attainable under the constraints (found by
 maximising the expected return), and returns each portfolio's expected return, volatility and weights.
+`Assets.frontier` takes the limits of an optimisation (on weights, cash, trades and tracking
+error), the expected returns, and the current and benchmark weights the limits start from; each
+point is the least variance for its return, so it takes no method and refuses a method's
+parameters, as `options.target: the frontier does not use target`. The risk-free rate is the
+return of `Cash` where cash limits hold it, and is refused otherwise.
 
 ## What each method takes
 
