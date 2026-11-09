@@ -405,3 +405,11 @@ test("keeping cash is checked with the other options", () => {
     assert.equal(names.includes("keep_cash"), names.includes("max_turnover"), info.label);
   }
 });
+
+test("keeping no cash is the same input as keeping none", () => {
+  // false and an empty array keep nothing, so the digest is that of the options without
+  // keep_cash, as Python gives them.
+  const digest = (keep) => household.optimise({ method: "minimum_variance", ...keep }).report.context.digest;
+  assert.equal(digest({ keep_cash: false }), digest({}));
+  assert.equal(digest({ keep_cash: [] }), digest({}));
+});

@@ -306,6 +306,17 @@ impl KeepCash {
     }
 }
 
+/// Writes `keep` as `null` when it keeps no cash, as `false` and an empty list do, so that
+/// options that mean the same are written, and digested, the same in every language.
+fn keep_cash_written<S: serde::Serializer>(
+    keep: &Option<KeepCash>,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    keep.as_ref()
+        .filter(|k| k.keeps_any())
+        .serialize(serializer)
+}
+
 /// The method, its parameters and the limits on the weights. Everything is optional: by default
 /// the portfolio with the largest Sharpe ratio, fully invested and long only.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -376,6 +387,7 @@ pub struct OptimiseOptions {
     /// such as `EUR cash`; `true` also keeps a risk-free asset that is not, such as T-bills, and
     /// `Cash` at the risk-free rate. It needs `current_weights`, and the cash it keeps takes no
     /// `cash` limits.
+    #[serde(serialize_with = "keep_cash_written")]
     pub keep_cash: Option<KeepCash>,
     /// The smallest and largest weight of cash, such as 0 and 0.2: with it, optimisation may
     /// hold cash beside the risky assets, riskless, and the frontier includes it. The cash is

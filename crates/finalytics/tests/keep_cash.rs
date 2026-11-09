@@ -3,7 +3,7 @@
 
 #![allow(clippy::unwrap_used)]
 
-use finalytics::{Error, HoldingKey, Method, datasets};
+use finalytics::{Error, HoldingKey, KeepCash, Method, OptimiseOptions, datasets};
 
 fn cash(currency: &str) -> HoldingKey {
     format!("{currency} cash").parse().unwrap()
@@ -379,4 +379,45 @@ fn a_walk_forward_keeps_the_cash_held_at_each_refit() {
         panic!("accepted in sample");
     };
     assert_eq!(found.issues()[0].path, "options.keep_cash");
+}
+
+#[test]
+fn keeping_no_cash_is_the_same_input_as_keeping_none() {
+    // `false` and an empty list keep nothing, as leaving keep_cash out does, so the options are
+    // written and digested as if it were left out: Python gives false when it is not given.
+    let portfolio = datasets::portfolio();
+    let assets = portfolio.assets().unwrap();
+    let options = |keep: Option<KeepCash>| {
+        let mut options = OptimiseOptions::default();
+        options.method = Method::MinimumVariance;
+        options.keep_cash = keep;
+        options
+    };
+    let digest = |keep: Option<KeepCash>| {
+        let options = options(keep);
+        let written = serde_json::to_string(&options).unwrap();
+        let digest = assets
+            .optimise_with(&options)
+            .unwrap()
+            .report
+            .context
+            .digest;
+        (written, digest)
+    };
+    let none = digest(None);
+    assert!(none.0.contains(r#""keep_cash":null"#), "{}", none.0);
+    assert_eq!(digest(Some(KeepCash::All(false))), none);
+    assert_eq!(digest(Some(KeepCash::Currencies(Vec::new()))), none);
+    let all = serde_json::to_string(&options(Some(KeepCash::All(true)))).unwrap();
+    assert!(all.contains(r#""keep_cash":true"#), "{all}");
+    let backtest =
+        |b: finalytics::backtest::BacktestBuilder<'_>| b.build().unwrap().report.context.digest;
+    assert_eq!(
+        backtest(
+            assets
+                .backtest(Method::MinimumVariance)
+                .keep_cash(Vec::<String>::new())
+        ),
+        backtest(assets.backtest(Method::MinimumVariance)),
+    );
 }

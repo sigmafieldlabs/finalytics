@@ -807,6 +807,27 @@ fn different_inputs_give_different_digests() {
 }
 
 #[test]
+fn the_same_inputs_give_the_same_digest_whatever_was_left_unused() {
+    // Valuing given weights uses no method, so the method given, Python's minimum variance or
+    // the default JavaScript and Rust leave, does not change the digest.
+    let assets = with_bills();
+    let weights: std::collections::BTreeMap<String, f64> =
+        [("US Equity".to_owned(), 0.6), ("Bonds".to_owned(), 0.4)].into();
+    let digest = |method: Method| {
+        let mut options = finalytics::OptimiseOptions::default();
+        options.method = method;
+        options.max_weight = Some(0.7);
+        options.frontier = true;
+        let valued = assets.evaluate_with(&weights, &options).unwrap();
+        valued.report.context.digest
+    };
+    assert_eq!(
+        digest(Method::MaximumSharpe),
+        digest(Method::MinimumVariance)
+    );
+}
+
+#[test]
 fn the_frontier_refuses_what_it_does_not_use() {
     let assets = with_bills();
     let refused = |result: Result<Vec<finalytics::FrontierPortfolio>, finalytics::Error>| {

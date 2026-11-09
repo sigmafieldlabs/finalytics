@@ -287,7 +287,9 @@ impl Assets {
                 resampling: None,
                 current_weights: None,
                 benchmark_weights: None,
-                options: serde_json::to_string(&(weights, options)).unwrap_or_default(),
+                // The options as the frontier reads them, since the method given is not used:
+                // the same weights and options give the same digest whatever method is given.
+                options: serde_json::to_string(&(weights, &frontier)).unwrap_or_default(),
             })?;
         Ok(GivenWeights { report, results })
     }

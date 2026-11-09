@@ -423,3 +423,12 @@ def test_keeping_cash_is_checked_with_the_other_options(portfolio, household):
     for info in fl.methods():
         names = [p.name for p in info.limits]
         assert ("keep_cash" in names) == ("max_turnover" in names), info.label
+
+
+def test_keeping_no_cash_is_the_same_input_as_keeping_none(household):
+    # keep_cash=False, the default, and an empty list keep nothing, so the digest is that of the
+    # same options in JavaScript and Rust, where keep_cash is left out.
+    def digest(**keep):
+        return household.optimise(method="minimum_variance", **keep).report.context.digest
+
+    assert digest() == digest(keep_cash=[]) == digest(keep_cash=False)
