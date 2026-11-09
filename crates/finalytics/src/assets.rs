@@ -1039,10 +1039,13 @@ impl Assets {
             Some((report.strategy.tested, report.benchmark?.tested))
         });
         // For minimum CVaR, the share of risk is of the expected shortfall the method minimised,
-        // on the same returns.
+        // on the same returns: the problem's scenarios, one column per label, cash included.
         let shortfall = match (&results.weights, options.method) {
             (Some(weights), Method::MinimumCvar) => {
-                let returns = self.risky_returns()?;
+                let returns = match &problem.scenarios {
+                    Some(scenarios) => scenarios.clone(),
+                    None => self.risky_returns()?,
+                };
                 let w: Vec<f64> = labels
                     .iter()
                     .map(|l| weights.get(l).copied().unwrap_or(0.0))

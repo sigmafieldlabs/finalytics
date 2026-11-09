@@ -182,8 +182,11 @@ only once, in sample or on a holdout.
 are zero). The cash is the risk-free asset, earning its own mean return, or, for assets without
 one, an asset named `Cash` earning the risk-free rate. The frontier then includes the cash, from
 the least risky mix the limits allow. The Sharpe and diversification ratios are the same with any
-cash at the risk-free rate, so those methods take no limits on it. In a backtest, the cash is
-held between refits as the weights leave it, earning the risk-free return.
+cash at the risk-free rate, so those methods take no limits on it. The methods measured on the
+periods' returns hold the cash with its return in each period: the risk-free asset's own, or the
+risk-free rate; for minimum CVaR, the report's shares of risk are of the expected shortfall of
+every weight, the cash's included. In a backtest, the cash is held between refits as the weights
+leave it, earning the risk-free return.
 
 `Portfolio.assets()` includes the portfolio's cash: base-currency cash, such as `USD cash`, as
 the risk-free asset, riskless and earning nothing, and cash in other currencies, such as `EUR

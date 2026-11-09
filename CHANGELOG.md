@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Minimum CVaR with limits on cash, such as `cash=(0, 0.2)`, failed in its report ("weights: 6
+  weights for 5 assets") on every kind of assets, though `methods()` lists the limit for it. The
+  report now splits the expected shortfall over every weight, the cash's included, on the
+  returns the method minimised.
+
 ## [1.0.0-rc.5] - 2026-11-09
 
 ### Added
