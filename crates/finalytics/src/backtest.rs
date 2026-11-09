@@ -668,7 +668,9 @@ fn applicable(options: &OptimiseOptions) -> (OptimiseOptions, Vec<String>) {
     let mut unused = Vec::new();
     for name in given.iter().filter(|name| !info.takes(name)) {
         crate::methods::without(&mut method, name);
-        if crate::methods::is_limit(name) {
+        // A method that takes no limits at all is said to; one that takes others names those
+        // it does not.
+        if crate::methods::is_limit(name) && !options.method.takes_limits() {
             limited = true;
         } else {
             unused.push(crate::methods::in_words(name));
@@ -758,14 +760,25 @@ fn unused_options(strategies: &[Strategy], report: &mut ValidationReport) {
         }
         let who: Vec<String> = given.iter().map(|(n, _)| lower_first(n)).collect();
         let one = who.len() == 1;
-        let message = if crate::methods::is_limit(name) {
-            format!(
-                "{} {} fully invested and long only, and {} no limits on weights",
-                crate::methods::listed(&who),
-                if one { "is" } else { "are" },
-                if one { "takes" } else { "take" },
-            )
-        } else if one && given[0].1.method == Method::RiskParity && name == "budgets" {
+        if crate::methods::is_limit(name) {
+            // In the words of one optimisation, the methods grouped by why they do not take it.
+            for kind in 0..3 {
+                let group: Vec<(String, Method)> = given
+                    .iter()
+                    .zip(&who)
+                    .filter(|((_, o), _)| crate::methods::refusal_kind(o.method, name) == kind)
+                    .map(|((_, o), n)| (n.clone(), o.method))
+                    .collect();
+                if !group.is_empty() {
+                    report.error(
+                        format!("options.{name}"),
+                        crate::methods::refused_limit(&group, name),
+                    );
+                }
+            }
+            continue;
+        }
+        let message = if one && given[0].1.method == Method::RiskParity && name == "budgets" {
             "risk parity gives every asset the same budget; use risk budgeting for others"
                 .to_owned()
         } else {

@@ -516,11 +516,59 @@ pub(crate) fn is_limit(name: &str) -> bool {
     )
 }
 
+/// Why the methods of `named`, each a name in a sentence and its method, do not take the limit
+/// `limit`, in the words every verb refuses it with: "maximum Sharpe does not take cash: …".
+/// The methods share one reason; a comparison groups them by it.
+pub(crate) fn refused_limit(named: &[(String, Method)], limit: &str) -> String {
+    let names: Vec<String> = named.iter().map(|(n, _)| n.clone()).collect();
+    let who = listed(&names);
+    let one = named.len() == 1;
+    let takes_limits = named.first().is_some_and(|(_, m)| m.takes_limits());
+    if !takes_limits {
+        format!(
+            "{who} {} fully invested and long only, and {} no limits on weights",
+            if one { "is" } else { "are" },
+            if one { "takes" } else { "take" },
+        )
+    } else if limit == "cash" {
+        format!(
+            "{who} {} not take cash: cash at the risk-free rate leaves {} as {}, so {} would be \
+             as good with any amount",
+            if one { "does" } else { "do" },
+            if one { "its ratio" } else { "their ratios" },
+            if one { "it is" } else { "they are" },
+            if one { "it" } else { "they" },
+        )
+    } else {
+        format!(
+            "{who} {} not take {limit}: {} on the periods' returns need not be unique, so \
+             trades cannot be left out one by one",
+            if one { "does" } else { "do" },
+            if one { "its optimum" } else { "their optima" },
+        )
+    }
+}
+
+/// The kind of reason a method does not take the limit `limit`, so that a comparison can group
+/// the methods that share one.
+pub(crate) fn refusal_kind(method: Method, limit: &str) -> u8 {
+    if !method.takes_limits() {
+        0
+    } else if limit == "cash" {
+        1
+    } else {
+        2
+    }
+}
+
 /// A parameter's name in a sentence: "the target", "resampling".
 pub(crate) fn in_words(name: &str) -> String {
     match name {
         "resample" => "resampling".to_owned(),
         "budgets" => "the risk budgets".to_owned(),
+        "cash" => "the limits on cash".to_owned(),
+        "min_trade" => "the smallest trade".to_owned(),
+        "max_trades" => "the largest number of trades".to_owned(),
         other => format!("the {}", other.replace('_', " ")),
     }
 }

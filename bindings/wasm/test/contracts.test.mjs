@@ -280,3 +280,25 @@ test("the frontier refuses what it does not use", () => {
   const current = holding(bills, "T-Bills");
   assert.equal(bills.frontier(5, { max_weight: 0.5, current_weights: current, max_turnover: 0.5, benchmark_weights: current }).length, 5);
 });
+
+test("a comparison refuses and notes options in the words of one optimisation", () => {
+  const messages = (run) => {
+    try {
+      run();
+    } catch (e) {
+      return e.issues.map((i) => [i.path, i.message]);
+    }
+    assert.fail("accepted");
+  };
+  const cash = { min: 0, max: 0.2 };
+  assert.deepEqual(
+    messages(() => bills.compare({ methods: ["maximum_sharpe"], cash })),
+    messages(() => bills.optimise({ method: "maximum_sharpe", cash })),
+  );
+  assert.deepEqual(messages(() => bills.compare({ methods: ["maximum_sharpe", "maximum_diversification"], cash })), [[
+    "options.cash",
+    "maximum Sharpe and maximum diversification do not take cash: cash at the risk-free rate leaves their ratios as they are, so they would be as good with any amount",
+  ]]);
+  const comparison = bills.compare({ methods: ["maximum_sharpe", "minimum_variance", "target_return"], cash, max_weight: 0.5, target: 0.05 });
+  assert.deepEqual(comparison.report.strategies[0].notes, ["The target and the limits on cash do not apply."]);
+});

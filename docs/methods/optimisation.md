@@ -286,8 +286,10 @@ One rule applies to an option a method does not use, in every verb. An optimisat
 backtest of one method, refuse it, naming the option and the method:
 `options.target: minimum variance does not use target`. A comparison gives its options to every
 method it compares, so it applies each option to the methods that take it and notes, for each
-other method, that the option does not apply; it refuses an option that none of its methods
-takes, naming them all. Fixed weights take no limits or parameters.
+other method, the options that do not apply to it (`The limits on cash do not apply.`); it
+refuses an option that none of its methods takes, naming them all, in the words an
+optimisation of each would use (`maximum Sharpe does not take cash: …`). Fixed weights take no
+limits or parameters.
 
 ```python
 >>> import finalytics as fl

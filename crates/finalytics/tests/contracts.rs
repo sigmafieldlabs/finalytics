@@ -876,3 +876,101 @@ fn the_frontier_refuses_what_it_does_not_use() {
         .unwrap();
     assert_eq!(points.len(), 5);
 }
+
+#[test]
+fn a_comparison_refuses_and_notes_options_in_the_words_of_one_optimisation() {
+    let assets = with_bills();
+    let issues = |r: Result<finalytics::Comparison, finalytics::Error>| -> Vec<(String, String)> {
+        let Err(finalytics::Error::Validation(report)) = r else {
+            panic!("accepted");
+        };
+        report
+            .issues()
+            .iter()
+            .map(|i| (i.path.clone(), i.message.clone()))
+            .collect()
+    };
+    let alone = assets
+        .optimise(Method::MaximumSharpe)
+        .cash(0.0, 0.2)
+        .build()
+        .unwrap_err()
+        .to_string();
+    let compared = issues(
+        assets
+            .compare([Method::MaximumSharpe])
+            .cash(0.0, 0.2)
+            .build(),
+    );
+    assert_eq!(compared.len(), 1);
+    assert!(alone.contains(&compared[0].1), "{alone}\n{compared:?}");
+    assert!(
+        compared[0]
+            .1
+            .starts_with("maximum Sharpe does not take cash: ")
+    );
+    let compared = issues(
+        assets
+            .compare([Method::MinimumCvar])
+            .max_trades(2)
+            .walk_forward(Years(5))
+            .build(),
+    );
+    assert_eq!(
+        compared[0].1,
+        "minimum CVaR does not take max_trades: its optimum on the periods' returns need not be \
+         unique, so trades cannot be left out one by one"
+    );
+    let compared = issues(
+        assets
+            .compare([Method::MaximumSharpe, Method::MaximumDiversification])
+            .cash(0.0, 0.2)
+            .build(),
+    );
+    assert_eq!(
+        compared,
+        [(
+            "options.cash".to_owned(),
+            "maximum Sharpe and maximum diversification do not take cash: cash at the risk-free \
+             rate leaves their ratios as they are, so they would be as good with any amount"
+                .to_owned()
+        )]
+    );
+    let compared = issues(
+        assets
+            .compare([Method::MaximumSharpe, Method::EqualWeight])
+            .cash(0.0, 0.2)
+            .build(),
+    );
+    assert_eq!(compared.len(), 2, "{compared:?}");
+    assert!(
+        compared[0]
+            .1
+            .starts_with("equal weight is fully invested and long only")
+    );
+    // A note names the options that do not apply to a method, and says no more.
+    let comparison = assets
+        .compare([
+            Method::MaximumSharpe,
+            Method::MinimumVariance,
+            Method::TargetReturn,
+        ])
+        .cash(0.0, 0.2)
+        .max_weight(0.5)
+        .target(0.05)
+        .build()
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        comparison.report.strategies[0].notes,
+        ["The target and the limits on cash do not apply."]
+    );
+    let comparison = assets
+        .compare([Method::EqualWeight, Method::MinimumVariance])
+        .max_weight(0.5)
+        .build()
+        .unwrap();
+    assert_eq!(
+        comparison.report.strategies[0].notes,
+        ["Fully invested and long only; the limits on weights do not apply."]
+    );
+}

@@ -1571,22 +1571,7 @@ impl Assets {
             {
                 report.error(
                     format!("options.{limit}"),
-                    if limit == "cash" {
-                        format!(
-                            "{name} does not take cash: cash at the risk-free rate leaves its \
-                             ratio as it is, so it would be as good with any amount"
-                        )
-                    } else if method.takes_limits() {
-                        format!(
-                            "{name} does not take {limit}: its optimum on the periods' returns \
-                             need not be unique, so trades cannot be left out one by one"
-                        )
-                    } else {
-                        format!(
-                            "{name} is fully invested and long only, and takes no limits on \
-                             weights"
-                        )
-                    },
+                    crate::methods::refused_limit(&[(name.clone(), method)], limit),
                 );
             }
         }

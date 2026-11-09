@@ -84,6 +84,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   they use, rather than `Partial<OptimiseOptions>`, and the options of `compare` and `backtest`
   (`OptimiseLimits`) no longer include `current_weights`, which backtests refuse.
 
+- A comparison refuses an option none of its methods takes in the words one optimisation uses,
+  grouping the methods by their reason, and its notes name the options that do not apply to a
+  method (`The limits on cash do not apply.`). It said that maximum Sharpe or minimum CVaR "is
+  fully invested and long only, and takes no limits on weights", and noted that the limits on
+  weights did not apply to a method when others had. A method that takes no limits, given
+  `cash`, is said to take none rather than to keep its ratio.
 
 ## [1.0.0-rc.5] - 2026-11-09
 

@@ -299,3 +299,26 @@ def test_the_frontier_refuses_what_it_does_not_use(bills, rate):
     )
     assert len(points) == 5
 
+
+def test_a_comparison_refuses_and_notes_options_in_the_words_of_one_optimisation(bills):
+    def messages(run):
+        with pytest.raises(fl.ValidationError) as found:
+            run()
+        return [(i.path, i.message) for i in found.value.issues]
+
+    alone = messages(lambda: bills.optimise(method="maximum_sharpe", cash=(0, 0.2)))
+    compared = messages(lambda: bills.compare(methods=["maximum_sharpe"], cash=(0, 0.2)))
+    assert compared == alone
+    both = messages(lambda: bills.compare(methods=["maximum_sharpe", "maximum_diversification"], cash=(0, 0.2)))
+    assert both == [
+        (
+            "options.cash",
+            "maximum Sharpe and maximum diversification do not take cash: cash at the risk-free rate "
+            "leaves their ratios as they are, so they would be as good with any amount",
+        )
+    ]
+    comparison = bills.compare(
+        methods=["maximum_sharpe", "minimum_variance", "target_return"], cash=(0, 0.2), max_weight=0.5, target=0.05
+    )
+    assert comparison.report.strategies[0].notes == ["The target and the limits on cash do not apply."]
+
