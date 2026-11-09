@@ -61,7 +61,7 @@ fn a_class_limit_is_the_group_of_the_assets_in_the_class() {
 #[test]
 fn a_portfolios_assets_carry_its_instruments_classes() {
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     assert_eq!(assets.classes()["asset_class"]["VTI"], "Equity");
     let result = assets
         .optimise(Method::MaximumSharpe)

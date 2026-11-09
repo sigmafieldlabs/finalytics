@@ -186,7 +186,8 @@ pub use planning::{Plan, PlanBuilder, PlanOptions, PlanResults};
 #[cfg(feature = "io")]
 pub use portfolio::PortfolioBuilder;
 pub use portfolio::{
-    Portfolio, PortfolioCsv, RebalanceBuilder, Rebalancing, ReportBuilder, Targets,
+    Portfolio, PortfolioAssetsBuilder, PortfolioCsv, RebalanceBuilder, Rebalancing, ReportBuilder,
+    Targets,
 };
 #[doc(hidden)]
 pub use portfolio::{RebalanceChoices, targets_from_json};

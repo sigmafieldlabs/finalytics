@@ -139,7 +139,7 @@ fn the_optimisation_report_explains_the_weights() {
     );
     // Rebalancing takes the whole result.
     let portfolio = datasets::portfolio();
-    let holdings = portfolio.assets().unwrap();
+    let holdings = portfolio.assets().build().unwrap();
     let target = holdings.optimise(Method::MinimumVariance).build().unwrap();
     assert!(portfolio.rebalance(&target).build().is_ok());
 }
@@ -187,6 +187,7 @@ fn an_optimisation_without_weights_is_not_a_target() {
     // No mix of the holdings returns 90% a year.
     let failed = portfolio
         .assets()
+        .build()
         .unwrap()
         .optimise(Method::TargetReturn)
         .target(0.9)
@@ -225,6 +226,7 @@ fn a_rebalance_has_a_report_and_raw_results() {
     let portfolio = datasets::portfolio();
     let target = portfolio
         .assets()
+        .build()
         .unwrap()
         .optimise(Method::MinimumVariance)
         .bounds(0.05, 0.4)

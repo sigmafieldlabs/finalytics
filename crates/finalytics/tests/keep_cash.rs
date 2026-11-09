@@ -14,6 +14,7 @@ fn the_cash_kept_stays_and_the_targets_share_the_rest() {
     let portfolio = datasets::portfolio();
     let target = portfolio
         .assets()
+        .build()
         .unwrap()
         .optimise(Method::MinimumVariance)
         .bounds(0.05, 0.4)
@@ -151,7 +152,7 @@ fn the_workstations_optimisation_is_traded_exactly_with_the_cash_kept() {
     // weights are reached to the precision of the arithmetic.
     const CENT: f64 = 1e-8;
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     let current = held(&portfolio);
     let optimise = |keep: bool, euro_fund_held: bool| {
         let mut o = assets
@@ -220,7 +221,7 @@ fn the_workstations_optimisation_is_traded_exactly_with_the_cash_kept() {
 #[test]
 fn kept_cash_holds_its_weight_and_the_limits_are_of_the_whole_portfolio() {
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     let current = held(&portfolio);
     let now: std::collections::BTreeMap<String, f64> = current.iter().cloned().collect();
     for method in [
@@ -276,7 +277,7 @@ fn kept_cash_holds_its_weight_and_the_limits_are_of_the_whole_portfolio() {
 #[test]
 fn keeping_cash_is_checked_with_the_other_options() {
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     let paths = |r: Result<finalytics::Optimisation, Error>| -> Vec<(String, String)> {
         let Err(Error::Validation(report)) = r else {
             panic!("accepted");
@@ -389,7 +390,7 @@ fn keeping_no_cash_is_the_same_input_as_keeping_none() {
     // `false` and an empty list keep nothing, as leaving keep_cash out does, so the options are
     // written and digested as if it were left out: Python gives false when it is not given.
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     let options = |keep: Option<KeepCash>| {
         let mut options = OptimiseOptions::default();
         options.method = Method::MinimumVariance;

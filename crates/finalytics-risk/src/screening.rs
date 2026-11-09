@@ -2239,7 +2239,10 @@ pub fn screen(
         rules: rule_results,
         sort: options.sort.clone(),
         limit: options.limit,
-        matches: order.iter().map(|i| securities.ids[indices[*i]].clone()).collect(),
+        matches: order
+            .iter()
+            .map(|i| securities.ids[indices[*i]].clone())
+            .collect(),
         coverage,
         securities: securities_rows,
         warnings,

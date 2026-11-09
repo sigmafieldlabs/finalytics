@@ -418,7 +418,7 @@ impl Portfolio {
     ///
     /// ```
     /// let portfolio = finalytics::datasets::portfolio();
-    /// let assets = portfolio.assets()?;
+    /// let assets = portfolio.assets().build()?;
     /// assert_eq!(assets.risk_free_asset(), Some("USD cash"));
     /// assert_eq!(assets.cash_assets(), ["USD cash", "EUR cash"]);
     /// // The portfolio's own weights, its cash included, are valued on the same estimates.
@@ -426,8 +426,8 @@ impl Portfolio {
     /// assert!(valued.results.volatility > 0.0);
     /// # Ok::<(), finalytics::Error>(())
     /// ```
-    pub fn assets(&self) -> Result<Assets> {
-        self.assets_on(self.date_or_last(None)?, &[])
+    pub fn assets(&self) -> PortfolioAssetsBuilder<'_> {
+        PortfolioAssetsBuilder { portfolio: self }
     }
 
     /// The holdings on `date`, with any of `also` not held then, as [`Assets`] on the
@@ -502,7 +502,7 @@ impl Portfolio {
     /// use finalytics::{Method, datasets};
     ///
     /// let portfolio = datasets::portfolio();
-    /// let target = portfolio.assets()?.optimise(Method::MinimumVariance).build()?;
+    /// let target = portfolio.assets().build()?.optimise(Method::MinimumVariance).build()?;
     /// let proposal = portfolio.rebalance(&target).whole_units().build()?;
     /// assert_eq!(proposal.results.accounts.len(), 2);
     /// # Ok::<(), finalytics::Error>(())
@@ -1527,5 +1527,21 @@ impl Portfolio {
     /// prices and exchange rates as needed.
     pub fn builder() -> PortfolioBuilder {
         PortfolioBuilder::default()
+    }
+}
+
+/// The holdings as [`Assets`], from [`Portfolio::assets`]; [`PortfolioAssetsBuilder::build`]
+/// makes them. A builder like every other verb with options, so that options can be added later.
+#[derive(Debug, Clone, Copy)]
+#[must_use = "the assets are made by `build`"]
+pub struct PortfolioAssetsBuilder<'a> {
+    portfolio: &'a Portfolio,
+}
+
+impl PortfolioAssetsBuilder<'_> {
+    /// The holdings at the last price date, as [`Portfolio::assets`] describes them.
+    pub fn build(self) -> Result<Assets> {
+        let portfolio = self.portfolio;
+        portfolio.assets_on(portfolio.date_or_last(None)?, &[])
     }
 }

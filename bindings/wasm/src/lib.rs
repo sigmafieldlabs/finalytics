@@ -1092,7 +1092,7 @@ impl Portfolio {
     /// report's estimates do.
     pub fn assets(&self) -> Result<Assets, JsValue> {
         Ok(Assets {
-            inner: self.inner.assets().map_err(error)?,
+            inner: self.inner.assets().build().map_err(error)?,
         })
     }
 

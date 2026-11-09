@@ -96,6 +96,7 @@ fn every_table_title_is_a_valid_excel_sheet_name() {
 
     let target = portfolio
         .assets()
+        .build()
         .unwrap()
         .optimise(Method::MinimumVariance)
         .bounds(0.05, 0.4)

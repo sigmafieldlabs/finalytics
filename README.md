@@ -189,7 +189,8 @@ holdings and rebalance the accounts together, with fees and tax rates:
 
 ```rust
 let target = portfolio
-    .assets()?
+    .assets()
+    .build()?
     .optimise(Method::MinimumVariance)
     .bounds(0.05, 0.40)
     .build()?;

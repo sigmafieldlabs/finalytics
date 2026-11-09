@@ -38,6 +38,7 @@ fn a_portfolios_own_weights_are_the_overviews_current_point() {
     let portfolio = datasets::portfolio();
     let valued = portfolio
         .assets()
+        .build()
         .unwrap()
         .evaluate(portfolio.weights().unwrap())
         .build()

@@ -99,7 +99,7 @@ impl Assets {
     /// use finalytics::datasets;
     ///
     /// let portfolio = datasets::portfolio();
-    /// let valued = portfolio.assets()?.evaluate(portfolio.weights()?).build()?;
+    /// let valued = portfolio.assets().build()?.evaluate(portfolio.weights()?).build()?;
     /// let current = portfolio.report().build()?.overview.current.unwrap();
     /// assert!((valued.results.volatility - current.volatility).abs() < 1e-12);
     /// # Ok::<(), finalytics::Error>(())

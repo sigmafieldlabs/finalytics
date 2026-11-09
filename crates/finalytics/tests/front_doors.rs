@@ -339,7 +339,7 @@ fn the_portfolio_dataset_reports_in_full() {
 #[test]
 fn a_portfolio_hands_its_holdings_to_the_optimiser() {
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     // The instruments are the choices; the cash is there, riskless in dollars, moving with the
     // rate in euros.
     assert_eq!(

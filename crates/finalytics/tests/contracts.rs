@@ -9,7 +9,7 @@ use finalytics::backtest::Years;
 use finalytics::{Assets, Method, datasets};
 
 fn household() -> Assets {
-    datasets::portfolio().assets().unwrap()
+    datasets::portfolio().assets().build().unwrap()
 }
 
 fn with_bills() -> Assets {

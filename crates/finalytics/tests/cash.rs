@@ -36,7 +36,7 @@ fn messages(result: Result<impl std::fmt::Debug, Error>) -> Vec<(String, String)
 #[test]
 fn the_portfolio_mix_on_the_assets_estimates_is_the_overviews_current_point() {
     let portfolio = datasets::portfolio();
-    let assets = portfolio.assets().unwrap();
+    let assets = portfolio.assets().build().unwrap();
     let overview = portfolio
         .overview_report(&ReportOptions::default())
         .unwrap();

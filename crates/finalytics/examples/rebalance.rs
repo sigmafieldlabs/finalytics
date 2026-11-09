@@ -7,7 +7,8 @@ fn main() -> Result<()> {
     let portfolio = datasets::portfolio();
 
     let target = portfolio
-        .assets()?
+        .assets()
+        .build()?
         .optimise(Method::MinimumVariance)
         .bounds(0.05, 0.40)
         .build()?;

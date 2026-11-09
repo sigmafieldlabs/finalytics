@@ -398,7 +398,7 @@ impl NativePortfolio {
 
     fn assets(&self) -> PyResult<NativeAssets> {
         Ok(NativeAssets {
-            inner: self.portfolio.assets().map_err(engine)?,
+            inner: self.portfolio.assets().build().map_err(engine)?,
         })
     }
 
