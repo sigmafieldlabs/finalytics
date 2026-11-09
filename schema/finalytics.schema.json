@@ -7393,7 +7393,7 @@
           "items": {
             "$ref": "#/$defs/FrontierPoint"
           },
-          "description": "The efficient frontier of the holdings other than base-currency cash, which is riskless:\nlong only and fully invested in them, from the expected returns and the covariance. Each\npoint's weights are in the order of `holdings`, with none in base-currency cash. Absent\n(with a warning) when it cannot be found."
+          "description": "The efficient frontier of the instruments, long only and fully invested in them, from\nthe expected returns and the covariance: the frontier optimisation and the valuation of\nweights draw, as neither chooses cash. Each point's weights are in the order of\n`holdings`, with none in cash. Absent (with a warning) when it cannot be found."
         },
         "current": {
           "anyOf": [

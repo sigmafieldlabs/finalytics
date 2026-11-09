@@ -99,10 +99,10 @@ pub struct OverviewReport {
     pub risk: Option<HoldingsRisk>,
     /// Each holding's weight, expected return and risk.
     pub holdings: Vec<HoldingRiskReturn>,
-    /// The efficient frontier of the holdings other than base-currency cash, which is riskless:
-    /// long only and fully invested in them, from the expected returns and the covariance. Each
-    /// point's weights are in the order of `holdings`, with none in base-currency cash. Absent
-    /// (with a warning) when it cannot be found.
+    /// The efficient frontier of the instruments, long only and fully invested in them, from
+    /// the expected returns and the covariance: the frontier optimisation and the valuation of
+    /// weights draw, as neither chooses cash. Each point's weights are in the order of
+    /// `holdings`, with none in cash. Absent (with a warning) when it cannot be found.
     pub frontier: Option<Vec<FrontierPoint>>,
     /// The current portfolio on the same axes as the frontier.
     pub current: Option<PortfolioPoint>,
@@ -261,13 +261,10 @@ pub fn overview_report(
                     expected_return: weights.iter().zip(&mu).map(|(w, r)| w * r).sum(),
                     volatility: risk.decomposition.volatility,
                 };
-                // The frontier of the invested holdings: base-currency cash is riskless, and with
-                // it the frontier's least risky point would be all cash.
+                // The holdings other than base-currency cash, which is riskless.
                 let invested: Vec<usize> = (0..keys.len())
                     .filter(|&i| keys[i] != HoldingKey::Cash(cx.base))
                     .collect();
-                let sub = |i: usize, j: usize| risk.covariance.get(invested[i], invested[j]);
-                let m = invested.len();
                 // Base-currency cash is riskless and earns nothing, so setting it aside scales the
                 // current point by the share invested.
                 let share: f64 = invested.iter().map(|&i| weights[i]).sum();
@@ -279,13 +276,22 @@ pub fn overview_report(
                         volatility: current.volatility / share,
                     })
                 };
+                // The frontier is of the instruments, as optimisation's and the valuation of
+                // weights' are: neither chooses cash in other currencies, so every chart draws the
+                // portfolio against the same curve.
+                let chosen: Vec<usize> = (0..keys.len())
+                    .filter(|&i| matches!(keys[i], HoldingKey::Instrument(_)))
+                    .collect();
+                let c = chosen.len();
                 let problem = Matrix::new(
-                    invested.iter().map(|&i| label(&keys[i])).collect(),
-                    (0..m * m).map(|k| sub(k / m, k % m)).collect(),
+                    chosen.iter().map(|&i| label(&keys[i])).collect(),
+                    (0..c * c)
+                        .map(|k| risk.covariance.get(chosen[k / c], chosen[k % c]))
+                        .collect(),
                 )
                 .map(|matrix| {
                     Problem::from_covariance(matrix)
-                        .with_expected_returns(invested.iter().map(|&i| mu[i]).collect())
+                        .with_expected_returns(chosen.iter().map(|&i| mu[i]).collect())
                 });
                 let frontier = match problem.and_then(|p| p.frontier(options.frontier_points)) {
                     Ok(points) => Some(
@@ -293,7 +299,7 @@ pub fn overview_report(
                             .into_iter()
                             .map(|mut point| {
                                 let mut weights = vec![0.0; keys.len()];
-                                for (k, &i) in invested.iter().enumerate() {
+                                for (k, &i) in chosen.iter().enumerate() {
                                     weights[i] = point.weights[k];
                                 }
                                 point.weights = weights;

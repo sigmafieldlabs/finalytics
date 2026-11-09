@@ -2725,10 +2725,10 @@ export interface OverviewReport {
   /** Each holding's weight, expected return and risk. */
   holdings: HoldingRiskReturn[];
   /**
-   * The efficient frontier of the holdings other than base-currency cash, which is riskless:
-   * long only and fully invested in them, from the expected returns and the covariance. Each
-   * point's weights are in the order of `holdings`, with none in base-currency cash. Absent
-   * (with a warning) when it cannot be found.
+   * The efficient frontier of the instruments, long only and fully invested in them, from
+   * the expected returns and the covariance: the frontier optimisation and the valuation of
+   * weights draw, as neither chooses cash. Each point's weights are in the order of
+   * `holdings`, with none in cash. Absent (with a warning) when it cannot be found.
    */
   frontier?: FrontierPoint[] | null;
   /** The current portfolio on the same axes as the frontier. */

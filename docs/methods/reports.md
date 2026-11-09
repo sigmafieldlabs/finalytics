@@ -125,16 +125,18 @@ it is left out of the estimate, so that a shrinkage estimator does not lend it p
 average variance, and its variance and covariances are zero. Cash in other currencies carries
 its exchange rate's risk.
 
-**Frontier.** The long-only efficient frontier of the current holdings other than base-currency
-cash, fully invested in them (see [optimisation](optimisation.md)), with the expected returns
+**Frontier.** The long-only efficient frontier of the current instruments, fully invested in
+them, as optimisation and the valuation of weights draw it (see [optimisation](optimisation.md)),
+so that every chart draws the portfolio against the same curve, with the expected returns
 given in the options or, for holdings without one, their annualised mean return over the same
-history; each holding says which it has. Riskless cash is left out because the frontier's least
-risky point would otherwise be all cash. The current portfolio, with its cash, is shown on the
+history; each holding says which it has. Cash is left out, as optimisation does not choose it;
+riskless cash would otherwise make the least risky point all cash. The current portfolio, with
+its cash, is shown on the
 same axes, and so is the current mix with base-currency cash set aside
 (`current_without_base_cash`): the other holdings in the shares they have of each other, which
-the frontier, fully invested in them, can be compared with. Cash in other currencies counts as a
-holding there, as its value moves with the exchange rate. `Portfolio.assets()` makes the same
-estimates, so the current weights valued on them give the current point.
+the frontier can be compared with. Cash in other currencies counts as a holding there, as its
+value moves with the exchange rate. `Portfolio.assets()` makes the same estimates, so the current
+weights valued on them give the current point.
 
 **Fees and taxes.** Fees and taxes charged to an account rather than to a holding, such as an
 advisory fee, are shown as their own line in contribution (`expenses`), not as a loss on the cash

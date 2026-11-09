@@ -79,6 +79,31 @@ fn the_portfolio_mix_on_the_assets_estimates_is_the_overviews_current_point() {
     );
     let text = portfolio.report().build().unwrap().to_string();
     assert!(text.contains("Without USD cash"), "{text}");
+    // The frontier is the instruments', the one optimisation and the valuation of weights draw.
+    let frontier = overview.frontier.as_ref().unwrap();
+    for (k, h) in overview.holdings.iter().enumerate() {
+        if h.holding.to_string().ends_with(" cash") {
+            assert!(frontier.iter().all(|p| p.weights[k] == 0.0));
+        }
+    }
+    let least = |volatilities: Vec<f64>| volatilities.into_iter().fold(f64::INFINITY, f64::min);
+    let valued = assets
+        .evaluate(portfolio.weights().unwrap())
+        .with_frontier()
+        .build()
+        .unwrap();
+    close(
+        least(frontier.iter().map(|p| p.volatility).collect()),
+        least(
+            valued
+                .report
+                .frontier
+                .iter()
+                .map(|p| p.volatility)
+                .collect(),
+        ),
+        "the least risky point",
+    );
 }
 
 #[test]
