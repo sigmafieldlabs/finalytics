@@ -19,7 +19,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `compare` and `backtest`). `methods()` lists it with the limits of every method that takes
   limits, as a new kind of option, `currencies`; `finalytics::KeepCash` is its type in Rust.
 
+- `include_benchmark` in `screen` (`.include_benchmark()` in Rust) screens the universe's
+  benchmark as a candidate too; see Changed.
+
+- A Python test runs every example in the package's docstrings, and JavaScript and Python tests
+  hold the contract sweep's cases: every problem reported together, at the option given.
+
 ### Fixed
+
+- Every problem with a call's inputs is reported together. A value that could not be read hid
+  every other problem: an unknown method hid a limit out of range, a number that is not finite
+  hid an unknown asset, fixed weights given limits hid an unknown asset, and a rebalancing's
+  targets, a report's account and an asset setting hid the checks after them. Options are read
+  field by field and checked on the fields that read; with an unknown method, only the checks
+  that do not depend on it run, so no option is said to be unused by a method not chosen.
+
+- Five of the Python package's docstring examples used names they did not define; they run as
+  written now. The cash and `optimise` docstrings said optimisation never holds cash, which
+  `cash` limits and `keep_cash` change, and JavaScript's `Result` left out `evaluate` and
+  `rebalance`. The methods page said one rule for unused options applies "in every verb"; it
+  says which verbs now, and what the shared options `risk_free_rate`, `expected_returns`,
+  `current_weights` and `benchmark_weights` change in a backtest: the fits of the methods that
+  use them, not the report's ratios.
 
 - Minimum CVaR with limits on cash, such as `cash=(0, 0.2)`, failed in its report ("weights: 6
   weights for 5 assets") on every kind of assets, though `methods()` lists the limit for it. The
@@ -123,6 +144,42 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   optimisation that kept the same cash gives them, as shares of the whole value; targets that
   leave the kept cash out are shares of the rest, as before. A target for kept cash at another
   weight is still refused, now saying the weight it has.
+
+- A rebalancing's `turnover`, for each account and for the accounts together, is half the sum
+  of the changes in weight with the cash included, as an optimisation's is and its
+  `max_turnover` limits; it was half the value traded in instruments. For the same trades the
+  two figures now agree; a rebalancing that invests or raises cash shows a larger turnover.
+
+- The overview report's efficient frontier is the instruments', the one `optimise` and
+  `evaluate` draw: it chose cash in other currencies as an asset, which optimisation never does,
+  so its least risky point leaned on the cash. The overview's frontier figures change.
+
+- Attribution periods that reach past the report's start or date are attributed over the part
+  within the report, with the benchmark's figures as given and a warning that says so, rather
+  than refused; a period wholly outside the report is left out with a warning, and a report with
+  no period inside it is refused.
+
+- A screen's benchmark serves beta and the other measures against it and is not a candidate:
+  it is no longer listed, matched or counted among the securities, unless `include_benchmark`
+  asks for it.
+
+- In Rust, `Portfolio::assets()` returns a builder ended by `.build()`, as every other verb with
+  options does, so that options can be added to it later: `portfolio.assets().build()?`.
+  Python and JavaScript keep `assets()`.
+
+- Problems are reported at the option given, under `options` in every verb and language:
+  `options.trading_cost_bps` and `options.validation.start` in backtests, `options.chance` in
+  plans, `options.limit` and `options.rules[0].measure` in screens, `options.covariance` for
+  Python's `Assets` as for JavaScript's, and `options.fee_bps`, `options.tax[0]` and
+  `options.accounts[0]` in a rebalancing, rather than the fee rate and tax fields they become
+  inside the engine. A comparison's strategy is at the method or weights it was given as
+  (`options.methods[1]`, `options.weights.Mine`) rather than `strategies[k]`, a benchmark's
+  weights at `options.benchmark`, a plan's fixed weights at `options.weights` rather than
+  `weights.weights`, and a report's date before the books at `options.as_of` rather than a
+  `start` not given. Problems are worded alike in JavaScript and Python: an unknown name or
+  method as `minimum_varience is not one of minimum_variance, …`, a misspelt option with a
+  suggestion (`is not an option; did you mean max_weight?`), a negative count as `must be a
+  whole number of zero or more`, and a number that is not finite as `NaN` or `Infinity`.
 
 ## [1.0.0-rc.5] - 2026-11-09
 
