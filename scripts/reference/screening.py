@@ -1,7 +1,8 @@
 """Generate reference screens for the finalytics screening tests.
 
 The universe is built from the S&P 500 prices in ``tests/sp500``: twenty companies and the
-S&P 500 total return index as the benchmark, each cut to its own dates so that the histories are
+S&P 500 total return index as the benchmark, which serves beta and the other measures against
+it and is not screened itself, each cut to its own dates so that the histories are
 uneven. One company starts in 2022, one in 2024, one in April 2026 and one ten days before the
 end; one stops two weeks before the end (stale); one has two gaps of several weeks; and one has
 closes that are not numbers, which are no closes. Volumes and dividends are synthetic, from a
@@ -326,7 +327,8 @@ def case(name: str, options: dict) -> dict:
                 needed.append(target["measure"])
     bench = UNIVERSE[-1]
     rows = []
-    for sec in UNIVERSE:
+    # The benchmark serves the measures against it and is not a candidate.
+    for sec in UNIVERSE[:-1]:
         found = measure(sec, bench, as_of, carry)
         if found["stale"]:
             status = "stale"

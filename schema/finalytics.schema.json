@@ -2197,7 +2197,7 @@
           "type": "integer",
           "format": "uint",
           "minimum": 0,
-          "description": "The securities in the universe."
+          "description": "The securities screened: the universe's, without its benchmark unless\n`include_benchmark` asks for it."
         },
         "measured": {
           "type": "integer",
@@ -11924,6 +11924,11 @@
             "type": "string"
           },
           "description": "Formulas by name, in order, such as `{\"risk_adjusted\": \"return_1y / volatility\"}`: each\na numeric field of every security, which rules, the sort and the results take as they\ntake a field. A formula is numbers, the names of measures, numeric fields and earlier\nformulas, `+ - * /`, unary minus, parentheses, and `abs(x)`, `sqrt(x)`, `log(x)`\n(natural), `min(a, b, ...)` and `max(a, b, ...)`. A security has no value where an input\nhas none, where the formula divides by zero, takes the square root of a negative number\nor the logarithm of one at most zero, or where the result is not finite."
+        },
+        "include_benchmark": {
+          "type": "boolean",
+          "description": "Whether the universe's benchmark is screened as a candidate too. By default it serves\nthe measures against a benchmark, such as beta, and is not one of the securities listed.",
+          "default": false
         }
       },
       "description": "What a screen measures and keeps. Everything is optional: by default every measure the\nuniverse allows, on its latest date, with no rules."

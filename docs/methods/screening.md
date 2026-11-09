@@ -23,8 +23,10 @@ dates, so a recent listing or a gap in one history leaves the others whole.
 - A field is numbers or text across the universe, and may be missing for some securities. Fields
   may not take the name of a measure, or of `id`, `status`, `passed`, `matched`, `rank`,
   `first_date` or `last_date`.
-- The **benchmark** is one of the securities, such as an index. The **risk-free rate** is an
-  annual rate, zero by default, converted to a rate a day by compounding:
+- The **benchmark** is one of the securities, such as an index. It serves the measures against
+  a benchmark and is not screened itself, unless `include_benchmark` asks for it. The
+  **risk-free rate** is an annual rate, zero by default, converted to a rate a day by
+  compounding:
   $r_f = (1 + R_f)^{1/252} - 1$.
 
 In CSV, the long layout has `id`, `date` and `close` columns (`instrument`, `ticker` or `symbol`
@@ -217,7 +219,7 @@ measure.
 >>> r.matches
 ['EXSA', 'VTI', 'VNQ']
 >>> [(rule.passed, rule.lacking, rule.remaining) for rule in r.rules]
-[(4, 0, 4), (4, 1, 3)]
+[(3, 0, 3), (4, 0, 3)]
 >>> row = r.securities[1]
 >>> row.id, row.status, row.rank
 ('EXSA', 'measured', 1)
@@ -230,10 +232,10 @@ True
 ```
 
 The portfolio dataset's five funds and their benchmark have three years of daily closes, two days
-short of a three-year window, so no fund has a three-year measure. Four securities rose over the
-year: three funds, and the benchmark, which has no asset class, so it lacks the field and fails
-the second rule; the bond and gold funds fell. Of the three that remain, the European equity fund
-has the highest Sharpe ratio.
+short of a three-year window, so no fund has a three-year measure. The benchmark serves beta and
+is not screened. Three funds rose over the year, and the bond and gold funds fell; the three that
+rose are all equity or real assets, and of them the European equity fund has the highest Sharpe
+ratio.
 
 ## Speed
 

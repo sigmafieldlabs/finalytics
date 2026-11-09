@@ -275,8 +275,12 @@ fn measures_against_a_benchmark_need_one() {
     );
     assert!(found[0].1.contains("give the universe one"));
     assert!(found[1].1.contains("needs volumes"));
-    // Against itself, the benchmark has a beta and a correlation of one.
+    // The benchmark is not a candidate by default.
     let r = screen(&s, Some(0), 0.0, &ScreenOptions::default()).unwrap();
+    assert!(r.securities.iter().all(|x| x.id != "SPY"));
+    assert_eq!(r.coverage.securities, s.len() - 1);
+    // Screened too, against itself it has a beta and a correlation of one.
+    let r = screen(&s, Some(0), 0.0, &with(|o| o.include_benchmark = true)).unwrap();
     assert!((r.value("SPY", Measure::Beta).unwrap() - 1.0).abs() < 1e-12);
     assert!((r.value("SPY", Measure::Correlation).unwrap() - 1.0).abs() < 1e-12);
     assert_eq!(r.value("SPY", Measure::RelativeReturn1y), Some(0.0));

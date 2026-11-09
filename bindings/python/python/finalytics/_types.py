@@ -1345,7 +1345,9 @@ class Coverage:
     """How many securities were measured and how many matched."""
 
     securities: int
-    """The securities in the universe."""
+    """The securities screened: the universe's, without its benchmark unless `include_benchmark`
+    asks for it.
+    """
 
     measured: int
     """Those measured with the history the rules and the sort need."""
@@ -6013,6 +6015,11 @@ class ScreenOptions:
     and `max(a, b, ...)`. A security has no value where an input has none, where the formula
     divides by zero, takes the square root of a negative number or the logarithm of one at most
     zero, or where the result is not finite.
+    """
+
+    include_benchmark: bool = False
+    """Whether the universe's benchmark is screened as a candidate too. By default it serves the
+    measures against a benchmark, such as beta, and is not one of the securities listed.
     """
 
 

@@ -59,7 +59,9 @@ def universe(prices, companies) -> fl.Universe:
 
 def test_a_screen_matches_the_reference(universe):
     # The rows came in a random order: each security keeps its own, sorted by date.
-    assert len(universe) == 21 and set(universe.ids) == {s["id"] for s in FIXTURE["cases"][0]["securities"]}
+    # The benchmark serves beta and is not screened, so the fixture lists the twenty companies.
+    assert len(universe) == 21
+    assert set(universe.ids) - {universe.benchmark} == {s["id"] for s in FIXTURE["cases"][0]["securities"]}
     for case in FIXTURE["cases"][1:]:
         o = case["options"]
         rules = [
@@ -109,7 +111,7 @@ def test_a_screen_prints_shows_and_becomes_a_dataframe(universe, tmp_path, monke
     tables = [t.name for t in fl.reports.tables(screen.report)]
     assert tables == ["coverage", "rules", "matches", "near_misses", "spread"]
     frame = flpd.securities(screen)
-    assert frame.index.name == "id" and len(frame) == 21
+    assert frame.index.name == "id" and len(frame) == 20
     assert list(frame[frame.matched].sort_values("rank").index) == screen.results.matches
     assert frame.loc["DUK", "status"] == "stale"
     assert math.isnan(frame.loc["GE", "return_1y"])

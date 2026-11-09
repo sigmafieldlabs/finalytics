@@ -375,6 +375,13 @@ impl ScreenBuilder<'_> {
         self
     }
 
+    /// Screens the universe's benchmark as a candidate too; by default it serves the measures
+    /// against a benchmark, such as beta, and is not listed.
+    pub fn include_benchmark(mut self) -> Self {
+        self.options.include_benchmark = true;
+        self
+    }
+
     /// A formula, such as `formula("risk_adjusted", "return_1y / volatility")`: a numeric field
     /// of every security, computed from the measures, the numeric fields and the formulas
     /// before it, which the rules, the sort and the results then take by its name. A formula

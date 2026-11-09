@@ -26,10 +26,15 @@ fn the_report_prints_in_80_columns_and_shows_every_match() {
     let text = screen.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
     assert!(text.contains("Every company"));
-    assert!(text.contains("The top 50 of 56 matches; the page lists them all."));
+    // T-Bills, the benchmark, serves beta and is not a candidate unless asked for.
+    assert!(text.contains("The top 50 of 55 matches; the page lists them all."));
     let html = screen.report.to_html(None);
     assert!(html.starts_with("<!doctype html>"));
-    assert_eq!(html.matches(r#"<td class="rk">"#).count(), 56);
+    assert_eq!(html.matches(r#"<td class="rk">"#).count(), 55);
+    assert!(screen.results.securities.iter().all(|s| s.id != "T-Bills"));
+    let with = u.screen().include_benchmark().build().unwrap();
+    assert_eq!(with.results.securities.len(), 56);
+    assert!(with.results.securities.iter().any(|s| s.id == "T-Bills"));
     // A screen with rules on fields and measures, sorted and limited.
     let screen = u
         .screen()
@@ -84,6 +89,44 @@ fn words(text: &str) -> String {
 }
 
 #[test]
+fn a_benchmark_among_the_securities_leaves_the_others_in_order_with_their_own_fields() {
+    let all = universe();
+    let u = Universe::builder()
+        .prices_csv(include_str!("../../../tests/sp500/prices.csv"))
+        .fields_csv(include_str!("../../../tests/sp500/companies.csv"))
+        .benchmark("AAPL")
+        .build()
+        .unwrap();
+    let screen = u.screen().build().unwrap();
+    let ids: Vec<&str> = screen
+        .results
+        .securities
+        .iter()
+        .map(|s| s.id.as_str())
+        .collect();
+    let others: Vec<&str> = u
+        .ids()
+        .iter()
+        .map(String::as_str)
+        .filter(|id| *id != "AAPL")
+        .collect();
+    assert_eq!(ids, others);
+    assert_eq!(screen.results.matches, others);
+    let names = |screen: &finalytics::screening::Screen| -> Vec<(String, String)> {
+        screen
+            .results
+            .securities
+            .iter()
+            .map(|s| (s.id.clone(), format!("{:?}", s.fields.get("name"))))
+            .collect()
+    };
+    let everyone = names(&all.screen().include_benchmark().build().unwrap());
+    for pair in names(&screen) {
+        assert!(everyone.contains(&pair), "{pair:?}");
+    }
+}
+
+#[test]
 fn the_measures_leave_out_those_no_security_has() {
     // Two and a half years into the prices, no company has three years of closes.
     let screen = universe().screen().as_of("2007-06-29").build().unwrap();
@@ -93,14 +136,14 @@ fn the_measures_leave_out_those_no_security_has() {
         .iter()
         .position(|m| *m == Measure::Return3y)
         .unwrap();
-    assert_eq!(r.coverage.lacking[k], 56);
-    assert_eq!(r.coverage.lacking_history[k], 56);
+    assert_eq!(r.coverage.lacking[k], 55);
+    assert_eq!(r.coverage.lacking_history[k], 55);
     let spread = screen.report.spread.iter().find(|s| s.name == "return_3y");
-    assert_eq!(spread.map(|s| (s.count, s.lacking_history)), Some((0, 56)));
+    assert_eq!(spread.map(|s| (s.count, s.lacking_history)), Some((0, 55)));
     let text = screen.to_string();
     assert!(text.lines().all(|l| l.chars().count() <= 80), "{text}");
     assert!(
-        text.contains("With no rules, all 56 securities pass."),
+        text.contains("With no rules, all 55 securities pass."),
         "{text}"
     );
     let html = words(&screen.report.to_html(None));
@@ -141,8 +184,11 @@ fn the_measures_leave_out_those_no_security_has() {
         "{html}"
     );
     assert!(!html.contains("no history is long enough"), "{html}");
-    assert_eq!(screen.report.exceptions.stale, ["T-Bills"]);
-    let text = words(&screen.to_string());
+    // The stale benchmark is not a candidate, so it is not listed, unless asked for.
+    assert!(screen.report.exceptions.stale.is_empty());
+    let with = u.screen().include_benchmark().build().unwrap();
+    assert_eq!(with.report.exceptions.stale, ["T-Bills"]);
+    let text = words(&with.to_string());
     assert!(
         text.contains(
             "55 of 56 securities have at least two prices. 1 has no price in the 5 days to 30 \

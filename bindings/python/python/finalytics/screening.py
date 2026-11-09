@@ -310,6 +310,7 @@ class Universe:
         sort: SortLike | None = None,
         limit: int | None = None,
         formulas: Mapping[str, str] | None = None,
+        include_benchmark: bool = False,
         name: str | None = None,
     ) -> _types.Screen:
         """Screens the universe: each security measured on its own closes up to `as_of`, judged
@@ -335,6 +336,8 @@ class Universe:
           fields and earlier formulas, ``+ - * /``, parentheses, and ``abs``, ``sqrt``, ``log``,
           ``min`` and ``max``; a security has no value where an input has none or the formula
           has no finite result, such as on division by zero.
+        - `include_benchmark`: screen the universe's benchmark as a candidate too. By default it
+          serves beta and the other measures against it, and is not listed.
 
         Every problem is reported together, in one :class:`~finalytics.ValidationError`.
         """
@@ -346,6 +349,7 @@ class Universe:
             sort=_sort(sort),
             limit=None if limit is None else int(limit),
             formulas={str(k): str(v) for k, v in (formulas or {}).items()},
+            include_benchmark=bool(include_benchmark),
         )
         result = loads(_types.Screen, call(self._native.screen, dumps(options, "options")))
         if name is not None:

@@ -876,7 +876,10 @@ export type CovarianceMethod =
 
 /** How many securities were measured and how many matched. */
 export interface Coverage {
-  /** The securities in the universe. */
+  /**
+   * The securities screened: the universe's, without its benchmark unless
+   * `include_benchmark` asks for it.
+   */
   securities: number;
   /** Those measured with the history the rules and the sort need. */
   measured: number;
@@ -4389,6 +4392,11 @@ export interface ScreenOptions {
    * or the logarithm of one at most zero, or where the result is not finite.
    */
   formulas?: Record<string, string>;
+  /**
+   * Whether the universe's benchmark is screened as a candidate too. By default it serves
+   * the measures against a benchmark, such as beta, and is not one of the securities listed.
+   */
+  include_benchmark?: boolean;
 }
 
 /** The screening report: what one screen of a universe found. */

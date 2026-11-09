@@ -1113,6 +1113,9 @@ pub struct ScreenOptions {
     #[serde(skip_serializing_if = "Formulas::is_empty")]
     #[cfg_attr(feature = "schema", schemars(with = "BTreeMap<String, String>"))]
     pub formulas: Formulas,
+    /// Whether the universe's benchmark is screened as a candidate too. By default it serves
+    /// the measures against a benchmark, such as beta, and is not one of the securities listed.
+    pub include_benchmark: bool,
 }
 
 impl Default for ScreenOptions {
@@ -1125,6 +1128,7 @@ impl Default for ScreenOptions {
             sort: None,
             limit: None,
             formulas: Formulas::default(),
+            include_benchmark: false,
         }
     }
 }
@@ -1179,7 +1183,8 @@ pub struct SecurityScreen {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Coverage {
-    /// The securities in the universe.
+    /// The securities screened: the universe's, without its benchmark unless
+    /// `include_benchmark` asks for it.
     pub securities: usize,
     /// Those measured with the history the rules and the sort need.
     pub measured: usize,
@@ -1961,7 +1966,10 @@ pub fn screen(
         benchmark: benchmark_prices,
     };
 
-    let indices: Vec<usize> = (0..securities.len()).collect();
+    // The benchmark serves the measures against it; it is a candidate only when asked for.
+    let indices: Vec<usize> = (0..securities.len())
+        .filter(|&i| options.include_benchmark || Some(i) != benchmark)
+        .collect();
     let rows: Vec<Row> = finalytics_core::parallel::map(&indices, |&i| {
         let prices = securities.prices(i);
         let measured = measures::measure(&setting, prices);
@@ -2064,7 +2072,7 @@ pub fn screen(
         let key = |i: usize| -> Option<f64> {
             match target {
                 Target::Measure(k) => rows[i].values[k],
-                Target::Field(k) => securities.fields[k].number(i),
+                Target::Field(k) => securities.fields[k].number(indices[i]),
                 Target::Formula(k) => rows[i].formulas[k],
             }
         };
@@ -2146,7 +2154,9 @@ pub fn screen(
             ),
         );
     }
-    let sparse: Vec<&str> = (0..securities.len())
+    let sparse: Vec<&str> = indices
+        .iter()
+        .copied()
         .filter(|&i| {
             let days = securities.prices(i).days;
             days.len() > 2
@@ -2173,14 +2183,15 @@ pub fn screen(
         .into_iter()
         .enumerate()
         .map(|(i, row)| {
-            let mut fields = securities.fields(i);
+            // `i` is the row; `indices[i]` the security it measures.
+            let mut fields = securities.fields(indices[i]);
             for (name, value) in formula_names.iter().zip(&row.formulas) {
                 if let Some(x) = value {
                     fields.insert((*name).to_owned(), FieldValue::Number(*x));
                 }
             }
             SecurityScreen {
-                id: securities.ids[i].clone(),
+                id: securities.ids[indices[i]].clone(),
                 status: row.status,
                 passed: passed[i],
                 matched: rank[i].is_some(),
@@ -2193,7 +2204,7 @@ pub fn screen(
         })
         .collect();
     let coverage = Coverage {
-        securities: securities.len(),
+        securities: indices.len(),
         measured,
         too_short,
         stale,
@@ -2228,7 +2239,7 @@ pub fn screen(
         rules: rule_results,
         sort: options.sort.clone(),
         limit: options.limit,
-        matches: order.iter().map(|i| securities.ids[*i].clone()).collect(),
+        matches: order.iter().map(|i| securities.ids[indices[*i]].clone()).collect(),
         coverage,
         securities: securities_rows,
         warnings,
