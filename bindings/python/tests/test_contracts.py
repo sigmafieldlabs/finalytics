@@ -246,3 +246,11 @@ def test_fixed_weights_come_back_as_given(portfolio, shapes):
             compared = assets.compare(methods=["minimum_variance"], benchmark=mix)
             assert compared.report.benchmark.weights[0].weights == mix, shape
 
+
+def test_a_backtest_is_titled_with_the_name_given(bills):
+    method = bills.backtest(method="minimum_variance", name="Mine")
+    assert method.report.name == "Mine" and method.report.strategy.name == "Mine"
+    fixed = bills.backtest(weights={"US Equity": 0.5, "Bonds": 0.5}, name="Mine")
+    assert fixed.report.name == "Mine" and "Mine" in str(fixed)
+    assert bills.backtest(method="minimum_variance").report.name is None
+

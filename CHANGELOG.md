@@ -50,6 +50,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   "T-Bills": 0.1}` came back as five assets adding up to 0.9. The reports' weights are now those
   given, the risk-free asset, `Cash` and cash in other currencies included.
 
+- A backtest given a name (`name="Mine"`) used it for the strategy and the report's title but
+  left `report.name` empty, where `optimise`, `compare` and `evaluate` put it. It is now there.
+
 ### Changed
 
 - One message for a label that is not one of the assets, `unknown asset Nope`, in every input

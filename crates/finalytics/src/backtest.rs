@@ -458,6 +458,18 @@ impl Assets {
         if let Some(Strategy::Weights { weights, .. }) = options.strategies.first() {
             as_given(&mut report.strategy, weights);
         }
+        // A name given to the strategy titles the report, as it does every other verb's.
+        if let Some(
+            Strategy::Optimise {
+                name: Some(name), ..
+            }
+            | Strategy::Weights {
+                name: Some(name), ..
+            },
+        ) = options.strategies.first()
+        {
+            report.name = Some(name.clone());
+        }
         if let (Some(b), Some(Benchmark::Weights { weights, .. })) =
             (report.benchmark.as_mut(), &options.benchmark)
         {
@@ -1284,7 +1296,8 @@ impl Compare<'_> {
 }
 
 impl BacktestBuilder<'_> {
-    /// The name of the strategy in the results, in place of the method's or `Weights`.
+    /// The name of the strategy in the results, in place of the method's or `Weights`, and the
+    /// report's title, in `report.name`.
     pub fn name(mut self, name: &str) -> Self {
         match &mut self.strategy {
             Strategy::Optimise { name: n, .. } | Strategy::Weights { name: n, .. } => {

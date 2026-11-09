@@ -228,3 +228,13 @@ test("fixed weights come back as given", () => {
     }
   }
 });
+
+test("a backtest is titled with the name given", () => {
+  const method = bills.backtest({ method: "minimum_variance", name: "Mine" });
+  assert.equal(method.report.name, "Mine");
+  assert.equal(method.report.strategy.name, "Mine");
+  const fixed = bills.backtest({ weights: { "US Equity": 0.5, Bonds: 0.5 }, name: "Mine" });
+  assert.equal(fixed.report.name, "Mine");
+  assert.ok(`${fixed}`.includes("Mine"));
+  assert.equal(bills.backtest({ method: "minimum_variance" }).report.name ?? null, null);
+});

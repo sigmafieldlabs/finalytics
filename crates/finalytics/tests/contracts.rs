@@ -684,3 +684,25 @@ fn fixed_weights_come_back_as_given() {
         }
     }
 }
+
+#[test]
+fn a_backtest_is_titled_with_the_name_given() {
+    let assets = with_bills();
+    let method = assets
+        .backtest(Method::MinimumVariance)
+        .name("Mine")
+        .build()
+        .unwrap();
+    assert_eq!(method.report.name.as_deref(), Some("Mine"));
+    assert_eq!(method.report.strategy.name, "Mine");
+    let fixed = assets
+        .backtest([("US Equity", 0.5), ("Bonds", 0.5)])
+        .name("Mine")
+        .build()
+        .unwrap();
+    assert_eq!(fixed.report.name.as_deref(), Some("Mine"));
+    assert!(fixed.to_string().contains("Mine"));
+    // Without one, the report has none, and the strategy's own name titles it.
+    let unnamed = assets.backtest(Method::MinimumVariance).build().unwrap();
+    assert_eq!(unnamed.report.name, None);
+}
