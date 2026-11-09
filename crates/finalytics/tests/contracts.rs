@@ -617,3 +617,70 @@ fn the_cash_a_mix_holds_in_another_currency_is_measured_in_every_verb() {
     assert!((trades.turnover - turnover).abs() < 1e-12);
     assert!(trades.turnover <= 0.3 + 1e-9);
 }
+
+#[test]
+fn fixed_weights_come_back_as_given() {
+    use finalytics::backtest::{Benchmark, Strategy};
+    let portfolio = datasets::portfolio();
+    for (shape, assets) in shapes() {
+        let risky = assets.risky_assets();
+        let cash = assets.risk_free_asset().unwrap_or("Cash");
+        let mut mixes: Vec<std::collections::BTreeMap<String, f64>> = vec![
+            [(risky[0], 0.6), (risky[1], 0.3), (cash, 0.1)]
+                .into_iter()
+                .map(|(a, w)| (a.to_owned(), w))
+                .collect(),
+            [(risky[0], 0.5), (risky[1], 0.5)]
+                .into_iter()
+                .map(|(a, w)| (a.to_owned(), w))
+                .collect(),
+        ];
+        if shape == "household" {
+            mixes.push(
+                portfolio
+                    .weights()
+                    .unwrap()
+                    .into_iter()
+                    .map(|(k, w)| (k.to_string(), w))
+                    .collect(),
+            );
+        }
+        for mix in mixes {
+            let fixed = || Strategy::weights("Mix", mix.clone());
+            let benchmark = || Benchmark::Weights {
+                name: None,
+                weights: mix.clone(),
+            };
+            let backtest = assets.backtest(fixed()).build().unwrap();
+            assert_eq!(backtest.report.strategy.weights[0].weights, mix, "{shape}");
+            let compared = assets
+                .compare([Strategy::from(Method::MinimumVariance), fixed()])
+                .build()
+                .unwrap();
+            assert_eq!(
+                compared.report.strategies[1].weights[0].weights, mix,
+                "{shape}"
+            );
+            let against = assets
+                .backtest(Method::MinimumVariance)
+                .benchmark(benchmark())
+                .build()
+                .unwrap();
+            let b = against.report.benchmark.as_ref().unwrap();
+            assert_eq!(b.weights[0].weights, mix, "{shape}");
+            let compared = assets
+                .compare([Method::MinimumVariance])
+                .benchmark(benchmark())
+                .build()
+                .unwrap();
+            let b = compared.report.benchmark.as_ref().unwrap();
+            assert_eq!(b.weights[0].weights, mix, "{shape}");
+            // The report prints its allocation with the cash as given.
+            assert!(
+                backtest
+                    .to_string()
+                    .contains(&mix.keys().next().unwrap()[..3])
+            );
+        }
+    }
+}

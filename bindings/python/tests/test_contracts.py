@@ -223,3 +223,26 @@ def test_the_cash_a_mix_holds_in_another_currency_is_measured_in_every_verb(port
     assert eur.cash and eur.proposed == 0 and eur.current == pytest.approx(mix["EUR cash"], abs=1e-15)
     assert traded.report.trades.turnover <= 0.3 + 1e-9
 
+
+def _mixes(assets, portfolio=None):
+    """Fixed weights to echo: two risky assets with the cash, and a portfolio's own weights."""
+    risky = assets.risky_assets
+    cash = assets.risk_free_asset or "Cash"
+    mixes = [{risky[0]: 0.6, risky[1]: 0.3, cash: 0.1}, {risky[0]: 0.5, risky[1]: 0.5}]
+    if portfolio is not None:
+        mixes.append(portfolio.weights())
+    return mixes
+
+
+def test_fixed_weights_come_back_as_given(portfolio, shapes):
+    for shape, assets in shapes.items():
+        for mix in _mixes(assets, portfolio if shape == "household" else None):
+            backtest = assets.backtest(weights=mix)
+            assert backtest.report.strategy.weights[0].weights == mix, shape
+            compared = assets.compare(methods=["minimum_variance", ("Mix", mix)])
+            assert compared.report.strategies[1].weights[0].weights == mix, shape
+            against = assets.backtest(method="minimum_variance", benchmark=mix)
+            assert against.report.benchmark.weights[0].weights == mix, shape
+            compared = assets.compare(methods=["minimum_variance"], benchmark=mix)
+            assert compared.report.benchmark.weights[0].weights == mix, shape
+

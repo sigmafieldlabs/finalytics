@@ -5,9 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { engine } from "./setup.mjs";
-
-const fl = await engine();
+import * as fl from "../pkg/node.js";
 
 const portfolio = fl.datasets.portfolio();
 const household = portfolio.assets();
@@ -206,4 +204,27 @@ test("the cash a mix holds in another currency is measured in every verb", () =>
   const eur = traded.report.trades.trades.find((t) => t.asset === "EUR cash");
   assert.ok(eur.cash && eur.proposed === 0 && Math.abs(eur.current - mix["EUR cash"]) < 1e-15);
   assert.ok(traded.report.trades.turnover <= 0.3 + 1e-9);
+});
+
+/** Fixed weights to echo: two risky assets with the cash, and a portfolio's own weights. */
+function mixes(assets, withPortfolio) {
+  const [a, b] = assets.riskyAssets;
+  const cash = assets.riskFreeAsset ?? "Cash";
+  const out = [{ [a]: 0.6, [b]: 0.3, [cash]: 0.1 }, { [a]: 0.5, [b]: 0.5 }];
+  if (withPortfolio) out.push(portfolio.weights());
+  return out;
+}
+
+test("fixed weights come back as given", () => {
+  for (const [shape, assets] of Object.entries(shapes)) {
+    for (const mix of mixes(assets, shape === "household")) {
+      assert.deepEqual(assets.backtest({ weights: mix }).report.strategy.weights[0].weights, mix, shape);
+      const compared = assets.compare({ methods: ["minimum_variance", { name: "Mix", weights: mix }] });
+      assert.deepEqual(compared.report.strategies[1].weights[0].weights, mix, shape);
+      const against = assets.backtest({ method: "minimum_variance", benchmark: mix });
+      assert.deepEqual(against.report.benchmark.weights[0].weights, mix, shape);
+      const benchmarked = assets.compare({ methods: ["minimum_variance"], benchmark: mix });
+      assert.deepEqual(benchmarked.report.benchmark.weights[0].weights, mix, shape);
+    }
+  }
 });

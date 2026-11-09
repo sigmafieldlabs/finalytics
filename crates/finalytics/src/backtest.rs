@@ -433,8 +433,18 @@ impl Assets {
     /// options step by step.
     pub fn compare_with(&self, options: &BacktestOptions) -> Result<Comparison> {
         let (results, returns) = self.simulate(options, false)?;
-        let report =
+        let mut report =
             finalytics_reports::comparison_report(&results, &returns, &self.setup(options))?;
+        for (strategy, given) in report.strategies.iter_mut().zip(&options.strategies) {
+            if let Strategy::Weights { weights, .. } = given {
+                as_given(strategy, weights);
+            }
+        }
+        if let (Some(b), Some(Benchmark::Weights { weights, .. })) =
+            (report.benchmark.as_mut(), &options.benchmark)
+        {
+            as_given(b, weights);
+        }
         Ok(Comparison { report, results })
     }
 
@@ -443,7 +453,16 @@ impl Assets {
     /// options step by step.
     pub fn backtest_with(&self, options: &BacktestOptions) -> Result<Backtest> {
         let (results, returns) = self.simulate(options, true)?;
-        let report = finalytics_reports::backtest_report(&results, &returns, &self.setup(options))?;
+        let mut report =
+            finalytics_reports::backtest_report(&results, &returns, &self.setup(options))?;
+        if let Some(Strategy::Weights { weights, .. }) = options.strategies.first() {
+            as_given(&mut report.strategy, weights);
+        }
+        if let (Some(b), Some(Benchmark::Weights { weights, .. })) =
+            (report.benchmark.as_mut(), &options.benchmark)
+        {
+            as_given(b, weights);
+        }
         Ok(Backtest { report, results })
     }
 
@@ -530,6 +549,15 @@ impl Assets {
             }
         }
         out
+    }
+}
+
+/// The report on fixed `weights` with the weights as they were given: with their cash, and
+/// without the assets they leave out. Fixed weights are held at the same weights throughout,
+/// so every date the report lists holds them.
+fn as_given(report: &mut finalytics_reports::StrategyReport, weights: &BTreeMap<String, f64>) {
+    for at in &mut report.weights {
+        at.weights.clone_from(weights);
     }
 }
 

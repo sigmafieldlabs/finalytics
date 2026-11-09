@@ -86,7 +86,8 @@ The comparison and backtest reports score each run over the periods it was teste
 - the return of each calendar year and month, with a year only partly in the run marked, and a
   holdout's year that straddles the start of the test marked †;
 - in sample against out of sample, for the methods fitted to returns, and the weights at each
-  refit.
+  refit; fixed weights and a benchmark's weights are listed as they were given, with their cash
+  and without assets they leave out.
 
 Figures shown side by side are differences of the figures as shown, so that they add up.
 

@@ -45,6 +45,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   another currency counts in the tracking error, with its risk; and a backtest holds such cash
   as the asset it is, moving with its exchange rate.
 
+- The backtest and comparison reports echoed fixed weights, and a benchmark's weights, without
+  their cash and with every asset they left out at zero: `{"US Equity": 0.55, "Bonds": 0.35,
+  "T-Bills": 0.1}` came back as five assets adding up to 0.9. The reports' weights are now those
+  given, the risk-free asset, `Cash` and cash in other currencies included.
+
 ### Changed
 
 - One message for a label that is not one of the assets, `unknown asset Nope`, in every input
