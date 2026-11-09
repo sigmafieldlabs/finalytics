@@ -11,7 +11,7 @@ members = [
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "1.0.0-rc.4"
+version = "1.0.0-rc.5"
 edition = "2024"
 rust-version = "1.88"
 authors = ["Nnamdi Olisaeloka <nnamdi@sigmafieldlabs.com>"]
@@ -22,16 +22,16 @@ keywords = ["finance", "portfolio", "optimization", "risk", "performance"]
 categories = ["finance", "mathematics", "science", "wasm"]
 
 [workspace.dependencies]
-finalytics-core = { path = "crates/finalytics-core", version = "=1.0.0-rc.4" }
-finalytics-ledger = { path = "crates/finalytics-ledger", version = "=1.0.0-rc.4" }
-finalytics-formats = { path = "crates/finalytics-formats", version = "=1.0.0-rc.4" }
-finalytics-perf = { path = "crates/finalytics-perf", version = "=1.0.0-rc.4" }
-finalytics-risk = { path = "crates/finalytics-risk", version = "=1.0.0-rc.4" }
-finalytics-opt = { path = "crates/finalytics-opt", version = "=1.0.0-rc.4" }
-finalytics-reports = { path = "crates/finalytics-reports", version = "=1.0.0-rc.4" }
-finalytics-backtest = { path = "crates/finalytics-backtest", version = "=1.0.0-rc.4" }
-finalytics-plan = { path = "crates/finalytics-plan", version = "=1.0.0-rc.4" }
-finalytics = { path = "crates/finalytics", version = "=1.0.0-rc.4", default-features = false }
+finalytics-core = { path = "crates/finalytics-core", version = "=1.0.0-rc.5" }
+finalytics-ledger = { path = "crates/finalytics-ledger", version = "=1.0.0-rc.5" }
+finalytics-formats = { path = "crates/finalytics-formats", version = "=1.0.0-rc.5" }
+finalytics-perf = { path = "crates/finalytics-perf", version = "=1.0.0-rc.5" }
+finalytics-risk = { path = "crates/finalytics-risk", version = "=1.0.0-rc.5" }
+finalytics-opt = { path = "crates/finalytics-opt", version = "=1.0.0-rc.5" }
+finalytics-reports = { path = "crates/finalytics-reports", version = "=1.0.0-rc.5" }
+finalytics-backtest = { path = "crates/finalytics-backtest", version = "=1.0.0-rc.5" }
+finalytics-plan = { path = "crates/finalytics-plan", version = "=1.0.0-rc.5" }
+finalytics = { path = "crates/finalytics", version = "=1.0.0-rc.5", default-features = false }
 
 rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde"] }
 serde = { version = "1.0.228", features = ["derive", "rc"] }

@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-rc.5] - 2026-11-09
+
 ### Added
 
 - Formula fields in screening: `formulas={"risk_adjusted": "return_1y / volatility"}` (Python
@@ -852,7 +854,8 @@ Finalytics 1.0 is a redesign of the library. See the
 
 The last release of the 0.x series. See the `0.9.x` branch.
 
-[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...HEAD
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.5...HEAD
+[1.0.0-rc.5]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.1...v1.0.0-rc.2
