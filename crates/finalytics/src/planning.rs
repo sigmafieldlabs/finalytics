@@ -100,6 +100,13 @@ impl Assets {
             inflation: None,
             estimates: None,
         };
+        // `Cash`, where it stands for cash at the risk-free rate, earns the rate each month.
+        if self.cash_at_rate() && names_cash(&options) {
+            let monthly = (1.0 + self.risk_free_rate()).powf(1.0 / 12.0) - 1.0;
+            let months = history.returns.first().map_or(0, Vec::len);
+            history.assets.push(crate::assets::CASH.to_owned());
+            history.returns.push(vec![monthly; months]);
+        }
         let mut index = None;
         if let Some(Inflation::Index { prices }) = &options.inflation {
             let name = index_name
@@ -216,6 +223,21 @@ impl Assets {
         let cov = covariance(&table, self.covariance_method())?;
         Ok((means, cov.matrix.values().to_vec()))
     }
+}
+
+/// Whether a mix of `options` names `Cash`.
+fn names_cash(options: &PlanOptions) -> bool {
+    options
+        .weights
+        .iter()
+        .chain(&options.alternatives)
+        .any(|mix| match mix {
+            Mix::Fixed { weights, .. } => weights.contains_key(crate::assets::CASH),
+            Mix::GlidePath { points, .. } => {
+                points.values().any(|w| w.contains_key(crate::assets::CASH))
+            }
+            _ => false,
+        })
 }
 
 /// `history` with each month's inflation from the price index `prices`, cut to the months the

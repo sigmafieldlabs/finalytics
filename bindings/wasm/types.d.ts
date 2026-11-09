@@ -2627,9 +2627,10 @@ export interface OptimiseOptions {
   /** Annual expected returns by asset, in place of the estimates. */
   expected_returns?: Record<string, number>;
   /**
-   * The weights held now, by asset, adding up to one with any weight on the risk-free asset,
-   * which is cash: the start of the trades the report lists, and of the turnover and trade
-   * limits.
+   * The weights held now, by asset, adding up to one with the cash: any of the assets, the
+   * risk-free asset and cash in other currencies included, or `Cash` at the risk-free rate
+   * where there is no risk-free asset. They are the start of the trades the report lists, and
+   * of the turnover and trade limits; optimisation invests the cash it does not choose.
    */
   current_weights?: Record<string, number>;
   /**
@@ -2645,8 +2646,9 @@ export interface OptimiseOptions {
   /** The largest number of assets traded from the current weights. */
   max_trades?: number | null;
   /**
-   * A benchmark's weights by asset, adding up to one with any weight on the risk-free asset:
-   * the report gives the weights' ex-ante tracking error against it.
+   * A benchmark's weights by asset, adding up to one with the cash, as `current_weights`
+   * may hold it: the report gives the weights' ex-ante tracking error against it, counting the
+   * risk of any cash in other currencies.
    */
   benchmark_weights?: Record<string, number>;
   /** The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03. */

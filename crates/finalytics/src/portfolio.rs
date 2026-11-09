@@ -705,7 +705,7 @@ impl Targets {
                 Ok(holding) => {
                     targets.insert(holding, *weight);
                 }
-                Err(_) => report.error(format!("targets.{key}"), "is not a holding"),
+                Err(_) => report.error(format!("targets.{key}"), format!("unknown asset {key}")),
             }
         }
         targets

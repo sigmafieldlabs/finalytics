@@ -306,8 +306,9 @@ impl Method {
             of_kind(
                 "current_weights",
                 ParameterKind::ByAsset,
-                "The weights held now, adding up to one with any cash on the risk-free asset: \
-                 the report lists the trades from them, and the trade limits start from them.",
+                "The weights held now, adding up to one with the cash, in any of the assets or \
+                 Cash at the risk-free rate: the report lists the trades from them, and the \
+                 trade limits start from them.",
             )
             .at_least(0.0)
             .at_most(1.0),
@@ -316,8 +317,8 @@ impl Method {
             of_kind(
                 "benchmark_weights",
                 ParameterKind::ByAsset,
-                "A benchmark's weights, adding up to one with any cash on the risk-free asset: \
-                 the report gives the tracking error against it.",
+                "A benchmark's weights, adding up to one with the cash, as the current weights \
+                 hold it: the report gives the tracking error against it.",
             )
             .at_least(0.0)
             .at_most(1.0),

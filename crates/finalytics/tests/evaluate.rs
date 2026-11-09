@@ -169,9 +169,10 @@ fn every_problem_with_the_weights_and_options_is_reported_together() {
             .build(),
     );
     let paths: Vec<&str> = found.iter().map(|(p, _)| p.as_str()).collect();
+    // The total is checked too, as for every input of weights.
     assert_eq!(
         paths,
-        ["options.max_weight", "weights.Gold Miners"],
+        ["options.max_weight", "weights.Gold Miners", "weights"],
         "{found:?}"
     );
     let short = issues(

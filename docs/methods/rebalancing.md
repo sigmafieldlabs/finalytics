@@ -11,7 +11,10 @@ rates, plus cash):
 
 1. **Instruments.** For each instrument held or targeted, with unit value $u = p \times m \times
    x$ in the base currency, the trade is $(w V - q u) / u$ units, where $q$ is the quantity held
-   and $w$ the target (zero for an instrument held but not listed, which is sold entirely). With
+   and $w$ the target (zero for an instrument held but not listed, which is sold entirely). The
+   targets follow the rule of every input of weights (see [optimisation](optimisation.md)): an
+   instrument of the portfolio or a currency's cash, such as `EUR cash`, and anything else is
+   refused as `unknown asset Nope`. With
    whole units, each trade is rounded towards zero. Sales are capped at the quantity held, and
    trades worth less than the minimum trade are left out (and noted in the warnings). A change
    too small to settle, worth less than one minor unit of the instrument's currency or less than

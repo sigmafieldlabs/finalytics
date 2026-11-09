@@ -339,7 +339,7 @@ fn check_targets(books: &Books, targets: &[(HoldingKey, f64)], problems: &mut Va
         if let HoldingKey::Instrument(id) = holding
             && books.instrument(id).is_none()
         {
-            problems.error(&path, "is not an instrument of the portfolio");
+            problems.error(&path, format!("unknown asset {id}"));
         }
     }
     let total: f64 = targets.iter().map(|(_, w)| w).sum();

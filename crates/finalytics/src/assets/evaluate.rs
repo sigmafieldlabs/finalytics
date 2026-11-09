@@ -147,34 +147,11 @@ impl Assets {
         report.merge("", self.check_options(&frontier, false));
 
         let rf_asset = self.risk_free_asset();
-        let at_rate = rf_asset.is_none() && !self.labels().iter().any(|l| l == CASH);
+        let at_rate = self.cash_at_rate();
         if weights.is_empty() {
             report.error("weights", "give the weights by asset, adding up to one");
         }
-        let mut known = true;
-        for (asset, w) in weights {
-            let path = format!("weights.{asset}");
-            if !(self.labels().contains(asset) || (at_rate && asset == CASH)) {
-                report.error(path, format!("unknown asset {asset}"));
-                known = false;
-            } else if !w.is_finite() {
-                report.error(path, format!("must be a finite number, not {w}"));
-                known = false;
-            }
-        }
-        let total: f64 = weights.values().sum();
-        if known && !weights.is_empty() && (total - 1.0).abs() > 1e-6 {
-            report.error(
-                "weights",
-                match rf_asset {
-                    Some(cash) => format!(
-                        "add up to {total}, not one; give {cash}, the risk-free asset, any cash"
-                    ),
-                    None if at_rate => format!("add up to {total}, not one; give {CASH} any cash"),
-                    None => format!("add up to {total}, not one"),
-                },
-            );
-        }
+        self.check_weights(weights, "weights", true, &mut report);
         report.into_result(())?;
 
         // The risky assets, then the cash the weights hold, in the assets' order.
@@ -241,11 +218,8 @@ impl Assets {
         } else {
             Vec::new()
         };
-        // The history, with cash in other currencies held as the assets it is, against equal
-        // weight of the risky assets.
+        // The history, against equal weight of the risky assets.
         let history = {
-            let mut held = self.clone();
-            held.held_cash.clear();
             let risky = self.risky_assets();
             let equal: BTreeMap<String, f64> = risky
                 .iter()
@@ -262,7 +236,7 @@ impl Assets {
                 }),
                 ..crate::backtest::BacktestOptions::default()
             };
-            held.backtest_with(&history)
+            self.backtest_with(&history)
                 .ok()
                 .and_then(|b| Some((b.report.strategy.tested, b.report.benchmark?.tested)))
         };

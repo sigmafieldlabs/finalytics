@@ -431,9 +431,13 @@ class Assets:
         much each weight varied. It applies to the methods that use estimates, other than those
         measured on the periods' returns.
 
-        `current_weights` are the weights held now, by asset, adding up to one with any cash
-        on the risk-free asset, such as ``{"US Equity": 0.5, "Bonds": 0.45, "T-Bills": 0.05}``:
-        the report lists the trades from them, and they are where the trade limits start.
+        `current_weights` are the weights held now, by asset, adding up to one with the cash,
+        such as ``{"US Equity": 0.5, "Bonds": 0.45, "T-Bills": 0.05}`` or a portfolio's own
+        ``portfolio.weights()``: the report lists the trades from them, and they are where the
+        trade limits start. Like every input of weights, they may name any of the assets, the
+        risk-free asset and cash in other currencies included, or ``"Cash"`` at the risk-free
+        rate where there is no risk-free asset; optimisation invests the cash it does not
+        choose.
         `max_turnover` limits the one-way turnover from them, ``sum(abs(w - current)) / 2``
         with the cash, such as 0.2; `min_trade` makes each trade at least that weight or none,
         and `max_trades` limits how many assets are traded (both met by leaving trades out one
@@ -746,8 +750,9 @@ class Assets:
         flows: FlowsLike = (),
     ) -> _types.Backtest:
         """The backtest of one strategy: a `method`, fitted as `validation` says, or fixed
-        `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (a weight on the
-        risk-free asset is held as cash), against the `benchmark` if one is given: the backtest
+        `weights` by asset, such as ``{"US Equity": 0.6, "Bonds": 0.4}`` (adding up to one with
+        the cash, as every input of weights may hold it), against the `benchmark` if one is
+        given: the backtest
         report in ``result.report``, and every return and trade in ``result.results``. `name`
         names the strategy and titles the report. The other keywords are as for
         :meth:`compare`; fixed weights take no limits or parameters."""

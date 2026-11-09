@@ -133,3 +133,93 @@ def test_a_change_too_small_to_settle_is_no_trade(portfolio):
     moved["VTI"] -= 1e-6
     moved["BND"] += 1e-6
     assert sum(len(a.trades) for a in portfolio.rebalance(moved).results.accounts) >= 2
+
+
+def _holding(assets, label):
+    """Weights that hold `label` at 0.1 and spread the rest over the risky assets."""
+    risky = [r for r in assets.risky_assets if r != label]
+    weights = {r: 0.9 / len(risky) for r in risky}
+    weights[label] = weights.get(label, 0) + 0.1
+    return weights
+
+
+def _labels(assets):
+    """A risky asset, the risk-free asset, cash in another currency, and Cash at the rate."""
+    return [assets.risky_assets[0], *assets.cash_assets, *([] if assets.risk_free_asset else ["Cash"])]
+
+
+def _weights_inputs(assets, weights):
+    plan = dict(inflation=0.02, end="2030-12", simulations=100)
+    return {
+        "optimise current_weights": lambda: assets.optimise(method="minimum_variance", current_weights=weights),
+        "optimise current_weights with cash": lambda: assets.optimise(
+            method="minimum_variance", cash=(0, 0.3), current_weights=weights
+        ),
+        "optimise benchmark_weights": lambda: assets.optimise(
+            method="minimum_variance", benchmark_weights=weights, max_tracking_error=0.5
+        ),
+        "frontier current_weights": lambda: assets.frontier(points=5, current_weights=weights, max_turnover=0.5),
+        "evaluate weights": lambda: assets.evaluate(weights),
+        "backtest weights": lambda: assets.backtest(weights=weights),
+        "backtest benchmark": lambda: assets.backtest(method="minimum_variance", benchmark=weights),
+        "compare weights": lambda: assets.compare(methods=["minimum_variance"], weights={"Mix": weights}),
+        "compare benchmark": lambda: assets.compare(methods=["minimum_variance"], benchmark=weights),
+        "plan weights": lambda: assets.plan(weights=weights, **plan),
+        "plan alternatives": lambda: assets.plan(
+            weights={assets.risky_assets[0]: 1}, alternatives={"Alt": weights}, **plan
+        ),
+    }
+
+
+def test_every_input_of_weights_takes_every_label_of_the_assets(portfolio, shapes):
+    for shape, assets in shapes.items():
+        for label in _labels(assets):
+            weights = _holding(assets, label)
+            for name, run in _weights_inputs(assets, weights).items():
+                try:
+                    run()
+                except fl.ValidationError as e:
+                    pytest.fail(f"{shape} {name} {label}: {e}")
+            if shape == "household":
+                portfolio.rebalance(weights)
+
+
+def test_every_input_of_weights_refuses_an_unknown_label_in_one_message(portfolio, shapes):
+    for shape, assets in shapes.items():
+        weights = _holding(assets, "Nope")
+        for name, run in _weights_inputs(assets, weights).items():
+            with pytest.raises(fl.ValidationError) as found:
+                run()
+            assert any(
+                i.path.endswith(".Nope") and i.message == "unknown asset Nope" for i in found.value.issues
+            ), f"{shape} {name}: {found.value}"
+    with pytest.raises(fl.ValidationError) as found:
+        portfolio.rebalance(_holding(portfolio.assets(), "Nope"))
+    assert any(i.path == "targets.Nope" and i.message == "unknown asset Nope" for i in found.value.issues)
+
+
+def test_bounds_and_groups_refuse_the_cash_in_favour_of_cash_limits(household):
+    for label, says in [("USD cash", "limit it with cash"), ("EUR cash", "cash in another currency")]:
+        with pytest.raises(fl.ValidationError) as found:
+            household.optimise(
+                method="minimum_variance", asset_bounds={label: (0, 0.1)}, groups={"G": ([label, "VTI"], 0, 0.9)}
+            )
+        paths = [i.path for i in found.value.issues]
+        assert f"options.asset_bounds.{label}" in paths and "options.groups.G" in paths
+        assert all(says in i.message for i in found.value.issues)
+
+
+def test_the_cash_a_mix_holds_in_another_currency_is_measured_in_every_verb(portfolio, household):
+    mix = portfolio.weights()
+    assert "EUR cash" in mix
+    valued = household.evaluate(mix)
+    backtest = household.backtest(weights=mix)
+    assert valued.report.history.weights.statistics.volatility == pytest.approx(
+        backtest.report.strategy.tested.statistics.volatility, abs=1e-12
+    )
+    assert "EUR cash" in backtest.results.assets
+    traded = household.optimise(method="minimum_variance", current_weights=mix, max_turnover=0.3)
+    eur = next(t for t in traded.report.trades.trades if t.asset == "EUR cash")
+    assert eur.cash and eur.proposed == 0 and eur.current == pytest.approx(mix["EUR cash"], abs=1e-15)
+    assert traded.report.trades.turnover <= 0.3 + 1e-9
+

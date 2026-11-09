@@ -154,13 +154,14 @@ that no asset has is refused, naming those there are.
 ### Trade and tracking-error limits on assets
 
 `Assets.optimise` takes these limits with plain inputs: `current_weights`, the weights held now
-by asset, adding up to one with any cash on the risk-free asset; `max_turnover`, the one-way
+by asset, adding up to one with the cash (below); `max_turnover`, the one-way
 turnover from them; `min_trade` and `max_trades`, the trade limits above; and
 `benchmark_weights` with `max_tracking_error`, an annual limit on the tracking error against a
-benchmark. The turnover counts the cash: without limits on cash, an optimisation invests all of
-it, so a weight $c$ held in cash takes $c/2$ of the turnover, and the assets' trades have
-$T - c/2$; a limit below $c/2$ is refused. With limits on cash (below), the cash is one of the
-choices and its change counts with the others'. The report lists the trades from the current weights with the turnover, and gives the
+benchmark. The turnover counts the cash: an optimisation invests the cash it does not choose
+(all of it, without limits on cash), so a weight $c$ held in that cash takes $c/2$ of the
+turnover, and the assets' trades have $T - c/2$; a limit below $c/2$ is refused. With limits on
+cash (below), the risk-free asset is one of the choices and its change counts with the others'.
+The tracking error counts the benchmark's cash in other currencies, with its risk. The report lists the trades from the current weights with the turnover, and gives the
 tracking error against the benchmark weights whenever they are given, and the frontier is drawn
 under the same limits. The trade limits need a unique optimum, so they are not offered for the
 methods measured on the periods' returns.
@@ -213,6 +214,22 @@ to value the portfolio, and only the risk-free asset can be chosen, with `cash` 
 ['USD cash', 'EUR cash']
 
 ```
+
+### Weights by asset
+
+Every input that takes weights by asset follows one rule: the current and benchmark weights of
+an optimisation and its frontier, the weights `evaluate` values, fixed weights and benchmark
+weights in backtests and comparisons, the mixes of a plan, and rebalancing targets. Each may
+name any of the assets, cash included: the risk-free asset, cash in other currencies such as a
+portfolio's `EUR cash`, and, where there is no risk-free asset (and no asset of that name),
+`Cash` at the risk-free rate. They add up to one with the cash, so a portfolio's own
+`portfolio.weights()` are valid everywhere. A label that is none of these is refused as
+`unknown asset Nope`, at the path of the weight. The weights of an optimisation and of a
+rebalancing are zero or more; those valued or backtested may be negative. Limits on weights
+(`bounds`, `asset_bounds`, `groups`) and risk budgets are for the assets optimisation chooses,
+so they refuse the cash, in favour of `cash` limits. A backtest holds cash in other currencies
+that fixed weights name as the assets it is, moving with its exchange rate, and the risk-free
+asset, or `Cash`, as the cash the weights leave.
 
 ### Given weights
 

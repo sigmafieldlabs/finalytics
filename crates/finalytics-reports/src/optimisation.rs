@@ -472,11 +472,8 @@ pub fn optimisation_report(inputs: OptimisationInputs<'_>) -> Result<Optimisatio
             inputs.labels,
             w,
             current,
-            inputs
-                .cash
-                .first()
-                .map(String::as_str)
-                .or(inputs.risk_free_asset.as_deref()),
+            &inputs.cash,
+            inputs.risk_free_asset.as_deref(),
         )),
         _ => None,
     };
@@ -551,7 +548,8 @@ fn trades_from(
     labels: &[String],
     w: &[f64],
     current: &BTreeMap<String, f64>,
-    cash: Option<&str>,
+    cash: &[String],
+    risk_free_asset: Option<&str>,
 ) -> TradesSummary {
     let mut trades: Vec<WeightChange> = labels
         .iter()
@@ -563,7 +561,7 @@ fn trades_from(
                 current: now,
                 proposed: *proposed,
                 change: proposed - now,
-                cash: Some(asset.as_str()) == cash,
+                cash: cash.contains(asset),
             }
         })
         .collect();
@@ -571,18 +569,37 @@ fn trades_from(
         .iter()
         .filter(|t| !t.cash && t.change.abs() > 1e-7)
         .count();
-    let chosen = cash.is_some_and(|c| labels.iter().any(|l| l == c));
+    // The cash held now that the weights do not choose, which they invest: every asset of
+    // the current weights that is not one of theirs.
+    for (asset, now) in current {
+        if !labels.contains(asset) && now.abs() > 1e-12 {
+            trades.push(WeightChange {
+                asset: asset.clone(),
+                current: *now,
+                proposed: 0.0,
+                change: -now,
+                cash: true,
+            });
+        }
+    }
+    // What weights adding up to less than one leave, held in the risk-free asset (or cash).
     let held: f64 = w.iter().sum();
-    let cash_now = cash.and_then(|c| current.get(c)).copied().unwrap_or(0.0);
     let cash_after = (1.0 - held).max(0.0);
-    if !chosen && (cash_now.abs() > 1e-12 || cash_after > 1e-7) {
-        trades.push(WeightChange {
-            asset: cash.unwrap_or("Cash").to_owned(),
-            current: cash_now,
-            proposed: cash_after,
-            change: cash_after - cash_now,
-            cash: true,
-        });
+    if cash_after > 1e-7 {
+        let name = risk_free_asset.unwrap_or("Cash");
+        match trades.iter_mut().find(|t| t.asset == name) {
+            Some(t) => {
+                t.proposed += cash_after;
+                t.change += cash_after;
+            }
+            None => trades.push(WeightChange {
+                asset: name.to_owned(),
+                current: 0.0,
+                proposed: cash_after,
+                change: cash_after,
+                cash: true,
+            }),
+        }
     }
     let turnover = trades.iter().map(|t| t.change.abs()).sum::<f64>() / 2.0;
     trades.retain(|t| t.change.abs() > 1e-7);

@@ -309,3 +309,311 @@ fn a_change_too_small_to_settle_is_no_trade() {
         .sum();
     assert!(traded >= 2);
 }
+
+/// Weights that hold `label` at 0.1 and spread the rest over the risky assets.
+fn holding(assets: &Assets, label: &str) -> std::collections::BTreeMap<String, f64> {
+    let risky: Vec<&str> = assets
+        .risky_assets()
+        .into_iter()
+        .filter(|r| *r != label)
+        .collect();
+    let mut w: std::collections::BTreeMap<String, f64> = risky
+        .iter()
+        .map(|r| ((*r).to_owned(), 0.9 / risky.len() as f64))
+        .collect();
+    *w.entry(label.to_owned()).or_default() += 0.1;
+    w
+}
+
+/// Each kind of label of `assets`: a risky asset, the risk-free asset, cash in another
+/// currency, and `Cash` at the risk-free rate.
+fn labels_of(assets: &Assets) -> Vec<String> {
+    let mut out = vec![assets.risky_assets()[0].to_owned()];
+    out.extend(assets.cash_assets().iter().map(|c| (*c).to_owned()));
+    if assets.risk_free_asset().is_none() {
+        out.push("Cash".to_owned());
+    }
+    out
+}
+
+fn done<T>(result: Result<T, finalytics::Error>) -> Result<(), finalytics::Error> {
+    result.map(|_| ())
+}
+
+/// Every input that takes weights by asset, run with `weights`.
+fn weights_inputs(
+    assets: &Assets,
+    weights: &std::collections::BTreeMap<String, f64>,
+) -> Vec<(&'static str, Result<(), finalytics::Error>)> {
+    let w = || weights.clone();
+    let risky = assets.risky_assets();
+    vec![
+        (
+            "optimise current_weights",
+            done(
+                assets
+                    .optimise(Method::MinimumVariance)
+                    .current_weights(w())
+                    .build(),
+            ),
+        ),
+        (
+            "optimise current_weights with cash",
+            done(
+                assets
+                    .optimise(Method::MinimumVariance)
+                    .cash(0.0, 0.3)
+                    .current_weights(w())
+                    .build(),
+            ),
+        ),
+        (
+            "optimise benchmark_weights",
+            done(
+                assets
+                    .optimise(Method::MinimumVariance)
+                    .benchmark_weights(w())
+                    .max_tracking_error(0.5)
+                    .build(),
+            ),
+        ),
+        (
+            "frontier current_weights",
+            done(
+                assets
+                    .optimise(Method::MinimumVariance)
+                    .current_weights(w())
+                    .max_turnover(0.5)
+                    .frontier(5),
+            ),
+        ),
+        ("evaluate weights", done(assets.evaluate(w()).build())),
+        (
+            "backtest weights",
+            done(
+                assets
+                    .backtest(finalytics::backtest::Strategy::weights("Mix", w()))
+                    .build(),
+            ),
+        ),
+        (
+            "backtest benchmark",
+            done(
+                assets
+                    .backtest(Method::MinimumVariance)
+                    .benchmark(finalytics::backtest::Benchmark::Weights {
+                        name: None,
+                        weights: w(),
+                    })
+                    .build(),
+            ),
+        ),
+        (
+            "compare weights",
+            done(
+                assets
+                    .compare([Method::MinimumVariance])
+                    .weights("Mix", w())
+                    .build(),
+            ),
+        ),
+        (
+            "plan weights",
+            done(
+                assets
+                    .plan()
+                    .weights(w())
+                    .projection("2030-12")
+                    .inflation(0.02)
+                    .simulations(100)
+                    .build(),
+            ),
+        ),
+        (
+            "plan alternatives",
+            done(
+                assets
+                    .plan()
+                    .weights([(risky[0], 1.0)])
+                    .alternative("Alt", w())
+                    .projection("2030-12")
+                    .inflation(0.02)
+                    .simulations(100)
+                    .build(),
+            ),
+        ),
+    ]
+}
+
+#[test]
+fn every_input_of_weights_takes_every_label_of_the_assets() {
+    let portfolio = datasets::portfolio();
+    for (shape, assets) in shapes() {
+        for label in labels_of(&assets) {
+            let weights = holding(&assets, &label);
+            for (input, result) in weights_inputs(&assets, &weights) {
+                assert!(
+                    result.is_ok(),
+                    "{shape} {input} {label}: {:?}",
+                    result.err()
+                );
+            }
+            if shape == "household" {
+                portfolio
+                    .rebalance(weights.clone())
+                    .build()
+                    .unwrap_or_else(|e| panic!("rebalance {label}: {e}"));
+            }
+        }
+    }
+}
+
+#[test]
+fn every_input_of_weights_refuses_an_unknown_label_in_one_message() {
+    let portfolio = datasets::portfolio();
+    for (shape, assets) in shapes() {
+        let weights = holding(&assets, "Nope");
+        for (input, result) in weights_inputs(&assets, &weights) {
+            let Err(finalytics::Error::Validation(report)) = result else {
+                panic!("{shape} {input}: {result:?}");
+            };
+            assert!(
+                report
+                    .issues()
+                    .iter()
+                    .any(|i| i.path.ends_with(".Nope") && i.message == "unknown asset Nope"),
+                "{shape} {input}: {report}"
+            );
+        }
+    }
+    let Err(finalytics::Error::Validation(report)) =
+        portfolio.rebalance(holding(&household(), "Nope")).build()
+    else {
+        panic!("rebalance took Nope");
+    };
+    assert!(
+        report
+            .issues()
+            .iter()
+            .any(|i| i.path == "targets.Nope" && i.message == "unknown asset Nope"),
+        "{report}"
+    );
+}
+
+#[test]
+fn bounds_and_groups_refuse_the_cash_in_favour_of_cash_limits() {
+    let assets = household();
+    for (label, says) in [
+        ("USD cash", "limit it with cash"),
+        ("EUR cash", "cash in another currency"),
+    ] {
+        let Err(finalytics::Error::Validation(report)) = assets
+            .optimise(Method::MinimumVariance)
+            .asset_bounds(label, 0.0, 0.1)
+            .group("G", &[label, "VTI"], 0.0, 0.9)
+            .build()
+        else {
+            panic!("{label} accepted");
+        };
+        let paths: Vec<&str> = report.issues().iter().map(|i| i.path.as_str()).collect();
+        assert!(
+            paths.contains(&format!("options.asset_bounds.{label}").as_str()),
+            "{report}"
+        );
+        assert!(paths.contains(&"options.groups.G"), "{report}");
+        assert!(
+            report.issues().iter().all(|i| i.message.contains(says)),
+            "{report}"
+        );
+    }
+}
+
+#[test]
+fn the_cash_a_mix_holds_in_another_currency_is_measured_in_every_verb() {
+    let portfolio = datasets::portfolio();
+    let assets = household();
+    let mix: std::collections::BTreeMap<String, f64> = portfolio
+        .weights()
+        .unwrap()
+        .into_iter()
+        .map(|(k, w)| (k.to_string(), w))
+        .collect();
+    assert!(mix.contains_key("EUR cash"));
+    // A backtest of the mix holds the euro cash as evaluate's history does.
+    let valued = assets.evaluate(mix.clone()).build().unwrap();
+    let backtest = assets
+        .backtest(finalytics::backtest::Strategy::weights("Mix", mix.clone()))
+        .build()
+        .unwrap();
+    let history = valued.report.history.as_ref().unwrap();
+    let tested = &backtest.report.strategy.tested.statistics;
+    assert!((history.weights.statistics.volatility - tested.volatility).abs() < 1e-12);
+    assert!(backtest.results.assets.contains(&"EUR cash".to_owned()));
+    // The tracking error against the mix counts the euro cash's risk.
+    let optimised = assets
+        .optimise(Method::MinimumVariance)
+        .benchmark_weights(mix.clone())
+        .build()
+        .unwrap();
+    let weights = optimised.results.weights.as_ref().unwrap();
+    assert!(!weights.contains_key("EUR cash"), "{weights:?}");
+    let covariance = assets.covariance().unwrap().matrix;
+    let labels = covariance.labels().to_vec();
+    let active: Vec<f64> = labels
+        .iter()
+        .map(|l| weights.get(l).copied().unwrap_or(0.0) - mix.get(l).copied().unwrap_or(0.0))
+        .collect();
+    let n = labels.len();
+    let variance: f64 = (0..n)
+        .map(|i| {
+            (0..n)
+                .map(|j| active[i] * covariance.get(i, j) * active[j])
+                .sum::<f64>()
+        })
+        .sum();
+    let reported = optimised
+        .report
+        .summary
+        .as_ref()
+        .unwrap()
+        .tracking_error
+        .unwrap();
+    assert!(
+        (reported - variance.sqrt()).abs() < 1e-12,
+        "{reported} {}",
+        variance.sqrt()
+    );
+    // From the mix, the optimisation invests the cash, and its trades say so.
+    let traded = assets
+        .optimise(Method::MinimumVariance)
+        .current_weights(mix.clone())
+        .max_turnover(0.3)
+        .build()
+        .unwrap();
+    let trades = traded.report.trades.as_ref().unwrap();
+    let eur = trades
+        .trades
+        .iter()
+        .find(|t| t.asset == "EUR cash")
+        .unwrap();
+    assert!(eur.cash && eur.proposed == 0.0 && (eur.current - mix["EUR cash"]).abs() < 1e-15);
+    let turnover: f64 = assets
+        .labels()
+        .iter()
+        .map(|l| {
+            (traded
+                .results
+                .weights
+                .as_ref()
+                .unwrap()
+                .get(l)
+                .copied()
+                .unwrap_or(0.0)
+                - mix.get(l).copied().unwrap_or(0.0))
+            .abs()
+        })
+        .sum::<f64>()
+        / 2.0;
+    assert!((trades.turnover - turnover).abs() < 1e-12);
+    assert!(trades.turnover <= 0.3 + 1e-9);
+}

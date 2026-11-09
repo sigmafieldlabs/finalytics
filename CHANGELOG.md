@@ -34,6 +34,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   one minor unit of the instrument's currency, or a billionth of the account's value, as no
   trade.
 
+- Every input that takes weights by asset now follows one rule, and `portfolio.weights()` is
+  valid in each. `current_weights`, `benchmark_weights` (in `optimise` and the frontier), fixed
+  weights and benchmark weights in backtests and comparisons refused cash in another currency,
+  such as `EUR cash`, which `Portfolio.assets()` lists and `evaluate` takes; `current_weights`,
+  `benchmark_weights` and plans refused `Cash` at the risk-free rate unless `cash` limits were
+  given. Each now takes every label the assets list, cash included, and `Cash` where it stands
+  for cash at the risk-free rate. An optimisation invests the cash in another currency it is
+  given, counting it in the turnover and listing it among the trades; a benchmark's cash in
+  another currency counts in the tracking error, with its risk; and a backtest holds such cash
+  as the asset it is, moving with its exchange rate.
+
+### Changed
+
+- One message for a label that is not one of the assets, `unknown asset Nope`, in every input
+  that takes weights or values by asset; rebalancing targets said "is not an instrument of the
+  portfolio". Current and benchmark weights and `evaluate`, like fixed weights, report weights
+  that do not add up to one beside an unknown label, and fixed weights say where the cash goes
+  as the others do ("give T-Bills, the risk-free asset, any cash"). Limits and risk budgets that name cash in another currency say that
+  optimisation does not choose it, and expected returns for the risk-free asset or `Cash` point
+  to `risk_free_rate`.
+
 ## [1.0.0-rc.5] - 2026-11-09
 
 ### Added

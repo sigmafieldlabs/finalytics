@@ -7156,7 +7156,7 @@
             "type": "number",
             "format": "double"
           },
-          "description": "The weights held now, by asset, adding up to one with any weight on the risk-free asset,\nwhich is cash: the start of the trades the report lists, and of the turnover and trade\nlimits.",
+          "description": "The weights held now, by asset, adding up to one with the cash: any of the assets, the\nrisk-free asset and cash in other currencies included, or `Cash` at the risk-free rate\nwhere there is no risk-free asset. They are the start of the trades the report lists, and\nof the turnover and trade limits; optimisation invests the cash it does not choose.",
           "default": {}
         },
         "max_turnover": {
@@ -7193,7 +7193,7 @@
             "type": "number",
             "format": "double"
           },
-          "description": "A benchmark's weights by asset, adding up to one with any weight on the risk-free asset:\nthe report gives the weights' ex-ante tracking error against it.",
+          "description": "A benchmark's weights by asset, adding up to one with the cash, as `current_weights`\nmay hold it: the report gives the weights' ex-ante tracking error against it, counting the\nrisk of any cash in other currencies.",
           "default": {}
         },
         "max_tracking_error": {

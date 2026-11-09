@@ -336,7 +336,10 @@ export type BacktestChoices =
         name?: string;
       })
   | (BacktestSettings & {
-      /** Fixed weights by asset, adding up to one; a weight on the risk-free asset is cash. */
+      /**
+       * Fixed weights by asset, adding up to one with the cash: any of the assets, the risk-free
+       * asset and cash in other currencies included, or `Cash` at the risk-free rate.
+       */
       weights: Record<string, number>;
       method?: undefined;
       /** The name of the strategy, and the report's title: `Weights` by default. */
@@ -1879,7 +1882,8 @@ impl Assets {
     }
 
     /// The backtest of one strategy: `options.method`, fitted as the validation says, or fixed
-    /// `options.weights` by asset (a weight on the risk-free asset is held as cash), against the
+    /// `options.weights` by asset (adding up to one with the cash, as every input of weights may
+    /// hold it), against the
     /// benchmark if one is given: the backtest report in `report`, and every return and trade
     /// in `results`.
     #[wasm_bindgen(unchecked_return_type = "Result<BacktestReport, BacktestResults>")]

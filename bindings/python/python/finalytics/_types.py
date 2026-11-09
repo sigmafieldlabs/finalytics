@@ -3695,9 +3695,10 @@ class OptimiseOptions:
     """Annual expected returns by asset, in place of the estimates."""
 
     current_weights: dict[str, float] = field(default_factory=dict)
-    """The weights held now, by asset, adding up to one with any weight on the risk-free asset,
-    which is cash: the start of the trades the report lists, and of the turnover and trade
-    limits.
+    """The weights held now, by asset, adding up to one with the cash: any of the assets, the
+    risk-free asset and cash in other currencies included, or `Cash` at the risk-free rate where
+    there is no risk-free asset. They are the start of the trades the report lists, and of the
+    turnover and trade limits; optimisation invests the cash it does not choose.
     """
 
     max_turnover: float | None = None
@@ -3714,8 +3715,9 @@ class OptimiseOptions:
     """The largest number of assets traded from the current weights."""
 
     benchmark_weights: dict[str, float] = field(default_factory=dict)
-    """A benchmark's weights by asset, adding up to one with any weight on the risk-free asset: the
-    report gives the weights' ex-ante tracking error against it.
+    """A benchmark's weights by asset, adding up to one with the cash, as `current_weights` may hold
+    it: the report gives the weights' ex-ante tracking error against it, counting the risk of any
+    cash in other currencies.
     """
 
     max_tracking_error: float | None = None

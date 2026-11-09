@@ -41,7 +41,7 @@ use finalytics_backtest::{self as engine, Fit, Market, Plan};
 use finalytics_core::{Date, Error, Result, ValidationReport};
 use finalytics_reports::BacktestSetup;
 pub use finalytics_reports::{CashFlow, MoneyFigures};
-use finalytics_risk::PriceTable;
+use finalytics_risk::{PriceTable, ReturnsTable};
 
 pub use finalytics_backtest::{
     BacktestResults, Failure, Rebalance, Run, Settings, StrategyResult, Trade, Validation,
@@ -215,8 +215,12 @@ impl Assets {
     /// a problem. A comparison applies each option to the strategies that use it and notes,
     /// for each other strategy given it, that it does not apply; an option that no strategy
     /// given it uses is a problem, naming them.
-    fn simulate(&self, options: &BacktestOptions, single: bool) -> Result<BacktestResults> {
-        let returns = self.risky_returns()?;
+    fn simulate(
+        &self,
+        options: &BacktestOptions,
+        single: bool,
+    ) -> Result<(BacktestResults, ReturnsTable)> {
+        let returns = self.market_returns(options)?;
         let labels = returns.labels().to_vec();
         let cash = self.cash_returns();
         let mut report = ValidationReport::new();
@@ -255,15 +259,17 @@ impl Assets {
                         }
                     }
                     let (method, notes) = applicable(method);
+                    let held_labels = labels.clone();
                     let weights_of = move |result: crate::OptimisationResult| match result.weights {
                         Some(weights) => Fit::Weights(
-                            self.risky_assets()
+                            held_labels
                                 .iter()
-                                .map(|a| weights.get(*a).copied().unwrap_or(0.0))
+                                .map(|a| weights.get(a).copied().unwrap_or(0.0))
                                 .collect(),
                         ),
                         None => Fit::NoSolution(result.status.to_string().replace('_', " ")),
                     };
+                    let market_labels = labels.clone();
                     let plan = if trading {
                         Plan::Refit(Box::new(move |rows, held: Option<&[f64]>| {
                             let mut options = method.clone();
@@ -273,11 +279,11 @@ impl Assets {
                             match held {
                                 // From the weights held, the risk-free asset holding the rest.
                                 Some(held) => {
-                                    options.current_weights = self
-                                        .risky_assets()
+                                    options.current_weights = market_labels
                                         .iter()
-                                        .map(|a| (*a).to_owned())
+                                        .cloned()
                                         .zip(held.iter().copied())
+                                        .filter(|(a, w)| *w != 0.0 || !self.is_cash_label(a))
                                         .collect();
                                     let cash = 1.0 - held.iter().sum::<f64>();
                                     let holds_cash = self
@@ -316,7 +322,8 @@ impl Assets {
                     strategies.push(engine::Strategy { name, plan, notes });
                 }
                 Strategy::Weights { weights, .. } => {
-                    let fixed = self.fixed(weights, &format!("{path}.weights"), &mut report);
+                    let fixed =
+                        self.fixed(weights, &labels, &format!("{path}.weights"), &mut report);
                     strategies.push(engine::Strategy {
                         name,
                         plan: Plan::Weights(fixed),
@@ -329,7 +336,12 @@ impl Assets {
             None => None,
             Some(Benchmark::Weights { name, weights }) => Some((
                 name.clone().unwrap_or_else(|| "Benchmark".to_owned()),
-                engine::Benchmark::Weights(self.fixed(weights, "benchmark.weights", &mut report)),
+                engine::Benchmark::Weights(self.fixed(
+                    weights,
+                    &labels,
+                    "benchmark.weights",
+                    &mut report,
+                )),
             )),
             Some(Benchmark::Prices { name, prices }) => {
                 let label = prices.labels().first().cloned().unwrap_or_default();
@@ -359,8 +371,56 @@ impl Assets {
         }
         report.into_result(())?;
         let mut backtest = engine::backtest(&market, strategies, benchmark, &settings)?;
-        backtest.assets = labels;
-        Ok(backtest)
+        backtest.assets.clone_from(&labels);
+        Ok((backtest, returns))
+    }
+
+    /// The returns of the assets a backtest of `options` holds: the risky assets, and the cash
+    /// in other currencies that fixed weights hold. The risk-free asset, or `Cash`, is the cash
+    /// the weights leave.
+    fn market_returns(&self, options: &BacktestOptions) -> Result<ReturnsTable> {
+        let fixed = options
+            .strategies
+            .iter()
+            .filter_map(|s| match s {
+                Strategy::Weights { weights, .. } => Some(weights),
+                Strategy::Optimise { .. } => None,
+            })
+            .chain(match &options.benchmark {
+                Some(Benchmark::Weights { weights, .. }) => Some(weights),
+                _ => None,
+            });
+        let mut named: Vec<&str> = Vec::new();
+        for weights in fixed {
+            named.extend(
+                weights
+                    .iter()
+                    .filter(|(_, w)| **w != 0.0)
+                    .map(|(a, _)| a.as_str()),
+            );
+        }
+        let cash = self.cash_assets();
+        let held: Vec<&str> = cash
+            .iter()
+            .copied()
+            .filter(|c| Some(*c) != self.risk_free_asset() && named.contains(c))
+            .collect();
+        if held.is_empty() {
+            return self.risky_returns();
+        }
+        let risky = self.risky_assets();
+        let keep: Vec<usize> = (0..self.labels().len())
+            .filter(|&i| {
+                let l = self.labels()[i].as_str();
+                risky.contains(&l) || held.contains(&l)
+            })
+            .collect();
+        ReturnsTable::new(
+            keep.iter().map(|&i| self.labels()[i].clone()).collect(),
+            keep.iter()
+                .map(|&i| self.returns().columns()[i].clone())
+                .collect(),
+        )
     }
 
     /// The comparison of the strategies of `options`: each backtested, scored on the periods it
@@ -372,12 +432,9 @@ impl Assets {
     /// a first fit succeeds, earns the risk-free return. [`Assets::compare`] builds the same
     /// options step by step.
     pub fn compare_with(&self, options: &BacktestOptions) -> Result<Comparison> {
-        let results = self.simulate(options, false)?;
-        let report = finalytics_reports::comparison_report(
-            &results,
-            &self.risky_returns()?,
-            &self.setup(options),
-        )?;
+        let (results, returns) = self.simulate(options, false)?;
+        let report =
+            finalytics_reports::comparison_report(&results, &returns, &self.setup(options))?;
         Ok(Comparison { report, results })
     }
 
@@ -385,12 +442,8 @@ impl Assets {
     /// report, with every return and trade in the results. [`Assets::backtest`] builds the same
     /// options step by step.
     pub fn backtest_with(&self, options: &BacktestOptions) -> Result<Backtest> {
-        let results = self.simulate(options, true)?;
-        let report = finalytics_reports::backtest_report(
-            &results,
-            &self.risky_returns()?,
-            &self.setup(options),
-        )?;
+        let (results, returns) = self.simulate(options, true)?;
+        let report = finalytics_reports::backtest_report(&results, &returns, &self.setup(options))?;
         Ok(Backtest { report, results })
     }
 
@@ -414,31 +467,23 @@ impl Assets {
         .with_money(options.start_value, options.flows.clone())
     }
 
-    /// Fixed weights by asset as one weight per risky asset, the risk-free asset as cash, or,
-    /// without one, `Cash`.
+    /// Fixed weights by asset, checked by the rule every input of weights follows, as one weight
+    /// per asset of the backtest's `labels`; what they leave is the cash, the risk-free asset or
+    /// `Cash`.
     fn fixed(
         &self,
         weights: &BTreeMap<String, f64>,
+        labels: &[String],
         path: &str,
         report: &mut ValidationReport,
     ) -> Vec<f64> {
-        let risky = self.risky_assets();
-        let cash = self.risk_free_asset().unwrap_or(crate::assets::CASH);
-        for asset in weights.keys() {
-            if !risky.contains(&asset.as_str()) && cash != asset.as_str() {
-                report.error(format!("{path}.{asset}"), format!("unknown asset {asset}"));
-            }
+        if weights.is_empty() {
+            report.error(path, "give the weights by asset, adding up to one");
         }
-        let total: f64 = weights.values().sum();
-        if (total - 1.0).abs() > 1e-6 {
-            report.error(
-                path,
-                format!("add up to {total}, not one; give the risk-free asset any cash"),
-            );
-        }
-        risky
+        self.check_weights(weights, path, true, report);
+        labels
             .iter()
-            .map(|a| weights.get(*a).copied().unwrap_or(0.0))
+            .map(|a| weights.get(a).copied().unwrap_or(0.0))
             .collect()
     }
 
@@ -1042,7 +1087,7 @@ macro_rules! common_setters {
             }
 
             /// A benchmark's weights by asset, for `max_tracking_error`, adding up to one with
-            /// any cash on the risk-free asset.
+            /// the cash, as for one optimisation.
             pub fn benchmark_weights<S: Into<String>>(
                 mut self,
                 weights: impl IntoIterator<Item = (S, f64)>,

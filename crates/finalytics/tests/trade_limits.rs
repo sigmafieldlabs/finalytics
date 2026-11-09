@@ -215,7 +215,11 @@ fn mistakes_with_the_trade_limits_are_reported_together() {
     let at: Vec<&str> = found.iter().map(|(p, _)| p.as_str()).collect();
     assert_eq!(
         at,
-        ["options.current_weights.Bitcoin", "options.max_turnover"]
+        [
+            "options.current_weights.Bitcoin",
+            "options.current_weights",
+            "options.max_turnover"
+        ]
     );
     let found = paths(
         assets

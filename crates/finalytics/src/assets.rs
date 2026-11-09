@@ -325,9 +325,10 @@ pub struct OptimiseOptions {
     pub resample: Option<usize>,
     /// Annual expected returns by asset, in place of the estimates.
     pub expected_returns: BTreeMap<String, f64>,
-    /// The weights held now, by asset, adding up to one with any weight on the risk-free asset,
-    /// which is cash: the start of the trades the report lists, and of the turnover and trade
-    /// limits.
+    /// The weights held now, by asset, adding up to one with the cash: any of the assets, the
+    /// risk-free asset and cash in other currencies included, or `Cash` at the risk-free rate
+    /// where there is no risk-free asset. They are the start of the trades the report lists, and
+    /// of the turnover and trade limits; optimisation invests the cash it does not choose.
     pub current_weights: BTreeMap<String, f64>,
     /// The largest one-way turnover from the current weights, `sum |w - current| / 2`, such as
     /// 0.2 for 20% of the portfolio bought (and as much sold).
@@ -337,8 +338,9 @@ pub struct OptimiseOptions {
     pub min_trade: Option<f64>,
     /// The largest number of assets traded from the current weights.
     pub max_trades: Option<usize>,
-    /// A benchmark's weights by asset, adding up to one with any weight on the risk-free asset:
-    /// the report gives the weights' ex-ante tracking error against it.
+    /// A benchmark's weights by asset, adding up to one with the cash, as `current_weights`
+    /// may hold it: the report gives the weights' ex-ante tracking error against it, counting the
+    /// risk of any cash in other currencies.
     pub benchmark_weights: BTreeMap<String, f64>,
     /// The largest ex-ante tracking error a year against `benchmark_weights`, such as 0.03.
     pub max_tracking_error: Option<f64>,
@@ -662,11 +664,122 @@ impl Assets {
         Some(i) == self.risk_free_asset || self.held_cash.contains(&i)
     }
 
+    /// Whether `Cash` stands for cash at the risk-free rate: the assets have no risk-free asset
+    /// and none of them is named `Cash`.
+    pub(crate) fn cash_at_rate(&self) -> bool {
+        self.risk_free_asset.is_none() && !self.labels().iter().any(|l| l == CASH)
+    }
+
+    /// Whether weights by asset may name `label`: every one of the assets, cash included, and
+    /// `Cash` where it stands for cash at the risk-free rate.
+    pub(crate) fn takes_label(&self, label: &str) -> bool {
+        self.labels().iter().any(|l| l == label) || (label == CASH && self.cash_at_rate())
+    }
+
+    /// Whether `label` is cash: the risk-free asset, cash in another currency, or `Cash` at the
+    /// risk-free rate.
+    pub(crate) fn is_cash_label(&self, label: &str) -> bool {
+        match self.labels().iter().position(|l| l == label) {
+            Some(i) => self.is_cash(i),
+            None => label == CASH && self.cash_at_rate(),
+        }
+    }
+
+    /// Checks weights by asset given at `path`, such as `options.current_weights`, by the rule
+    /// every input of weights follows: each names one of the assets, cash included, or `Cash`
+    /// where it stands for cash at the risk-free rate, and is a finite number (and, unless
+    /// `signed`, zero or more), and together they add up to one, checked whenever the numbers
+    /// are. Returns whether the weights are all known and finite.
+    pub(crate) fn check_weights(
+        &self,
+        weights: &BTreeMap<String, f64>,
+        path: &str,
+        signed: bool,
+        report: &mut ValidationReport,
+    ) -> bool {
+        let mut known = true;
+        let mut numbers = true;
+        for (asset, w) in weights {
+            let at = format!("{path}.{asset}");
+            if !self.takes_label(asset) {
+                report.error(at, unknown_asset(asset));
+                known = false;
+            } else if signed && !w.is_finite() {
+                report.error(at, format!("must be a finite number, not {w}"));
+                numbers = false;
+            } else if !signed && !(w.is_finite() && *w >= 0.0) {
+                report.error(at, format!("must be a weight of zero or more, not {w}"));
+                numbers = false;
+            }
+        }
+        let total: f64 = weights.values().sum();
+        if numbers && total.is_finite() && !weights.is_empty() && (total - 1.0).abs() > 1e-6 {
+            report.error(path, self.add_up(total));
+        }
+        known && numbers
+    }
+
+    /// The problem with weights that add up to `total`, with where their cash goes.
+    fn add_up(&self, total: f64) -> String {
+        match self.risk_free_asset() {
+            Some(cash) => {
+                format!("add up to {total}, not one; give {cash}, the risk-free asset, any cash")
+            }
+            None if self.cash_at_rate() => {
+                format!("add up to {total}, not one; give {CASH} any cash")
+            }
+            None => format!("add up to {total}, not one"),
+        }
+    }
+
+    /// Why `asset` cannot be limited or budgeted as the risky assets are: it is cash, which
+    /// optimisation holds in its own way, or it is not one of the assets.
+    pub(crate) fn not_chosen(&self, asset: &str) -> String {
+        if self.risk_free_asset() == Some(asset) {
+            format!(
+                "{asset} is the risk-free asset, which optimisation holds only as cash: limit it \
+                 with cash"
+            )
+        } else if asset == CASH && self.cash_at_rate() {
+            format!(
+                "{CASH} is cash at the risk-free rate, which optimisation holds only as cash: \
+                 limit it with cash"
+            )
+        } else if self.is_cash_label(asset) {
+            format!("{asset} is cash in another currency, which optimisation does not choose")
+        } else {
+            unknown_asset(asset)
+        }
+    }
+
     /// The asset that holds the cash `options` allow, if they allow any: the risk-free asset,
     /// or `Cash` at the risk-free rate.
     fn cash_choice(&self, options: &OptimiseOptions) -> Option<String> {
         options.cash?;
         Some(self.risk_free_asset().unwrap_or(CASH).to_owned())
+    }
+
+    /// Weights `w` of `labels` by label: every asset's, and the cash's where the weights hold
+    /// some, so that cash a problem holds at zero only to measure a benchmark is left out.
+    fn by_label(&self, labels: &[String], w: &[f64]) -> BTreeMap<String, f64> {
+        labels
+            .iter()
+            .cloned()
+            .zip(w.iter().copied())
+            .filter(|(l, w)| *w != 0.0 || !self.held_cash.iter().any(|&i| self.labels()[i] == *l))
+            .collect()
+    }
+
+    /// The weight of the cash held now that optimisation invests: every cash in
+    /// `current_weights` but the cash `options` let it choose.
+    fn invested_cash(&self, options: &OptimiseOptions) -> f64 {
+        let chosen = self.cash_choice(options);
+        options
+            .current_weights
+            .iter()
+            .filter(|(l, _)| self.is_cash_label(l) && chosen.as_deref() != Some(l.as_str()))
+            .map(|(_, w)| *w)
+            .sum()
     }
 
     /// The same assets with `labels` held as cash in other currencies: estimated and valued with
@@ -1086,7 +1199,11 @@ impl Assets {
                 .then_some(self.mean_method),
             covariance: &covariance,
             risk_free_asset: self.risk_free_asset().map(str::to_owned),
-            cash: self.cash_choice(options).into_iter().collect(),
+            cash: labels
+                .iter()
+                .filter(|l| self.is_cash_label(l))
+                .cloned()
+                .collect(),
             given: false,
             risk_free_rate: results.risk_free_rate,
             periods_per_year: self.periods_per_year,
@@ -1196,13 +1313,7 @@ impl Assets {
                 solution.volatility,
             ),
         };
-        let weights = chosen.map(|w| {
-            labels
-                .iter()
-                .cloned()
-                .zip(w.iter().copied())
-                .collect::<BTreeMap<String, f64>>()
-        });
+        let weights = chosen.map(|w| self.by_label(&labels, w));
         let sharpe_ratio = match (expected_return, volatility) {
             (Some(r), Some(v)) if v > 0.0 => Some((r - rf) / v),
             _ => None,
@@ -1244,7 +1355,7 @@ impl Assets {
                 FrontierPortfolio {
                     expected_return: expected.unwrap_or(p.expected_return),
                     volatility: volatility.unwrap_or(p.volatility),
-                    weights: labels.iter().cloned().zip(w).collect(),
+                    weights: self.by_label(&labels, &w),
                 }
             })
             .collect())
@@ -1265,13 +1376,7 @@ impl Assets {
         let n = risky.len();
         let method = options.method;
         let name = method.in_sentence();
-        let unknown = |asset: &str| match self.risk_free_asset() {
-            Some(rf) if rf == asset => format!(
-                "{asset} is the risk-free asset, which optimisation holds only as cash: limit it \
-                 with cash"
-            ),
-            _ => format!("unknown asset {asset}"),
-        };
+        let unknown = |asset: &str| self.not_chosen(asset);
         let known = |asset: &str| risky.contains(&asset);
         let finite = |report: &mut ValidationReport, value: Option<f64>, path: &str| match value {
             Some(v) if !v.is_finite() => {
@@ -1492,46 +1597,20 @@ impl Assets {
                 );
             }
         }
-        // Weights held now and a benchmark's: shares of the portfolio, adding up to one with
-        // any cash: in the risk-free asset, or in `Cash` when it is allowed and there is none.
-        let rf_asset = self.risk_free_asset();
-        let cash_asset = self.cash_choice(options);
-        let cash_name = rf_asset.or(cash_asset.as_deref());
-        let shares =
-            |report: &mut ValidationReport, weights: &BTreeMap<String, f64>, field: &str| {
-                let mut ok = true;
-                for (asset, w) in weights {
-                    let path = format!("options.{field}.{asset}");
-                    if !(known(asset) || cash_name == Some(asset.as_str())) {
-                        report.error(path, format!("unknown asset {asset}"));
-                        ok = false;
-                    } else if !(w.is_finite() && *w >= 0.0) {
-                        report.error(path, format!("must be a weight of zero or more, not {w}"));
-                        ok = false;
-                    }
-                }
-                let total: f64 = weights.values().sum();
-                if ok && (total - 1.0).abs() > 1e-6 {
-                    report.error(
-                    format!("options.{field}"),
-                    match (rf_asset, cash_name) {
-                        (Some(cash), _) => format!(
-                            "add up to {total}, not one; give {cash}, the risk-free asset, any cash"
-                        ),
-                        (None, Some(cash)) => {
-                            format!("add up to {total}, not one; give {cash} any cash")
-                        }
-                        (None, None) => format!("add up to {total}, not one"),
-                    },
-                );
-                }
-            };
-        if !options.current_weights.is_empty() {
-            shares(&mut report, &options.current_weights, "current_weights");
-        }
-        if !options.benchmark_weights.is_empty() {
-            shares(&mut report, &options.benchmark_weights, "benchmark_weights");
-        }
+        // Weights held now and a benchmark's: shares of the portfolio, by the rule every input
+        // of weights follows, adding up to one with any cash.
+        self.check_weights(
+            &options.current_weights,
+            "options.current_weights",
+            false,
+            &mut report,
+        );
+        self.check_weights(
+            &options.benchmark_weights,
+            "options.benchmark_weights",
+            false,
+            &mut report,
+        );
         let trading = [
             ("max_turnover", options.max_turnover.is_some()),
             ("min_trade", options.min_trade.is_some()),
@@ -1546,12 +1625,8 @@ impl Assets {
             }
         }
         if let Some(t) = options.max_turnover {
-            // Without limits on cash, optimisation invests whatever cash is held.
-            let cash = rf_asset
-                .filter(|_| options.cash.is_none())
-                .and_then(|rf| options.current_weights.get(rf))
-                .copied()
-                .unwrap_or(0.0);
+            // Optimisation invests the cash held that it does not choose.
+            let cash = self.invested_cash(options);
             if !(t.is_finite() && t > 0.0 && t <= 1.0) {
                 report.error(
                     "options.max_turnover",
@@ -1600,8 +1675,15 @@ impl Assets {
         );
         for (asset, r) in &options.expected_returns {
             let path = format!("options.expected_returns.{asset}");
-            if !known(asset) {
-                report.error(path, unknown(asset));
+            if self.risk_free_asset() == Some(asset.as_str())
+                || (asset == CASH && self.cash_at_rate())
+            {
+                report.error(
+                    path,
+                    format!("{asset} earns the risk-free rate: give risk_free_rate for another"),
+                );
+            } else if !self.takes_label(asset) {
+                report.error(path, unknown_asset(asset));
             } else {
                 finite(&mut report, Some(*r), &path);
             }
@@ -1700,12 +1782,21 @@ impl Assets {
         if let Some((rf, _)) = &cash {
             labels.push(rf.clone());
         }
+        // Cash in another currency that a benchmark holds, which optimisation does not choose:
+        // held at zero, so that the tracking error counts the benchmark's risk in it.
+        let watched: Vec<String> = options
+            .benchmark_weights
+            .iter()
+            .filter(|(l, w)| **w != 0.0 && self.held_cash.iter().any(|&i| self.labels()[i] == **l))
+            .map(|(l, _)| l.clone())
+            .collect();
+        labels.extend(watched.iter().cloned());
+        let rate = options.risk_free_rate.unwrap_or(self.risk_free_rate);
         let mut expected = self.expected_of(&labels)?;
-        if cash.is_some()
-            && self.risk_free_asset.is_none()
-            && let Some(last) = expected.last_mut()
-        {
-            *last = options.risk_free_rate.unwrap_or(self.risk_free_rate);
+        for (label, e) in labels.iter().zip(expected.iter_mut()) {
+            if label == CASH && self.cash_at_rate() {
+                *e = rate;
+            }
         }
         for (asset, r) in &options.expected_returns {
             if let Some(i) = labels.iter().position(|l| l == asset) {
@@ -1734,6 +1825,13 @@ impl Assets {
                 max: bound.max,
             });
         }
+        for label in &watched {
+            constraints.asset_bounds.push(AssetBound {
+                asset: label.clone(),
+                min: 0.0,
+                max: 0.0,
+            });
+        }
         for (name, group) in &options.groups {
             constraints.groups.push(GroupLimit {
                 name: name.clone(),
@@ -1752,19 +1850,22 @@ impl Assets {
             || options.min_trade.is_some()
             || options.max_trades.is_some()
         {
-            let mut turnover = Turnover::new(by_label(&options.current_weights));
-            // The turnover counts the cash too. Without limits on cash, optimisation invests
-            // all of it, so a change of the cash's whole weight is part of every portfolio's
-            // turnover, and the risky assets' changes have what the limit leaves; with them,
-            // the cash is one of the choices and its change is counted with the others'.
-            let invested = if cash.is_some() {
-                0.0
-            } else {
-                self.risk_free_asset()
-                    .and_then(|rf| options.current_weights.get(rf))
-                    .copied()
-                    .unwrap_or(0.0)
-            };
+            // The turnover counts the cash too. Optimisation invests the cash it does not
+            // choose, so a change of that cash's whole weight is part of every portfolio's
+            // turnover, and the choices' changes have what the limit leaves; cash that is
+            // one of the choices is counted with the others.
+            let current: Vec<f64> = labels
+                .iter()
+                .map(|l| {
+                    if watched.contains(l) {
+                        0.0
+                    } else {
+                        options.current_weights.get(l).copied().unwrap_or(0.0)
+                    }
+                })
+                .collect();
+            let mut turnover = Turnover::new(current);
+            let invested = self.invested_cash(options);
             turnover.limit = options.max_turnover.map(|t| (t - invested / 2.0).max(0.0));
             constraints.turnover = Some(turnover);
         }
@@ -1786,34 +1887,27 @@ impl Assets {
             .with_expected_returns(expected)
             .with_constraints(constraints);
         if options.method.uses_scenarios() {
-            let scenarios = match (&cash, self.risk_free_asset) {
-                // The risk-free asset's own returns, period by period.
-                (Some(_), Some(_)) => self
-                    .returns_of(|i| !self.is_cash(i) || Some(i) == self.risk_free_asset)
-                    .and_then(|t| {
-                        let order: Vec<usize> = labels
-                            .iter()
-                            .map(|l| t.labels().iter().position(|x| x == l).unwrap_or(0))
-                            .collect();
-                        ReturnsTable::new(
-                            labels.clone(),
-                            order.iter().map(|&k| t.columns()[k].clone()).collect(),
-                        )
-                    })?,
-                // The risk-free rate in each period, as a backtest's cash earns it.
-                (Some(_), None) => {
-                    let rate = options.risk_free_rate.unwrap_or(self.risk_free_rate);
-                    let per_period = (1.0 + rate).powf(1.0 / self.periods_per_year) - 1.0;
-                    let mut columns = returns.columns().to_vec();
-                    columns.push(vec![per_period; self.dates.len()]);
-                    ReturnsTable::new(labels.clone(), columns)?
-                }
-                (None, _) => returns,
-            };
-            problem = problem.with_scenarios(scenarios);
+            // Each label's returns period by period: an asset's own, cash in another currency's
+            // and the risk-free asset's included, and for `Cash` the risk-free rate in each
+            // period, as a backtest's cash earns it.
+            let per_period = (1.0 + rate).powf(1.0 / self.periods_per_year) - 1.0;
+            let columns = labels
+                .iter()
+                .map(|l| match self.labels().iter().position(|x| x == l) {
+                    Some(i) => self.returns.columns()[i].clone(),
+                    None => vec![per_period; self.dates.len()],
+                })
+                .collect();
+            problem = problem.with_scenarios(ReturnsTable::new(labels.clone(), columns)?);
         }
         Ok((problem, labels))
     }
+}
+
+/// The one message for a label that is not one of the assets, in every input that takes
+/// weights or values by asset.
+pub(crate) fn unknown_asset(asset: &str) -> String {
+    format!("unknown asset {asset}")
 }
 
 /// `error` with the optimiser's paths (`constraints.bounds`, `objective.confidence`) turned into
@@ -2087,8 +2181,8 @@ impl Optimise<'_> {
     }
 
     /// The weights held now, by asset, such as `[("US Equity", 0.5), ("Bonds", 0.5)]`, adding up
-    /// to one with any cash on the risk-free asset: the report lists the trades from them, and
-    /// the turnover and trade limits start from them.
+    /// to one with the cash, such as a portfolio's own weights: the report lists the trades from
+    /// them, and the turnover and trade limits start from them.
     pub fn current_weights<S: Into<String>>(
         mut self,
         weights: impl IntoIterator<Item = (S, f64)>,
@@ -2117,7 +2211,7 @@ impl Optimise<'_> {
         self
     }
 
-    /// A benchmark's weights by asset, adding up to one with any cash on the risk-free asset:
+    /// A benchmark's weights by asset, adding up to one with the cash:
     /// the report gives the tracking error against it, and `max_tracking_error` limits it.
     pub fn benchmark_weights<S: Into<String>>(
         mut self,

@@ -123,3 +123,87 @@ test("a change too small to settle is no trade", () => {
   moved.BND += 1e-6;
   assert.ok(portfolio.rebalance(moved).results.accounts.reduce((s, a) => s + a.trades.length, 0) >= 2);
 });
+
+/** Weights that hold `label` at 0.1 and spread the rest over the risky assets. */
+function holding(assets, label) {
+  const risky = assets.riskyAssets.filter((r) => r !== label);
+  const weights = Object.fromEntries(risky.map((r) => [r, 0.9 / risky.length]));
+  weights[label] = (weights[label] ?? 0) + 0.1;
+  return weights;
+}
+
+/** A risky asset, the risk-free asset, cash in another currency, and Cash at the rate. */
+const labelsOf = (assets) => [assets.riskyAssets[0], ...assets.cashAssets, ...(assets.riskFreeAsset ? [] : ["Cash"])];
+
+function weightsInputs(assets, weights) {
+  const plan = { inflation: 0.02, end: "2030-12", simulations: 100 };
+  return {
+    "optimise current_weights": () => assets.optimise({ method: "minimum_variance", current_weights: weights }),
+    "optimise current_weights with cash": () =>
+      assets.optimise({ method: "minimum_variance", cash: { min: 0, max: 0.3 }, current_weights: weights }),
+    "optimise benchmark_weights": () =>
+      assets.optimise({ method: "minimum_variance", benchmark_weights: weights, max_tracking_error: 0.5 }),
+    "frontier current_weights": () => assets.frontier(5, { current_weights: weights, max_turnover: 0.5 }),
+    "evaluate weights": () => assets.evaluate({ weights }),
+    "backtest weights": () => assets.backtest({ weights }),
+    "backtest benchmark": () => assets.backtest({ method: "minimum_variance", benchmark: weights }),
+    "compare methods weights": () => assets.compare({ methods: ["minimum_variance", { name: "Mix", weights }] }),
+    "compare weights": () => assets.compare({ methods: ["minimum_variance"], weights: { Mix: weights } }),
+    "compare benchmark": () => assets.compare({ methods: ["minimum_variance"], benchmark: weights }),
+    "plan weights": () => assets.plan({ weights, ...plan }),
+    "plan alternatives": () => assets.plan({ weights: { [assets.riskyAssets[0]]: 1 }, alternatives: { Alt: weights }, ...plan }),
+  };
+}
+
+test("every input of weights takes every label of the assets", () => {
+  for (const [shape, assets] of Object.entries(shapes)) {
+    for (const label of labelsOf(assets)) {
+      const weights = holding(assets, label);
+      for (const [name, run] of Object.entries(weightsInputs(assets, weights))) {
+        assert.doesNotThrow(run, `${shape} ${name} ${label}`);
+      }
+      if (shape === "household") assert.doesNotThrow(() => portfolio.rebalance(weights), label);
+    }
+  }
+});
+
+test("every input of weights refuses an unknown label in one message", () => {
+  const unknown = (e) => e.issues.some((i) => i.path.endsWith(".Nope") && i.message === "unknown asset Nope");
+  for (const [shape, assets] of Object.entries(shapes)) {
+    for (const [name, run] of Object.entries(weightsInputs(assets, holding(assets, "Nope")))) {
+      assert.throws(run, unknown, `${shape} ${name}`);
+    }
+  }
+  assert.throws(() => portfolio.rebalance(holding(household, "Nope")), (e) =>
+    e.issues.some((i) => i.path === "targets.Nope" && i.message === "unknown asset Nope"));
+});
+
+test("bounds and groups refuse the cash in favour of cash limits", () => {
+  for (const [label, says] of [["USD cash", "limit it with cash"], ["EUR cash", "cash in another currency"]]) {
+    assert.throws(
+      () => household.optimise({
+        method: "minimum_variance",
+        asset_bounds: { [label]: { min: 0, max: 0.1 } },
+        groups: { G: { assets: [label, "VTI"], max: 0.9 } },
+      }),
+      (e) => {
+        const paths = e.issues.map((i) => i.path);
+        return paths.includes(`options.asset_bounds.${label}`) && paths.includes("options.groups.G") &&
+          e.issues.every((i) => i.message.includes(says));
+      },
+    );
+  }
+});
+
+test("the cash a mix holds in another currency is measured in every verb", () => {
+  const mix = portfolio.weights();
+  assert.ok("EUR cash" in mix);
+  const valued = household.evaluate({ weights: mix });
+  const backtest = household.backtest({ weights: mix });
+  assert.ok(Math.abs(valued.report.history.weights.statistics.volatility - backtest.report.strategy.tested.statistics.volatility) < 1e-12);
+  assert.ok(backtest.results.assets.includes("EUR cash"));
+  const traded = household.optimise({ method: "minimum_variance", current_weights: mix, max_turnover: 0.3 });
+  const eur = traded.report.trades.trades.find((t) => t.asset === "EUR cash");
+  assert.ok(eur.cash && eur.proposed === 0 && Math.abs(eur.current - mix["EUR cash"]) < 1e-15);
+  assert.ok(traded.report.trades.turnover <= 0.3 + 1e-9);
+});
