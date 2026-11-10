@@ -389,6 +389,19 @@ const statistics = await assets.call("statistics");
 await assets.free();
 ```
 
+A program of your own running in a worker has no page to show a report on.
+`setShowHandler` gives each page to the handler instead, such as one that posts
+it to the main thread, so `result.show()` works there as elsewhere:
+
+```ts
+import init, { Assets, datasets, setShowHandler } from "finalytics";
+
+await init();
+setShowHandler((html) => postMessage({ report: html }));
+const assets = new Assets(datasets.assetClassPrices());
+assets.optimise({ method: "minimum_variance" }).show();
+```
+
 A screen's columns cross back as typed arrays:
 
 ```ts

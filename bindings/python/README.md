@@ -75,6 +75,9 @@ result.show()
 Every result has the same shape: `result.report` is the report, which
 `print(result)` prints as text and `result.show()` opens as a page (inline in a
 Jupyter notebook), and `result.results` holds every return and trade behind it.
+A program that shows pages itself, such as a web page running Python with
+Pyodide, hands `show()` a function with `fl.set_show_handler`, which then
+receives each page's HTML.
 
 To test one allocation, give a method or your own weights. Here, the maximum
 Sharpe ratio fitted to the years before November 2016, held from then on against

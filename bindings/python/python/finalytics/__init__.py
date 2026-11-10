@@ -50,6 +50,7 @@ from importlib.metadata import version as _distribution_version
 from finalytics import datasets, opt, performance, reports, risk, types
 from finalytics._errors import FinalyticsError, ValidationError
 from finalytics._finalytics import version
+from finalytics._printing import set_show_handler
 from finalytics._types import (
     Bootstrap,
     Drift,
@@ -121,6 +122,7 @@ __all__ = [
     "read_document",
     "reports",
     "risk",
+    "set_show_handler",
     "types",
     "version",
     "write_document",

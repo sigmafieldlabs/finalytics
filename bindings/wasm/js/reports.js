@@ -5,6 +5,22 @@
 // are not enumerable, so the data still writes to JSON and passes to a worker as data alone.
 import { Assets, Portfolio, Universe, reportHtml, reportText, resultsText } from "./finalytics.js";
 
+// What `show()` does with a report's page when it is given no element, if the program says.
+let showHandler = null;
+
+/**
+ * Sets what `show()` does with a report's page when it is given no element: from then on it calls
+ * `handler` with the page's HTML, instead of opening a window or a browser, and returns
+ * `undefined`. `null` restores the default. For programs that show pages themselves, such as an
+ * engine in a worker, which has no page of its own, or an app with a view for reports.
+ */
+export function setShowHandler(handler) {
+  if (handler !== null && typeof handler !== "function") {
+    throw new TypeError("setShowHandler takes a function that receives the page's HTML, or null");
+  }
+  showHandler = handler;
+}
+
 /**
  * Adds the methods to the reports and results: `show` lays out an HTML page, and `save` writes
  * one to a file and returns its path, where there are files.
@@ -83,7 +99,12 @@ function withReportMethods(report, page) {
       return page.save(path, reportHtml(this, name, theme));
     },
     show(element, theme) {
-      return page.show(reportHtml(this, undefined, theme), element);
+      const html = reportHtml(this, undefined, theme);
+      if (!element && showHandler) {
+        showHandler(html);
+        return undefined;
+      }
+      return page.show(html, element);
     },
     toString() {
       return reportText(this);

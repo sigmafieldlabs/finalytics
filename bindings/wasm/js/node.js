@@ -47,4 +47,5 @@ function opener(path, browser) {
 }
 
 export * from "./finalytics.js";
+export { setShowHandler } from "./reports.js";
 export { default } from "./finalytics.js";

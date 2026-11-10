@@ -225,6 +225,28 @@ def test_a_report_shows_inline_in_a_notebook(monkeypatch):
     assert len(shown) == 3 and "Optimisation report" in shown[2]
 
 
+def test_a_report_shows_through_the_handler_set_for_it(monkeypatch):
+    # A program that shows pages itself, such as a web page running Pyodide, takes each page;
+    # this runs on Pyodide too, where there is no browser to open.
+    pages = []
+    monkeypatch.setattr("webbrowser.open", lambda url: pytest.fail("opened a browser"))
+    fl.set_show_handler(pages.append)
+    try:
+        assets = fl.Assets(prices=fl.datasets.asset_class_prices(), risk_free_asset="T-Bills")
+        assert assets.optimise(method="minimum_variance").show() is None
+        assert fl.datasets.portfolio().report().show(theme="dark") is None
+        assert assets.compare(methods=["equal_weight", "minimum_variance"]).report.show() is None
+    finally:
+        fl.set_show_handler(None)
+    assert len(pages) == 3
+    assert all(page.startswith("<!doctype html>") for page in pages)
+    assert "Optimisation report" in pages[0] and "Comparison report" in pages[2]
+    assert '<html lang="en" data-theme="dark">' in pages[1]
+    with pytest.raises(fl.ValidationError) as found:
+        fl.set_show_handler("print")
+    assert [i.path for i in found.value.issues] == ["handler"]
+
+
 def test_fixed_weights_are_compared_with_methods(assets):
     result = assets.compare(
         methods=["minimum_variance"],

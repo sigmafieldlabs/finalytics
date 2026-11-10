@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { Assets, datasets } from "../pkg/node.js";
+import { Assets, datasets, setShowHandler } from "../pkg/node.js";
 import { close, priceTable, text } from "./setup.mjs";
 
 const assets = new Assets(datasets.assetClassPrices(), { risk_free_asset: "T-Bills" });
@@ -248,6 +248,29 @@ test("a report lays itself out as text and HTML, and shows", async () => {
     else process.env.BROWSER = before;
   }
   assert.deepEqual(paths(() => portfolio.report({ benchmrk: "BENCH" })), ["options.benchmrk"]);
+});
+
+test("a report shows through the handler set for it", () => {
+  // A program that shows pages itself, such as one running the engine in a worker, takes each
+  // page instead of a browser opening it.
+  const pages = [];
+  const before = process.env.BROWSER;
+  process.env.BROWSER = "false";
+  setShowHandler((html) => pages.push(html));
+  try {
+    assert.equal(assets.optimise({ method: "minimum_variance" }).show(), undefined);
+    assert.equal(datasets.portfolio().report().show(undefined, "dark"), undefined);
+    assert.equal(assets.compare({ methods: ["equal_weight", "minimum_variance"] }).report.show(), undefined);
+  } finally {
+    setShowHandler(null);
+    if (before === undefined) delete process.env.BROWSER;
+    else process.env.BROWSER = before;
+  }
+  assert.equal(pages.length, 3);
+  assert.ok(pages.every((page) => page.startsWith("<!doctype html>")));
+  assert.ok(pages[0].includes("Optimisation report") && pages[2].includes("Comparison report"));
+  assert.ok(pages[1].includes('<html lang="en" data-theme="dark">'));
+  assert.throws(() => setShowHandler("console.log"), TypeError);
 });
 
 test("fixed weights are compared with methods on the same periods", () => {

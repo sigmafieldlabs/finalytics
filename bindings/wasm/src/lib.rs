@@ -193,10 +193,18 @@ export interface ReportMethods {
    * Shows the report, in `theme`. In a browser, in a frame inside `element`, or else in a new
    * window. In Node.js, in the default browser, or with the command in the `BROWSER`
    * environment variable if it is set; the page is saved to a temporary file, whose path is
-   * returned.
+   * returned. Without `element`, a handler set with `setShowHandler` takes the page instead.
    */
   show(element?: Element, theme?: Theme): string | undefined;
 }
+
+/**
+ * Sets what `show()` does with a report's page when it is given no element: from then on it calls
+ * `handler` with the page's HTML, instead of opening a window or a browser, and returns
+ * `undefined`. `null` restores the default. For programs that show pages themselves, such as an
+ * engine in a worker, which has no page of its own, or an app with a view for reports.
+ */
+export function setShowHandler(handler: ((html: string) => void) | null): void;
 
 /** Raw results that print as text: `${results}` or `results.toText()`. */
 export interface ResultsMethods {

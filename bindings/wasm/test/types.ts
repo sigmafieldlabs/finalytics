@@ -12,6 +12,7 @@ import init, {
   Portfolio,
   reportTables,
   resampled,
+  setShowHandler,
   solve,
   statisticalModel,
   stressedCovariance,
@@ -119,6 +120,10 @@ export async function example(worker: Worker): Promise<void> {
   const named = traded.report({ benchmark: "SPY", name: "Main account" });
   const page: string = named.toHtml();
   const shown: string | undefined = named.show();
+  setShowHandler((html: string) => console.log(html.length));
+  setShowHandler(null);
+  // @ts-expect-error: the handler is a function that takes the page.
+  setShowHandler("console.log");
 
   const engine = createEngine(worker);
   const remote = await engine.call("statistics", [0.01, 0.02]);

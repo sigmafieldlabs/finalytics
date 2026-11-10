@@ -4,7 +4,9 @@ import { install as installReports } from "./reports.js";
 
 installReports((html, element) => {
   if (typeof document === "undefined") {
-    throw new Error("a report can only be shown on a page; use toHtml() for its HTML");
+    throw new Error(
+      "a report can only be shown on a page; use toHtml() for its HTML, or setShowHandler() to say what show() does with it",
+    );
   }
   if (element) {
     const frame = document.createElement("iframe");
@@ -29,4 +31,5 @@ installReports((html, element) => {
 });
 
 export * from "./finalytics.js";
+export { setShowHandler } from "./reports.js";
 export { default } from "./finalytics.js";

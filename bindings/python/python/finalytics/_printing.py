@@ -2,9 +2,9 @@
 
 The report and result classes in :mod:`finalytics.types` derive from these, so that
 ``print(report)`` shows a report as text, 80 columns wide, and a report can be saved as one HTML
-page or shown, inline in a notebook or in a browser. The results of :meth:`Assets.optimise`,
-:meth:`Assets.compare` and :meth:`Assets.backtest` print and show their report, and their raw
-results print as text too.
+page or shown, inline in a notebook or in a browser, or by a handler set with
+:func:`set_show_handler`. The results of :meth:`Assets.optimise`, :meth:`Assets.compare` and
+:meth:`Assets.backtest` print and show their report, and their raw results print as text too.
 """
 
 from __future__ import annotations
@@ -15,11 +15,39 @@ import pathlib
 import sys
 import tempfile
 import webbrowser
+from collections.abc import Callable
 from typing import Literal
 
 Theme = Literal["auto", "light", "dark"]
 """The colours of a report's page: ``"auto"`` (the default) follows the reader's light or dark
 setting; ``"light"`` and ``"dark"`` keep to one."""
+
+
+_show_handler: Callable[[str], object] | None = None
+
+
+def set_show_handler(handler: Callable[[str], object] | None) -> None:
+    """Sets what ``show()`` does with a report's page: from then on, ``show()`` calls `handler`
+    with the page's HTML instead of showing it in a notebook or a browser, and returns ``None``.
+    ``None`` restores the default.
+
+    For programs that show pages themselves: a web page running Python in Pyodide, which has no
+    browser to open, or an app that puts the page in a view of its own::
+
+        import finalytics as fl
+
+        pages = []
+        fl.set_show_handler(pages.append)
+        fl.Assets(fl.datasets.asset_class_prices()).optimise(method="minimum_variance").show()
+        assert pages[0].startswith("<!doctype html>")
+        fl.set_show_handler(None)
+    """
+    global _show_handler
+    if handler is not None and not callable(handler):
+        from finalytics._errors import invalid
+
+        raise invalid(("handler", "must be a function that takes the page's HTML, or None"))
+    _show_handler = handler
 
 
 def _theme(theme: str) -> str:
@@ -74,9 +102,13 @@ class ReportPage(PrintedReport):
         return target
 
     def show(self, *, theme: Theme = "auto") -> pathlib.Path | None:
-        """Shows the report in `theme`: inline in a Jupyter notebook, and otherwise in the
-        default browser, or with the command in the ``BROWSER`` environment variable if it is
-        set, returning the path of the page it opens, as Rust and JavaScript do."""
+        """Shows the report in `theme`: with the handler set by :func:`set_show_handler`, if
+        there is one; else inline in a Jupyter notebook; and otherwise in the default browser,
+        or with the command in the ``BROWSER`` environment variable if it is set, returning the
+        path of the page it opens, as Rust and JavaScript do."""
+        if _show_handler is not None:
+            _show_handler(self.to_html(theme=theme))
+            return None
         if _notebook():
             from IPython.display import display
 
@@ -84,7 +116,10 @@ class ReportPage(PrintedReport):
             display({"text/html": self._frame(theme)}, raw=True)
             return None
         if sys.platform == "emscripten":
-            raise RuntimeError("cannot open a browser here; use to_html() for the page")
+            raise RuntimeError(
+                "cannot open a browser here; use to_html() for the page, or"
+                " finalytics.set_show_handler() to say what show() does with it"
+            )
         page = self.to_html(theme=theme)
         with tempfile.NamedTemporaryFile(
             "w", prefix="finalytics-report-", suffix=".html", delete=False, encoding="utf-8"
@@ -158,9 +193,9 @@ class Result:
         return self.report.save_html(path, name, theme=theme)  # type: ignore[attr-defined]
 
     def show(self, *, theme: Theme = "auto") -> pathlib.Path | None:
-        """Shows the report in `theme`: inline in a Jupyter notebook, and otherwise in the
-        default browser, or with the command in the ``BROWSER`` environment variable if it is
-        set, returning the path of the page it opens."""
+        """Shows the report in `theme`, as :meth:`ReportPage.show` does: with the handler set by
+        :func:`set_show_handler`, if there is one; else inline in a Jupyter notebook; and
+        otherwise in a browser, returning the path of the page it opens."""
         return self.report.show(theme=theme)  # type: ignore[attr-defined]
 
     def _repr_html_(self) -> str:

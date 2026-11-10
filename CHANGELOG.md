@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `set_show_handler` in Python and `setShowHandler` in JavaScript say what `show()` does with a
+  report's page: the handler receives the page's HTML instead of a notebook or a browser showing
+  it. For programs that show pages themselves, such as Python running on Pyodide, which has no
+  browser to open and raised an error before, or an engine in a worker, which has no page.
+
 ### Fixed
 
 - Equal weight, inverse volatility, risk parity, risk budgeting and hierarchical risk parity
