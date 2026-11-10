@@ -44,6 +44,11 @@ test("the worker calls static methods and keeps the objects they return", async 
     assert.equal(typeof market.handle, "number");
     await market.free();
 
+    const universe = await remote.static("datasets", "universe");
+    assert.equal(await universe.get("length"), 201);
+    const screen = await universe.call("screen", { limit: 5 });
+    assert.equal(screen.results.matches.length, 5);
+    await universe.free();
     await assert.rejects(remote.static("datasets", "nothing"), /no static method datasets\.nothing/);
     await assert.rejects(remote.static("Window", "open"), /no static method Window\.open/);
   } finally {

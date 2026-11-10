@@ -478,6 +478,7 @@ dependencies = [
  "finalytics-plan",
  "finalytics-reports",
  "finalytics-risk",
+ "libm",
  "rayon",
  "schemars",
  "serde",

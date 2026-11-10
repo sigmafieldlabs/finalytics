@@ -5,9 +5,12 @@
   report.
 - :func:`asset_class_prices`: 30 years of month-end levels of six asset-class indices,
   synthetic.
+- :func:`universe`: six years of daily closes, volumes and dividends of 200 fictional companies
+  in eleven sectors, with their fields and a market index, synthetic, for screening.
 
 The funds' prices and the EUR/USD rate are real, from Yahoo Finance. The household's transactions
-and the asset-class indices are illustrative.
+and the asset-class indices are illustrative, and the universe is drawn by the library itself,
+with a fixed seed.
 
 Each file is also available as text, through :func:`file`, as an example of the layout
 Finalytics reads::
@@ -25,6 +28,7 @@ from finalytics import _finalytics, _types
 from finalytics._convert import loads
 from finalytics._errors import call
 from finalytics.portfolio import Portfolio
+from finalytics.screening import Universe
 
 __all__ = [
     "FILES",
@@ -33,6 +37,7 @@ __all__ = [
     "file",
     "portfolio",
     "report_options",
+    "universe",
 ]
 
 FILES: list[str] = _finalytics.dataset_files()
@@ -87,3 +92,33 @@ def report_options() -> _types.ReportOptions:
     region, the benchmark ``BENCH`` with its segments by asset class for attribution, the
     T-bills' return over the period as the risk-free rate, and four scenarios."""
     return loads(_types.ReportOptions, _finalytics.dataset_report_options())
+
+
+def universe() -> Universe:
+    """A universe of 200 fictional companies in eleven sectors, for screening: their daily closes
+    on every weekday from November 2020 to October 2026, with volumes and quarterly dividends,
+    and the market index ``INDEX`` as the benchmark, at a risk-free rate of 4% a year.
+
+    Each company has five fields: ``name``, ``sector``, ``market_cap`` (in US dollars),
+    ``trailing_pe`` (none for the companies that make a loss) and ``price_to_book``. Its
+    identifier is the first four letters of its name, such as ``ALDM`` for Aldmere Systems. The
+    closes include the dividends, as adjusted closes do, and the dividends paid are listed for
+    the dividend yield.
+
+    The data is synthetic: drawn with a fixed seed from a market factor with changing
+    volatility, a factor for each sector and each company's own risk, with the market falling
+    through 2022 and selling off in the spring of 2025. Fourteen companies list after November
+    2020, one stops trading in August 2026, two miss a few closes and three have no volumes, as
+    real data does. The companies and their figures are invented. Every platform draws the same
+    universe::
+
+        import finalytics as fl
+
+        universe = fl.datasets.universe()
+        screen = universe.screen(
+            rules=[("sector", "in", ["Utilities"]), ("dividend_yield", ">", 0.03)],
+            sort=("sharpe_ratio", "descending"),
+        )
+        assert len(universe) == 201 and screen.results.matches
+    """
+    return Universe._wrap(_finalytics.NativeUniverse.dataset())

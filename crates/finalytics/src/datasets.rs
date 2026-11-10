@@ -3,10 +3,13 @@
 //! - [`portfolio`]: three years of a two-account household in US dollars and euros, holding five
 //!   real funds at their real prices, and [`report_options`], the options of its full report.
 //! - [`asset_class_prices`]: 30 years of month-end levels of six asset-class indices, synthetic.
+//! - [`universe`]: six years of daily closes, volumes and dividends of 200 fictional companies in
+//!   eleven sectors, with their fields and a market index, synthetic, for screening.
 //!
 //! The funds' prices and the EUR/USD rate are real, from Yahoo Finance;
 //! `scripts/fetch-market-data.py` in the repository downloads them. The household's
 //! transactions and the asset-class indices are illustrative, written by `scripts/datasets.py`.
+//! The universe is drawn by the library itself, with a fixed seed, the same on every platform.
 //!
 //! Each file is also available as text, through [`file()`], as an example of the layout
 //! Finalytics reads.
@@ -30,7 +33,9 @@ use finalytics_formats::{CsvOptions, price_columns_from_csv};
 use finalytics_reports::ReportOptions;
 use finalytics_risk::PriceTable;
 
-use crate::{Portfolio, PortfolioCsv};
+use crate::{Portfolio, PortfolioCsv, Universe};
+
+mod universe;
 
 const ASSET_CLASSES: &str = include_str!("../data/asset-classes.csv");
 const ACCOUNTS: &str = include_str!("../data/portfolio/accounts.csv");
@@ -122,4 +127,44 @@ pub fn portfolio() -> Portfolio {
 /// correlations, rates up 1%, the dollar up 10%, and a replay of the spring 2025 sell-off).
 pub fn report_options() -> ReportOptions {
     finalytics_formats::from_json(REPORT_OPTIONS, "options").expect("the report options are valid")
+}
+
+/// A universe of 200 fictional companies in eleven sectors, for screening: their daily closes on
+/// every weekday from November 2020 to October 2026, with volumes and quarterly dividends, and
+/// the market index `INDEX` as the benchmark, at a risk-free rate of 4% a year.
+///
+/// Each company has five fields: `name`, `sector`, `market_cap` (in US dollars), `trailing_pe`
+/// (none for the companies that make a loss) and `price_to_book`. Its identifier is the first
+/// four letters of its name, such as `ALDM` for Aldmere Systems. The closes include the
+/// dividends, as adjusted closes do, and the dividends paid are listed for the dividend yield.
+///
+/// The data is synthetic: drawn with a fixed seed from a market factor with changing volatility,
+/// a factor for each sector and each company's own risk, with the market falling through 2022
+/// and selling off in the spring of 2025, loosely as markets did then. Fourteen companies list
+/// after November 2020, one stops trading in August 2026, two miss a few closes and three have no
+/// volumes, as real data does. The companies and their figures are invented; any likeness to a
+/// listed company is chance. Every platform draws the same universe.
+///
+/// ```
+/// use finalytics::prelude::*;
+///
+/// let universe = datasets::universe();
+/// assert_eq!(universe.len(), 201);
+/// assert_eq!(universe.benchmark(), Some("INDEX"));
+/// let screen = universe
+///     .screen()
+///     .one_of("sector", ["Utilities"])
+///     .above("dividend_yield", 0.03)
+///     .sort("sharpe_ratio", Order::Descending)
+///     .build()?;
+/// assert!(!screen.results.matches.is_empty());
+/// # Ok::<(), finalytics::Error>(())
+/// ```
+pub fn universe() -> Universe {
+    let series = universe::series().expect("the universe's dates are valid");
+    Universe::from_series(series)
+        .and_then(|u| u.with_benchmark(universe::BENCHMARK))
+        .expect("the universe is valid")
+        .with_risk_free_rate(universe::RISK_FREE_RATE)
+        .with_field_order(&universe::FIELDS)
 }

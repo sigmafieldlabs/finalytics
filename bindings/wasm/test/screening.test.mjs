@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { Universe, reportTables } from "../pkg/node.js";
+import { Universe, datasets, reportTables } from "../pkg/node.js";
 import { close, json, priceTable, text } from "./setup.mjs";
 
 const fixture = await json("crates/finalytics/tests/fixtures/screening.json");
@@ -233,3 +233,23 @@ test("formulas are numeric fields that rules and the sort take", () => {
     return true;
   });
 });
+
+test("the sample universe is drawn the same on every platform", () => {
+  const universe = datasets.universe();
+  assert.equal(universe.length, 201);
+  assert.equal(universe.benchmark, "INDEX");
+  assert.equal(universe.riskFreeRate, 0.04);
+  assert.equal(universe.latestDate, "2026-10-30");
+  assert.deepEqual(universe.fields, ["name", "sector", "market_cap", "trailing_pe", "price_to_book"]);
+  const screen = universe.screen({ measures: ["last_price", "return_1y"], include_benchmark: true });
+  const { last_price: prices, return_1y: returns } = screen.results.measures;
+  let price = 0;
+  let change = 0;
+  for (let i = 0; i < prices.length; i++) {
+    price += prices[i];
+    if (!Number.isNaN(returns[i])) change += returns[i];
+  }
+  // The same sums, to the last bit, as the Python test's on the native engine.
+  assert.deepEqual([price, change], [40176.79000000002, 78.53724574006661]);
+});
+

@@ -267,6 +267,12 @@ class Universe:
         settings = {"benchmark": benchmark, "risk_free_rate": float(risk_free_rate)}
         self._native = call(native.with_settings, dumps(settings))
 
+    @classmethod
+    def _wrap(cls, native: _finalytics.NativeUniverse) -> Universe:
+        universe = cls.__new__(cls)
+        universe._native = native
+        return universe
+
     @property
     def ids(self) -> list[str]:
         """The securities, in order."""

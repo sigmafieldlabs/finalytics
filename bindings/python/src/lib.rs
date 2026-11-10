@@ -961,6 +961,13 @@ fn rows(bytes: &[u8], name: &str) -> PyResult<Vec<usize>> {
 #[pymethods]
 impl NativeUniverse {
     #[staticmethod]
+    fn dataset(py: Python<'_>) -> NativeUniverse {
+        NativeUniverse {
+            inner: released(py, datasets::universe),
+        }
+    }
+
+    #[staticmethod]
     fn from_csv(py: Python<'_>, text: &str) -> PyResult<NativeUniverse> {
         Ok(NativeUniverse {
             inner: released(py, || Universe::from_csv(text)).map_err(engine)?,

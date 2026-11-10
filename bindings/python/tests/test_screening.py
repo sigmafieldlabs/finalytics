@@ -188,3 +188,24 @@ def test_formulas_are_numeric_fields_that_rules_and_the_sort_take(universe):
         universe.screen(formulas={"x": "pe_ration * 2"})
     issue = caught.value.issues[0]
     assert issue.path == "formulas.x" and "did you mean pe_ratio?" in issue.message
+
+
+def test_the_sample_universe_is_drawn_the_same_on_every_platform():
+    universe = fl.datasets.universe()
+    assert len(universe) == 201 and universe.benchmark == "INDEX"
+    assert universe.risk_free_rate == 0.04 and universe.latest_date == "2026-10-30"
+    assert universe.fields == ["name", "sector", "market_cap", "trailing_pe", "price_to_book"]
+    screen = universe.screen(measures=["last_price", "return_1y"], include_benchmark=True)
+    # Added in order, one by one (Python's sum compensates), the same sums to the last bit as the
+    # JavaScript test's on WebAssembly.
+    price = change = 0.0
+    for s in screen.results.securities:
+        price += s.values[0]
+        change += s.values[1] if s.values[1] is not None else 0.0
+    assert (price, change) == (40176.79000000002, 78.53724574006661)
+    utilities = universe.screen(
+        rules=[("sector", "in", ["Utilities"]), ("dividend_yield", ">", 0.03)],
+        sort=("sharpe_ratio", "descending"),
+    )
+    assert utilities.results.matches
+    assert all(s.fields["sector"] == "Utilities" for s in utilities.results.securities if s.matched)

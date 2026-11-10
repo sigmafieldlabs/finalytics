@@ -2971,8 +2971,8 @@ fn given_paths(found: &ValidationReport, origins: &[String]) -> ValidationReport
 }
 
 /// Datasets for examples, tests and practice: a two-account household holding five real funds,
-/// and synthetic asset-class indices. The funds' prices are real, from Yahoo Finance; the
-/// household's transactions are illustrative.
+/// synthetic asset-class indices and a synthetic universe of 200 companies for screening. The
+/// funds' prices are real, from Yahoo Finance; the household's transactions are illustrative.
 #[wasm_bindgen(js_name = datasets)]
 pub struct Datasets;
 
@@ -3012,6 +3012,19 @@ impl Datasets {
     #[wasm_bindgen(js_name = reportOptions, unchecked_return_type = "ReportOptions")]
     pub fn report_options() -> Result<JsValue, JsValue> {
         to_js(&finalytics::datasets::report_options())
+    }
+
+    /// A universe of 200 fictional companies in eleven sectors, for screening: their daily
+    /// closes on every weekday from November 2020 to October 2026, with volumes and quarterly
+    /// dividends, and the market index `INDEX` as the benchmark, at a risk-free rate of 4% a
+    /// year. Each company has the fields `name`, `sector`, `market_cap` (in US dollars),
+    /// `trailing_pe` (none for the companies that make a loss) and `price_to_book`, and is
+    /// identified by the first four letters of its name. The data is synthetic, drawn with a
+    /// fixed seed; every platform draws the same universe.
+    pub fn universe() -> Universe {
+        Universe {
+            inner: finalytics::datasets::universe(),
+        }
     }
 }
 

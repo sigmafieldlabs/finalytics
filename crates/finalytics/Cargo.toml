@@ -53,6 +53,7 @@ finalytics-opt = { workspace = true }
 finalytics-reports = { workspace = true }
 finalytics-backtest = { workspace = true }
 finalytics-plan = { workspace = true }
+libm = { workspace = true }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
