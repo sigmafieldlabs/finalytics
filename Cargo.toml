@@ -4,6 +4,7 @@ members = [
     "crates/*",
     "bindings/python",
     "bindings/wasm",
+    "docs/examples",
     "tools/bench",
     "tools/codegen",
     "tools/fuzz-checks",

@@ -1,0 +1,55 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  OPTIMISATION                                 Nov 1996 to Oct 2026
+Maximum Sharpe · at most 40% in any asset · optimal
+5 assets · monthly · Ledoit–Wolf covariance · T-Bills as cash
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Weights
+───────
+  Asset      Weight                        Return  Volatility   Risk
+  Bonds       40.0%  ████████████████████    4.0%        6.1%  11.2%
+  US Equity   38.3%  ███████████████████▎   10.0%       16.9%  64.4%
+  Gold        21.7%  ██████████▊             7.4%       16.5%  24.4%
+
+  Return and volatility a year; risk is the share of the portfolio's variance.
+  Intl Equity and Real Estate are not held.
+
+Expected
+────────
+  Expected return  7.0%      Diversification ratio         1.52
+  Volatility       8.3%      Assets in effect               2.8
+  Sharpe ratio     0.57      Largest weight         40.0% Bonds
+
+Correlation
+───────────
+                     1      2      3     4     5
+  1 US Equity     1.00   0.82  −0.02  0.09  0.68
+  2 Intl Equity   0.82   1.00  −0.04  0.16  0.64
+  3 Bonds        −0.02  −0.04   1.00  0.21  0.20
+  4 Gold          0.09   0.16   0.21  1.00  0.10
+  5 Real Estate   0.68   0.64   0.20  0.10  1.00
+
+On the history it was fitted to (in sample)
+───────────────────────────────────────────
+  The weights    ▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▂▁▂▁▁▂▂▂▂▂▃▃▃▃▃▃▄▄▅▅▆▅▆▆▆▅▆▇█▇▇     763
+  Equal weight   ▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▁▂▁▁▁▂▂▂▃▃▃▃▃▃▄▄▄▅▆▆▅▆▆▆▅▆▇█▇▇     817
+
+  Return 7.0% a year, volatility 8.2%, Sharpe ratio 0.58, worst fall −25.8%.
+  Held from the start and rebalanced quarterly, without trading costs. In
+  sample, so it flatters the weights: a backtest tests them on returns they had
+  not seen.
+
+How the weights were found
+──────────────────────────
+  Method     Maximum Sharpe: the largest expected return in excess of the
+             risk-free rate per unit of volatility, solved as a quadratic
+             programme after the Charnes–Cooper transformation.
+  Data       US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as the
+             risk-free asset. Monthly returns, Nov 1996 to Oct 2026.
+  Estimates  Historical mean expected returns and the Ledoit–Wolf covariance,
+             annualised by 12.
+  Limits     At most 40% in any asset.
+  Solver     Interior point, optimal after 10 iterations.
+
+  Finalytics 1.0.0-rc.6 · inputs 0157ea861bfe
+

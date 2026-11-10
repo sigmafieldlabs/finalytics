@@ -29,10 +29,10 @@ The Python tests use pandas and jsonschema as well as pytest.
 
 ## Checks
 
-Run these before opening a pull request. `scripts/test.sh` runs them in four stages, `lint`,
-`rust`, `python` and `js`, and prints a summary; name stages to run only those, as in
+Run these before opening a pull request. `scripts/test.sh` runs them in five stages, `lint`,
+`rust`, `python`, `js` and `guides`, and prints a summary; name stages to run only those, as in
 `scripts/test.sh rust python`. The Python stage installs the package into a virtual environment
-in `.venv`.
+in `.venv`, and the guides stage runs on it and on the npm package the JavaScript stage builds.
 
 ```sh
 # Lint
@@ -56,6 +56,9 @@ CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER="$PWD/bindings/wasm/test-runner.sh" \
 bindings/wasm/build.sh
 node --test bindings/wasm/test/*.test.mjs
 npx -p typescript@5.9.3 tsc -p bindings/wasm/test
+
+# Guides
+python3 scripts/guides.py
 ```
 
 CI runs the same checks, and also: the Rust tests on Linux, macOS and Windows; `cargo check`
@@ -123,6 +126,9 @@ pull requests that change the engine, and for longer every week.
 - Update `CHANGELOG.md` under "Unreleased" for any user-facing change.
 - New models need a validation test against an independent reference and a methods page in
   `docs/methods/`, whose Python examples are run by `bindings/python/tests/test_docs.py`.
+- A new feature belongs in a guide, with an example in each language that has it:
+  [docs/guides/README.md](docs/guides/README.md) describes the pages and their examples, and
+  `python3 scripts/guides.py --record` records what an example prints.
 - Examples in the documentation of the library crates use the paths of the `finalytics` crate,
   as users write them, since docs.rs shows them under `finalytics`. A hidden first line maps
   those paths to the crate being tested; copy it from an example in the same crate.

@@ -101,6 +101,44 @@ jobs:
       - name: Type-check the TypeScript declarations
         run: npx --yes -p typescript@5.9.3 tsc -p bindings/wasm/test
 
+  guides:
+    name: Guides
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Read the wasm-bindgen version from Cargo.lock
+        id: wasm-bindgen
+        run: |
+          version=$(awk '/^name = "wasm-bindgen"$/ { getline; gsub(/version = |"/, ""); print }' Cargo.lock)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ steps.wasm-bindgen.outputs.version }}
+      - name: Install wasm-opt at the pinned Binaryen version
+        run: |
+          scripts/install-binaryen.sh "$RUNNER_TEMP/binaryen"
+          echo "$RUNNER_TEMP/binaryen/bin" >> "$GITHUB_PATH"
+      - name: Build the npm package
+        run: bindings/wasm/build.sh
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Build and install the Python package
+        working-directory: bindings/python
+        run: |
+          pip install maturin
+          maturin build --release --out dist
+          pip install dist/*.whl pandas
+      - name: Run every example in Python, JavaScript and Rust, and check the pages
+        run: python scripts/guides.py
+
   budgets:
     name: Performance budgets
     runs-on: ubuntu-latest

@@ -2,7 +2,7 @@
 # Runs the checks that CI runs, for Rust, Python and JavaScript.
 #
 #   scripts/test.sh                  every stage
-#   scripts/test.sh rust python      only the stages named: lint, rust, python, js
+#   scripts/test.sh rust python      only the stages named: lint, rust, python, js, guides
 #
 # Every stage runs even when an earlier one fails, and a summary is printed at the end. The exit
 # status is non-zero if any stage failed.
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.." || exit 1
 root=$(pwd)
 
 if [ $# -eq 0 ]; then
-  stages=(lint rust python js)
+  stages=(lint rust python js guides)
 else
   stages=("$@")
 fi
@@ -106,11 +106,26 @@ stage_js() {
   run npx --yes -p typescript@5.9.3 tsc -p bindings/wasm/test
 }
 
+# The guides' examples in Python, JavaScript and Rust, with the Python package of the python
+# stage and the npm package of the js stage.
+stage_guides() {
+  venv_python || return
+  if ! .venv/bin/python -c 'import finalytics' 2>/dev/null; then
+    missing "the Python package in .venv: run the python stage first"
+    return
+  fi
+  if [ ! -f bindings/wasm/pkg/finalytics_bg.wasm ]; then
+    missing "the npm package in bindings/wasm/pkg: run the js stage first"
+    return
+  fi
+  run .venv/bin/python scripts/guides.py
+}
+
 for stage in "${stages[@]}"; do
   case $stage in
-    lint | rust | python | js) ;;
+    lint | rust | python | js | guides) ;;
     *)
-      echo "unknown stage: $stage (expected lint, rust, python or js)" >&2
+      echo "unknown stage: $stage (expected lint, rust, python, js or guides)" >&2
       exit 2
       ;;
   esac
@@ -125,6 +140,7 @@ for stage in "${stages[@]}"; do
     rust) stage_rust ;;
     python) stage_python ;;
     js) stage_js ;;
+    guides) stage_guides ;;
   esac
   seconds=$(($(date +%s) - start))
   if [ $stage_ok -eq 1 ]; then

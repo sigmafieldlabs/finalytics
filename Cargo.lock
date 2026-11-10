@@ -552,6 +552,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "finalytics-guides"
+version = "1.0.0-rc.6"
+dependencies = [
+ "finalytics",
+]
+
+[[package]]
 name = "finalytics-ledger"
 version = "1.0.0-rc.6"
 dependencies = [

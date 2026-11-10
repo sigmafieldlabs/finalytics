@@ -1,0 +1,33 @@
+# The guides' Rust examples, one program each, run by scripts/guides.py: docs/guides/README.md
+# describes them. Not published.
+[package]
+name = "finalytics-guides"
+description = "The examples of the Finalytics guides."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+autoexamples = false
+
+[dependencies]
+finalytics = { workspace = true, features = ["io", "parallel"] }
+
+# As the workspace's lints, less those that do not suit short programs that print their results.
+[lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"
+
+# The examples, written by scripts/guides.py --record.
+
+[[example]]
+name = "optimise-a-portfolio-optimise"
+path = "optimise-a-portfolio/optimise.rs"

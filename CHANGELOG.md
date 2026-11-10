@@ -21,6 +21,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it. For programs that show pages themselves, such as Python running on Pyodide, which has no
   browser to open and raised an error before, or an engine in a worker, which has no page.
 
+- Guides with examples in Python, JavaScript and Rust, in `docs/guides` and `docs/examples`.
+  `scripts/guides.py` runs every example in each of its languages and checks that they print
+  the same, that the output is the one recorded and that every number in a page's prose is one
+  its examples print; CI runs it on every change.
+
 ### Fixed
 
 - Equal weight, inverse volatility, risk parity, risk budgeting and hierarchical risk parity
