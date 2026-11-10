@@ -201,10 +201,11 @@ export interface ReportMethods {
 /**
  * Sets what `show()` does with a report's page when it is given no element: from then on it calls
  * `handler` with the page's HTML, instead of opening a window or a browser, and returns
- * `undefined`. `null` restores the default. For programs that show pages themselves, such as an
- * engine in a worker, which has no page of its own, or an app with a view for reports.
+ * `undefined`. `null` (or nothing) restores the default. For programs that show pages themselves,
+ * such as an engine in a worker, which has no page of its own, or an app with a view for reports.
+ * Anything else is refused with a `ValidationError`.
  */
-export function setShowHandler(handler: ((html: string) => void) | null): void;
+export function setShowHandler(handler?: ((html: string) => void) | null): void;
 
 /** Raw results that print as text: `${results}` or `results.toText()`. */
 export interface ResultsMethods {

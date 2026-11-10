@@ -122,6 +122,7 @@ export async function example(worker: Worker): Promise<void> {
   const shown: string | undefined = named.show();
   setShowHandler((html: string) => console.log(html.length));
   setShowHandler(null);
+  setShowHandler();
   // @ts-expect-error: the handler is a function that takes the page.
   setShowHandler("console.log");
 

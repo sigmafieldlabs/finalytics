@@ -11,14 +11,19 @@ let showHandler = null;
 /**
  * Sets what `show()` does with a report's page when it is given no element: from then on it calls
  * `handler` with the page's HTML, instead of opening a window or a browser, and returns
- * `undefined`. `null` restores the default. For programs that show pages themselves, such as an
- * engine in a worker, which has no page of its own, or an app with a view for reports.
+ * `undefined`. `null` (or nothing) restores the default. For programs that show pages themselves,
+ * such as an engine in a worker, which has no page of its own, or an app with a view for reports.
  */
 export function setShowHandler(handler) {
-  if (handler !== null && typeof handler !== "function") {
-    throw new TypeError("setShowHandler takes a function that receives the page's HTML, or null");
+  if (handler !== null && handler !== undefined && typeof handler !== "function") {
+    // Refused as the engine refuses its inputs: a ValidationError with the problem at its path.
+    const message = "must be a function that takes the page's HTML, or null";
+    const error = new Error(`validation found 1 error(s)\n  error: handler: ${message}`);
+    error.name = "ValidationError";
+    error.issues = [{ path: "handler", message, severity: "error" }];
+    throw error;
   }
-  showHandler = handler;
+  showHandler = handler ?? null;
 }
 
 /**

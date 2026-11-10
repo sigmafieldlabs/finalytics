@@ -1,6 +1,7 @@
 // Optimising, comparing methods and backtesting one allocation, as the package's entry for Node.js
 // gives them: each result has a report and the raw results, prints as text and shows as a page.
 import assert from "node:assert/strict";
+import { rmSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -270,7 +271,19 @@ test("a report shows through the handler set for it", () => {
   assert.ok(pages.every((page) => page.startsWith("<!doctype html>")));
   assert.ok(pages[0].includes("Optimisation report") && pages[2].includes("Comparison report"));
   assert.ok(pages[1].includes('<html lang="en" data-theme="dark">'));
-  assert.throws(() => setShowHandler("console.log"), TypeError);
+  assert.deepEqual(paths(() => setShowHandler("console.log")), ["handler"]);
+  // Nothing, as null, restores the default.
+  setShowHandler(() => assert.fail("the handler was restored"));
+  setShowHandler();
+  process.env.BROWSER = "true";
+  try {
+    const path = assets.optimise({ method: "minimum_variance" }).show();
+    assert.equal(typeof path, "string");
+    rmSync(path);
+  } finally {
+    if (before === undefined) delete process.env.BROWSER;
+    else process.env.BROWSER = before;
+  }
 });
 
 test("fixed weights are compared with methods on the same periods", () => {
