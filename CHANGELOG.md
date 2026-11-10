@@ -12,9 +12,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A sample universe for screening: `datasets::universe()` in Rust, `fl.datasets.universe()` in
   Python and `datasets.universe()` in JavaScript (also through the worker, as
   `engine.static("datasets", "universe")`). It holds 200 fictional companies in eleven sectors,
-  with six years of daily closes, volumes and quarterly dividends to October 2026, five fields
-  each (`name`, `sector`, `market_cap`, `trailing_pe` and `price_to_book`) and a market index,
-  `INDEX`, as the benchmark. The library draws it with a fixed seed, the same on every platform.
+  with six years of daily closes, volumes and quarterly dividends to October 2026, up to five
+  fields each (`name`, `sector`, `market_cap`, `trailing_pe` and `price_to_book`) and a market
+  index, `INDEX`, as the benchmark. The library draws it with a fixed seed, the same on every
+  platform.
 
 - `set_show_handler` in Python and `setShowHandler` in JavaScript say what `show()` does with a
   report's page: the handler receives the page's HTML instead of a notebook or a browser showing

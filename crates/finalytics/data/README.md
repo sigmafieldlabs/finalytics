@@ -33,7 +33,7 @@ closes on every weekday from 2 November 2020 to 30 October 2026, volumes and qua
 Each company has a `name`, a `sector`, a `market_cap` in US dollars, a `trailing_pe` (none for
 the companies that make a loss) and a `price_to_book`, and is identified by the first four
 letters of its name. Fourteen companies list after the start, one stops trading in August 2026,
-two miss a few closes and three have no volumes, as real data does.
+two miss some of their closes and three have no volumes, as real data does.
 
 The universe is not a file: the library draws it, with a fixed seed, from a market factor whose
 volatility changes from day to day, a factor for each sector and each company's own risk, with

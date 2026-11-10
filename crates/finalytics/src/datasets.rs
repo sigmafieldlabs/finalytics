@@ -135,15 +135,15 @@ pub fn report_options() -> ReportOptions {
 ///
 /// Each company has five fields: `name`, `sector`, `market_cap` (in US dollars), `trailing_pe`
 /// (none for the companies that make a loss) and `price_to_book`. Its identifier is the first
-/// four letters of its name, such as `ALDM` for Aldmere Systems. The closes include the
+/// four letters of its name, such as `CALW` for Calwick Systems. The closes include the
 /// dividends, as adjusted closes do, and the dividends paid are listed for the dividend yield.
 ///
 /// The data is synthetic: drawn with a fixed seed from a market factor with changing volatility,
 /// a factor for each sector and each company's own risk, with the market falling through 2022
 /// and selling off in the spring of 2025, loosely as markets did then. Fourteen companies list
-/// after November 2020, one stops trading in August 2026, two miss a few closes and three have no
-/// volumes, as real data does. The companies and their figures are invented; any likeness to a
-/// listed company is chance. Every platform draws the same universe.
+/// after November 2020, one stops trading in August 2026, two miss some of their closes and
+/// three have no volumes, as real data does. The companies and their figures are invented; any
+/// likeness to a listed company is chance. Every platform draws the same universe.
 ///
 /// ```
 /// use finalytics::prelude::*;
