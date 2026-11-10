@@ -15,7 +15,8 @@
 Python runs with the package installed in that interpreter, JavaScript with the npm package built
 in bindings/wasm/pkg (bindings/wasm/build.sh), and Rust with the examples built by cargo. Each
 example runs in a folder of its own that holds the household dataset's CSV files, as a reader's
-working folder would, with a browser that opens nothing.
+working folder would. show() hands its page to a handler that keeps nothing, as the site's pages
+hand it to the output panel; in Rust, which has no handler, the browser opens nothing.
 
 The pages are checked for what docs/guides/README.md asks of them: every example they show
 exists, every example belongs to a page, every page is in contents.json, the code fits 80
@@ -35,7 +36,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_DOWN, ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,21 +47,29 @@ PACKAGE = "finalytics-guides"
 DATA = ROOT / "crates" / "finalytics" / "data" / "portfolio"
 NPM = ROOT / "bindings" / "wasm" / "pkg"
 LANGUAGES = {"python": ".py", "javascript": ".js", "rust": ".rs"}
+SUFFIXES = {suffix: language for language, suffix in LANGUAGES.items()}
 WIDTH = 80
+# Folders in docs/examples that are not pages' examples.
+NOT_PAGES = {"target", "node_modules"}
 
 FRONT_MATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 FENCE = re.compile(r"^(```|~~~).*?^\1[ \t]*$", re.DOTALL | re.MULTILINE)
 INLINE_CODE = re.compile(r"`[^`\n]+`")
 LINK_TARGET = re.compile(r"\]\([^)]*\)")
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-# An example shown on a page: a paragraph that is one link to the example's Python, JavaScript or
-# Rust file, such as [optimise.py](../../examples/optimise-a-portfolio/optimise.py).
-EXAMPLE = re.compile(r"^\[[^\]\n]+\]\(\.\./\.\./examples/([a-z0-9-]+)/([a-z0-9-]+)\.(py|js|rs)\)[ \t]*$", re.MULTILINE)
-# A decimal, a percentage or an amount of money: the numbers that results are made of. Whole
-# numbers alone (15 methods, 2016) are not checked.
-NUMBER = re.compile(r"(?<![\w.])[$€£]?-?\d[\d,]*(?:\.\d+)?%?(?![\w])")
-# Version numbers (1.0.0, 1.0.0-rc.6) are not results.
-VERSION = re.compile(r"(?<![\w.])\d+\.\d+\.\d+(?:-[\w.]+)?")
+# An example shown on a page: a paragraph that is one link to one of the example's files, such
+# as [optimise.py](../../examples/optimise-a-portfolio/optimise.py).
+EXAMPLE = re.compile(
+    r"^\[[^\]\n]+\]\(\.\./\.\./examples/([a-z0-9-]+)/([a-z0-9-]+)(\.py|\.js|\.rs)\)[ \t]*$", re.MULTILINE
+)
+# A number in full, whatever unit follows it (2.8x, $1.2m, 1.52bn, 2.5 MiB): a decimal, a
+# percentage or an amount of money is checked; a whole number alone (15 methods, 2016) is not.
+NUMBER = re.compile(r"(?<![\w.])([$€£]?)(-?\d[\d,]*(?:\.\d+)?)(%?)")
+# Version numbers (1.0.0, 1.0.0-rc.6, Python 3.10) are not results.
+VERSION = re.compile(
+    r"(?<![\w.])\d+\.\d+\.\d+(?:-[\w.]+)?"
+    r"|(?i:\b(?:python|node(?:\.js)?|rust|pyodide|typescript|finalytics|version)\s+)\d+(?:\.\d+)+"
+)
 
 
 @dataclass
@@ -79,7 +88,7 @@ class Example:
 
     @property
     def cargo_name(self) -> str:
-        return f"{self.page}-{self.name}"
+        return f"{self.page}--{self.name}"
 
 
 @dataclass
@@ -88,14 +97,15 @@ class Page:
     slug: str
     meta: dict[str, object]
     text: str
-    shown: list[tuple[str, str]]
+    shown: list[tuple[str, str, str]]
 
 
 def examples() -> dict[str, Example]:
     found: dict[str, Example] = {}
-    for folder in sorted(p for p in EXAMPLES.iterdir() if p.is_dir() and not p.name.startswith((".", "target"))):
+    folders = (p for p in EXAMPLES.iterdir() if p.is_dir() and p.name not in NOT_PAGES and not p.name.startswith("."))
+    for folder in sorted(folders):
         for path in sorted(folder.iterdir()):
-            language = next((lang for lang, suffix in LANGUAGES.items() if path.suffix == suffix), None)
+            language = SUFFIXES.get(path.suffix)
             if language is None:
                 continue
             example = found.setdefault(f"{folder.name}/{path.stem}", Example(folder.name, path.stem))
@@ -125,7 +135,7 @@ def pages() -> list[Page]:
     found = []
     for path in sorted(GUIDES.glob("*/*.md")):
         meta, body = front_matter(path.read_text(encoding="utf-8"))
-        shown = [(m.group(1), m.group(2)) for m in EXAMPLE.finditer(body)]
+        shown = [(m.group(1), m.group(2), m.group(3)) for m in EXAMPLE.finditer(body)]
         found.append(Page(path, path.stem, meta, body, shown))
     return found
 
@@ -137,39 +147,40 @@ def prose(text: str) -> str:
     return text
 
 
-def value(token: str) -> tuple[Decimal, int] | None:
-    """A number as written, such as "6.4%" or "$1,250.50", as a fraction for a percentage, with
-    the decimal places it is written to (two more for a percentage)."""
-    text = token.lstrip("$€£").replace(",", "")
-    percent = text.endswith("%")
-    text = text.rstrip("%")
+def value(match: re.Match[str]) -> tuple[Decimal, int, bool] | None:
+    """A number as written, such as "6.4%" or "$1,250.50": its value, the decimal places it is
+    written to, and whether it is a percentage."""
+    digits = match.group(2).replace(",", "")
     try:
-        number = Decimal(text)
+        number = Decimal(digits)
     except InvalidOperation:
         return None
-    places = len(text.partition(".")[2])
-    return (number / 100, places + 2) if percent else (number, places)
+    return number, len(digits.partition(".")[2]), bool(match.group(3))
 
 
-def known_numbers(texts: list[str]) -> set[Decimal]:
-    """Every number in the examples' code and output, each also as a fraction if it is a
-    percentage."""
-    found: set[Decimal] = set()
+def known_numbers(texts: list[str]) -> tuple[set[Decimal], set[Decimal]]:
+    """The numbers in `texts`: those written as percentages, and the others."""
+    percentages: set[Decimal] = set()
+    others: set[Decimal] = set()
     for text in texts:
-        text = text.replace("−", "-")
-        for token in NUMBER.findall(text):
-            parsed = value(token)
+        for match in NUMBER.finditer(text.replace("\u2212", "-")):
+            parsed = value(match)
             if parsed:
-                found.add(parsed[0])
-                found.add(-parsed[0])
-    return found
+                number, _, percent = parsed
+                (percentages if percent else others).update({number, -number})
+    return percentages, others
 
 
 def quoted(number: Decimal, places: int, known: set[Decimal]) -> bool:
     """Whether `number`, written to `places` decimal places, is one of `known` as written or
-    rounded."""
+    rounded: on a tie, rounded either way."""
     step = Decimal(1).scaleb(-places)
-    return any(k.quantize(step) == number for k in known if abs(k) < 10**15)
+    return any(
+        k.quantize(step, rounding=mode) == number
+        for k in known
+        if abs(k) < 10**15
+        for mode in (ROUND_HALF_UP, ROUND_HALF_DOWN)
+    )
 
 
 def check_page(page: Page, by_key: dict[str, Example], outputs: dict[str, str]) -> list[str]:
@@ -179,30 +190,44 @@ def check_page(page: Page, by_key: dict[str, Example], outputs: dict[str, str]) 
         problems.append(f"{where}: starts without a title (# ...)")
     if "description" not in page.meta:
         problems.append(f"{where}: has no description in its front matter")
-    for folder, name in page.shown:
+    for folder, name, suffix in page.shown:
+        example = by_key.get(f"{folder}/{name}")
         if folder != page.slug:
             problems.append(f"{where}: shows {folder}/{name}, which belongs to the page {folder}")
-        elif f"{folder}/{name}" not in by_key:
+        elif example is None:
             problems.append(f"{where}: shows {folder}/{name}, which docs/examples does not have")
-    # Numbers in the prose come from the examples: printed by them, or given to them.
-    texts = []
-    for folder, name in page.shown:
+        elif SUFFIXES[suffix] not in example.files:
+            problems.append(f"{where}: links to {folder}/{name}{suffix}, which does not exist")
+    # Numbers in the prose come from the examples. A percentage is one an example prints as a
+    # percentage, or a fraction it is given (max_weight=0.40 for 40%); any other number is one it
+    # prints or is given as it is.
+    printed: list[str] = []
+    given: list[str] = []
+    for folder, name, _ in page.shown:
         example = by_key.get(f"{folder}/{name}")
         if example is None:
             continue
-        texts += [path.read_text(encoding="utf-8") for path in example.files.values()]
+        given += [path.read_text(encoding="utf-8") for path in example.files.values()]
         if example.key in outputs:
-            texts.append(outputs[example.key])
+            printed.append(outputs[example.key])
         elif example.recorded.exists():
-            texts.append(example.recorded.read_text(encoding="utf-8"))
-    known = known_numbers(texts)
-    allowed = {str(n) for n in page.meta.get("numbers", []) or []}
-    text = VERSION.sub(" ", prose(page.text).replace("−", "-"))
-    for token in NUMBER.findall(text):
-        if not re.search(r"[.%$€£]", token) or token in allowed:
+            printed.append(example.recorded.read_text(encoding="utf-8"))
+    printed_percentages, printed_others = known_numbers(printed)
+    given_percentages, given_others = known_numbers(given)
+    as_percentages = printed_percentages | given_percentages | {n * 100 for n in given_others}
+    as_others = printed_others | given_others
+    listed = page.meta.get("numbers") or []
+    allowed = {str(n) for n in (listed if isinstance(listed, list) else [listed])}
+    text = VERSION.sub(" ", prose(page.text).replace("\u2212", "-"))
+    for match in NUMBER.finditer(text):
+        token = match.group(0)
+        if not (match.group(1) or match.group(3) or "." in match.group(2)) or token in allowed:
             continue
-        parsed = value(token)
-        if parsed and not quoted(parsed[0], parsed[1], known):
+        parsed = value(match)
+        if parsed is None:
+            continue
+        number, places, percent = parsed
+        if not quoted(number, places, as_percentages if percent else as_others):
             problems.append(
                 f"{where}: the prose says {token}, which no example of the page prints or is given"
                 " (quote a number as an example prints it, or list it under `numbers` in the front"
@@ -213,7 +238,7 @@ def check_page(page: Page, by_key: dict[str, Example], outputs: dict[str, str]) 
 
 def check_layout(found: dict[str, Example], all_pages: list[Page]) -> list[str]:
     problems = []
-    shown = {f"{f}/{n}" for page in all_pages for f, n in page.shown}
+    shown = {f"{f}/{n}" for page in all_pages for f, n, _ in page.shown}
     for key, example in found.items():
         if key not in shown:
             problems.append(f"docs/examples/{key}: no page shows it")
@@ -234,6 +259,9 @@ def check_layout(found: dict[str, Example], all_pages: list[Page]) -> list[str]:
     return problems
 
 
+MARK_START = "# The examples, written by scripts/guides.py --record.\n"
+
+
 def cargo_examples(found: dict[str, Example]) -> str:
     entries = [
         f'[[example]]\nname = "{e.cargo_name}"\npath = "{e.page}/{e.name}.rs"\n'
@@ -243,23 +271,43 @@ def cargo_examples(found: dict[str, Example]) -> str:
     return "\n".join(entries)
 
 
-MARK_START = "# The examples, written by scripts/guides.py --record.\n"
-
-
-def write_cargo(found: dict[str, Example]) -> bool:
-    """Writes the Rust examples into docs/examples/Cargo.toml; whether it changed."""
+def write_cargo(found: dict[str, Example]) -> list[str]:
+    """Writes the Rust examples into docs/examples/Cargo.toml; the problems, if it cannot."""
+    if not any("rust" in e.files for e in found.values()):
+        return [f"{CARGO.relative_to(ROOT)} needs a Rust example: cargo refuses a package without one"]
     text = CARGO.read_text(encoding="utf-8")
     head = text.split(MARK_START)[0].rstrip("\n") + "\n\n"
     new = head + MARK_START + "\n" + cargo_examples(found)
     if new != text:
         CARGO.write_text(new, encoding="utf-8")
-        return True
-    return False
+        print(f"wrote the Rust examples into {CARGO.relative_to(ROOT)}")
+    return []
 
 
 def cargo_current(found: dict[str, Example]) -> bool:
     text = CARGO.read_text(encoding="utf-8")
     return MARK_START in text and text.split(MARK_START)[1].strip() == cargo_examples(found).strip()
+
+
+def build_rust() -> tuple[dict[str, Path], str]:
+    """Builds the Rust examples: each one's program by name, or why they did not build."""
+    try:
+        found = subprocess.run(
+            ["cargo", "build", "--quiet", "-p", PACKAGE, "--examples", "--message-format=json"],
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        )
+    except OSError as error:
+        return {}, f"cannot run cargo: {error}"
+    if found.returncode != 0:
+        messages = [json.loads(line) for line in found.stdout.splitlines() if line.startswith("{")]
+        rendered = [m["message"]["rendered"] for m in messages if m.get("reason") == "compiler-message"]
+        return {}, "".join(rendered) or found.stderr
+    programs = {}
+    for line in found.stdout.splitlines():
+        message = json.loads(line) if line.startswith("{") else {}
+        if message.get("reason") == "compiler-artifact" and message.get("executable"):
+            programs[message["target"]["name"]] = Path(message["executable"])
+    return programs, ""
 
 
 def scratch() -> Path:
@@ -269,41 +317,64 @@ def scratch() -> Path:
         shutil.copy(data, here)
     (here / "package.json").write_text('{ "type": "module" }\n', encoding="utf-8")
     (here / "node_modules").mkdir()
-    if NPM.exists():
-        os.symlink(NPM, here / "node_modules" / "finalytics", target_is_directory=True)
     return here
 
 
-def run(example: Example, language: str, python: str, binaries: Path) -> tuple[str | None, str]:
+def install_npm(here: Path) -> None:
+    target = here / "node_modules" / "finalytics"
+    try:
+        os.symlink(NPM, target, target_is_directory=True)
+    except OSError:
+        # Windows allows links only with privileges; a copy will do.
+        shutil.copytree(NPM, target)
+
+
+# Each example runs as a reader runs it, with show() handing its page to a handler that keeps it
+# nowhere, as the site's pages hand it to their output panel.
+PYTHON_RUNNER = """\
+import runpy, sys
+import finalytics
+finalytics.set_show_handler(lambda page: None)
+path = sys.argv[1]
+sys.argv = [path]
+runpy.run_path(path, run_name="__main__")
+"""
+JAVASCRIPT_RUNNER = """\
+import {{ setShowHandler }} from "finalytics";
+setShowHandler(() => {{}});
+await import("./{name}");
+"""
+
+
+def run(example: Example, language: str, python: str, programs: dict[str, Path]) -> tuple[str | None, str]:
     """Runs one example; its output, or None and why it failed."""
     here = scratch()
     try:
         source = example.files[language]
         if language == "python":
-            command = [python, str(source)]
+            command = [python, "-c", PYTHON_RUNNER, str(source)]
         elif language == "javascript":
-            target = here / source.name
-            shutil.copy(source, target)
-            command = ["node", str(target)]
+            install_npm(here)
+            shutil.copy(source, here / source.name)
+            runner = here / "run-example.js"
+            runner.write_text(JAVASCRIPT_RUNNER.format(name=source.name), encoding="utf-8")
+            command = ["node", str(runner)]
         else:
-            command = [str(binaries / example.cargo_name)]
-        env = {**os.environ, "BROWSER": "true", "PYTHONIOENCODING": "utf-8", "NO_COLOR": "1"}
-        found = subprocess.run(command, cwd=here, capture_output=True, text=True, encoding="utf-8", env=env)
+            program = programs.get(example.cargo_name)
+            if program is None:
+                return None, f"cargo built no program {example.cargo_name}"
+            command = [str(program)]
+        browser = "cmd /c rem" if os.name == "nt" else "true"
+        env = {**os.environ, "BROWSER": browser, "PYTHONIOENCODING": "utf-8", "NO_COLOR": "1"}
+        try:
+            found = subprocess.run(command, cwd=here, capture_output=True, text=True, encoding="utf-8", env=env)
+        except OSError as error:
+            return None, f"cannot run {command[0]}: {error}"
         if found.returncode != 0:
             return None, found.stderr.strip() or f"exit status {found.returncode}"
         return found.stdout, ""
     finally:
         shutil.rmtree(here, ignore_errors=True)
-
-
-def build_rust() -> Path:
-    subprocess.run(
-        ["cargo", "build", "--quiet", "-p", PACKAGE, "--examples"],
-        cwd=ROOT,
-        check=True,
-    )
-    target = Path(os.environ.get("CARGO_TARGET_DIR", ROOT / "target"))
-    return target / "debug" / "examples"
 
 
 def diff(a: str, b: str, a_name: str, b_name: str) -> str:
@@ -320,7 +391,7 @@ def main() -> int:
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--page")
     args = parser.parse_args()
-    if os.sep in args.python:
+    if os.sep in args.python or (os.altsep and os.altsep in args.python):
         args.python = str(Path(args.python).absolute())
     languages = [lang.strip() for lang in args.languages.split(",") if lang.strip()]
     unknown = sorted(set(languages) - set(LANGUAGES))
@@ -331,22 +402,32 @@ def main() -> int:
 
     found = examples()
     all_pages = pages()
+    if args.page and args.page not in {e.page for e in found.values()}:
+        parser.error(f"no page {args.page!r} has examples in docs/examples")
     problems = check_layout(found, all_pages)
+    names = [e.cargo_name for e in found.values() if "rust" in e.files]
+    for name in sorted({n for n in names if names.count(n) > 1}):
+        problems.append(f"two Rust examples would both be the program {name}")
+    rust_listed = True
     if args.record:
-        if write_cargo(found):
-            print(f"wrote the Rust examples into {CARGO.relative_to(ROOT)}")
+        problems += write_cargo(found)
     elif not cargo_current(found):
+        rust_listed = False
         problems.append(f"{CARGO.relative_to(ROOT)} does not list the Rust examples as they are: run scripts/guides.py --record")
 
     chosen = [e for e in found.values() if args.page in (None, e.page)]
-    binaries = build_rust() if "rust" in languages and any("rust" in e.files for e in chosen) else Path()
+    programs: dict[str, Path] = {}
+    if "rust" in languages and rust_listed and any("rust" in e.files for e in chosen):
+        programs, error = build_rust()
+        if error:
+            problems.append(f"the Rust examples did not build:\n{error}")
     outputs: dict[str, str] = {}
     for example in chosen:
         ran: dict[str, str] = {}
         for language in languages:
-            if language not in example.files:
+            if language not in example.files or (language == "rust" and not programs):
                 continue
-            output, error = run(example, language, args.python, binaries)
+            output, error = run(example, language, args.python, programs)
             if output is None:
                 problems.append(f"{example.files[language].relative_to(ROOT)} failed:\n{error}")
             else:
@@ -375,8 +456,7 @@ def main() -> int:
                         + diff(recorded, output, "recorded", language)
                     )
     for stale in sorted(EXAMPLES.glob("*/*.out")):
-        key = f"{stale.parent.name}/{stale.stem}"
-        if key not in found:
+        if f"{stale.parent.name}/{stale.stem}" not in found:
             problems.append(f"{stale.relative_to(ROOT)} is the output of an example that does not exist")
 
     by_key = {e.key: e for e in found.values()}
@@ -385,11 +465,10 @@ def main() -> int:
 
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
-    ran_count = len(chosen)
     if problems:
         return 1
     verb = "recorded" if args.record else "checked"
-    print(f"guides {verb}: {len(all_pages)} pages, {ran_count} examples in {', '.join(languages)}")
+    print(f"guides {verb}: {len(all_pages)} pages, {len(chosen)} examples in {', '.join(languages)}")
     return 0
 
 

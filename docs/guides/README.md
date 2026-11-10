@@ -64,8 +64,12 @@ file. An example belongs to one page, and lives in the folder named after it.
 - **The data the packages ship.** `datasets` in each language: the household portfolio, the six
   asset classes and the universe of 200 companies for screening. An example may also read the
   household's files by name (`transactions.csv`, `prices.csv`, `fx.csv`, `instruments.csv` and
-  `accounts.csv`): the folder it runs in holds them, as a reader's working folder would.
-- **`show()` is welcome.** In CI it opens nothing; on the site, the page appears with the output.
+  `accounts.csv`): the folder it runs in holds them, as a reader's working folder would. Python
+  examples may use pandas, as `datasets.asset_class_prices()` does, which readers install with
+  the package (`pip install "finalytics[pandas]"`).
+- **`show()` is welcome.** The script gives it a handler that keeps the page nowhere, in Python
+  and JavaScript, natively and on Pyodide, and a browser that opens nothing in Rust; on the site,
+  the page appears with the output.
 - **80 columns.** The code fits the page on a laptop, and scrolls sideways on a phone.
 - **Rust** examples are programs with `fn main() -> Result<()>`, listed in `Cargo.toml` by the
   recording script.
@@ -73,10 +77,12 @@ file. An example belongs to one page, and lives in the folder named after it.
 ## Numbers in the prose
 
 Every decimal, percentage or amount of money in a page's prose is one its examples print, as
-printed or rounded, or one they are given: `max_weight=0.40` lets the prose say 40%. Whole
-numbers, version numbers and numbers in code spans are not checked. A number that is neither,
-such as a Python version, is listed under `numbers` in the front matter. The rule keeps every
-figure a reader sees in step with the library that produced it.
+printed or rounded, or one they are given. A percentage is one they print as a percentage, or a
+fraction they are given: `max_weight=0.40` lets the prose say 40%, but a Sharpe ratio printed as
+0.57 does not make 57%. Whole numbers, version numbers (`1.0.0`, Python 3.10) and numbers in code
+spans are not checked. A number that is none of these and not a result, such as the 0.9 of
+"migrating from 0.9", is listed under `numbers` in the front matter. The rule keeps every figure
+a reader sees in step with the library that produced it.
 
 ## Running and recording
 
@@ -87,6 +93,7 @@ python3 scripts/guides.py            # as CI does: run every example and compare
 
 The script runs Python with the package installed in the interpreter that runs it (`maturin
 develop` in `bindings/python`), JavaScript on the npm package built by `bindings/wasm/build.sh`,
-and Rust with cargo. `--page optimise-a-portfolio` runs one page's examples; `--languages
+and Rust with cargo. Reports end with the library's version, so a new version records every
+output again (`--record`). `--page optimise-a-portfolio` runs one page's examples; `--languages
 python,javascript` some languages; `--python PATH` another interpreter, such as a Pyodide
 environment's (`pyodide venv`), to check the examples in Python running on WebAssembly.

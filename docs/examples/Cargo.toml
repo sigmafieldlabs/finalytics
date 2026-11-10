@@ -29,5 +29,5 @@ unwrap_used = "warn"
 # The examples, written by scripts/guides.py --record.
 
 [[example]]
-name = "optimise-a-portfolio-optimise"
+name = "optimise-a-portfolio--optimise"
 path = "optimise-a-portfolio/optimise.rs"
