@@ -1,12 +1,17 @@
 """Threads: long engine calls release the GIL, so other Python threads keep running."""
 
+import sys
 import threading
 import time
 
 import numpy as np
+import pytest
 from conftest import SP500
 
 import finalytics as fl
+
+# Pyodide, Python on WebAssembly, runs on one thread and cannot start another.
+pytestmark = pytest.mark.skipif(sys.platform == "emscripten", reason="Pyodide runs one thread")
 
 
 def stalls(work):

@@ -1,17 +1,42 @@
 name: Pyodide
 
-# Builds the Python package for Pyodide, Python in the browser (PEP 783), and runs the Python
-# tests on it under Node.js. Run it by hand from the Actions tab. When it passes, its wheel can
-# join the PyPI release.
+# Builds the Python package for Pyodide, Python on WebAssembly (PEP 783), and tests it there: the
+# package's tests, and the guides' Python examples, which must print what they print natively.
+# It runs on changes to the engine or the Python package, by hand from the Actions tab, and from
+# the Release workflow, whose run keeps the wheel for the GitHub release. PyPI does not take
+# Pyodide wheels.
 #
-# Each Pyodide release fixes its Python, Emscripten and Rust versions; pyodide-build reports
-# them for the Python version set up here (3.14 for Pyodide 314).
+# A Pyodide release fixes its Python, Emscripten and Rust versions. pyodide-build reads them from
+# the cross-build environment of PYODIDE_VERSION, the release the guides' pages run on, and
+# installs Emscripten with Pyodide's patches.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - "bindings/python/**"
+      - "docs/examples/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/pyodide.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "bindings/python/**"
+      - "docs/examples/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/pyodide.yml"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
+
+env:
+  PYODIDE_VERSION: "314.0.7"
+  PYODIDE_BUILD_VERSION: "0.39.3"
 
 jobs:
   wheel:
@@ -25,38 +50,40 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Install pyodide-build
-        run: python -m pip install pyodide-build
-      - name: Read the toolchain this Pyodide release uses
-        id: pyodide
+      - name: Install pyodide-build and Pyodide's cross-build environment
         run: |
-          {
-            echo "rust-toolchain=$(pyodide config get rust_toolchain)"
-            echo "emscripten-version=$(pyodide config get emscripten_version)"
-            echo "abi-version=$(pyodide config get pyodide_abi_version)"
-            echo "rustflags=$(pyodide config get rustflags)"
-          } | tee -a "$GITHUB_OUTPUT"
-      - uses: mymindstorm/setup-emsdk@v16
-        with:
-          version: ${{ steps.pyodide.outputs.emscripten-version }}
+          python -m pip install "pyodide-build==$PYODIDE_BUILD_VERSION"
+          pyodide xbuildenv install "$PYODIDE_VERSION"
+          echo "Python $(pyodide config get pyversion), Emscripten $(pyodide config get pyodide_emscripten_version), ABI $(pyodide config get pyodide_abi_version)"
+      - name: Install the Rust toolchain Pyodide builds with
+        run: |
+          toolchain=$(pyodide config get rust_toolchain)
+          url=$(pyodide config get rust_emscripten_target_url)
+          rustup toolchain install "$toolchain" --profile minimal
+          if [ -z "$url" ]; then
+            rustup target add wasm32-unknown-emscripten --toolchain "$toolchain"
+          else
+            # Pyodide builds Rust's standard library for its own Emscripten settings: use it.
+            rustlib="$(rustup run "$toolchain" rustc --print sysroot)/lib/rustlib"
+            archive="$RUNNER_TEMP/$(basename "$url")"
+            curl --fail --silent --show-error --location --output "$archive" "$url"
+            rm -rf "$rustlib/wasm32-unknown-emscripten"
+            python -c 'import shutil, sys; shutil.unpack_archive(sys.argv[1], sys.argv[2])' "$archive" "$rustlib"
+          fi
+          echo "RUSTUP_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
       - name: Build the wheel
-        uses: PyO3/maturin-action@v1
-        env:
-          CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS: ${{ steps.pyodide.outputs.rustflags }}
-          MATURIN_PYEMSCRIPTEN_PLATFORM_VERSION: ${{ steps.pyodide.outputs.abi-version }}
-        with:
-          working-directory: bindings/python
-          target: wasm32-unknown-emscripten
-          rust-toolchain: ${{ steps.pyodide.outputs.rust-toolchain }}
-          args: --release --out dist --interpreter 3.14
-      - name: Test the wheel in Pyodide
+        working-directory: bindings/python
+        run: pyodide build --outdir dist
+      - name: Install the wheel in a Pyodide environment
         run: |
           pyodide venv .venv-pyodide
-          source .venv-pyodide/bin/activate
-          python -m pip install numpy pandas pytest jsonschema
-          python -m pip install finalytics --no-index --no-deps --find-links bindings/python/dist
-          python -m pytest bindings/python/tests
+          .venv-pyodide/bin/python -m pip install numpy pandas pytest jsonschema
+          .venv-pyodide/bin/python -m pip install finalytics --no-index --no-deps --find-links bindings/python/dist
+      - name: Run the package's tests in Pyodide
+        run: .venv-pyodide/bin/python -m pytest bindings/python/tests
+      - name: Run the guides' Python examples in Pyodide
+        run: python scripts/guides.py --languages python --python .venv-pyodide/bin/python
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-pyodide
+          name: pyodide-wheel
           path: bindings/python/dist/*.whl

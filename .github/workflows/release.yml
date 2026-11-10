@@ -2,7 +2,8 @@ name: Release
 
 # Publishes the Python package to PyPI when a version tag (v1.0.0, v1.0.0-rc.1, ...) is pushed.
 # Run it by hand from the Actions tab to build and test the wheels without publishing them.
-# crates.io and npm are published by hand.
+# crates.io and npm are published by hand. It also builds and tests the Pyodide wheel
+# (pyodide.yml), kept as the run's `pyodide-wheel` artifact for the GitHub release.
 
 on:
   push:
@@ -90,16 +91,27 @@ jobs:
           name: sdist
           path: bindings/python/dist/*.tar.gz
 
+  pyodide:
+    name: Pyodide wheel
+    needs: version
+    uses: ./.github/workflows/pyodide.yml
+
   publish:
     name: Publish to PyPI
     if: github.event_name == 'push'
     needs: [wheels, sdist]
     runs-on: ubuntu-latest
     steps:
+      # The native wheels and the source distribution; PyPI does not take the Pyodide wheel.
       - uses: actions/download-artifact@v4
         with:
+          pattern: wheel-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
       - run: ls -l dist
       - name: Upload to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

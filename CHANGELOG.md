@@ -26,6 +26,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the same, that the output is the one recorded and that every number in a page's prose is one
   its examples print; CI runs it on every change.
 
+- The Pyodide build of the Python package runs in CI, and the Release workflow builds and tests
+  it on each version tag, ready to attach to the GitHub release. PyPI does not take Pyodide
+  wheels.
+
 ### Fixed
 
 - Equal weight, inverse volatility, risk parity, risk budgeting and hierarchical risk parity
