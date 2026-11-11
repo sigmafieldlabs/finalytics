@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-rc.7] - 2026-11-11
+
 ### Added
 
 - A sample universe for screening: `datasets::universe()` in Rust, `fl.datasets.universe()` in
@@ -1063,7 +1065,8 @@ Finalytics 1.0 is a redesign of the library. See the
 
 The last release of the 0.x series. See the `0.9.x` branch.
 
-[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.6...HEAD
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.7...HEAD
+[1.0.0-rc.7]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.6...v1.0.0-rc.7
 [1.0.0-rc.6]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.3...v1.0.0-rc.4
