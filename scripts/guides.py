@@ -49,6 +49,9 @@ NPM = ROOT / "bindings" / "wasm" / "pkg"
 LANGUAGES = {"python": ".py", "javascript": ".js", "rust": ".rs"}
 SUFFIXES = {suffix: language for language, suffix in LANGUAGES.items()}
 WIDTH = 80
+# Reports end with the version that wrote them, so a new version records the outputs again.
+VERSION_NOW = re.search(r'^version = "(.+)"', (ROOT / "Cargo.toml").read_text(encoding="utf-8"), re.M).group(1)
+RECORDED_VERSION = re.compile(r"Finalytics \d+\.\d+\.\d+(?:-[\w.]+)? ·")
 # Folders in docs/examples that are not pages' examples.
 NOT_PAGES = {"target", "node_modules"}
 
@@ -449,12 +452,20 @@ def main() -> int:
             problems.append(f"docs/examples/{example.key} has no recorded output: run scripts/guides.py --record")
         else:
             recorded = example.recorded.read_text(encoding="utf-8")
+            then = RECORDED_VERSION.search(recorded)
             for language, output in ran.items():
-                if output != recorded:
+                if output == recorded:
+                    continue
+                if then and output == recorded.replace(then.group(0), f"Finalytics {VERSION_NOW} ·"):
                     problems.append(
-                        f"docs/examples/{example.key}: {language} prints otherwise than recorded:\n"
-                        + diff(recorded, output, "recorded", language)
+                        f"docs/examples/{example.key} was recorded with {then.group(0)[:-2]}, and the"
+                        f" library is now {VERSION_NOW}: record it again (scripts/guides.py --record)"
                     )
+                    break
+                problems.append(
+                    f"docs/examples/{example.key}: {language} prints otherwise than recorded:\n"
+                    + diff(recorded, output, "recorded", language)
+                )
     for stale in sorted(EXAMPLES.glob("*/*.out")):
         if f"{stale.parent.name}/{stale.stem}" not in found:
             problems.append(f"{stale.relative_to(ROOT)} is the output of an example that does not exist")
