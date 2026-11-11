@@ -93,12 +93,14 @@ EXAMPLES = [
 
 @pytest.mark.parametrize(("where", "code"), EXAMPLES, ids=[f"{w}-{k}" for k, (w, _) in enumerate(EXAMPLES)])
 def test_docstring_examples_run(where, code, tmp_path, monkeypatch):
-    # Each runs as written, in a folder holding the sample household's files, with nothing shown.
+    # Each runs as written, in a folder holding the sample household's files, with nothing shown:
+    # show() hands its page to a handler that keeps it nowhere, which works on Pyodide too, where
+    # there is no browser to open.
     import finalytics as fl
 
     for name in fl.datasets.FILES:
         if name.startswith("portfolio/"):
             (tmp_path / name.split("/")[-1]).write_text(fl.datasets.file(name), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("webbrowser.open", lambda *args, **kwargs: True)
+    monkeypatch.setattr("finalytics._printing._show_handler", lambda page: None)
     exec(compile(code, where, "exec"), {})  # noqa: S102
