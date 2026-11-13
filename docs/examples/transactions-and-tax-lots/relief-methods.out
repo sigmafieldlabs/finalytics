@@ -1,0 +1,4 @@
+fifo t2
+lifo t3
+highest_cost t3
+lowest_cost t2

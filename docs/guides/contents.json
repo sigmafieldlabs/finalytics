@@ -3,7 +3,42 @@
     {
       "title": "Get started",
       "folder": "get-started",
-      "pages": ["install", "your-first-portfolio"]
+      "pages": [
+        "install",
+        "how-finalytics-works",
+        "your-first-portfolio",
+        "your-first-optimisation"
+      ]
+    },
+    {
+      "title": "Data",
+      "folder": "data",
+      "pages": [
+        "bring-your-own-data",
+        "validate-data-and-read-errors",
+        "save-and-load-portfolios",
+        "market-data-and-currencies"
+      ]
+    },
+    {
+      "title": "Records",
+      "folder": "records",
+      "pages": [
+        "transactions-and-tax-lots",
+        "corporate-actions",
+        "accounts-and-households",
+        "value-a-portfolio"
+      ]
+    },
+    {
+      "title": "Performance",
+      "folder": "performance",
+      "pages": [
+        "measure-performance",
+        "compare-with-a-benchmark",
+        "contributions",
+        "attribution"
+      ]
     },
     {
       "title": "Optimise",

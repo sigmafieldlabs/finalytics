@@ -1,0 +1,2 @@
+options.max_weight | must be a share above 0 and at most 1, such as 0.4, not 1.5
+options.target | target return needs target

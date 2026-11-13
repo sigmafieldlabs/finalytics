@@ -1,0 +1,2 @@
+error transactions.line 2 (trade_date)
+invalid date: "not-a-date" is not in the form YYYY-MM-DD

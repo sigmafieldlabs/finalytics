@@ -29,8 +29,184 @@ unwrap_used = "warn"
 # The examples, written by scripts/guides.py --record.
 
 [[example]]
+name = "accounts-and-households--account-metadata"
+path = "accounts-and-households/account-metadata.rs"
+
+[[example]]
+name = "accounts-and-households--account-report"
+path = "accounts-and-households/account-report.rs"
+
+[[example]]
+name = "accounts-and-households--account-series"
+path = "accounts-and-households/account-series.rs"
+
+[[example]]
+name = "accounts-and-households--groups"
+path = "accounts-and-households/groups.rs"
+
+[[example]]
+name = "accounts-and-households--household"
+path = "accounts-and-households/household.rs"
+
+[[example]]
+name = "attribution--currency"
+path = "attribution/currency.rs"
+
+[[example]]
+name = "attribution--hedged"
+path = "attribution/hedged.rs"
+
+[[example]]
+name = "attribution--linked"
+path = "attribution/linked.rs"
+
+[[example]]
+name = "attribution--menchero"
+path = "attribution/menchero.rs"
+
+[[example]]
+name = "attribution--single-period"
+path = "attribution/single-period.rs"
+
+[[example]]
+name = "bring-your-own-data--local-files"
+path = "bring-your-own-data/local-files.rs"
+
+[[example]]
+name = "bring-your-own-data--long-prices"
+path = "bring-your-own-data/long-prices.rs"
+
+[[example]]
+name = "bring-your-own-data--metadata"
+path = "bring-your-own-data/metadata.rs"
+
+[[example]]
+name = "bring-your-own-data--minimal"
+path = "bring-your-own-data/minimal.rs"
+
+[[example]]
+name = "bring-your-own-data--wide-prices"
+path = "bring-your-own-data/wide-prices.rs"
+
+[[example]]
+name = "compare-with-a-benchmark--blended"
+path = "compare-with-a-benchmark/blended.rs"
+
+[[example]]
+name = "compare-with-a-benchmark--capture"
+path = "compare-with-a-benchmark/capture.rs"
+
+[[example]]
+name = "compare-with-a-benchmark--excess"
+path = "compare-with-a-benchmark/excess.rs"
+
+[[example]]
+name = "compare-with-a-benchmark--portfolio-benchmark"
+path = "compare-with-a-benchmark/portfolio-benchmark.rs"
+
+[[example]]
+name = "compare-with-a-benchmark--relative-statistics"
+path = "compare-with-a-benchmark/relative-statistics.rs"
+
+[[example]]
+name = "contributions--currency"
+path = "contributions/currency.rs"
+
+[[example]]
+name = "contributions--expenses"
+path = "contributions/expenses.rs"
+
+[[example]]
+name = "contributions--groups"
+path = "contributions/groups.rs"
+
+[[example]]
+name = "contributions--holdings"
+path = "contributions/holdings.rs"
+
+[[example]]
+name = "contributions--income"
+path = "contributions/income.rs"
+
+[[example]]
+name = "corporate-actions--merger"
+path = "corporate-actions/merger.rs"
+
+[[example]]
+name = "corporate-actions--return-of-capital"
+path = "corporate-actions/return-of-capital.rs"
+
+[[example]]
+name = "corporate-actions--spin-off"
+path = "corporate-actions/spin-off.rs"
+
+[[example]]
+name = "corporate-actions--split"
+path = "corporate-actions/split.rs"
+
+[[example]]
+name = "corporate-actions--symbol-change"
+path = "corporate-actions/symbol-change.rs"
+
+[[example]]
+name = "how-finalytics-works--errors"
+path = "how-finalytics-works/errors.rs"
+
+[[example]]
+name = "how-finalytics-works--front-doors"
+path = "how-finalytics-works/front-doors.rs"
+
+[[example]]
+name = "how-finalytics-works--methods"
+path = "how-finalytics-works/methods.rs"
+
+[[example]]
+name = "how-finalytics-works--results-and-reports"
+path = "how-finalytics-works/results-and-reports.rs"
+
+[[example]]
 name = "install--version"
 path = "install/version.rs"
+
+[[example]]
+name = "market-data-and-currencies--carried"
+path = "market-data-and-currencies/carried.rs"
+
+[[example]]
+name = "market-data-and-currencies--direct"
+path = "market-data-and-currencies/direct.rs"
+
+[[example]]
+name = "market-data-and-currencies--inverse"
+path = "market-data-and-currencies/inverse.rs"
+
+[[example]]
+name = "market-data-and-currencies--pivot"
+path = "market-data-and-currencies/pivot.rs"
+
+[[example]]
+name = "market-data-and-currencies--valuation"
+path = "market-data-and-currencies/valuation.rs"
+
+[[example]]
+name = "measure-performance--annualised"
+path = "measure-performance/annualised.rs"
+
+[[example]]
+name = "measure-performance--daily-returns"
+path = "measure-performance/daily-returns.rs"
+
+[[example]]
+name = "measure-performance--flow-timing"
+path = "measure-performance/flow-timing.rs"
+
+[[example]]
+name = "measure-performance--periods"
+path = "measure-performance/periods.rs"
+
+[[example]]
+name = "measure-performance--three-measures"
+path = "measure-performance/three-measures.rs"
 
 [[example]]
 name = "optimise-a-portfolio--cash"
@@ -55,6 +231,106 @@ path = "optimise-a-portfolio/optimise.rs"
 [[example]]
 name = "optimise-a-portfolio--target-volatility"
 path = "optimise-a-portfolio/target-volatility.rs"
+
+[[example]]
+name = "save-and-load-portfolios--bad-version"
+path = "save-and-load-portfolios/bad-version.rs"
+
+[[example]]
+name = "save-and-load-portfolios--data-only"
+path = "save-and-load-portfolios/data-only.rs"
+
+[[example]]
+name = "save-and-load-portfolios--disk"
+path = "save-and-load-portfolios/disk.rs"
+
+[[example]]
+name = "save-and-load-portfolios--document-fields"
+path = "save-and-load-portfolios/document-fields.rs"
+
+[[example]]
+name = "save-and-load-portfolios--round-trip"
+path = "save-and-load-portfolios/round-trip.rs"
+
+[[example]]
+name = "transactions-and-tax-lots--average-cost"
+path = "transactions-and-tax-lots/average-cost.rs"
+
+[[example]]
+name = "transactions-and-tax-lots--preview"
+path = "transactions-and-tax-lots/preview.rs"
+
+[[example]]
+name = "transactions-and-tax-lots--realised-gains"
+path = "transactions-and-tax-lots/realised-gains.rs"
+
+[[example]]
+name = "transactions-and-tax-lots--relief-methods"
+path = "transactions-and-tax-lots/relief-methods.rs"
+
+[[example]]
+name = "transactions-and-tax-lots--specific-lots"
+path = "transactions-and-tax-lots/specific-lots.rs"
+
+[[example]]
+name = "validate-data-and-read-errors--books-error"
+path = "validate-data-and-read-errors/books-error.rs"
+
+[[example]]
+name = "validate-data-and-read-errors--handle-errors"
+path = "validate-data-and-read-errors/handle-errors.rs"
+
+[[example]]
+name = "validate-data-and-read-errors--issue-fields"
+path = "validate-data-and-read-errors/issue-fields.rs"
+
+[[example]]
+name = "validate-data-and-read-errors--several-files"
+path = "validate-data-and-read-errors/several-files.rs"
+
+[[example]]
+name = "validate-data-and-read-errors--valid"
+path = "validate-data-and-read-errors/valid.rs"
+
+[[example]]
+name = "value-a-portfolio--holdings"
+path = "value-a-portfolio/holdings.rs"
+
+[[example]]
+name = "value-a-portfolio--latest"
+path = "value-a-portfolio/latest.rs"
+
+[[example]]
+name = "value-a-portfolio--reconcile"
+path = "value-a-portfolio/reconcile.rs"
+
+[[example]]
+name = "value-a-portfolio--value-series"
+path = "value-a-portfolio/value-series.rs"
+
+[[example]]
+name = "value-a-portfolio--weights"
+path = "value-a-portfolio/weights.rs"
+
+[[example]]
+name = "your-first-optimisation--evaluate"
+path = "your-first-optimisation/evaluate.rs"
+
+[[example]]
+name = "your-first-optimisation--frontier"
+path = "your-first-optimisation/frontier.rs"
+
+[[example]]
+name = "your-first-optimisation--maximum-sharpe"
+path = "your-first-optimisation/maximum-sharpe.rs"
+
+[[example]]
+name = "your-first-optimisation--objectives"
+path = "your-first-optimisation/objectives.rs"
+
+[[example]]
+name = "your-first-optimisation--weights"
+path = "your-first-optimisation/weights.rs"
 
 [[example]]
 name = "your-first-portfolio--report"

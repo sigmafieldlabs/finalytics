@@ -1,0 +1,2 @@
+instruments.line 2 (currency) | invalid currency "usd": expected three upper-case letters, such as "USD"
+transactions.line 2 (quantity) | "ten" is not a number (use a dot for decimals and no thousands separators)

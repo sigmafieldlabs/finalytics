@@ -1,0 +1,2 @@
+brokerage Brokerage account true {"owner":"Alex","wrapper":"Taxable"}
+ira Retirement account false {"owner":"Alex","wrapper":"Tax-deferred"}
