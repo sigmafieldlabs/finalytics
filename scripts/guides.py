@@ -2,10 +2,10 @@
 """Run the guides' examples and check the guides, in docs/guides and docs/examples.
 
     python3 scripts/guides.py            run every example in each of its languages, and check
-                                         that they print the same, that the output is the one
-                                         recorded, and that the pages are sound
-    python3 scripts/guides.py --record   run them and record their output, and write the list of
-                                         Rust examples into docs/examples/Cargo.toml
+                                         that they print the same text and reports, that both are
+                                         the ones recorded, and that the pages are sound
+    python3 scripts/guides.py --record   run them and record their text and HTML reports, and write
+                                         the list of Rust examples into docs/examples/Cargo.toml
 
     --languages python,javascript   only these languages (python, javascript, rust)
     --python PATH                   the Python that runs the examples, with finalytics installed;
@@ -89,9 +89,29 @@ class Example:
     def recorded(self) -> Path:
         return EXAMPLES / self.page / f"{self.name}.out"
 
+    def recorded_page(self, number: int) -> Path:
+        suffix = "" if number == 1 else f"-{number}"
+        return EXAMPLES / self.page / f"{self.name}{suffix}.html"
+
+    @property
+    def recorded_pages(self) -> list[Path]:
+        found = []
+        pattern = re.compile(rf"{re.escape(self.name)}(?:-(\d+))?\.html")
+        for path in EXAMPLES.glob(f"{self.page}/*.html"):
+            match = pattern.fullmatch(path.name)
+            if match:
+                found.append((int(match.group(1) or 1), path))
+        return [path for _, path in sorted(found)]
+
     @property
     def cargo_name(self) -> str:
         return f"{self.page}--{self.name}"
+
+
+@dataclass
+class RunResult:
+    text: str
+    pages: list[str]
 
 
 @dataclass
@@ -332,25 +352,31 @@ def install_npm(here: Path) -> None:
         shutil.copytree(NPM, target)
 
 
-# Each example runs as a reader runs it, with show() handing its page to a handler that keeps it
-# nowhere, as the site's pages hand it to their output panel.
+# Python and JavaScript hand show() pages to a handler that records them for the site's output
+# panel. Rust executes the same show() with its browser disabled; all three use the shared engine.
 PYTHON_RUNNER = """\
-import runpy, sys
+import json, os, runpy, sys
+from pathlib import Path
 import finalytics
-finalytics.set_show_handler(lambda page: None)
+pages = []
+finalytics.set_show_handler(pages.append)
 path = sys.argv[1]
 sys.argv = [path]
 runpy.run_path(path, run_name="__main__")
+Path(os.environ["FINALYTICS_GUIDE_PAGES"]).write_text(json.dumps(pages), encoding="utf-8")
 """
 JAVASCRIPT_RUNNER = """\
+import {{ writeFile }} from "node:fs/promises";
 import {{ setShowHandler }} from "finalytics";
-setShowHandler(() => {{}});
+const pages = [];
+setShowHandler((page) => pages.push(page));
 await import("./{name}");
+await writeFile(process.env.FINALYTICS_GUIDE_PAGES, JSON.stringify(pages), "utf8");
 """
 
 
-def run(example: Example, language: str, python: str, programs: dict[str, Path]) -> tuple[str | None, str]:
-    """Runs one example; its output, or None and why it failed."""
+def run(example: Example, language: str, python: str, programs: dict[str, Path]) -> tuple[RunResult | None, str]:
+    """Runs one example; its text and captured HTML reports, or None and why it failed."""
     here = scratch()
     try:
         source = example.files[language]
@@ -368,14 +394,27 @@ def run(example: Example, language: str, python: str, programs: dict[str, Path])
                 return None, f"cargo built no program {example.cargo_name}"
             command = [str(program)]
         browser = "cmd /c rem" if os.name == "nt" else "true"
-        env = {**os.environ, "BROWSER": browser, "PYTHONIOENCODING": "utf-8", "NO_COLOR": "1"}
+        pages_path = here / "pages.json"
+        env = {
+            **os.environ,
+            "BROWSER": browser,
+            "FINALYTICS_GUIDE_PAGES": str(pages_path),
+            "PYTHONIOENCODING": "utf-8",
+            "NO_COLOR": "1",
+        }
         try:
             found = subprocess.run(command, cwd=here, capture_output=True, text=True, encoding="utf-8", env=env)
         except OSError as error:
             return None, f"cannot run {command[0]}: {error}"
         if found.returncode != 0:
             return None, found.stderr.strip() or f"exit status {found.returncode}"
-        return found.stdout, ""
+        try:
+            pages = json.loads(pages_path.read_text(encoding="utf-8")) if pages_path.exists() else []
+        except ValueError as error:
+            return None, f"cannot read the captured reports: {error}"
+        if not isinstance(pages, list) or not all(isinstance(page, str) for page in pages):
+            return None, "the captured reports are not a list of HTML strings"
+        return RunResult(found.stdout, pages), ""
     finally:
         shutil.rmtree(here, ignore_errors=True)
 
@@ -426,7 +465,7 @@ def main() -> int:
             problems.append(f"the Rust examples did not build:\n{error}")
     outputs: dict[str, str] = {}
     for example in chosen:
-        ran: dict[str, str] = {}
+        ran: dict[str, RunResult] = {}
         for language in languages:
             if language not in example.files or (language == "rust" and not programs):
                 continue
@@ -437,26 +476,54 @@ def main() -> int:
                 ran[language] = output
         if not ran:
             continue
-        first, text = next(iter(ran.items()))
-        for language, output in ran.items():
-            if output != text:
+        first, first_result = next(iter(ran.items()))
+        text = first_result.text
+        for language, result in ran.items():
+            if result.text != text:
                 problems.append(
                     f"docs/examples/{example.key}: {language} prints otherwise than {first}:\n"
-                    + diff(text, output, first, language)
+                    + diff(text, result.text, first, language)
                 )
+        reference_language, reference = next(
+            ((language, result) for language, result in ran.items() if language != "rust"),
+            (first, first_result),
+        )
+        pages = reference.pages
+        captures_reports = reference_language != "rust"
+        for language, result in ran.items():
+            if language == "rust" or result.pages == pages:
+                continue
+            if len(result.pages) != len(pages):
+                problems.append(
+                    f"docs/examples/{example.key}: {language} shows {len(result.pages)} reports, "
+                    f"but {reference_language} shows {len(pages)}"
+                )
+                continue
+            for number, (wanted, found_page) in enumerate(zip(pages, result.pages), 1):
+                if found_page != wanted:
+                    problems.append(
+                        f"docs/examples/{example.key}: {language}'s report {number} differs from "
+                        f"{reference_language}'s:\n"
+                        + diff(wanted, found_page, reference_language, language)
+                    )
+                    break
         outputs[example.key] = text
         if args.record:
             if len(ran) == len(example.files):
                 example.recorded.write_text(text, encoding="utf-8")
+                for stale in example.recorded_pages:
+                    stale.unlink()
+                for number, page in enumerate(pages, 1):
+                    example.recorded_page(number).write_text(page, encoding="utf-8")
         elif not example.recorded.exists():
             problems.append(f"docs/examples/{example.key} has no recorded output: run scripts/guides.py --record")
         else:
             recorded = example.recorded.read_text(encoding="utf-8")
             then = RECORDED_VERSION.search(recorded)
-            for language, output in ran.items():
-                if output == recorded:
+            for language, result in ran.items():
+                if result.text == recorded:
                     continue
-                if then and output == recorded.replace(then.group(0), f"Finalytics {VERSION_NOW} ·"):
+                if then and result.text == recorded.replace(then.group(0), f"Finalytics {VERSION_NOW} ·"):
                     problems.append(
                         f"docs/examples/{example.key} was recorded with {then.group(0)[:-2]}, and the"
                         f" library is now {VERSION_NOW}: record it again (scripts/guides.py --record)"
@@ -464,11 +531,31 @@ def main() -> int:
                     break
                 problems.append(
                     f"docs/examples/{example.key}: {language} prints otherwise than recorded:\n"
-                    + diff(recorded, output, "recorded", language)
+                    + diff(recorded, result.text, "recorded", language)
                 )
+            if captures_reports:
+                recorded_pages = example.recorded_pages
+                if len(recorded_pages) != len(pages):
+                    problems.append(
+                        f"docs/examples/{example.key} has {len(recorded_pages)} recorded reports, "
+                        f"but the example shows {len(pages)}: record them again (scripts/guides.py --record)"
+                    )
+                else:
+                    for number, (path, page) in enumerate(zip(recorded_pages, pages), 1):
+                        recorded_page = path.read_text(encoding="utf-8")
+                        if recorded_page != page:
+                            problems.append(
+                                f"{path.relative_to(ROOT)} differs from the example's report {number}:\n"
+                                + diff(recorded_page, page, "recorded", reference_language)
+                            )
     for stale in sorted(EXAMPLES.glob("*/*.out")):
         if f"{stale.parent.name}/{stale.stem}" not in found:
             problems.append(f"{stale.relative_to(ROOT)} is the output of an example that does not exist")
+    for stale in sorted(EXAMPLES.glob("*/*.html")):
+        match = re.fullmatch(r"([a-z0-9-]+?)(?:-\d+)?\.html", stale.name)
+        key = f"{stale.parent.name}/{match.group(1) if match else stale.stem}"
+        if key not in found:
+            problems.append(f"{stale.relative_to(ROOT)} is the report of an example that does not exist")
 
     by_key = {e.key: e for e in found.values()}
     for page in all_pages:

@@ -23,7 +23,6 @@ A page starts with front matter, then its title in the imperative, named for the
 ---
 description: Choose weights for a set of assets with any of the 15 methods, and read what the result holds.
 learn: portfolio/1.4
-workstation: portfolio/optimise
 ---
 
 # Optimise a portfolio
@@ -31,10 +30,10 @@ workstation: portfolio/optimise
 
 - `description` (required): the lead under the title, one or two sentences on what the reader
   will be able to do.
-- `learn`: the lesson or module that teaches the method, such as `portfolio/1.4`, for the "Learn
-  the method" card.
-- `workstation`: the workstation area that does the same task without code, such as
-  `portfolio/optimise`, for the "Use it without code" card.
+- `learn` (optional): the lesson or module that teaches the method, such as `portfolio/1.4`, for
+  the "Learn the method" card. Add it only where a real lesson is a good match. Guides do not
+  link to individual workstation screens; SigmaField may maintain that integration separately
+  once its routes and workflows are stable (decision 0024).
 - `numbers`: numbers the prose states that are not results, such as `[3.10]` for a Python
   version (see below).
 

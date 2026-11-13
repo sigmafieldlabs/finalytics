@@ -29,5 +29,33 @@ unwrap_used = "warn"
 # The examples, written by scripts/guides.py --record.
 
 [[example]]
+name = "install--version"
+path = "install/version.rs"
+
+[[example]]
+name = "optimise-a-portfolio--cash"
+path = "optimise-a-portfolio/cash.rs"
+
+[[example]]
+name = "optimise-a-portfolio--estimates"
+path = "optimise-a-portfolio/estimates.rs"
+
+[[example]]
+name = "optimise-a-portfolio--infeasible"
+path = "optimise-a-portfolio/infeasible.rs"
+
+[[example]]
+name = "optimise-a-portfolio--methods"
+path = "optimise-a-portfolio/methods.rs"
+
+[[example]]
 name = "optimise-a-portfolio--optimise"
 path = "optimise-a-portfolio/optimise.rs"
+
+[[example]]
+name = "optimise-a-portfolio--target-volatility"
+path = "optimise-a-portfolio/target-volatility.rs"
+
+[[example]]
+name = "your-first-portfolio--report"
+path = "your-first-portfolio/report.rs"
