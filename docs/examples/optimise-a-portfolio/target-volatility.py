@@ -6,3 +6,4 @@ result = assets.optimise(
 )
 
 print(result)
+result.show()

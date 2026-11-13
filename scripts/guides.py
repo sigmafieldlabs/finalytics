@@ -15,8 +15,8 @@
 Python runs with the package installed in that interpreter, JavaScript with the npm package built
 in bindings/wasm/pkg (bindings/wasm/build.sh), and Rust with the examples built by cargo. Each
 example runs in a folder of its own that holds the household dataset's CSV files, as a reader's
-working folder would. show() hands its page to a handler that keeps nothing, as the site's pages
-hand it to the output panel; in Rust, which has no handler, the browser opens nothing.
+working folder would. show() hands its page to a handler that captures and records it, as the
+site's pages hand it to the output panel; in Rust, which has no handler, the browser opens nothing.
 
 The pages are checked for what docs/guides/README.md asks of them: every example they show
 exists, every example belongs to a page, every page is in contents.json, the code fits 80
@@ -488,18 +488,18 @@ def main() -> int:
             ((language, result) for language, result in ran.items() if language != "rust"),
             (first, first_result),
         )
-        pages = reference.pages
+        reports = reference.pages
         captures_reports = reference_language != "rust"
         for language, result in ran.items():
-            if language == "rust" or result.pages == pages:
+            if language == "rust" or result.pages == reports:
                 continue
-            if len(result.pages) != len(pages):
+            if len(result.pages) != len(reports):
                 problems.append(
                     f"docs/examples/{example.key}: {language} shows {len(result.pages)} reports, "
-                    f"but {reference_language} shows {len(pages)}"
+                    f"but {reference_language} shows {len(reports)}"
                 )
                 continue
-            for number, (wanted, found_page) in enumerate(zip(pages, result.pages), 1):
+            for number, (wanted, found_page) in enumerate(zip(reports, result.pages), 1):
                 if found_page != wanted:
                     problems.append(
                         f"docs/examples/{example.key}: {language}'s report {number} differs from "
@@ -513,8 +513,8 @@ def main() -> int:
                 example.recorded.write_text(text, encoding="utf-8")
                 for stale in example.recorded_pages:
                     stale.unlink()
-                for number, page in enumerate(pages, 1):
-                    example.recorded_page(number).write_text(page, encoding="utf-8")
+                for number, report in enumerate(reports, 1):
+                    example.recorded_page(number).write_text(report, encoding="utf-8")
         elif not example.recorded.exists():
             problems.append(f"docs/examples/{example.key} has no recorded output: run scripts/guides.py --record")
         else:
@@ -535,18 +535,18 @@ def main() -> int:
                 )
             if captures_reports:
                 recorded_pages = example.recorded_pages
-                if len(recorded_pages) != len(pages):
+                if len(recorded_pages) != len(reports):
                     problems.append(
                         f"docs/examples/{example.key} has {len(recorded_pages)} recorded reports, "
-                        f"but the example shows {len(pages)}: record them again (scripts/guides.py --record)"
+                        f"but the example shows {len(reports)}: record them again (scripts/guides.py --record)"
                     )
                 else:
-                    for number, (path, page) in enumerate(zip(recorded_pages, pages), 1):
+                    for number, (path, report) in enumerate(zip(recorded_pages, reports), 1):
                         recorded_page = path.read_text(encoding="utf-8")
-                        if recorded_page != page:
+                        if recorded_page != report:
                             problems.append(
                                 f"{path.relative_to(ROOT)} differs from the example's report {number}:\n"
-                                + diff(recorded_page, page, "recorded", reference_language)
+                                + diff(recorded_page, report, "recorded", reference_language)
                             )
     for stale in sorted(EXAMPLES.glob("*/*.out")):
         if f"{stale.parent.name}/{stale.stem}" not in found:

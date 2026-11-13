@@ -12,5 +12,6 @@ fn main() -> Result<()> {
         .build()?;
 
     println!("{result}");
+    result.show()?;
     Ok(())
 }

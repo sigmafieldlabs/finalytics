@@ -9,3 +9,4 @@ const result = assets.optimise({
 });
 
 console.log(`${result}`);
+result.show();

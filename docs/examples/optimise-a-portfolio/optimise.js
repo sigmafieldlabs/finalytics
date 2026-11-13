@@ -6,3 +6,4 @@ const assets = new Assets(datasets.assetClassPrices(), {
 const result = assets.optimise({ method: "maximum_sharpe", max_weight: 0.4 });
 
 console.log(`${result}`);
+result.show();
