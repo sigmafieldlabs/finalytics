@@ -1,0 +1,35 @@
+return=0.049822, volatility=0.050846
+  Bonds: 0.500000
+  Gold: 0.100000
+  Intl Equity: 0.068293
+  Real Estate: 0.000000
+  T-Bills: 0.200000
+  US Equity: 0.131707
+return=0.061244, volatility=0.066592
+  Bonds: 0.434857
+  Gold: 0.155909
+  Intl Equity: 0.000000
+  Real Estate: 0.000000
+  T-Bills: 0.108540
+  US Equity: 0.300694
+return=0.072668, volatility=0.087758
+  Bonds: 0.352737
+  Gold: 0.224905
+  Intl Equity: 0.000000
+  Real Estate: 0.000000
+  T-Bills: 0.000000
+  US Equity: 0.422358
+return=0.084093, volatility=0.113585
+  Bonds: 0.106620
+  Gold: 0.334457
+  Intl Equity: 0.000000
+  Real Estate: 0.058923
+  T-Bills: 0.000000
+  US Equity: 0.500000
+return=0.095517, volatility=0.171740
+  Bonds: 0.000000
+  Gold: 0.000000
+  Intl Equity: 0.000000
+  Real Estate: 0.500000
+  T-Bills: 0.000000
+  US Equity: 0.500000

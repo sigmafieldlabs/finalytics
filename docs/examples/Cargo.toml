@@ -69,6 +69,34 @@ name = "attribution--single-period"
 path = "attribution/single-period.rs"
 
 [[example]]
+name = "beneath-the-front-door--costs"
+path = "beneath-the-front-door/costs.rs"
+
+[[example]]
+name = "beneath-the-front-door--factor-exposures"
+path = "beneath-the-front-door/factor-exposures.rs"
+
+[[example]]
+name = "beneath-the-front-door--long-short"
+path = "beneath-the-front-door/long-short.rs"
+
+[[example]]
+name = "beneath-the-front-door--status"
+path = "beneath-the-front-door/status.rs"
+
+[[example]]
+name = "black-litterman--optimise"
+path = "black-litterman/optimise.rs"
+
+[[example]]
+name = "black-litterman--risk-aversion"
+path = "black-litterman/risk-aversion.rs"
+
+[[example]]
+name = "black-litterman--views"
+path = "black-litterman/views.rs"
+
+[[example]]
 name = "bring-your-own-data--local-files"
 path = "bring-your-own-data/local-files.rs"
 
@@ -109,6 +137,30 @@ name = "compare-with-a-benchmark--relative-statistics"
 path = "compare-with-a-benchmark/relative-statistics.rs"
 
 [[example]]
+name = "constraints--bounds-and-groups"
+path = "constraints/bounds-and-groups.rs"
+
+[[example]]
+name = "constraints--cash"
+path = "constraints/cash.rs"
+
+[[example]]
+name = "constraints--effective-assets"
+path = "constraints/effective-assets.rs"
+
+[[example]]
+name = "constraints--keep-cash"
+path = "constraints/keep-cash.rs"
+
+[[example]]
+name = "constraints--tracking-error"
+path = "constraints/tracking-error.rs"
+
+[[example]]
+name = "constraints--turnover-and-trades"
+path = "constraints/turnover-and-trades.rs"
+
+[[example]]
 name = "contributions--currency"
 path = "contributions/currency.rs"
 
@@ -147,6 +199,74 @@ path = "corporate-actions/split.rs"
 [[example]]
 name = "corporate-actions--symbol-change"
 path = "corporate-actions/symbol-change.rs"
+
+[[example]]
+name = "covariance-and-expected-returns--correlation"
+path = "covariance-and-expected-returns/correlation.rs"
+
+[[example]]
+name = "covariance-and-expected-returns--means"
+path = "covariance-and-expected-returns/means.rs"
+
+[[example]]
+name = "covariance-and-expected-returns--sample"
+path = "covariance-and-expected-returns/sample.rs"
+
+[[example]]
+name = "covariance-and-expected-returns--shrinkage"
+path = "covariance-and-expected-returns/shrinkage.rs"
+
+[[example]]
+name = "covariance-and-expected-returns--spectral"
+path = "covariance-and-expected-returns/spectral.rs"
+
+[[example]]
+name = "covariance-and-expected-returns--weighted-statistical"
+path = "covariance-and-expected-returns/weighted-statistical.rs"
+
+[[example]]
+name = "efficient-frontiers--constrained"
+path = "efficient-frontiers/constrained.rs"
+
+[[example]]
+name = "efficient-frontiers--frontier"
+path = "efficient-frontiers/frontier.rs"
+
+[[example]]
+name = "efficient-frontiers--show"
+path = "efficient-frontiers/show.rs"
+
+[[example]]
+name = "evaluate-given-weights--current"
+path = "evaluate-given-weights/current.rs"
+
+[[example]]
+name = "evaluate-given-weights--long-short"
+path = "evaluate-given-weights/long-short.rs"
+
+[[example]]
+name = "evaluate-given-weights--optimised"
+path = "evaluate-given-weights/optimised.rs"
+
+[[example]]
+name = "factor-models--fundamental"
+path = "factor-models/fundamental.rs"
+
+[[example]]
+name = "factor-models--regression"
+path = "factor-models/regression.rs"
+
+[[example]]
+name = "factor-models--risk"
+path = "factor-models/risk.rs"
+
+[[example]]
+name = "factor-models--statistical"
+path = "factor-models/statistical.rs"
+
+[[example]]
+name = "factor-models--supplied"
+path = "factor-models/supplied.rs"
 
 [[example]]
 name = "how-finalytics-works--errors"
@@ -209,6 +329,26 @@ name = "measure-performance--three-measures"
 path = "measure-performance/three-measures.rs"
 
 [[example]]
+name = "measure-risk--asset-statistics"
+path = "measure-risk/asset-statistics.rs"
+
+[[example]]
+name = "measure-risk--conventions"
+path = "measure-risk/conventions.rs"
+
+[[example]]
+name = "measure-risk--drawdowns"
+path = "measure-risk/drawdowns.rs"
+
+[[example]]
+name = "measure-risk--relative"
+path = "measure-risk/relative.rs"
+
+[[example]]
+name = "measure-risk--summary"
+path = "measure-risk/summary.rs"
+
+[[example]]
 name = "optimise-a-portfolio--cash"
 path = "optimise-a-portfolio/cash.rs"
 
@@ -233,6 +373,74 @@ name = "optimise-a-portfolio--target-volatility"
 path = "optimise-a-portfolio/target-volatility.rs"
 
 [[example]]
+name = "risk-decomposition--groups"
+path = "risk-decomposition/groups.rs"
+
+[[example]]
+name = "risk-decomposition--shortfall"
+path = "risk-decomposition/shortfall.rs"
+
+[[example]]
+name = "risk-decomposition--stressed"
+path = "risk-decomposition/stressed.rs"
+
+[[example]]
+name = "risk-decomposition--tracking-error"
+path = "risk-decomposition/tracking-error.rs"
+
+[[example]]
+name = "risk-decomposition--volatility"
+path = "risk-decomposition/volatility.rs"
+
+[[example]]
+name = "risk-parity-and-hrp--hrp"
+path = "risk-parity-and-hrp/hrp.rs"
+
+[[example]]
+name = "risk-parity-and-hrp--inverse-volatility"
+path = "risk-parity-and-hrp/inverse-volatility.rs"
+
+[[example]]
+name = "risk-parity-and-hrp--risk-budgets"
+path = "risk-parity-and-hrp/risk-budgets.rs"
+
+[[example]]
+name = "risk-parity-and-hrp--risk-parity"
+path = "risk-parity-and-hrp/risk-parity.rs"
+
+[[example]]
+name = "robust-and-resampled--box"
+path = "robust-and-resampled/box.rs"
+
+[[example]]
+name = "robust-and-resampled--ellipsoid"
+path = "robust-and-resampled/ellipsoid.rs"
+
+[[example]]
+name = "robust-and-resampled--resampled"
+path = "robust-and-resampled/resampled.rs"
+
+[[example]]
+name = "rolling-analysis--dates"
+path = "rolling-analysis/dates.rs"
+
+[[example]]
+name = "rolling-analysis--relative"
+path = "rolling-analysis/relative.rs"
+
+[[example]]
+name = "rolling-analysis--statistics"
+path = "rolling-analysis/statistics.rs"
+
+[[example]]
+name = "rolling-analysis--tail"
+path = "rolling-analysis/tail.rs"
+
+[[example]]
+name = "rolling-analysis--window-size"
+path = "rolling-analysis/window-size.rs"
+
+[[example]]
 name = "save-and-load-portfolios--bad-version"
 path = "save-and-load-portfolios/bad-version.rs"
 
@@ -251,6 +459,66 @@ path = "save-and-load-portfolios/document-fields.rs"
 [[example]]
 name = "save-and-load-portfolios--round-trip"
 path = "save-and-load-portfolios/round-trip.rs"
+
+[[example]]
+name = "scenarios-and-stress-tests--currency"
+path = "scenarios-and-stress-tests/currency.rs"
+
+[[example]]
+name = "scenarios-and-stress-tests--factors"
+path = "scenarios-and-stress-tests/factors.rs"
+
+[[example]]
+name = "scenarios-and-stress-tests--groups"
+path = "scenarios-and-stress-tests/groups.rs"
+
+[[example]]
+name = "scenarios-and-stress-tests--historical"
+path = "scenarios-and-stress-tests/historical.rs"
+
+[[example]]
+name = "scenarios-and-stress-tests--proxy"
+path = "scenarios-and-stress-tests/proxy.rs"
+
+[[example]]
+name = "scenarios-and-stress-tests--risk"
+path = "scenarios-and-stress-tests/risk.rs"
+
+[[example]]
+name = "tail-risk--assets"
+path = "tail-risk/assets.rs"
+
+[[example]]
+name = "tail-risk--confidence"
+path = "tail-risk/confidence.rs"
+
+[[example]]
+name = "tail-risk--horizon"
+path = "tail-risk/horizon.rs"
+
+[[example]]
+name = "tail-risk--methods"
+path = "tail-risk/methods.rs"
+
+[[example]]
+name = "tail-risk--shortfall"
+path = "tail-risk/shortfall.rs"
+
+[[example]]
+name = "tail-risk-objectives--cdar"
+path = "tail-risk-objectives/cdar.rs"
+
+[[example]]
+name = "tail-risk-objectives--cvar"
+path = "tail-risk-objectives/cvar.rs"
+
+[[example]]
+name = "tail-risk-objectives--return-floor"
+path = "tail-risk-objectives/return-floor.rs"
+
+[[example]]
+name = "tail-risk-objectives--semivariance"
+path = "tail-risk-objectives/semivariance.rs"
 
 [[example]]
 name = "transactions-and-tax-lots--average-cost"

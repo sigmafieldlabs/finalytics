@@ -1,0 +1,21 @@
+historical
+  US Equity: 0.099654
+  Intl Equity: 0.070650
+  Bonds: 0.039700
+  T-Bills: 0.023259
+  Gold: 0.073697
+  Real Estate: 0.091380
+james_stein
+  US Equity: 0.096831
+  Intl Equity: 0.071150
+  Bonds: 0.043746
+  T-Bills: 0.023259
+  Gold: 0.073848
+  Real Estate: 0.089505
+ewma
+  US Equity: 0.008835
+  Intl Equity: 0.001605
+  Bonds: -0.005342
+  T-Bills: 0.023259
+  Gold: 0.113157
+  Real Estate: 0.009843

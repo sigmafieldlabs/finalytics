@@ -1,0 +1,8 @@
+Portfolio: volatility=0.176677
+  equity: exposure=0.760000 component=0.143159 share=0.810287
+  rates: exposure=-1.800000 component=0.014223 share=0.080501
+  specific: share=0.109212
+Active: volatility=0.018574
+  equity: exposure=0.100000 component=0.016367 share=0.881159
+  rates: exposure=0.600000 component=-0.003230 share=-0.173913
+  specific: share=0.292754

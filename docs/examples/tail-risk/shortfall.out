@@ -1,0 +1,4 @@
+Expected shortfall: 0.044000
+equity: component=0.048000 share=1.090909
+bonds: component=-0.004000 share=-0.090909
+Component sum: 0.044000

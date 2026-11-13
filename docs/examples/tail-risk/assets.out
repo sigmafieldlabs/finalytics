@@ -1,0 +1,6 @@
+US Equity: VaR=0.073069 ES=0.102084 clamped=false
+Intl Equity: VaR=0.076531 ES=0.109970 clamped=false
+Bonds: VaR=0.024041 ES=0.031582 clamped=false
+T-Bills: VaR=0.000756 ES=0.000979 clamped=false
+Gold: VaR=0.071564 ES=0.087923 clamped=false
+Real Estate: VaR=0.090433 ES=0.119187 clamped=false

@@ -1,0 +1,4 @@
+Before: volatility=0.106461
+Before: value at risk=172518.00
+After: volatility=0.190213
+After: value at risk=271468.10

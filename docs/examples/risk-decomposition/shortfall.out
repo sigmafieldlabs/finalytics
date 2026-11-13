@@ -1,0 +1,3 @@
+Expected shortfall: 0.044000
+equity: marginal=0.080000 component=0.048000 share=1.090909
+bonds: marginal=-0.010000 component=-0.004000 share=-0.090909

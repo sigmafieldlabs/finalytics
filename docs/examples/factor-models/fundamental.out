@@ -1,0 +1,7 @@
+Method: fundamental
+cyclical: first=0.014300 last=0.011500
+defensive: first=0.005900 last=0.004500
+tech: R2=0.979522
+industrials: R2=0.966147
+utilities: R2=0.818908
+bonds: R2=-2.719241

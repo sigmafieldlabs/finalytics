@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Finalytics 1.0.0-rc.7"><title>Risk budgeting</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
+--grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
+--muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec;
+--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#fff;--on-s8:#000;
+--on-muted-fill:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d0d0d;
+--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;
+--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;--muted-fill:#52514e;--pos:#3987e5;
+--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;
+--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;
+--muted-fill:#52514e;--pos:#3987e5;--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;
+--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.page{max-width:1000px;margin:0 auto;padding:32px 16px 64px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+border-bottom:1px solid var(--grid);padding-bottom:16px}
+.brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
+.logo img{height:36px;width:auto;display:block;margin-bottom:14px}.lg-dark{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-light{display:none!important}
+:root:not([data-theme="light"]) .lg-dark{display:block!important}}
+:root[data-theme="dark"] .lg-light{display:none!important}:root[data-theme="dark"] .lg-dark{display:block!important}
+h1{margin:4px 0 0;font-size:28px;font-weight:600}.meta{color:var(--ink2);font-size:14px;text-align:right}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 8px}
+nav a{color:var(--ink2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:999px;
+border:1px solid var(--grid)}nav a:hover{color:var(--ink);background:var(--surface)}
+section{margin-top:40px}.sh h2{margin:0;font-size:22px;font-weight:600}.sh p{margin:2px 0 12px;color:var(--ink2)}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px 20px;margin:12px 0}
+.card h3{margin:0 0 10px;font-size:15px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin:0}
+@media (max-width:720px){.two{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px}
+.tl{font-size:13px;color:var(--ink2)}.tv{font-size:22px;font-weight:600;margin-top:2px}
+.tv.long{font-size:18px}
+.ts{font-size:12.5px;color:var(--muted);margin-top:2px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.grid{stroke:var(--grid);stroke-width:1}.base{stroke:var(--axis);stroke-width:1}
+.tick{fill:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.lab{fill:var(--ink2);font-size:13px}.val,.end{fill:var(--ink);font-size:12.5px;font-variant-numeric:tabular-nums}
+.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dot{stroke:var(--surface);stroke-width:2}.hit{fill:transparent}.hit:hover{fill:var(--ink);opacity:.04}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:0 0 8px}
+.key{display:inline-flex;align-items:center;gap:6px}.key i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.segbar{display:flex;gap:2px;height:28px;margin:4px 0 10px}
+.seg{border-radius:4px;display:flex;align-items:center;padding-left:8px;min-width:2px;color:#fff;
+font-size:12.5px;font-weight:600;overflow:hidden;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{font-weight:600;color:var(--ink2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid)}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}.r{text-align:right}
+.heat{table-layout:fixed}.heat td{text-align:center;border:2px solid var(--surface);border-radius:4px;padding:7px 2px}
+.heat th{text-align:center;border-bottom:0}.heat tbody th{text-align:left}.heat td.na{background:transparent}
+.heat .yr{font-weight:600;text-align:right}.heat td.diag{color:var(--muted)}
+.wide td{font-size:13px}.heat{min-width:520px}
+.tw{overflow-x:auto}
+/* A shadow at an edge with more to scroll to: the covers scroll with the content, the shadows
+stay at the edges. */
+.tw{background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll}
+@media (max-width:720px){svg.chart{min-width:640px}
+.card{overflow-x:auto;background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll,var(--surface)}}.note{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.prov{color:var(--muted);font-size:12px;margin-top:8px}code{font-size:12px}
+.foot{margin-top:48px;border-top:1px solid var(--grid);padding-top:16px;color:var(--muted);font-size:12.5px}
+@media print{nav{display:none}html,body{background:#fff}.foot{break-before:avoid;margin-top:16px}section{break-before:page}section:first-of-type{break-before:auto}
+.card,.tile{break-inside:avoid}}
+.cmp td:first-child{white-space:nowrap}.heat thead th{font-size:12.5px;vertical-align:bottom;line-height:1.25}
+table b{font-weight:650}.hollow{background:var(--surface)!important;box-shadow:inset 0 0 0 2px var(--ink2)}
+</style></head>
+<body><div class="page">
+<div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,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"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,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"></div>
+<h1>Risk budgeting</h1><div class="brand">Optimisation report</div></div>
+<div class="meta">Risk budgeting · fully invested and long only · optimal<br>5 assets · monthly, Nov 1996 to Oct 2026 · Ledoit–Wolf covariance · risk-free T-Bills</div></div>
+<nav><a href="#p-summary">Summary</a><a href="#p-risk">Risk</a><a href="#p-risk-return">Risk and return</a><a href="#p-history">History</a><a href="#p-method">Method</a></nav>
+<section id="p-summary"><header class="sh"><h2>Summary</h2><p>The weights to hold, and what they are expected to deliver</p></header><div class="tiles"><div class="tile"><div class="tl">Expected return</div><div class="tv long">6.2% a year</div><div class="ts">Historical mean returns</div></div><div class="tile"><div class="tl">Volatility</div><div class="tv">7.5%</div><div class="ts">The Ledoit–Wolf covariance</div></div><div class="tile"><div class="tl">Sharpe ratio</div><div class="tv">0.52</div><div class="ts">Against T-Bills at 2.3%</div></div><div class="tile"><div class="tl">Diversification ratio</div><div class="tv">1.57</div><div class="ts">3.2 assets in effect</div></div><div class="tile"><div class="tl">Largest weight</div><div class="tv">49.7%</div><div class="ts">Bonds</div></div></div><div class="card"><h3>The weights</h3><div class="segbar" role="img" aria-label="The weights"><div class="seg" style="flex:0.4974;background:var(--s1);color:var(--on-s1)" title="Bonds: 49.7%"><span>50%</span></div><div class="seg" style="flex:0.1746;background:var(--s2);color:var(--on-s2)" title="US Equity: 17.5%"><span>17%</span></div><div class="seg" style="flex:0.1403;background:var(--s3);color:var(--on-s3)" title="Gold: 14.0%"><span>14%</span></div><div class="seg" style="flex:0.1143;background:var(--s4);color:var(--on-s4)" title="Intl Equity: 11.4%"><span>11%</span></div><div class="seg" style="flex:0.0734;background:var(--s5);color:var(--on-s5)" title="Real Estate: 7.3%"><span>7%</span></div></div><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Bonds 49.7%</span><span class="key"><i style="background:var(--s2)"></i>US Equity 17.5%</span><span class="key"><i style="background:var(--s3)"></i>Gold 14.0%</span><span class="key"><i style="background:var(--s4)"></i>Intl Equity 11.4%</span><span class="key"><i style="background:var(--s5)"></i>Real Estate 7.3%</span></div><div class="tw"><table class="cmp"><thead><tr><th>Asset</th><th class="r">Weight</th><th class="r">Expected return</th><th class="r">Volatility</th><th class="r">Share of risk</th></tr></thead><tbody><tr><td><span class="key"><i style="background:var(--s1)"></i>Bonds</span></td><td class="r">49.7%</td><td class="r">4.0%</td><td class="r">6.1%</td><td class="r">20.0%</td></tr><tr><td><span class="key"><i style="background:var(--s2)"></i>US Equity</span></td><td class="r">17.5%</td><td class="r">10.0%</td><td class="r">16.9%</td><td class="r">30.0%</td></tr><tr><td><span class="key"><i style="background:var(--s3)"></i>Gold</span></td><td class="r">14.0%</td><td class="r">7.4%</td><td class="r">16.5%</td><td class="r">15.0%</td></tr><tr><td><span class="key"><i style="background:var(--s4)"></i>Intl Equity</span></td><td class="r">11.4%</td><td class="r">7.1%</td><td class="r">17.6%</td><td class="r">20.0%</td></tr><tr><td><span class="key"><i style="background:var(--s5)"></i>Real Estate</span></td><td class="r">7.3%</td><td class="r">9.1%</td><td class="r">20.5%</td><td class="r">15.0%</td></tr></tbody></table></div><p class="note">Fully invested and long only. Historical mean expected returns and the Ledoit–Wolf covariance, annualised by 12. Shares of risk are of the variance: an asset&#39;s weight times its covariance with the portfolio, over the portfolio&#39;s variance.</p></div></section><section id="p-risk"><header class="sh"><h2>Risk</h2><p>Where the risk comes from, and how the assets move together</p></header><div class="card"><h3>Where the risk comes from</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Weight</span><span class="key"><i style="background:var(--s2)"></i>Share of risk</span></div><svg class="chart" viewBox="0 0 880 186" role="img"><text class="lab" x="130" y="23.0" text-anchor="end">Bonds</text><g><title>Bonds · Weight: 49.7%</title><rect x="140" y="8.0" width="680.0" height="10" rx="3" style="fill:var(--s1)"/><text class="val" x="826.0" y="17.0">49.7%</text></g><g><title>Bonds · Share of risk: 20.0%</title><rect x="140" y="20.0" width="273.4" height="10" rx="3" style="fill:var(--s2)"/><text class="val" x="419.4" y="29.0">20.0%</text></g><text class="lab" x="130" y="57.0" text-anchor="end">US Equity</text><g><title>US Equity · Weight: 17.5%</title><rect x="140" y="42.0" width="238.7" height="10" rx="3" style="fill:var(--s1)"/><text class="val" x="384.7" y="51.0">17.5%</text></g><g><title>US Equity · Share of risk: 30.0%</title><rect x="140" y="54.0" width="410.1" height="10" rx="3" style="fill:var(--s2)"/><text class="val" x="556.1" y="63.0">30.0%</text></g><text class="lab" x="130" y="91.0" text-anchor="end">Gold</text><g><title>Gold · Weight: 14.0%</title><rect x="140" y="76.0" width="191.7" height="10" rx="3" style="fill:var(--s1)"/><text class="val" x="337.7" y="85.0">14.0%</text></g><g><title>Gold · Share of risk: 15.0%</title><rect x="140" y="88.0" width="205.1" height="10" rx="3" style="fill:var(--s2)"/><text class="val" x="351.1" y="97.0">15.0%</text></g><text class="lab" x="130" y="125.0" text-anchor="end">Intl Equity</text><g><title>Intl Equity · Weight: 11.4%</title><rect x="140" y="110.0" width="156.3" height="10" rx="3" style="fill:var(--s1)"/><text class="val" x="302.3" y="119.0">11.4%</text></g><g><title>Intl Equity · Share of risk: 20.0%</title><rect x="140" y="122.0" width="273.4" height="10" rx="3" style="fill:var(--s2)"/><text class="val" x="419.4" y="131.0">20.0%</text></g><text class="lab" x="130" y="159.0" text-anchor="end">Real Estate</text><g><title>Real Estate · Weight: 7.3%</title><rect x="140" y="144.0" width="100.4" height="10" rx="3" style="fill:var(--s1)"/><text class="val" x="246.4" y="153.0">7.3%</text></g><g><title>Real Estate · Share of risk: 15.0%</title><rect x="140" y="156.0" width="205.1" height="10" rx="3" style="fill:var(--s2)"/><text class="val" x="351.1" y="165.0">15.0%</text></g><line class="base" x1="140" x2="140" y1="0" y2="180"/></svg><p class="note">US Equity is 17.5% of the weight but 30.0% of the risk; Bonds is 49.7% of the weight and 20.0% of the risk. Shares of risk are of the variance: an asset&#39;s weight times its covariance with the portfolio, over the portfolio&#39;s variance.</p></div><div class="card"><h3>Correlation</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>US Equity</th><th>Intl Equity</th><th>Bonds</th><th>Gold</th><th>Real Estate</th></tr></thead><tbody><tr><th>US Equity</th><td class="diag">1.00</td><td style="background:color-mix(in oklab, var(--pos) 82%, var(--mid));color:#fff">0.82</td><td style="background:color-mix(in oklab, var(--neg) 2%, var(--mid));color:var(--ink)">−0.02</td><td style="background:color-mix(in oklab, var(--pos) 9%, var(--mid));color:var(--ink)">0.09</td><td style="background:color-mix(in oklab, var(--pos) 68%, var(--mid));color:#fff">0.68</td></tr><tr><th>Intl Equity</th><td style="background:color-mix(in oklab, var(--pos) 82%, var(--mid));color:#fff">0.82</td><td class="diag">1.00</td><td style="background:color-mix(in oklab, var(--neg) 4%, var(--mid));color:var(--ink)">−0.04</td><td style="background:color-mix(in oklab, var(--pos) 16%, var(--mid));color:var(--ink)">0.16</td><td style="background:color-mix(in oklab, var(--pos) 64%, var(--mid));color:#fff">0.64</td></tr><tr><th>Bonds</th><td style="background:color-mix(in oklab, var(--neg) 2%, var(--mid));color:var(--ink)">−0.02</td><td style="background:color-mix(in oklab, var(--neg) 4%, var(--mid));color:var(--ink)">−0.04</td><td class="diag">1.00</td><td style="background:color-mix(in oklab, var(--pos) 21%, var(--mid));color:var(--ink)">0.21</td><td style="background:color-mix(in oklab, var(--pos) 20%, var(--mid));color:var(--ink)">0.20</td></tr><tr><th>Gold</th><td style="background:color-mix(in oklab, var(--pos) 9%, var(--mid));color:var(--ink)">0.09</td><td style="background:color-mix(in oklab, var(--pos) 16%, var(--mid));color:var(--ink)">0.16</td><td style="background:color-mix(in oklab, var(--pos) 21%, var(--mid));color:var(--ink)">0.21</td><td class="diag">1.00</td><td style="background:color-mix(in oklab, var(--pos) 10%, var(--mid));color:var(--ink)">0.10</td></tr><tr><th>Real Estate</th><td style="background:color-mix(in oklab, var(--pos) 68%, var(--mid));color:#fff">0.68</td><td style="background:color-mix(in oklab, var(--pos) 64%, var(--mid));color:#fff">0.64</td><td style="background:color-mix(in oklab, var(--pos) 20%, var(--mid));color:var(--ink)">0.20</td><td style="background:color-mix(in oklab, var(--pos) 10%, var(--mid));color:var(--ink)">0.10</td><td class="diag">1.00</td></tr></tbody></table></div><p class="note">From the covariance of the monthly returns, Nov 1996 to Oct 2026.</p></div></section><section id="p-risk-return"><header class="sh"><h2>Risk and return</h2><p>Where the weights sit against each asset and equal weight</p></header><div class="card"><h3>Expected return and volatility</h3><div class="legend"><span class="key"><i style="background:var(--ink)"></i>The weights</span><span class="key"><i class="hollow"></i>Equal weight</span><span class="key"><i style="background:linear-gradient(90deg,var(--s1) 0% 33%,var(--s2) 33% 67%,var(--s3) 67% 100%)"></i>Assets held</span></div><svg class="chart" viewBox="0 0 880 340" role="img"><line class="grid" x1="56" x2="730" y1="300.0" y2="300.0"/><text class="tick" x="48" y="304.0" text-anchor="end">0.0%</text><line class="grid" x1="56" x2="730" y1="244.8" y2="244.8"/><text class="tick" x="48" y="248.8" text-anchor="end">2.5%</text><line class="grid" x1="56" x2="730" y1="189.6" y2="189.6"/><text class="tick" x="48" y="193.6" text-anchor="end">5.0%</text><line class="grid" x1="56" x2="730" y1="134.4" y2="134.4"/><text class="tick" x="48" y="138.4" text-anchor="end">7.5%</text><line class="grid" x1="56" x2="730" y1="79.2" y2="79.2"/><text class="tick" x="48" y="83.2" text-anchor="end">10.0%</text><line class="grid" x1="56" x2="730" y1="24.0" y2="24.0"/><text class="tick" x="48" y="28.0" text-anchor="end">12.5%</text><text class="tick" x="56.0" y="320" text-anchor="middle">0%</text><text class="tick" x="190.8" y="320" text-anchor="middle">5%</text><text class="tick" x="325.6" y="320" text-anchor="middle">10%</text><text class="tick" x="460.4" y="320" text-anchor="middle">15%</text><text class="tick" x="595.2" y="320" text-anchor="middle">20%</text><text class="tick" x="730.0" y="320" text-anchor="middle">25%</text><text class="tick" x="393" y="338" text-anchor="middle">Volatility, a year</text><text class="tick" x="12" y="14">Expected return, a year</text><line x1="56.0" y1="248.6" x2="586.4" y2="24.0" style="stroke:var(--ink2);stroke-dasharray:4 4;stroke-width:1.2"/><circle cx="221.8" cy="212.3" r="5" style="fill:var(--s1)"><title>Bonds: return 4.0%, volatility 6.1%</title></circle><circle cx="512.5" cy="80.0" r="5" style="fill:var(--s2)"><title>US Equity: return 10.0%, volatility 16.9%</title></circle><circle cx="501.0" cy="137.3" r="5" style="fill:var(--s3)"><title>Gold: return 7.4%, volatility 16.5%</title></circle><circle cx="530.2" cy="144.0" r="5" style="fill:var(--s4)"><title>Intl Equity: return 7.1%, volatility 17.6%</title></circle><circle cx="609.0" cy="98.2" r="5" style="fill:var(--s5)"><title>Real Estate: return 9.1%, volatility 20.5%</title></circle><circle cx="353.5" cy="134.4" r="6" style="fill:var(--surface);stroke:var(--ink2);stroke-width:2"><title>Equal weight: return 7.5%, volatility 11.0%</title></circle><circle cx="259.3" cy="162.5" r="8" style="fill:var(--ink);stroke:var(--surface);stroke-width:2"><title>The weights: return 6.2%, volatility 7.5%</title></circle><text class="lab" x="268.3" y="167.1" text-anchor="start" style="font-weight:600">The weights</text><text class="lab" x="230.8" y="216.9" text-anchor="start">Bonds</text><text class="lab" x="521.5" y="84.5" text-anchor="start">US Equity</text><text class="lab" x="492.0" y="141.8" text-anchor="end">Gold</text><text class="lab" x="539.2" y="148.6" text-anchor="start">Intl Equity</text><text class="lab" x="618.0" y="102.8" text-anchor="start">Real Estate</text><text class="lab" x="362.5" y="138.9" text-anchor="start">Equal weight</text></svg><p class="note">The dashed line starts at T-Bills, 2.3%, and passes through the weights; its slope is their Sharpe ratio. To draw the efficient frontier, optimise with the frontier turned on: frontier=True in Python, frontier: true in JavaScript or .with_frontier() in Rust. It takes longer, more so with many assets.</p></div></section><section id="p-history"><header class="sh"><h2>History</h2><p>How the weights would have done on the returns they were fitted to</p></header><div class="card"><h3>On the history it was fitted to</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>The weights</span><span class="key"><i style="background:var(--ink2)"></i>Equal weight</span></div><svg class="chart" viewBox="0 0 880 260" role="img"><line class="grid" x1="56" x2="816" y1="232.0" y2="232.0"/><text class="tick" x="48" y="236.0" text-anchor="end">0</text><line class="grid" x1="56" x2="816" y1="195.3" y2="195.3"/><text class="tick" x="48" y="199.3" text-anchor="end">200</text><line class="grid" x1="56" x2="816" y1="158.7" y2="158.7"/><text class="tick" x="48" y="162.7" text-anchor="end">400</text><line class="grid" x1="56" x2="816" y1="122.0" y2="122.0"/><text class="tick" x="48" y="126.0" text-anchor="end">600</text><line class="grid" x1="56" x2="816" y1="85.3" y2="85.3"/><text class="tick" x="48" y="89.3" text-anchor="end">800</text><line class="grid" x1="56" x2="816" y1="48.7" y2="48.7"/><text class="tick" x="48" y="52.7" text-anchor="end">1000</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">1200</text><text class="tick" x="136.3" y="252" text-anchor="middle">2000</text><text class="tick" x="263.0" y="252" text-anchor="middle">2005</text><text class="tick" x="389.7" y="252" text-anchor="middle">2010</text><text class="tick" x="516.3" y="252" text-anchor="middle">2015</text><text class="tick" x="643.0" y="252" text-anchor="middle">2020</text><text class="tick" x="769.7" y="252" text-anchor="middle">2025</text><path class="line" d="M56.0,213.7 L58.0,213.9 L60.2,213.7 L62.4,213.4 L64.3,212.7 L66.5,212.6 L68.6,212.4 L70.6,212.0 L72.8,212.3 L74.9,211.9 L76.9,212.5 L79.2,211.9 L81.3,211.9 L83.3,211.8 L85.6,211.7 L87.6,211.1 L89.6,211.3 L91.8,211.0 L93.9,210.9 L95.9,211.0 L98.1,211.5 L100.3,211.0 L102.4,211.1 L104.5,210.7 L106.6,210.9 L108.7,211.2 L110.9,211.2 L112.9,211.9 L114.8,210.8 L117.1,210.4 L119.2,210.2 L121.3,210.4 L123.4,211.0 L125.5,210.6 L127.7,210.1 L129.8,209.5 L131.8,209.4 L134.0,208.5 L136.2,208.5 L138.3,208.3 L140.4,207.9 L142.5,208.3 L144.4,208.2 L146.7,208.8 L148.8,209.3 L151.0,208.6 L153.1,208.7 L155.1,208.3 L157.3,208.1 L159.4,207.6 L161.4,208.1 L163.7,208.0 L165.7,208.1 L167.8,207.5 L169.9,207.8 L172.1,208.2 L174.1,207.4 L176.3,207.0 L178.4,207.3 L180.4,207.4 L182.7,207.6 L184.7,207.3 L186.9,207.5 L189.0,207.7 L191.0,207.5 L193.0,207.7 L195.2,206.7 L197.4,207.2 L199.3,207.1 L201.6,206.7 L203.7,207.7 L205.8,207.9 L208.0,207.8 L210.0,207.2 L212.2,205.9 L214.4,205.5 L216.3,204.3 L218.5,203.1 L220.5,202.2 L222.6,202.1 L224.8,200.7 L226.9,200.9 L228.9,200.8 L231.2,201.0 L233.3,200.7 L235.2,201.1 L237.5,201.5 L239.6,201.3 L241.6,200.8 L243.8,200.8 L245.9,201.5 L248.1,201.3 L250.2,200.8 L252.2,201.1 L254.5,200.0 L256.5,199.8 L258.6,199.3 L260.8,199.3 L262.9,199.4 L265.1,198.6 L267.0,199.2 L269.2,199.4 L271.2,199.5 L273.4,198.6 L275.5,198.6 L277.5,199.1 L279.8,198.9 L281.9,200.1 L284.0,199.3 L286.1,199.3 L288.2,199.0 L290.4,199.4 L292.3,198.6 L294.5,198.5 L296.4,197.6 L298.7,199.3 L300.8,199.8 L303.0,199.8 L305.1,200.2 L307.1,200.5 L309.3,200.7 L311.4,200.9 L313.4,201.6 L315.7,201.3 L317.7,201.8 L319.7,202.5 L321.9,202.4 L324.0,202.2 L326.1,201.9 L328.3,202.5 L330.4,202.0 L332.4,201.3 L334.7,199.9 L336.7,200.5 L338.9,201.8 L341.0,201.3 L343.0,201.6 L345.2,201.4 L347.3,202.0 L349.4,203.0 L351.5,202.7 L353.7,203.3 L355.7,203.1 L357.9,204.5 L360.0,204.9 L362.0,205.7 L364.3,205.6 L366.4,204.3 L368.3,205.4 L370.5,205.0 L372.6,203.9 L374.6,202.8 L376.8,201.5 L379.0,201.7 L381.1,200.7 L383.2,199.9 L385.3,200.2 L387.4,199.2 L389.6,197.5 L391.6,196.8 L393.5,195.2 L395.8,195.1 L397.9,194.8 L400.1,194.9 L402.1,195.0 L404.2,194.3 L406.4,192.7 L408.5,192.4 L410.5,192.1 L412.8,192.7 L414.9,194.2 L417.1,193.4 L419.0,193.6 L421.2,194.2 L423.2,194.2 L425.4,193.1 L427.5,192.3 L429.5,191.7 L431.8,190.8 L433.8,190.8 L436.0,191.3 L438.1,190.4 L440.2,186.7 L442.4,185.4 L444.4,185.3 L446.5,184.5 L448.6,184.0 L450.8,183.9 L452.8,182.7 L455.0,183.9 L457.2,183.3 L459.1,183.1 L461.4,183.3 L463.5,183.6 L465.6,181.9 L467.8,181.8 L469.7,180.0 L471.7,178.9 L473.9,178.9 L476.1,179.0 L478.0,178.0 L480.3,180.3 L482.4,181.1 L484.6,179.4 L486.7,179.2 L488.7,178.9 L490.9,178.5 L493.1,177.2 L495.0,178.2 L497.2,179.1 L499.3,177.3 L501.3,178.0 L503.5,176.7 L505.6,176.0 L507.7,175.6 L509.9,176.0 L512.0,175.5 L514.0,175.3 L516.3,177.0 L518.3,177.3 L520.3,177.3 L522.5,176.0 L524.6,175.3 L526.6,173.3 L528.8,171.6 L531.0,171.2 L533.1,170.0 L535.2,170.5 L537.3,170.0 L539.4,168.1 L541.6,168.2 L543.6,165.7 L545.7,165.9 L547.9,163.5 L549.9,163.5 L552.1,163.2 L554.2,165.2 L556.2,166.0 L558.5,167.9 L560.6,166.0 L562.7,163.2 L564.8,161.1 L566.9,159.6 L569.1,160.9 L571.1,157.8 L573.2,156.4 L575.2,154.9 L577.4,154.3 L579.5,153.3 L581.7,151.0 L583.8,152.0 L585.8,152.5 L588.1,152.9 L590.1,151.8 L592.1,150.9 L594.4,149.8 L596.4,149.5 L598.5,147.3 L600.6,146.5 L602.8,146.2 L604.8,144.3 L607.0,141.1 L609.1,139.1 L611.1,138.7 L613.4,138.8 L615.5,136.0 L617.6,134.8 L619.8,133.6 L621.7,132.5 L623.7,132.3 L625.9,133.8 L628.1,134.9 L630.0,134.0 L632.3,133.5 L634.4,133.2 L636.5,127.6 L638.7,129.3 L640.7,132.0 L642.9,130.9 L645.1,130.4 L647.0,135.7 L649.2,138.4 L651.3,139.6 L653.3,136.1 L655.6,130.6 L657.7,131.5 L659.9,129.3 L661.9,128.2 L664.0,126.2 L666.2,122.3 L668.3,122.0 L670.3,122.7 L672.3,122.9 L674.6,125.5 L676.6,124.5 L678.8,122.8 L680.9,126.7 L683.0,126.7 L685.2,128.7 L687.3,127.5 L689.3,128.6 L691.5,130.5 L693.6,129.3 L695.8,130.1 L697.7,135.3 L699.9,134.2 L701.9,133.8 L704.1,137.2 L706.2,139.7 L708.2,141.2 L710.5,143.7 L712.6,142.7 L714.7,141.7 L716.8,140.3 L718.9,138.5 L721.1,135.8 L723.0,133.0 L725.2,132.4 L727.1,132.6 L729.4,133.6 L731.5,134.5 L733.7,132.4 L735.8,131.6 L737.8,132.4 L740.0,130.5 L742.1,127.1 L744.1,124.4 L746.4,122.3 L748.4,122.0 L750.4,121.4 L752.7,120.7 L754.8,117.4 L756.8,112.9 L759.0,112.2 L761.1,111.2 L763.3,110.9 L765.4,108.7 L767.4,103.7 L769.7,99.4 L771.8,106.4 L773.8,105.1 L775.9,105.9 L778.0,105.4 L780.1,106.8 L782.2,112.7 L784.4,113.6 L786.4,113.8 L788.6,111.9 L790.7,111.0 L792.7,112.3 L795.0,114.3 L797.1,113.1 L799.0,114.8 L801.2,113.4 L803.3,116.2 L805.3,116.3 L807.5,121.7 L809.7,119.3 L811.8,120.1 L813.9,116.1 L816.0,119.0" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="119.0" r="4" style="fill:var(--s1)"/><text class="end" x="826.0" y="123.0">616</text><path class="line" d="M56.0,213.7 L58.0,214.1 L60.2,213.9 L62.4,213.7 L64.3,212.6 L66.5,212.6 L68.6,212.4 L70.6,211.9 L72.8,212.1 L74.9,211.7 L76.9,212.6 L79.2,212.2 L81.3,212.1 L83.3,211.7 L85.6,211.7 L87.6,210.9 L89.6,211.4 L91.8,211.0 L93.9,210.8 L95.9,210.7 L98.1,211.8 L100.3,210.7 L102.4,210.6 L104.5,210.0 L106.6,210.3 L108.7,210.8 L110.9,211.0 L112.9,211.9 L114.8,210.5 L117.1,210.2 L119.2,210.4 L121.3,210.5 L123.4,211.7 L125.5,211.3 L127.7,210.4 L129.8,209.5 L131.8,209.4 L134.0,208.2 L136.2,208.4 L138.3,208.1 L140.4,207.6 L142.5,208.1 L144.4,207.9 L146.7,209.2 L148.8,209.9 L151.0,209.2 L153.1,209.7 L155.1,209.3 L157.3,209.2 L159.4,208.6 L161.4,209.3 L163.7,208.7 L165.7,209.0 L167.8,208.0 L169.9,208.4 L172.1,209.1 L174.1,208.2 L176.3,207.7 L178.4,208.3 L180.4,208.3 L182.7,208.9 L184.7,208.5 L186.9,208.8 L189.0,209.1 L191.0,209.3 L193.0,209.3 L195.2,208.1 L197.4,208.9 L199.3,208.9 L201.6,208.4 L203.7,210.2 L205.8,210.6 L208.0,210.5 L210.0,209.6 L212.2,208.0 L214.4,207.5 L216.3,206.1 L218.5,204.4 L220.5,203.7 L222.6,203.2 L224.8,201.8 L226.9,202.0 L228.9,201.8 L231.2,201.7 L233.3,201.4 L235.2,201.7 L237.5,202.7 L239.6,202.5 L241.6,202.1 L243.8,202.7 L245.9,203.2 L248.1,203.3 L250.2,202.3 L252.2,202.5 L254.5,200.5 L256.5,200.3 L258.6,199.7 L260.8,199.6 L262.9,200.0 L265.1,198.3 L267.0,199.2 L269.2,199.5 L271.2,199.5 L273.4,197.7 L275.5,197.4 L277.5,197.3 L279.8,197.3 L281.9,199.1 L284.0,197.7 L286.1,198.4 L288.2,197.8 L290.4,198.4 L292.3,197.1 L294.5,197.0 L296.4,195.9 L298.7,198.1 L300.8,198.7 L303.0,199.2 L305.1,199.5 L307.1,199.9 L309.3,200.3 L311.4,200.5 L313.4,201.6 L315.7,201.1 L317.7,201.6 L319.7,202.5 L321.9,202.5 L324.0,202.8 L326.1,202.7 L328.3,203.4 L330.4,202.7 L332.4,201.6 L334.7,199.5 L336.7,200.6 L338.9,202.7 L341.0,202.5 L343.0,202.8 L345.2,203.0 L347.3,204.4 L349.4,205.3 L351.5,205.0 L353.7,206.0 L355.7,205.8 L357.9,207.6 L360.0,208.4 L362.0,209.3 L364.3,209.2 L366.4,207.9 L368.3,209.5 L370.5,209.1 L372.6,207.5 L374.6,206.0 L376.8,204.6 L379.0,205.1 L381.1,203.6 L383.2,202.9 L385.3,203.0 L387.4,201.8 L389.6,199.6 L391.6,198.4 L393.5,195.6 L395.8,194.5 L397.9,194.2 L400.1,194.3 L402.1,194.1 L404.2,193.2 L406.4,191.4 L408.5,191.3 L410.5,190.8 L412.8,191.8 L414.9,193.4 L417.1,192.6 L419.0,193.3 L421.2,194.4 L423.2,194.4 L425.4,193.2 L427.5,192.5 L429.5,191.5 L431.8,190.5 L433.8,190.3 L436.0,191.1 L438.1,189.9 L440.2,184.0 L442.4,181.6 L444.4,181.1 L446.5,180.4 L448.6,179.4 L450.8,178.5 L452.8,175.9 L455.0,177.2 L457.2,176.1 L459.1,175.7 L461.4,176.2 L463.5,176.9 L465.6,174.0 L467.8,174.3 L469.7,171.3 L471.7,169.0 L473.9,169.0 L476.1,169.0 L478.0,166.6 L480.3,171.8 L482.4,172.7 L484.6,170.7 L486.7,169.1 L488.7,168.6 L490.9,167.8 L493.1,165.9 L495.0,167.6 L497.2,170.1 L499.3,167.9 L501.3,169.6 L503.5,166.9 L505.6,166.5 L507.7,166.0 L509.9,167.1 L512.0,167.0 L514.0,167.9 L516.3,170.3 L518.3,170.8 L520.3,170.9 L522.5,170.3 L524.6,169.2 L526.6,166.3 L528.8,164.4 L531.0,163.7 L533.1,162.0 L535.2,162.8 L537.3,161.9 L539.4,158.8 L541.6,159.1 L543.6,155.4 L545.7,156.5 L547.9,153.4 L549.9,152.7 L552.1,153.1 L554.2,157.1 L556.2,157.5 L558.5,160.0 L560.6,157.2 L562.7,153.5 L564.8,149.9 L566.9,146.7 L569.1,149.6 L571.1,145.0 L573.2,141.5 L575.2,139.7 L577.4,138.9 L579.5,137.0 L581.7,132.8 L583.8,134.6 L585.8,134.6 L588.1,135.4 L590.1,133.9 L592.1,131.3 L594.4,129.8 L596.4,130.3 L598.5,126.1 L600.6,124.4 L602.8,122.4 L604.8,118.6 L607.0,112.4 L609.1,109.6 L611.1,110.4 L613.4,109.7 L615.5,103.4 L617.6,101.5 L619.8,101.4 L621.7,100.5 L623.7,98.6 L625.9,100.5 L628.1,101.0 L630.0,101.3 L632.3,99.8 L634.4,98.8 L636.5,88.4 L638.7,90.7 L640.7,94.5 L642.9,91.5 L645.1,91.1 L647.0,107.7 L649.2,116.3 L651.3,118.2 L653.3,114.1 L655.6,104.6 L657.7,105.7 L659.9,102.0 L661.9,100.0 L664.0,95.9 L666.2,88.6 L668.3,89.9 L670.3,91.6 L672.3,92.5 L674.6,94.8 L676.6,93.7 L678.8,90.3 L680.9,97.7 L683.0,97.6 L685.2,101.5 L687.3,100.0 L689.3,102.3 L691.5,106.0 L693.6,104.3 L695.8,105.7 L697.7,113.1 L699.9,111.2 L701.9,109.7 L704.1,114.4 L706.2,118.7 L708.2,122.0 L710.5,125.1 L712.6,122.8 L714.7,122.1 L716.8,120.1 L718.9,117.8 L721.1,112.8 L723.0,108.3 L725.2,108.8 L727.1,109.4 L729.4,109.3 L731.5,110.8 L733.7,106.2 L735.8,106.3 L737.8,107.7 L740.0,104.5 L742.1,98.2 L744.1,93.7 L746.4,89.1 L748.4,89.2 L750.4,87.7 L752.7,86.1 L754.8,79.4 L756.8,70.3 L759.0,69.9 L761.1,68.2 L763.3,67.3 L765.4,60.9 L767.4,54.2 L769.7,46.8 L771.8,59.9 L773.8,58.4 L775.9,60.3 L778.0,57.7 L780.1,62.6 L782.2,75.5 L784.4,75.3 L786.4,76.4 L788.6,71.5 L790.7,69.1 L792.7,71.7 L795.0,75.3 L797.1,74.0 L799.0,78.9 L801.2,74.0 L803.3,79.2 L805.3,80.1 L807.5,89.4 L809.7,84.0 L811.8,85.0 L813.9,77.1 L816.0,82.2" style="stroke:var(--ink2)"/><circle class="dot" cx="816.0" cy="82.2" r="4" style="fill:var(--ink2)"/><text class="end" x="826.0" y="86.2">817</text><rect class="hit" x="56.0" y="12" width="6.9" height="220"><title>Nov 1996
+The weights: 99
+Equal weight: 97</title></rect><rect class="hit" x="62.4" y="12" width="6.7" height="220"><title>Feb 1997
+The weights: 105
+Equal weight: 106</title></rect><rect class="hit" x="68.6" y="12" width="6.9" height="220"><title>May 1997
+The weights: 109
+Equal weight: 110</title></rect><rect class="hit" x="74.9" y="12" width="8.8" height="220"><title>Sep 1997
+The weights: 110
+Equal weight: 108</title></rect><rect class="hit" x="83.3" y="12" width="6.8" height="220"><title>Dec 1997
+The weights: 111
+Equal weight: 111</title></rect><rect class="hit" x="89.6" y="12" width="6.8" height="220"><title>Mar 1998
+The weights: 115
+Equal weight: 115</title></rect><rect class="hit" x="95.9" y="12" width="7.0" height="220"><title>Jun 1998
+The weights: 112
+Equal weight: 110</title></rect><rect class="hit" x="102.4" y="12" width="9.0" height="220"><title>Oct 1998
+The weights: 115
+Equal weight: 118</title></rect><rect class="hit" x="110.9" y="12" width="6.7" height="220"><title>Jan 1999
+The weights: 110
+Equal weight: 109</title></rect><rect class="hit" x="117.1" y="12" width="6.8" height="220"><title>Apr 1999
+The weights: 119
+Equal weight: 118</title></rect><rect class="hit" x="123.4" y="12" width="8.9" height="220"><title>Aug 1999
+The weights: 120
+Equal weight: 118</title></rect><rect class="hit" x="131.8" y="12" width="7.0" height="220"><title>Nov 1999
+The weights: 128
+Equal weight: 130</title></rect><rect class="hit" x="138.3" y="12" width="6.6" height="220"><title>Feb 2000
+The weights: 131
+Equal weight: 133</title></rect><rect class="hit" x="144.4" y="12" width="7.0" height="220"><title>May 2000
+The weights: 127
+Equal weight: 124</title></rect><rect class="hit" x="151.0" y="12" width="9.0" height="220"><title>Sep 2000
+The weights: 129
+Equal weight: 124</title></rect><rect class="hit" x="159.4" y="12" width="6.7" height="220"><title>Dec 2000
+The weights: 130
+Equal weight: 124</title></rect><rect class="hit" x="165.7" y="12" width="6.9" height="220"><title>Mar 2001
+The weights: 134
+Equal weight: 131</title></rect><rect class="hit" x="172.1" y="12" width="8.8" height="220"><title>Jul 2001
+The weights: 137
+Equal weight: 132</title></rect><rect class="hit" x="180.4" y="12" width="7.0" height="220"><title>Oct 2001
+The weights: 133
+Equal weight: 126</title></rect><rect class="hit" x="186.9" y="12" width="6.6" height="220"><title>Jan 2002
+The weights: 133
+Equal weight: 125</title></rect><rect class="hit" x="193.0" y="12" width="6.8" height="220"><title>Apr 2002
+The weights: 138
+Equal weight: 130</title></rect><rect class="hit" x="199.3" y="12" width="9.2" height="220"><title>Aug 2002
+The weights: 132
+Equal weight: 119</title></rect><rect class="hit" x="208.0" y="12" width="6.9" height="220"><title>Nov 2002
+The weights: 135
+Equal weight: 122</title></rect><rect class="hit" x="214.4" y="12" width="6.7" height="220"><title>Feb 2003
+The weights: 151
+Equal weight: 141</title></rect><rect class="hit" x="220.5" y="12" width="8.9" height="220"><title>Jun 2003
+The weights: 170
+Equal weight: 165</title></rect><rect class="hit" x="228.9" y="12" width="6.8" height="220"><title>Sep 2003
+The weights: 169
+Equal weight: 165</title></rect><rect class="hit" x="235.2" y="12" width="6.8" height="220"><title>Dec 2003
+The weights: 167
+Equal weight: 160</title></rect><rect class="hit" x="241.6" y="12" width="7.0" height="220"><title>Mar 2004
+The weights: 170
+Equal weight: 160</title></rect><rect class="hit" x="248.1" y="12" width="9.0" height="220"><title>Jul 2004
+The weights: 169
+Equal weight: 161</title></rect><rect class="hit" x="256.5" y="12" width="6.9" height="220"><title>Oct 2004
+The weights: 178
+Equal weight: 176</title></rect><rect class="hit" x="262.9" y="12" width="6.7" height="220"><title>Jan 2005
+The weights: 182
+Equal weight: 184</title></rect><rect class="hit" x="269.2" y="12" width="8.8" height="220"><title>May 2005
+The weights: 182
+Equal weight: 187</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="220"><title>Aug 2005
+The weights: 180
+Equal weight: 189</title></rect><rect class="hit" x="284.0" y="12" width="6.9" height="220"><title>Nov 2005
+The weights: 178
+Equal weight: 183</title></rect><rect class="hit" x="290.4" y="12" width="6.5" height="220"><title>Feb 2006
+The weights: 182
+Equal weight: 191</title></rect><rect class="hit" x="296.4" y="12" width="9.2" height="220"><title>Jun 2006
+The weights: 176
+Equal weight: 182</title></rect><rect class="hit" x="305.1" y="12" width="6.8" height="220"><title>Sep 2006
+The weights: 172
+Equal weight: 175</title></rect><rect class="hit" x="311.4" y="12" width="6.7" height="220"><title>Dec 2006
+The weights: 166
+Equal weight: 166</title></rect><rect class="hit" x="317.7" y="12" width="6.9" height="220"><title>Mar 2007
+The weights: 161
+Equal weight: 161</title></rect><rect class="hit" x="324.0" y="12" width="8.8" height="220"><title>Jul 2007
+The weights: 161
+Equal weight: 156</title></rect><rect class="hit" x="332.4" y="12" width="7.0" height="220"><title>Oct 2007
+The weights: 175
+Equal weight: 177</title></rect><rect class="hit" x="338.9" y="12" width="6.8" height="220"><title>Jan 2008
+The weights: 167
+Equal weight: 161</title></rect><rect class="hit" x="345.2" y="12" width="9.0" height="220"><title>May 2008
+The weights: 158
+Equal weight: 145</title></rect><rect class="hit" x="353.7" y="12" width="6.9" height="220"><title>Aug 2008
+The weights: 158
+Equal weight: 143</title></rect><rect class="hit" x="360.0" y="12" width="6.8" height="220"><title>Nov 2008
+The weights: 144
+Equal weight: 124</title></rect><rect class="hit" x="366.4" y="12" width="6.7" height="220"><title>Feb 2009
+The weights: 145
+Equal weight: 123</title></rect><rect class="hit" x="372.6" y="12" width="9.0" height="220"><title>Jun 2009
+The weights: 166
+Equal weight: 149</title></rect><rect class="hit" x="381.1" y="12" width="6.8" height="220"><title>Sep 2009
+The weights: 175
+Equal weight: 159</title></rect><rect class="hit" x="387.4" y="12" width="6.6" height="220"><title>Dec 2009
+The weights: 188
+Equal weight: 176</title></rect><rect class="hit" x="393.5" y="12" width="9.1" height="220"><title>Apr 2010
+The weights: 203
+Equal weight: 206</title></rect><rect class="hit" x="402.1" y="12" width="6.9" height="220"><title>Jul 2010
+The weights: 206
+Equal weight: 211</title></rect><rect class="hit" x="408.5" y="12" width="6.9" height="220"><title>Oct 2010
+The weights: 218
+Equal weight: 225</title></rect><rect class="hit" x="414.9" y="12" width="6.7" height="220"><title>Jan 2011
+The weights: 211
+Equal weight: 215</title></rect><rect class="hit" x="421.2" y="12" width="8.8" height="220"><title>May 2011
+The weights: 212
+Equal weight: 212</title></rect><rect class="hit" x="429.5" y="12" width="7.0" height="220"><title>Aug 2011
+The weights: 225
+Equal weight: 227</title></rect><rect class="hit" x="436.0" y="12" width="6.9" height="220"><title>Nov 2011
+The weights: 227
+Equal weight: 230</title></rect><rect class="hit" x="442.4" y="12" width="8.9" height="220"><title>Mar 2012
+The weights: 259
+Equal weight: 281</title></rect><rect class="hit" x="450.8" y="12" width="6.9" height="220"><title>Jun 2012
+The weights: 269
+Equal weight: 306</title></rect><rect class="hit" x="457.2" y="12" width="6.8" height="220"><title>Sep 2012
+The weights: 267
+Equal weight: 307</title></rect><rect class="hit" x="463.5" y="12" width="6.7" height="220"><title>Dec 2012
+The weights: 274
+Equal weight: 316</title></rect><rect class="hit" x="469.7" y="12" width="8.8" height="220"><title>Apr 2013
+The weights: 289
+Equal weight: 343</title></rect><rect class="hit" x="478.0" y="12" width="7.0" height="220"><title>Jul 2013
+The weights: 282
+Equal weight: 329</title></rect><rect class="hit" x="484.6" y="12" width="6.9" height="220"><title>Oct 2013
+The weights: 288
+Equal weight: 343</title></rect><rect class="hit" x="490.9" y="12" width="8.8" height="220"><title>Feb 2014
+The weights: 294
+Equal weight: 351</title></rect><rect class="hit" x="499.3" y="12" width="6.9" height="220"><title>May 2014
+The weights: 295
+Equal weight: 340</title></rect><rect class="hit" x="505.6" y="12" width="6.9" height="220"><title>Aug 2014
+The weights: 308
+Equal weight: 360</title></rect><rect class="hit" x="512.0" y="12" width="6.8" height="220"><title>Nov 2014
+The weights: 309
+Equal weight: 350</title></rect><rect class="hit" x="518.3" y="12" width="8.8" height="220"><title>Mar 2015
+The weights: 305
+Equal weight: 336</title></rect><rect class="hit" x="526.6" y="12" width="7.0" height="220"><title>Jun 2015
+The weights: 329
+Equal weight: 369</title></rect><rect class="hit" x="533.1" y="12" width="6.8" height="220"><title>Sep 2015
+The weights: 336
+Equal weight: 377</title></rect><rect class="hit" x="539.4" y="12" width="9.0" height="220"><title>Jan 2016
+The weights: 361
+Equal weight: 418</title></rect><rect class="hit" x="547.9" y="12" width="6.8" height="220"><title>Apr 2016
+The weights: 374
+Equal weight: 432</title></rect><rect class="hit" x="554.2" y="12" width="6.9" height="220"><title>Jul 2016
+The weights: 360
+Equal weight: 406</title></rect><rect class="hit" x="560.6" y="12" width="6.8" height="220"><title>Oct 2016
+The weights: 375
+Equal weight: 428</title></rect><rect class="hit" x="566.9" y="12" width="8.8" height="220"><title>Feb 2017
+The weights: 405
+Equal weight: 474</title></rect><rect class="hit" x="575.2" y="12" width="7.0" height="220"><title>May 2017
+The weights: 424
+Equal weight: 508</title></rect><rect class="hit" x="581.7" y="12" width="6.9" height="220"><title>Aug 2017
+The weights: 437
+Equal weight: 531</title></rect><rect class="hit" x="588.1" y="12" width="6.9" height="220"><title>Nov 2017
+The weights: 438
+Equal weight: 535</title></rect><rect class="hit" x="594.4" y="12" width="8.8" height="220"><title>Mar 2018
+The weights: 462
+Equal weight: 577</title></rect><rect class="hit" x="602.8" y="12" width="6.9" height="220"><title>Jun 2018
+The weights: 478
+Equal weight: 619</title></rect><rect class="hit" x="609.1" y="12" width="6.8" height="220"><title>Sep 2018
+The weights: 509
+Equal weight: 663</title></rect><rect class="hit" x="615.5" y="12" width="8.8" height="220"><title>Jan 2019
+The weights: 537
+Equal weight: 712</title></rect><rect class="hit" x="623.7" y="12" width="6.8" height="220"><title>Apr 2019
+The weights: 536
+Equal weight: 717</title></rect><rect class="hit" x="630.0" y="12" width="7.0" height="220"><title>Jul 2019
+The weights: 537
+Equal weight: 721</title></rect><rect class="hit" x="636.5" y="12" width="6.9" height="220"><title>Oct 2019
+The weights: 560
+Equal weight: 771</title></rect><rect class="hit" x="642.9" y="12" width="8.9" height="220"><title>Feb 2020
+The weights: 525
+Equal weight: 678</title></rect><rect class="hit" x="651.3" y="12" width="6.9" height="220"><title>May 2020
+The weights: 523
+Equal weight: 643</title></rect><rect class="hit" x="657.7" y="12" width="6.8" height="220"><title>Aug 2020
+The weights: 560
+Equal weight: 709</title></rect><rect class="hit" x="664.0" y="12" width="8.8" height="220"><title>Dec 2020
+The weights: 600
+Equal weight: 775</title></rect><rect class="hit" x="672.3" y="12" width="7.0" height="220"><title>Mar 2021
+The weights: 581
+Equal weight: 748</title></rect><rect class="hit" x="678.8" y="12" width="6.9" height="220"><title>Jun 2021
+The weights: 575
+Equal weight: 733</title></rect><rect class="hit" x="685.2" y="12" width="6.8" height="220"><title>Sep 2021
+The weights: 570
+Equal weight: 720</title></rect><rect class="hit" x="691.5" y="12" width="8.9" height="220"><title>Jan 2022
+The weights: 556
+Equal weight: 689</title></rect><rect class="hit" x="699.9" y="12" width="6.8" height="220"><title>Apr 2022
+The weights: 536
+Equal weight: 667</title></rect><rect class="hit" x="706.2" y="12" width="6.9" height="220"><title>Jul 2022
+The weights: 495
+Equal weight: 600</title></rect><rect class="hit" x="712.6" y="12" width="9.0" height="220"><title>Nov 2022
+The weights: 500
+Equal weight: 610</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="220"><title>Feb 2023
+The weights: 540
+Equal weight: 675</title></rect><rect class="hit" x="727.1" y="12" width="7.0" height="220"><title>May 2023
+The weights: 537
+Equal weight: 669</title></rect><rect class="hit" x="733.7" y="12" width="6.9" height="220"><title>Aug 2023
+The weights: 548
+Equal weight: 685</title></rect><rect class="hit" x="740.0" y="12" width="8.9" height="220"><title>Dec 2023
+The weights: 587
+Equal weight: 754</title></rect><rect class="hit" x="748.4" y="12" width="6.9" height="220"><title>Mar 2024
+The weights: 603
+Equal weight: 787</title></rect><rect class="hit" x="754.8" y="12" width="6.8" height="220"><title>Jun 2024
+The weights: 649
+Equal weight: 882</title></rect><rect class="hit" x="761.1" y="12" width="9.0" height="220"><title>Oct 2024
+The weights: 673
+Equal weight: 933</title></rect><rect class="hit" x="769.7" y="12" width="6.7" height="220"><title>Jan 2025
+The weights: 685
+Equal weight: 939</title></rect><rect class="hit" x="775.9" y="12" width="6.8" height="220"><title>Apr 2025
+The weights: 691
+Equal weight: 951</title></rect><rect class="hit" x="782.2" y="12" width="6.9" height="220"><title>Jul 2025
+The weights: 646
+Equal weight: 855</title></rect><rect class="hit" x="788.6" y="12" width="9.0" height="220"><title>Nov 2025
+The weights: 653
+Equal weight: 874</title></rect><rect class="hit" x="797.1" y="12" width="6.7" height="220"><title>Feb 2026
+The weights: 639
+Equal weight: 835</title></rect><rect class="hit" x="803.3" y="12" width="6.9" height="220"><title>May 2026
+The weights: 631
+Equal weight: 829</title></rect><rect class="hit" x="809.7" y="12" width="6.8" height="220"><title>Aug 2026
+The weights: 611
+Equal weight: 802</title></rect></svg><div class="tiles"><div class="tile"><div class="tl">Return</div><div class="tv long">6.2% a year</div><div class="ts">Equal weight 7.3%</div></div><div class="tile"><div class="tl">Volatility</div><div class="tv">7.5%</div><div class="ts">Equal weight 11.1%</div></div><div class="tile"><div class="tl">Sharpe ratio</div><div class="tv">0.54</div><div class="ts">Equal weight 0.48</div></div><div class="tile"><div class="tl">Maximum drawdown</div><div class="tv">−23.4%</div><div class="ts">Equal weight −37.7%</div></div></div><p class="note">In sample: the weights were chosen knowing these returns, so this flatters them. Held from the start and rebalanced quarterly, without trading costs. To test the method on returns it had not seen, backtest it with a holdout or walk-forward validation.</p></div></section><section id="p-method"><header class="sh"><h2>Method</h2><p>How the weights were found</p></header><div class="card"><h3>How the weights were found</h3><table><tbody><tr><th style="white-space:nowrap">Method</th><td>Risk budgeting: each asset&#39;s share of the portfolio&#39;s risk equal to its budget.</td></tr><tr><th style="white-space:nowrap">Data</th><td>US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as the risk-free asset. Monthly returns, Nov 1996 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Estimates</th><td>Historical mean expected returns and the Ledoit–Wolf covariance, annualised by 12.</td></tr><tr><th style="white-space:nowrap">Limits</th><td>Fully invested and long only.</td></tr><tr><th style="white-space:nowrap">Solver</th><td>Newton, optimal after 5 iterations.</td></tr></tbody></table></div></section>
+<div class="foot">Every figure is computed by Finalytics 1.0.0-rc.7 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>5dca8c2e4145</code>.</div>
+</div></body></html>

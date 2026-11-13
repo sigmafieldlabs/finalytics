@@ -1,0 +1,14 @@
+import finalytics as fl
+
+assets = fl.Assets(
+    fl.datasets.asset_class_prices(), risk_free_asset="T-Bills"
+)
+result = assets.optimise(
+    method="minimum_cvar",
+    confidence=0.95,
+target=0.06,
+max_weight=0.5,
+)
+
+print(result)
+result.show()

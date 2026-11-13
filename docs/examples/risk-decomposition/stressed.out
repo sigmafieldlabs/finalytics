@@ -1,0 +1,6 @@
+Before: volatility=0.183303
+  equity: share=0.500000
+  bonds: share=0.500000
+After: volatility=0.320312
+  equity: share=0.500000
+  bonds: share=0.500000

@@ -1,0 +1,7 @@
+Method: statistical
+pc1: explained=0.984210
+pc2: explained=0.010233
+tech: pc1=0.708921 pc2=-0.460016
+industrials: pc1=0.547849 pc2=0.709652
+utilities: pc1=0.438319 pc2=-0.055924
+bonds: pc1=0.071893 pc2=-0.530710

@@ -1,0 +1,6 @@
+Method: regression
+Observations: 10
+tech: beta=1.288882 alpha=0.000128 R2=0.986940
+industrials: beta=1.000654 alpha=0.000098 R2=0.983428
+utilities: beta=0.799411 alpha=-0.000049 R2=0.983801
+bonds: beta=0.133290 alpha=0.000167 R2=0.561713

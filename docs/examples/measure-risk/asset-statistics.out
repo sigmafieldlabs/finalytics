@@ -1,0 +1,6 @@
+US Equity: return=0.088717 volatility=0.169696 VaR=0.061539 ES=0.096980
+Intl Equity: return=0.056541 volatility=0.176424 VaR=0.074064 ES=0.104123
+Bonds: return=0.038731 volatility=0.057427 VaR=0.022183 ES=0.031982
+T-Bills: return=0.023491 volatility=0.005806 VaR=0.000163 ES=0.000254
+Gold: return=0.061837 volatility=0.165348 VaR=0.069509 ES=0.085175
+Real Estate: return=0.072508 volatility=0.206222 VaR=0.087685 ES=0.119436

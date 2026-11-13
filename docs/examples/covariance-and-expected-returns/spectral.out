@@ -1,0 +1,2 @@
+denoised: observations=360 first_variance=0.0023997372
+nonlinear_shrinkage: observations=360 first_variance=0.0024093531

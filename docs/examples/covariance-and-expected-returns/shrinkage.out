@@ -1,0 +1,3 @@
+ledoit_wolf: shrinkage=0.082039 equity_variance=0.00009863
+oas: shrinkage=0.442765 equity_variance=0.00007589
+constant_correlation: shrinkage=0.075230 equity_variance=0.00010381
