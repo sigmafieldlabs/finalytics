@@ -37,4 +37,6 @@ Use `specific_id` and a `lots` field of `lot:quantity` pairs separated by semico
 [preview.py](../../examples/transactions-and-tax-lots/preview.py)
 
 > [!WARNING]
-> Finalytics does not support short positions. Selling or transferring more than an account holds is an error. Base-currency gains also include FX movement between acquisition and disposal.
+> **Long positions only:** Finalytics' transaction ledger and rebalancing currently support long positions only. Selling or transferring more units than an account holds raises an error.
+
+For foreign-currency assets, realised gains measured in the base currency include both the asset's local price movement and FX movement between acquisition and disposal.

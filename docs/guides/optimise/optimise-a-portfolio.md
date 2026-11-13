@@ -47,6 +47,10 @@ Each entry also describes defaults, valid ranges and whether the method resample
 directly from return scenarios. Methods that are fully invested and long only by construction
 do not accept weight limits.
 
+`optimise` uses long-only weights by default. The lower-level `Problem` API can model negative
+weights for supported objectives when explicitly configured, but the transaction ledger and
+rebalancing cannot currently execute or represent those short positions.
+
 ## Change the objective
 
 A target-volatility optimisation seeks the largest expected return within an annual volatility
