@@ -8562,7 +8562,7 @@ export interface InitOutput {
     readonly validatePortfolio: (a: any) => [number, number, number];
     readonly version: () => [number, number];
     readonly writeDocument: (a: any, b: any) => [number, number, number, number];
-    readonly wasm_bindgen__convert__closures_____invoke__h49e18fce31d195aa: (a: number, b: number, c: any, d: any) => any;
+    readonly wasm_bindgen__convert__closures_____invoke__h066d594f1655bfbd: (a: number, b: number, c: any, d: any) => any;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

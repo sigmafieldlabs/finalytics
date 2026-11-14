@@ -66,7 +66,7 @@ How the trades were found
              Nov 2023 to Oct 2026, annualised: the Ledoit–Wolf covariance and
              historical means. Cash is riskless and earns nothing here.
 
-  Finalytics 1.0.0-rc.7 · inputs 676ae8a79063
+  Finalytics 1.0.0 · inputs 676ae8a79063
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  PORTFOLIO OVERVIEW                              as of 30 Oct 2026
@@ -107,7 +107,7 @@ Efficient frontier (invested holdings, long only)
   Lowest volatility              +3.7%        5.5%
   At a similar volatility       +11.6%        7.3%
 
-  Finalytics 1.0.0-rc.7 · inputs 1ad7d842fc46 · 0 warnings
+  Finalytics 1.0.0 · inputs 1ad7d842fc46 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  HOLDINGS                                        as of 30 Oct 2026
@@ -169,7 +169,7 @@ Realised gains and income (USD)
   Income          2,106  10,552  12,370   10,133   35,160
   Realised: 0 short-term, 117,115 long-term.
 
-  Finalytics 1.0.0-rc.7 · inputs 1ad7d842fc46 · 0 warnings
+  Finalytics 1.0.0 · inputs 1ad7d842fc46 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  PERFORMANCE                                     as of 30 Oct 2026
@@ -234,7 +234,7 @@ Flows and income (USD)
   2025   24,000        0  12,370
   2026   20,000  −10,000  10,133
 
-  Finalytics 1.0.0-rc.7 · inputs 1ad7d842fc46 · 0 warnings
+  Finalytics 1.0.0 · inputs 1ad7d842fc46 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  RISK                                            as of 30 Oct 2026
@@ -304,5 +304,5 @@ Rolling 63-day figures (last value)
   Rolling volatility       ▃▃▂▃▃▂▂▂▃▄▄▂▂▃▃▃▄▄███▂▂▁▁▂▂▂▃▂▂▃▅▅▅▅▄▃▃▃  7.5%
   Rolling Sharpe ratio     █▆▅▄▄▄▄▆▄▅▄▅▄▂▃▃▁▂▂▂▃▇▆▆▆▆▅▄▄▄▆▂▃▃▄▆▃▄▃▂  −0.53
 
-  Finalytics 1.0.0-rc.7 · inputs 1ad7d842fc46 · 0 warnings
+  Finalytics 1.0.0 · inputs 1ad7d842fc46 · 0 warnings
 

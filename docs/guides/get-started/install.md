@@ -9,20 +9,19 @@ package for your language; you do not need to install Rust to use Python or Java
 
 ## Install the package
 
-These guides accompany Finalytics 1.0.0-rc.7. Until the stable 1.0.0 release, install that
-release candidate explicitly:
+These guides accompany the stable Finalytics 1.0.0 release. Install it with:
 
 | Language | Command |
 | --- | --- |
-| Python | `pip install finalytics==1.0.0rc7` |
-| JavaScript | `npm install finalytics@1.0.0-rc.7` |
-| Rust | `cargo add finalytics@1.0.0-rc.7` |
+| Python | `pip install finalytics==1.0.0` |
+| JavaScript | `npm install finalytics@1.0.0` |
+| Rust | `cargo add finalytics@1.0.0` |
 
 Python requires Python 3.10 or later. The asset-class examples use pandas through
 `fl.datasets.asset_class_prices()`; install it with the package if you do not have it:
 
 ```sh
-pip install "finalytics[pandas]==1.0.0rc7"
+pip install "finalytics[pandas]==1.0.0"
 ```
 
 Without pandas, use `fl.datasets.asset_class_table()` instead. JavaScript includes
@@ -37,8 +36,8 @@ quick check that the package and its native engine are ready:
 [version.py](../../examples/install/version.py)
 
 > [!NOTE]
-> Python also exposes the distribution version as `fl.__version__`. Python writes this
-> pre-release as `1.0.0rc7`, while `fl.version()` reports the engine version shown above.
+> Python also exposes the distribution version as `fl.__version__`. For this stable release,
+> both that value and `fl.version()` report `1.0.0`.
 
 ## Initialise a browser
 

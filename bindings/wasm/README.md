@@ -20,9 +20,8 @@ on their measures.
 npm install finalytics
 ```
 
-Until 1.0.0 is released, `npm install finalytics` gives 0.2; install a 1.0
-pre-release with `npm install finalytics@next`. 1.0 is a redesign of 0.2, as of
-the Rust and Python 0.9 it bound: the
+The stable 1.0 package is a redesign of 0.2, as of the Rust and Python 0.9 it
+bound: the
 [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) explains what
 replaces each part of 0.9. In Node.js the engine is ready on import; in a
 browser, import the default export too and `await init()` once before the first

@@ -52,5 +52,5 @@ How the weights were found
   Limits     At most 50% in any asset; expected return at least 6% a year.
   Solver     Interior point, optimal after 16 iterations.
 
-  Finalytics 1.0.0-rc.7 · inputs 18bbf352da00
+  Finalytics 1.0.0 · inputs 18bbf352da00
 

@@ -51,5 +51,5 @@ How the weights were found
   Limits     Fully invested and long only.
   Solver     Recursive bisection, optimal after 0 iterations.
 
-  Finalytics 1.0.0-rc.7 · inputs f9c4eac60f21
+  Finalytics 1.0.0 · inputs f9c4eac60f21
 

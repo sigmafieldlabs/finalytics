@@ -24,9 +24,7 @@ screens thousands of securities by rules on their measures.
 | Python 3.10+ | [`finalytics`](https://pypi.org/project/finalytics/) | `pip install finalytics` |
 | JavaScript and TypeScript | [`finalytics`](https://www.npmjs.com/package/finalytics) | `npm install finalytics` |
 
-Until 1.0.0 is released, these commands install the 0.x series. Install a 1.0
-pre-release with `cargo add finalytics@<version>`, `pip install --pre finalytics`
-or `npm install finalytics@next`. The
+These commands install the stable 1.0 series. The
 [migration guide](docs/migrating-from-0.9.md) explains what replaces each part
 of 0.9.
 

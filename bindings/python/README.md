@@ -24,8 +24,7 @@ pip install finalytics            # with NumPy only
 Without pandas, the datasets come as price tables, which `Assets` takes as well:
 `fl.Assets(fl.datasets.asset_class_table(), risk_free_asset="T-Bills")`.
 
-Until 1.0.0 is released, `pip install finalytics` gives 0.9; install a 1.0
-pre-release with `pip install --pre finalytics`. The
+The stable 1.0 package replaces the 0.9 series. The
 [migration guide](https://github.com/sigmafieldlabs/finalytics/blob/main/docs/migrating-from-0.9.md) explains what
 replaces each part of 0.9.
 

@@ -88,5 +88,5 @@ Data
   0.01). 42 closes are not numbers, and their dates are left out: YARW, OSBW.
   Benchmark: INDEX · risk-free rate: 4% a year.
 
-  Finalytics 1.0.0-rc.7 · inputs a3f5fb055b0c
+  Finalytics 1.0.0 · inputs a3f5fb055b0c
 

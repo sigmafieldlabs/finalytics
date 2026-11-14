@@ -7,6 +7,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-15
+
+The first stable release of the redesigned Finalytics engine. Its numerical engine and public
+API behaviour are unchanged from 1.0.0-rc.7; the earlier release-candidate sections below record
+that work in detail.
+
+### Added
+
+- The complete library guides: 46 task and reference pages with 185 standalone examples in
+  Python, JavaScript and Rust. Every example runs in CI, with recorded text and, where available,
+  HTML reports. Python and JavaScript also run in SigmaField's documentation pages, including
+  local CSV files, worker-client execution and pandas conversion helpers.
+
+- Generated Python and JavaScript/TypeScript API references from the packages' own typed source,
+  docstrings, declarations and JSDoc, plus local Methods and validation documents, this changelog,
+  sample-dataset provenance and the migration from 0.9. `scripts/reference_docs.py` checks that
+  the generated references cannot drift from the packages.
+
+### Changed
+
+- Package versions, installation instructions and recorded guide outputs now identify the stable
+  1.0.0 release. The Python package is marked Production/Stable.
+
 ## [1.0.0-rc.7] - 2026-11-11
 
 ### Added
@@ -1065,7 +1088,8 @@ Finalytics 1.0 is a redesign of the library. See the
 
 The last release of the 0.x series. See the `0.9.x` branch.
 
-[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.7...HEAD
+[Unreleased]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.7...v1.0.0
 [1.0.0-rc.7]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.6...v1.0.0-rc.7
 [1.0.0-rc.6]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/sigmafieldlabs/finalytics/compare/v1.0.0-rc.4...v1.0.0-rc.5

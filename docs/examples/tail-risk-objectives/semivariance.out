@@ -51,5 +51,5 @@ How the weights were found
   Limits     At most 50% in any asset.
   Solver     Interior point, optimal after 15 iterations.
 
-  Finalytics 1.0.0-rc.7 · inputs 6811ab0e2eaa
+  Finalytics 1.0.0 · inputs 6811ab0e2eaa
 

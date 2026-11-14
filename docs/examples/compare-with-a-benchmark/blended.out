@@ -39,7 +39,7 @@ Efficient frontier (invested holdings, long only)
   Lowest volatility              +3.7%        5.5%
   At a similar volatility       +15.9%        9.3%
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  HOLDINGS                                        as of 30 Oct 2026
@@ -102,7 +102,7 @@ Realised gains and income (USD)
   Income          2,106  10,552  12,370  10,133  35,160
   Realised: 0 short-term, 10,156 long-term.
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  PERFORMANCE                                     as of 30 Oct 2026
@@ -168,7 +168,7 @@ Flows and income (USD)
   2025   24,000        0  12,370
   2026   20,000  −10,000  10,133
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  RISK                                            as of 30 Oct 2026
@@ -248,4 +248,4 @@ Rolling 63-day figures (last value)
   Rolling beta             ▆▆▆▅▅▆▅▆▆▅▆▅▅▅▅▆▅▃▂▂▂▁▂▃▄▅▅▅▅▆▆█▇████▆▆▇  1.01
   Rolling tracking error   ▂▂▂▁▁▁▂▂▂▂▁▁▂▂▂▁▃▃▇██▄▃▂▂▃▃▃▃▄▄▆▆▅▄▃▂▂▃▂  1.8%
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 0 warnings

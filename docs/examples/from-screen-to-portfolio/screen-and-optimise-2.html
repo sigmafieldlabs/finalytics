@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="generator" content="Finalytics 1.0.0-rc.7"><title>Screened funds</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
+<meta name="generator" content="Finalytics 1.0.0"><title>Screened funds</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
 --grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
 --s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
 --muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec;
@@ -159,5 +159,5 @@ The weights: 149
 Equal weight: 149</title></rect><rect class="hit" x="816.0" y="12" width="1.5" height="220"><title>Oct 2026
 The weights: 151
 Equal weight: 151</title></rect></svg><div class="tiles"><div class="tile"><div class="tl">Return</div><div class="tv long">15.0% a year</div><div class="ts">Equal weight 15.0%</div></div><div class="tile"><div class="tl">Volatility</div><div class="tv">11.5%</div><div class="ts">Equal weight 11.5%</div></div><div class="tile"><div class="tl">Sharpe ratio</div><div class="tv">0.93</div><div class="ts">Equal weight 0.93</div></div><div class="tile"><div class="tl">Maximum drawdown</div><div class="tv">−15.0%</div><div class="ts">Equal weight −15.0%</div></div></div><p class="note">In sample: the weights were chosen knowing these returns, so this flatters them. Held from the start and rebalanced quarterly, without trading costs. To test the method on returns it had not seen, backtest it with a holdout or walk-forward validation.</p></div></section><section id="p-method"><header class="sh"><h2>Method</h2><p>How the weights were found</p></header><div class="card"><h3>How the weights were found</h3><table><tbody><tr><th style="white-space:nowrap">Method</th><td>Equal weight: every asset with the same weight.</td></tr><tr><th style="white-space:nowrap">Data</th><td>EXSA, VTI and VNQ. Daily returns, Nov 2023 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Estimates</th><td>Historical mean expected returns and the Ledoit–Wolf covariance, annualised by 252.</td></tr><tr><th style="white-space:nowrap">Limits</th><td>Fully invested and long only.</td></tr><tr><th style="white-space:nowrap">Solver</th><td>Closed form, optimal after 0 iterations.</td></tr></tbody></table></div></section>
-<div class="foot">Every figure is computed by Finalytics 1.0.0-rc.7 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>a1d7b3e4959e</code>.</div>
+<div class="foot">Every figure is computed by Finalytics 1.0.0 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>a1d7b3e4959e</code>.</div>
 </div></body></html>

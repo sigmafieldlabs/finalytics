@@ -54,7 +54,7 @@ Efficient frontier (invested holdings, long only)
   Lowest volatility              +2.3%        5.6%
   At a similar volatility       +15.1%       10.3%
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 6 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 6 warnings
   ! price for 2025-01-01 carried from 2024-12-31
   ! price for 2025-01-01 carried from 2024-12-31
   ! rate for 2025-01-01 carried from 2024-12-31
@@ -124,7 +124,7 @@ Realised gains and income (USD)
   Period: from 1 Jan 2025 to 30 Oct 2026, the report's period; realised 0
   short-term, 10,156 long-term.
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 0 warnings
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINALYTICS  ·  PERFORMANCE                                     as of 30 Oct 2026
@@ -197,7 +197,7 @@ Flows and income (USD)
   2025  24,000        0  12,370
   2026  20,000  −10,000  10,133
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 6 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 6 warnings
   ! price for 2025-01-01 carried from 2024-12-31
   ! price for 2025-01-01 carried from 2024-12-31
   ! rate for 2025-01-01 carried from 2024-12-31
@@ -292,7 +292,7 @@ Rolling 63-day figures (last value)
   Rolling beta             ▄▄▄▄▄▄▄▁▁▁▂▁▂▁▃▅▅▅▅▆▆▆▇▇▆▆▅▅▄▄▅▅▆▆▇██▆▆▆  1.12
   Rolling tracking error   ▄████▇▇▂▁▁▁▁▁▁▂▂▂▂▂▂▂▅▆▆▆▇██▅▄▅▆▄▅▅▅▅▃▃▄  1.7%
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 6 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 6 warnings
   ! price for 2025-01-01 carried from 2024-12-31
   ! price for 2025-01-01 carried from 2024-12-31
   ! rate for 2025-01-01 carried from 2024-12-31
@@ -320,7 +320,7 @@ Brinson–Fachler by asset class, 22 periods linked (Cariño)
   Segment returns are measured over each period, so the linked total can differ
   slightly from the time-weighted return over the same span (+23.68%).
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 21 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 21 warnings
   ! price for 2025-01-01 carried from 2024-12-31
   ! price for 2025-01-01 carried from 2024-12-31
   ! rate for 2025-01-01 carried from 2024-12-31
@@ -356,5 +356,5 @@ Change in value by holding (USD)
   Spring 2025 replay: the price and rate changes from 19 Feb 2025 to 8 Apr 2025,
   on today's holdings.
 
-  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+  Finalytics 1.0.0 · inputs 3856d6909f90 · 0 warnings
 
