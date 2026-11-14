@@ -1,0 +1,5561 @@
+{
+  "generatedBy": "scripts/reference_docs.py",
+  "documents": [
+    {
+      "id": "python-api",
+      "title": "Python API reference",
+      "description": "Classes, functions, methods, options and result types from the typed Python package.",
+      "file": "python.md",
+      "source": "docs/reference/python.md",
+      "modules": [
+        {
+          "module": "finalytics.assets",
+          "source": "bindings/python/python/finalytics/assets.py",
+          "symbols": [
+            {
+              "name": "methods",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "methods"
+            },
+            {
+              "name": "Assets",
+              "kind": "class",
+              "module": "finalytics.assets",
+              "anchor": "assets"
+            },
+            {
+              "name": "Assets.__init__",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-init"
+            },
+            {
+              "name": "Assets.from_returns",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-from-returns"
+            },
+            {
+              "name": "Assets.labels",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-labels"
+            },
+            {
+              "name": "Assets.classes",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-classes"
+            },
+            {
+              "name": "Assets.dates",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-dates"
+            },
+            {
+              "name": "Assets.returns",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-returns"
+            },
+            {
+              "name": "Assets.periods_per_year",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-periods-per-year"
+            },
+            {
+              "name": "Assets.risk_free_rate",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-risk-free-rate"
+            },
+            {
+              "name": "Assets.risk_free_asset",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-risk-free-asset"
+            },
+            {
+              "name": "Assets.risky_assets",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-risky-assets"
+            },
+            {
+              "name": "Assets.cash_assets",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-cash-assets"
+            },
+            {
+              "name": "Assets.warnings",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-warnings"
+            },
+            {
+              "name": "Assets.statistics",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-statistics"
+            },
+            {
+              "name": "Assets.covariance",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-covariance"
+            },
+            {
+              "name": "Assets.correlation",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-correlation"
+            },
+            {
+              "name": "Assets.mean_returns",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-mean-returns"
+            },
+            {
+              "name": "Assets.optimise",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-optimise"
+            },
+            {
+              "name": "Assets.evaluate",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-evaluate"
+            },
+            {
+              "name": "Assets.frontier",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-frontier"
+            },
+            {
+              "name": "Assets.compare",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-compare"
+            },
+            {
+              "name": "Assets.backtest",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-backtest"
+            },
+            {
+              "name": "Assets.plan",
+              "kind": "function",
+              "module": "finalytics.assets",
+              "anchor": "assets-plan"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.portfolio",
+          "source": "bindings/python/python/finalytics/portfolio.py",
+          "symbols": [
+            {
+              "name": "cash",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "cash"
+            },
+            {
+              "name": "PortfolioData",
+              "kind": "class",
+              "module": "finalytics.portfolio",
+              "anchor": "portfoliodata"
+            },
+            {
+              "name": "PortfolioData.from_dict",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfoliodata-from-dict"
+            },
+            {
+              "name": "PortfolioData.from_json",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfoliodata-from-json"
+            },
+            {
+              "name": "PortfolioData.from_csv",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfoliodata-from-csv"
+            },
+            {
+              "name": "PortfolioData.to_json",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfoliodata-to-json"
+            },
+            {
+              "name": "PortfolioData.validate",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfoliodata-validate"
+            },
+            {
+              "name": "Observed",
+              "kind": "class",
+              "module": "finalytics.portfolio",
+              "anchor": "observed"
+            },
+            {
+              "name": "MarketData",
+              "kind": "class",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata"
+            },
+            {
+              "name": "MarketData.__init__",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-init"
+            },
+            {
+              "name": "MarketData.from_csv",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-from-csv"
+            },
+            {
+              "name": "MarketData.with_prices",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-with-prices"
+            },
+            {
+              "name": "MarketData.with_fx",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-with-fx"
+            },
+            {
+              "name": "MarketData.pivot",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-pivot"
+            },
+            {
+              "name": "MarketData.max_carry_days",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-max-carry-days"
+            },
+            {
+              "name": "MarketData.prices",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-prices"
+            },
+            {
+              "name": "MarketData.fx",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-fx"
+            },
+            {
+              "name": "MarketData.price_dates",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-price-dates"
+            },
+            {
+              "name": "MarketData.price",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-price"
+            },
+            {
+              "name": "MarketData.fx_rate",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "marketdata-fx-rate"
+            },
+            {
+              "name": "Document",
+              "kind": "class",
+              "module": "finalytics.portfolio",
+              "anchor": "document"
+            },
+            {
+              "name": "read_document",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "read-document"
+            },
+            {
+              "name": "write_document",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "write-document"
+            },
+            {
+              "name": "Holdings",
+              "kind": "class",
+              "module": "finalytics.portfolio",
+              "anchor": "holdings"
+            },
+            {
+              "name": "Portfolio",
+              "kind": "class",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio"
+            },
+            {
+              "name": "Portfolio.__init__",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-init"
+            },
+            {
+              "name": "Portfolio.from_csv",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-from-csv"
+            },
+            {
+              "name": "Portfolio.read",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-read"
+            },
+            {
+              "name": "Portfolio.to_json",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-to-json"
+            },
+            {
+              "name": "Portfolio.data",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-data"
+            },
+            {
+              "name": "Portfolio.market",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-market"
+            },
+            {
+              "name": "Portfolio.base_currency",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-base-currency"
+            },
+            {
+              "name": "Portfolio.as_of",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-as-of"
+            },
+            {
+              "name": "Portfolio.dates",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-dates"
+            },
+            {
+              "name": "Portfolio.with_transactions",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-with-transactions"
+            },
+            {
+              "name": "Portfolio.with_rebalance",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-with-rebalance"
+            },
+            {
+              "name": "Portfolio.with_market",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-with-market"
+            },
+            {
+              "name": "Portfolio.goals",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-goals"
+            },
+            {
+              "name": "Portfolio.with_goals",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-with-goals"
+            },
+            {
+              "name": "Portfolio.assets",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-assets"
+            },
+            {
+              "name": "Portfolio.holdings",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-holdings"
+            },
+            {
+              "name": "Portfolio.valuation",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-valuation"
+            },
+            {
+              "name": "Portfolio.value_series",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-value-series"
+            },
+            {
+              "name": "Portfolio.holding_series",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-holding-series"
+            },
+            {
+              "name": "Portfolio.account_series",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-account-series"
+            },
+            {
+              "name": "Portfolio.household",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-household"
+            },
+            {
+              "name": "Portfolio.realised_gains",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-realised-gains"
+            },
+            {
+              "name": "Portfolio.events",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-events"
+            },
+            {
+              "name": "Portfolio.performance",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-performance"
+            },
+            {
+              "name": "Portfolio.weights",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-weights"
+            },
+            {
+              "name": "Portfolio.holding_returns",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-holding-returns"
+            },
+            {
+              "name": "Portfolio.lots_for_sale",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-lots-for-sale"
+            },
+            {
+              "name": "Portfolio.rebalance",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-rebalance"
+            },
+            {
+              "name": "Portfolio.shock_scenario",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-shock-scenario"
+            },
+            {
+              "name": "Portfolio.historical_scenario",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-historical-scenario"
+            },
+            {
+              "name": "Portfolio.report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-report"
+            },
+            {
+              "name": "Portfolio.overview_report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-overview-report"
+            },
+            {
+              "name": "Portfolio.holdings_report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-holdings-report"
+            },
+            {
+              "name": "Portfolio.performance_report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-performance-report"
+            },
+            {
+              "name": "Portfolio.risk_report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-risk-report"
+            },
+            {
+              "name": "Portfolio.attribution_report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-attribution-report"
+            },
+            {
+              "name": "Portfolio.scenarios_report",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "portfolio-scenarios-report"
+            },
+            {
+              "name": "to_json_data",
+              "kind": "function",
+              "module": "finalytics.portfolio",
+              "anchor": "to-json-data"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.performance",
+          "source": "bindings/python/python/finalytics/performance.py",
+          "symbols": [
+            {
+              "name": "period",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "period"
+            },
+            {
+              "name": "Performance",
+              "kind": "class",
+              "module": "finalytics.performance",
+              "anchor": "performance"
+            },
+            {
+              "name": "Performance.from_values",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-from-values"
+            },
+            {
+              "name": "Performance.dates",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-dates"
+            },
+            {
+              "name": "Performance.returns",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-returns"
+            },
+            {
+              "name": "Performance.growth",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-growth"
+            },
+            {
+              "name": "Performance.values",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-values"
+            },
+            {
+              "name": "Performance.warnings",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-warnings"
+            },
+            {
+              "name": "Performance.time_weighted",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-time-weighted"
+            },
+            {
+              "name": "Performance.period",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-period"
+            },
+            {
+              "name": "Performance.periods",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-periods"
+            },
+            {
+              "name": "Performance.money_weighted",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-money-weighted"
+            },
+            {
+              "name": "Performance.modified_dietz",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-modified-dietz"
+            },
+            {
+              "name": "Performance.excess_return",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-excess-return"
+            },
+            {
+              "name": "Performance.contributions",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-contributions"
+            },
+            {
+              "name": "Performance.expenses",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "performance-expenses"
+            },
+            {
+              "name": "group_contributions",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "group-contributions"
+            },
+            {
+              "name": "attribution_period",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "attribution-period"
+            },
+            {
+              "name": "brinson_fachler",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "brinson-fachler"
+            },
+            {
+              "name": "karnosky_singer",
+              "kind": "function",
+              "module": "finalytics.performance",
+              "anchor": "karnosky-singer"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.screening",
+          "source": "bindings/python/python/finalytics/screening.py",
+          "symbols": [
+            {
+              "name": "Universe",
+              "kind": "class",
+              "module": "finalytics.screening",
+              "anchor": "universe"
+            },
+            {
+              "name": "Universe.__init__",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-init"
+            },
+            {
+              "name": "Universe.ids",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-ids"
+            },
+            {
+              "name": "Universe.benchmark",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-benchmark"
+            },
+            {
+              "name": "Universe.risk_free_rate",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-risk-free-rate"
+            },
+            {
+              "name": "Universe.fields",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-fields"
+            },
+            {
+              "name": "Universe.latest_date",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-latest-date"
+            },
+            {
+              "name": "Universe.warnings",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-warnings"
+            },
+            {
+              "name": "Universe.screen",
+              "kind": "function",
+              "module": "finalytics.screening",
+              "anchor": "universe-screen"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.datasets",
+          "source": "bindings/python/python/finalytics/datasets.py",
+          "symbols": [
+            {
+              "name": "file",
+              "kind": "function",
+              "module": "finalytics.datasets",
+              "anchor": "file"
+            },
+            {
+              "name": "asset_class_table",
+              "kind": "function",
+              "module": "finalytics.datasets",
+              "anchor": "asset-class-table"
+            },
+            {
+              "name": "asset_class_prices",
+              "kind": "function",
+              "module": "finalytics.datasets",
+              "anchor": "asset-class-prices"
+            },
+            {
+              "name": "portfolio",
+              "kind": "function",
+              "module": "finalytics.datasets",
+              "anchor": "portfolio"
+            },
+            {
+              "name": "report_options",
+              "kind": "function",
+              "module": "finalytics.datasets",
+              "anchor": "report-options"
+            },
+            {
+              "name": "universe",
+              "kind": "function",
+              "module": "finalytics.datasets",
+              "anchor": "universe"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.reports",
+          "source": "bindings/python/python/finalytics/reports.py",
+          "symbols": [
+            {
+              "name": "tables",
+              "kind": "function",
+              "module": "finalytics.reports",
+              "anchor": "tables"
+            },
+            {
+              "name": "source",
+              "kind": "function",
+              "module": "finalytics.reports",
+              "anchor": "source"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.risk",
+          "source": "bindings/python/python/finalytics/risk.py",
+          "symbols": [
+            {
+              "name": "statistics",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "statistics"
+            },
+            {
+              "name": "relative_statistics",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "relative-statistics"
+            },
+            {
+              "name": "tail_risk",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "tail-risk"
+            },
+            {
+              "name": "rolling_statistics",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "rolling-statistics"
+            },
+            {
+              "name": "rolling_relative_statistics",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "rolling-relative-statistics"
+            },
+            {
+              "name": "rolling_tail_risk",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "rolling-tail-risk"
+            },
+            {
+              "name": "drawdowns",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "drawdowns"
+            },
+            {
+              "name": "drawdown_series",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "drawdown-series"
+            },
+            {
+              "name": "covariance",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "covariance"
+            },
+            {
+              "name": "regression_model",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "regression-model"
+            },
+            {
+              "name": "statistical_model",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "statistical-model"
+            },
+            {
+              "name": "fundamental_model",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "fundamental-model"
+            },
+            {
+              "name": "factor_model",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "factor-model"
+            },
+            {
+              "name": "stressed_covariance",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "stressed-covariance"
+            },
+            {
+              "name": "implied_covariance",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "implied-covariance"
+            },
+            {
+              "name": "factor_risk",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "factor-risk"
+            },
+            {
+              "name": "factor_tracking_error",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "factor-tracking-error"
+            },
+            {
+              "name": "matrix",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "matrix"
+            },
+            {
+              "name": "to_array",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "to-array"
+            },
+            {
+              "name": "scaled",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "scaled"
+            },
+            {
+              "name": "scaled",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "scaled"
+            },
+            {
+              "name": "scaled",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "scaled"
+            },
+            {
+              "name": "correlation",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "correlation"
+            },
+            {
+              "name": "risk_decomposition",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "risk-decomposition"
+            },
+            {
+              "name": "shortfall_decomposition",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "shortfall-decomposition"
+            },
+            {
+              "name": "tracking_error_decomposition",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "tracking-error-decomposition"
+            },
+            {
+              "name": "group_risk",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "group-risk"
+            },
+            {
+              "name": "normal_cdf",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "normal-cdf"
+            },
+            {
+              "name": "normal_pdf",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "normal-pdf"
+            },
+            {
+              "name": "normal_quantile",
+              "kind": "function",
+              "module": "finalytics.risk",
+              "anchor": "normal-quantile"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.opt",
+          "source": "bindings/python/python/finalytics/opt.py",
+          "symbols": [
+            {
+              "name": "Problem",
+              "kind": "class",
+              "module": "finalytics.opt",
+              "anchor": "problem"
+            },
+            {
+              "name": "Problem.from_covariance",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-from-covariance"
+            },
+            {
+              "name": "Problem.from_factor_model",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-from-factor-model"
+            },
+            {
+              "name": "Problem.from_scenarios",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-from-scenarios"
+            },
+            {
+              "name": "Problem.from_black_litterman",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-from-black-litterman"
+            },
+            {
+              "name": "Problem.solve",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-solve"
+            },
+            {
+              "name": "Problem.resampled",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-resampled"
+            },
+            {
+              "name": "Problem.frontier",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "problem-frontier"
+            },
+            {
+              "name": "black_litterman",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "black-litterman"
+            },
+            {
+              "name": "implied_risk_aversion",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "implied-risk-aversion"
+            },
+            {
+              "name": "transactions",
+              "kind": "function",
+              "module": "finalytics.opt",
+              "anchor": "transactions"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.pandas",
+          "source": "bindings/python/python/finalytics/pandas.py",
+          "symbols": [
+            {
+              "name": "returns",
+              "kind": "function",
+              "module": "finalytics.pandas",
+              "anchor": "returns"
+            },
+            {
+              "name": "growth",
+              "kind": "function",
+              "module": "finalytics.pandas",
+              "anchor": "growth"
+            },
+            {
+              "name": "values",
+              "kind": "function",
+              "module": "finalytics.pandas",
+              "anchor": "values"
+            },
+            {
+              "name": "frame",
+              "kind": "function",
+              "module": "finalytics.pandas",
+              "anchor": "frame"
+            },
+            {
+              "name": "securities",
+              "kind": "function",
+              "module": "finalytics.pandas",
+              "anchor": "securities"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.errors",
+          "source": "bindings/python/python/finalytics/_errors.py",
+          "symbols": [
+            {
+              "name": "FinalyticsError",
+              "kind": "class",
+              "module": "finalytics.errors",
+              "anchor": "finalyticserror"
+            },
+            {
+              "name": "ValidationError",
+              "kind": "class",
+              "module": "finalytics.errors",
+              "anchor": "validationerror"
+            },
+            {
+              "name": "ValidationError.__init__",
+              "kind": "function",
+              "module": "finalytics.errors",
+              "anchor": "validationerror-init"
+            },
+            {
+              "name": "invalid",
+              "kind": "function",
+              "module": "finalytics.errors",
+              "anchor": "invalid"
+            },
+            {
+              "name": "validation",
+              "kind": "function",
+              "module": "finalytics.errors",
+              "anchor": "validation"
+            },
+            {
+              "name": "call",
+              "kind": "function",
+              "module": "finalytics.errors",
+              "anchor": "call"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.printing",
+          "source": "bindings/python/python/finalytics/_printing.py",
+          "symbols": [
+            {
+              "name": "set_show_handler",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "set-show-handler"
+            },
+            {
+              "name": "PrintedReport",
+              "kind": "class",
+              "module": "finalytics.printing",
+              "anchor": "printedreport"
+            },
+            {
+              "name": "PrintedReport.to_text",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "printedreport-to-text"
+            },
+            {
+              "name": "ReportPage",
+              "kind": "class",
+              "module": "finalytics.printing",
+              "anchor": "reportpage"
+            },
+            {
+              "name": "ReportPage.to_html",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "reportpage-to-html"
+            },
+            {
+              "name": "ReportPage.save_html",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "reportpage-save-html"
+            },
+            {
+              "name": "ReportPage.show",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "reportpage-show"
+            },
+            {
+              "name": "PrintedResults",
+              "kind": "class",
+              "module": "finalytics.printing",
+              "anchor": "printedresults"
+            },
+            {
+              "name": "PrintedResults.to_text",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "printedresults-to-text"
+            },
+            {
+              "name": "Result",
+              "kind": "class",
+              "module": "finalytics.printing",
+              "anchor": "result"
+            },
+            {
+              "name": "Result.to_text",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "result-to-text"
+            },
+            {
+              "name": "Result.to_html",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "result-to-html"
+            },
+            {
+              "name": "Result.save_html",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "result-save-html"
+            },
+            {
+              "name": "Result.show",
+              "kind": "function",
+              "module": "finalytics.printing",
+              "anchor": "result-show"
+            }
+          ]
+        },
+        {
+          "module": "finalytics.types",
+          "source": "bindings/python/python/finalytics/_types.py",
+          "symbols": [
+            {
+              "name": "Account",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "account"
+            },
+            {
+              "name": "AccountHoldings",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "accountholdings"
+            },
+            {
+              "name": "AccountLine",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "accountline"
+            },
+            {
+              "name": "AccountSeries",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "accountseries"
+            },
+            {
+              "name": "AccountTrades",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "accounttrades"
+            },
+            {
+              "name": "AccountsPerformance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "accountsperformance"
+            },
+            {
+              "name": "TradeAllocation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "tradeallocation"
+            },
+            {
+              "name": "IncomeAllocation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "incomeallocation"
+            },
+            {
+              "name": "Expense",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "expense"
+            },
+            {
+              "name": "ExchangeAllocation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "exchangeallocation"
+            },
+            {
+              "name": "AllocationRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "allocationrow"
+            },
+            {
+              "name": "Amount",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "amount"
+            },
+            {
+              "name": "AmountChange",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "amountchange"
+            },
+            {
+              "name": "AssetBound",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "assetbound"
+            },
+            {
+              "name": "AssetFit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "assetfit"
+            },
+            {
+              "name": "AssetGroup",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "assetgroup"
+            },
+            {
+              "name": "AssetStatistics",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "assetstatistics"
+            },
+            {
+              "name": "Attribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "attribution"
+            },
+            {
+              "name": "AttributionInputs",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "attributioninputs"
+            },
+            {
+              "name": "AttributionPeriod",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "attributionperiod"
+            },
+            {
+              "name": "AttributionReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "attributionreport"
+            },
+            {
+              "name": "Backtest",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "backtest"
+            },
+            {
+              "name": "BacktestContext",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "backtestcontext"
+            },
+            {
+              "name": "BacktestOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "backtestoptions"
+            },
+            {
+              "name": "BacktestReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "backtestreport"
+            },
+            {
+              "name": "BacktestResults",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "backtestresults"
+            },
+            {
+              "name": "BenchmarkWeights",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "benchmarkweights"
+            },
+            {
+              "name": "BenchmarkPrices",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "benchmarkprices"
+            },
+            {
+              "name": "BenchmarkPeriod",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "benchmarkperiod"
+            },
+            {
+              "name": "BenchmarkSegment",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "benchmarksegment"
+            },
+            {
+              "name": "Bin",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "bin"
+            },
+            {
+              "name": "BlackLitterman",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "blacklitterman"
+            },
+            {
+              "name": "BlackLittermanEstimate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "blacklittermanestimate"
+            },
+            {
+              "name": "Bound",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "bound"
+            },
+            {
+              "name": "Breakdown",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "breakdown"
+            },
+            {
+              "name": "CalendarReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "calendarreturn"
+            },
+            {
+              "name": "CashBalance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "cashbalance"
+            },
+            {
+              "name": "CashFlow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "cashflow"
+            },
+            {
+              "name": "CashValue",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "cashvalue"
+            },
+            {
+              "name": "Changes",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "changes"
+            },
+            {
+              "name": "Column",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "column"
+            },
+            {
+              "name": "TextColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "textcolumn"
+            },
+            {
+              "name": "DateColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "datecolumn"
+            },
+            {
+              "name": "NumberColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "numbercolumn"
+            },
+            {
+              "name": "IntegerColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "integercolumn"
+            },
+            {
+              "name": "FractionColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fractioncolumn"
+            },
+            {
+              "name": "MoneyColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "moneycolumn"
+            },
+            {
+              "name": "BooleanColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "booleancolumn"
+            },
+            {
+              "name": "Comparison",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "comparison"
+            },
+            {
+              "name": "ComparisonReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "comparisonreport"
+            },
+            {
+              "name": "Concentration",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "concentration"
+            },
+            {
+              "name": "Constraints",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "constraints"
+            },
+            {
+              "name": "Contribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "contribution"
+            },
+            {
+              "name": "ConversionRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "conversionrow"
+            },
+            {
+              "name": "CorrelationStress",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "correlationstress"
+            },
+            {
+              "name": "CovarianceEstimate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "covarianceestimate"
+            },
+            {
+              "name": "Sample",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "sample"
+            },
+            {
+              "name": "Ewma",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "ewma"
+            },
+            {
+              "name": "LedoitWolf",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "ledoitwolf"
+            },
+            {
+              "name": "Oas",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "oas"
+            },
+            {
+              "name": "ConstantCorrelation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "constantcorrelation"
+            },
+            {
+              "name": "Statistical",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "statistical"
+            },
+            {
+              "name": "Denoised",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "denoised"
+            },
+            {
+              "name": "NonlinearShrinkage",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "nonlinearshrinkage"
+            },
+            {
+              "name": "Coverage",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "coverage"
+            },
+            {
+              "name": "CrashWindow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "crashwindow"
+            },
+            {
+              "name": "CurrencyAttribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "currencyattribution"
+            },
+            {
+              "name": "CurrencyAttributionPeriod",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "currencyattributionperiod"
+            },
+            {
+              "name": "CurrencyEffect",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "currencyeffect"
+            },
+            {
+              "name": "CurrencyPeriodAttribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "currencyperiodattribution"
+            },
+            {
+              "name": "CurrencyReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "currencyreturn"
+            },
+            {
+              "name": "CurrencySegment",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "currencysegment"
+            },
+            {
+              "name": "DocumentFxRates",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "documentfxrates"
+            },
+            {
+              "name": "DocumentMarketData",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "documentmarketdata"
+            },
+            {
+              "name": "Drawdown",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "drawdown"
+            },
+            {
+              "name": "DrawdownFigure",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "drawdownfigure"
+            },
+            {
+              "name": "LotSet",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "lotset"
+            },
+            {
+              "name": "LotClosed",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "lotclosed"
+            },
+            {
+              "name": "CashChange",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "cashchange"
+            },
+            {
+              "name": "Evaluation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "evaluation"
+            },
+            {
+              "name": "Event",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "event"
+            },
+            {
+              "name": "ExcessReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "excessreturn"
+            },
+            {
+              "name": "FactorContribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factorcontribution"
+            },
+            {
+              "name": "FactorExposureLimit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factorexposurelimit"
+            },
+            {
+              "name": "FactorModel",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factormodel"
+            },
+            {
+              "name": "FactorModelEstimate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factormodelestimate"
+            },
+            {
+              "name": "FactorRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factorrisk"
+            },
+            {
+              "name": "FactorShocks",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factorshocks"
+            },
+            {
+              "name": "Failure",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "failure"
+            },
+            {
+              "name": "Fees",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fees"
+            },
+            {
+              "name": "Flow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "flow"
+            },
+            {
+              "name": "FlowSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "flowsummary"
+            },
+            {
+              "name": "FormulaResult",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "formularesult"
+            },
+            {
+              "name": "FrontierPoint",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "frontierpoint"
+            },
+            {
+              "name": "FrontierPortfolio",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "frontierportfolio"
+            },
+            {
+              "name": "GivenWeights",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "givenweights"
+            },
+            {
+              "name": "Target",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "target"
+            },
+            {
+              "name": "Payments",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "payments"
+            },
+            {
+              "name": "Grid",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "grid"
+            },
+            {
+              "name": "GroupContribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "groupcontribution"
+            },
+            {
+              "name": "GroupImpact",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "groupimpact"
+            },
+            {
+              "name": "GroupLimit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "grouplimit"
+            },
+            {
+              "name": "GroupRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "grouprisk"
+            },
+            {
+              "name": "GroupRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "grouprow"
+            },
+            {
+              "name": "GroupShock",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "groupshock"
+            },
+            {
+              "name": "Headline",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "headline"
+            },
+            {
+              "name": "Histogram",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "histogram"
+            },
+            {
+              "name": "HistoricalWindow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "historicalwindow"
+            },
+            {
+              "name": "History",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "history"
+            },
+            {
+              "name": "HoldingImpact",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingimpact"
+            },
+            {
+              "name": "HoldingLine",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingline"
+            },
+            {
+              "name": "HoldingMove",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingmove"
+            },
+            {
+              "name": "HoldingReturns",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingreturns"
+            },
+            {
+              "name": "HoldingRiskReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingriskreturn"
+            },
+            {
+              "name": "HoldingRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingrow"
+            },
+            {
+              "name": "HoldingSeries",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingseries"
+            },
+            {
+              "name": "HoldingsPeriod",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingsperiod"
+            },
+            {
+              "name": "HoldingsReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingsreport"
+            },
+            {
+              "name": "HoldingsRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdingsrisk"
+            },
+            {
+              "name": "Household",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "household"
+            },
+            {
+              "name": "HouseholdOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "householdoptions"
+            },
+            {
+              "name": "IncomeSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "incomesummary"
+            },
+            {
+              "name": "InflationRate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "inflationrate"
+            },
+            {
+              "name": "InflationIndex",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "inflationindex"
+            },
+            {
+              "name": "InflationBasisRate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "inflationbasisrate"
+            },
+            {
+              "name": "InflationBasisIndex",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "inflationbasisindex"
+            },
+            {
+              "name": "Instrument",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "instrument"
+            },
+            {
+              "name": "Issue",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "issue"
+            },
+            {
+              "name": "KeptCash",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "keptcash"
+            },
+            {
+              "name": "Lot",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "lot"
+            },
+            {
+              "name": "LotPick",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "lotpick"
+            },
+            {
+              "name": "LotRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "lotrow"
+            },
+            {
+              "name": "LotSale",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "lotsale"
+            },
+            {
+              "name": "Matrix",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "matrix"
+            },
+            {
+              "name": "HistoricalMean",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "historicalmean"
+            },
+            {
+              "name": "JamesSteinMean",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "jamessteinmean"
+            },
+            {
+              "name": "EwmaMean",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "ewmamean"
+            },
+            {
+              "name": "MeasureSpread",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "measurespread"
+            },
+            {
+              "name": "MethodInfo",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "methodinfo"
+            },
+            {
+              "name": "MethodParameter",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "methodparameter"
+            },
+            {
+              "name": "FixedMix",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fixedmix"
+            },
+            {
+              "name": "GlidePath",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "glidepath"
+            },
+            {
+              "name": "MixOutcome",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "mixoutcome"
+            },
+            {
+              "name": "MixRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "mixrisk"
+            },
+            {
+              "name": "Bootstrap",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "bootstrap"
+            },
+            {
+              "name": "Normal",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "normal"
+            },
+            {
+              "name": "Historical",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "historical"
+            },
+            {
+              "name": "Money",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "money"
+            },
+            {
+              "name": "MoneyFigures",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "moneyfigures"
+            },
+            {
+              "name": "MonthChange",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "monthchange"
+            },
+            {
+              "name": "MonthFlows",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "monthflows"
+            },
+            {
+              "name": "NamedScenario",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "namedscenario"
+            },
+            {
+              "name": "NearMiss",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "nearmiss"
+            },
+            {
+              "name": "MinimumVariance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "minimumvariance"
+            },
+            {
+              "name": "MeanVariance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "meanvariance"
+            },
+            {
+              "name": "RobustMeanVariance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "robustmeanvariance"
+            },
+            {
+              "name": "TargetReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "targetreturn"
+            },
+            {
+              "name": "TargetVolatility",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "targetvolatility"
+            },
+            {
+              "name": "MaximumSharpe",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "maximumsharpe"
+            },
+            {
+              "name": "MaximumDiversification",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "maximumdiversification"
+            },
+            {
+              "name": "MinimumCvar",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "minimumcvar"
+            },
+            {
+              "name": "MinimumSemivariance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "minimumsemivariance"
+            },
+            {
+              "name": "MinimumCdar",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "minimumcdar"
+            },
+            {
+              "name": "EqualWeight",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "equalweight"
+            },
+            {
+              "name": "InverseVolatility",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "inversevolatility"
+            },
+            {
+              "name": "RiskBudgeting",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "riskbudgeting"
+            },
+            {
+              "name": "HierarchicalRiskParity",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "hierarchicalriskparity"
+            },
+            {
+              "name": "Optimisation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisation"
+            },
+            {
+              "name": "OptimisationContext",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisationcontext"
+            },
+            {
+              "name": "OptimisationHistory",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisationhistory"
+            },
+            {
+              "name": "OptimisationReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisationreport"
+            },
+            {
+              "name": "OptimisationResult",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisationresult"
+            },
+            {
+              "name": "OptimisationSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisationsummary"
+            },
+            {
+              "name": "OptimiseOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimiseoptions"
+            },
+            {
+              "name": "Outcome",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "outcome"
+            },
+            {
+              "name": "OverviewReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "overviewreport"
+            },
+            {
+              "name": "PaymentsOutcome",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "paymentsoutcome"
+            },
+            {
+              "name": "Percentiles",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "percentiles"
+            },
+            {
+              "name": "PerformanceReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "performancereport"
+            },
+            {
+              "name": "MonthToDate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "monthtodate"
+            },
+            {
+              "name": "QuarterToDate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "quartertodate"
+            },
+            {
+              "name": "YearToDate",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "yeartodate"
+            },
+            {
+              "name": "Years",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "years"
+            },
+            {
+              "name": "SinceInception",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "sinceinception"
+            },
+            {
+              "name": "Since",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "since"
+            },
+            {
+              "name": "PeriodAttribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "periodattribution"
+            },
+            {
+              "name": "PeriodReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "periodreturn"
+            },
+            {
+              "name": "PeriodRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "periodrow"
+            },
+            {
+              "name": "Plan",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "plan"
+            },
+            {
+              "name": "PlanContext",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "plancontext"
+            },
+            {
+              "name": "Saving",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "saving"
+            },
+            {
+              "name": "Spending",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "spending"
+            },
+            {
+              "name": "PlanOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "planoptions"
+            },
+            {
+              "name": "PlanReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "planreport"
+            },
+            {
+              "name": "PlanResults",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "planresults"
+            },
+            {
+              "name": "PortfolioData",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "portfoliodata"
+            },
+            {
+              "name": "PortfolioDocument",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "portfoliodocument"
+            },
+            {
+              "name": "PortfolioPoint",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "portfoliopoint"
+            },
+            {
+              "name": "PortfolioReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "portfolioreport"
+            },
+            {
+              "name": "Position",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "position"
+            },
+            {
+              "name": "PositionValue",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "positionvalue"
+            },
+            {
+              "name": "PriceTable",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "pricetable"
+            },
+            {
+              "name": "MarketPrior",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "marketprior"
+            },
+            {
+              "name": "ReturnsPrior",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "returnsprior"
+            },
+            {
+              "name": "Problem",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "problem"
+            },
+            {
+              "name": "ProposedConversion",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "proposedconversion"
+            },
+            {
+              "name": "ProposedTrade",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "proposedtrade"
+            },
+            {
+              "name": "Provenance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "provenance"
+            },
+            {
+              "name": "RealisedGain",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "realisedgain"
+            },
+            {
+              "name": "RealisedSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "realisedsummary"
+            },
+            {
+              "name": "Rebalance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalance"
+            },
+            {
+              "name": "RebalanceContext",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalancecontext"
+            },
+            {
+              "name": "RebalanceEstimates",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalanceestimates"
+            },
+            {
+              "name": "RebalanceOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalanceoptions"
+            },
+            {
+              "name": "RebalanceReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalancereport"
+            },
+            {
+              "name": "RebalanceResults",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalanceresults"
+            },
+            {
+              "name": "Monthly",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "monthly"
+            },
+            {
+              "name": "Quarterly",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "quarterly"
+            },
+            {
+              "name": "Yearly",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "yearly"
+            },
+            {
+              "name": "Drift",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "drift"
+            },
+            {
+              "name": "Never",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "never"
+            },
+            {
+              "name": "Every",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "every"
+            },
+            {
+              "name": "RebalanceSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalancesummary"
+            },
+            {
+              "name": "Rebalancing",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rebalancing"
+            },
+            {
+              "name": "RelativeStatistics",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "relativestatistics"
+            },
+            {
+              "name": "ReportOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "reportoptions"
+            },
+            {
+              "name": "ReportTable",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "reporttable"
+            },
+            {
+              "name": "ResampledSolution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "resampledsolution"
+            },
+            {
+              "name": "Resampling",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "resampling"
+            },
+            {
+              "name": "ResamplingSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "resamplingsummary"
+            },
+            {
+              "name": "Ellipsoid",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "ellipsoid"
+            },
+            {
+              "name": "Box",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "box"
+            },
+            {
+              "name": "ReturnsTable",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "returnstable"
+            },
+            {
+              "name": "RiskContribution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "riskcontribution"
+            },
+            {
+              "name": "RiskDecomposition",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "riskdecomposition"
+            },
+            {
+              "name": "RiskReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "riskreport"
+            },
+            {
+              "name": "RiskReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "riskreturn"
+            },
+            {
+              "name": "Rule",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "rule"
+            },
+            {
+              "name": "RuleResult",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "ruleresult"
+            },
+            {
+              "name": "Run",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "run"
+            },
+            {
+              "name": "RunReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "runreport"
+            },
+            {
+              "name": "SamplePath",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "samplepath"
+            },
+            {
+              "name": "ShockScenario",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "shockscenario"
+            },
+            {
+              "name": "HistoricalScenario",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "historicalscenario"
+            },
+            {
+              "name": "ScenarioOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenariooptions"
+            },
+            {
+              "name": "ScenarioOutcome",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenariooutcome"
+            },
+            {
+              "name": "ScenarioPath",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenariopath"
+            },
+            {
+              "name": "ScenarioResult",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenarioresult"
+            },
+            {
+              "name": "ScenarioRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenariorisk"
+            },
+            {
+              "name": "ScenarioRiskModel",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenarioriskmodel"
+            },
+            {
+              "name": "ScenarioSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenariosummary"
+            },
+            {
+              "name": "ScenariosReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "scenariosreport"
+            },
+            {
+              "name": "SchemeContributions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "schemecontributions"
+            },
+            {
+              "name": "SchemeImpact",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "schemeimpact"
+            },
+            {
+              "name": "SchemePerformance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "schemeperformance"
+            },
+            {
+              "name": "SchemeRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "schemerisk"
+            },
+            {
+              "name": "Screen",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screen"
+            },
+            {
+              "name": "ScreenColumn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screencolumn"
+            },
+            {
+              "name": "ScreenContext",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screencontext"
+            },
+            {
+              "name": "ScreenExceptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screenexceptions"
+            },
+            {
+              "name": "ScreenMatch",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screenmatch"
+            },
+            {
+              "name": "ScreenOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screenoptions"
+            },
+            {
+              "name": "ScreenReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screenreport"
+            },
+            {
+              "name": "ScreenResults",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "screenresults"
+            },
+            {
+              "name": "SecurityScreen",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "securityscreen"
+            },
+            {
+              "name": "SecuritySeries",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "securityseries"
+            },
+            {
+              "name": "Segment",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "segment"
+            },
+            {
+              "name": "SegmentEffects",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "segmenteffects"
+            },
+            {
+              "name": "Series",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "series"
+            },
+            {
+              "name": "Settings",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "settings"
+            },
+            {
+              "name": "InstrumentSource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "instrumentsource"
+            },
+            {
+              "name": "GroupSource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "groupsource"
+            },
+            {
+              "name": "FactorSource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "factorsource"
+            },
+            {
+              "name": "HistorySource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "historysource"
+            },
+            {
+              "name": "ProxySource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "proxysource"
+            },
+            {
+              "name": "CashSource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "cashsource"
+            },
+            {
+              "name": "NoSource",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "nosource"
+            },
+            {
+              "name": "Shocks",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "shocks"
+            },
+            {
+              "name": "ShortfallDecomposition",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "shortfalldecomposition"
+            },
+            {
+              "name": "ShortfallFigure",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "shortfallfigure"
+            },
+            {
+              "name": "Slice",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "slice"
+            },
+            {
+              "name": "Solution",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "solution"
+            },
+            {
+              "name": "Sort",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "sort"
+            },
+            {
+              "name": "Source",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "source"
+            },
+            {
+              "name": "Statistics",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "statistics"
+            },
+            {
+              "name": "StatisticsOptions",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "statisticsoptions"
+            },
+            {
+              "name": "OptimisedStrategy",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "optimisedstrategy"
+            },
+            {
+              "name": "FixedWeights",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fixedweights"
+            },
+            {
+              "name": "StrategyReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "strategyreport"
+            },
+            {
+              "name": "StrategyResult",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "strategyresult"
+            },
+            {
+              "name": "StripPoint",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "strippoint"
+            },
+            {
+              "name": "TailRisk",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "tailrisk"
+            },
+            {
+              "name": "TailRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "tailrow"
+            },
+            {
+              "name": "TaxRates",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "taxrates"
+            },
+            {
+              "name": "ThresholdStrip",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "thresholdstrip"
+            },
+            {
+              "name": "TimeSeries",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "timeseries"
+            },
+            {
+              "name": "TrackingErrorLimit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "trackingerrorlimit"
+            },
+            {
+              "name": "Trade",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "trade"
+            },
+            {
+              "name": "TradeLimits",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "tradelimits"
+            },
+            {
+              "name": "TradeRow",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "traderow"
+            },
+            {
+              "name": "TradesSummary",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "tradessummary"
+            },
+            {
+              "name": "Buy",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "buy"
+            },
+            {
+              "name": "Sell",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "sell"
+            },
+            {
+              "name": "Deposit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "deposit"
+            },
+            {
+              "name": "Withdrawal",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "withdrawal"
+            },
+            {
+              "name": "TransferIn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "transferin"
+            },
+            {
+              "name": "TransferOut",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "transferout"
+            },
+            {
+              "name": "Dividend",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "dividend"
+            },
+            {
+              "name": "Interest",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "interest"
+            },
+            {
+              "name": "Fee",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fee"
+            },
+            {
+              "name": "Tax",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "tax"
+            },
+            {
+              "name": "FxConversion",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fxconversion"
+            },
+            {
+              "name": "Split",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "split"
+            },
+            {
+              "name": "SpinOff",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "spinoff"
+            },
+            {
+              "name": "Merger",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "merger"
+            },
+            {
+              "name": "SymbolChange",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "symbolchange"
+            },
+            {
+              "name": "ReturnOfCapital",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "returnofcapital"
+            },
+            {
+              "name": "Transaction",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "transaction"
+            },
+            {
+              "name": "Turnover",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "turnover"
+            },
+            {
+              "name": "MoneyUnit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "moneyunit"
+            },
+            {
+              "name": "FractionUnit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "fractionunit"
+            },
+            {
+              "name": "RatioUnit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "ratiounit"
+            },
+            {
+              "name": "LevelUnit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "levelunit"
+            },
+            {
+              "name": "CountUnit",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "countunit"
+            },
+            {
+              "name": "InSample",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "insample"
+            },
+            {
+              "name": "Holdout",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "holdout"
+            },
+            {
+              "name": "WalkForward",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "walkforward"
+            },
+            {
+              "name": "ValidationReport",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "validationreport"
+            },
+            {
+              "name": "Valuation",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "valuation"
+            },
+            {
+              "name": "ValueSeries",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "valueseries"
+            },
+            {
+              "name": "View",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "view"
+            },
+            {
+              "name": "Proportional",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "proportional"
+            },
+            {
+              "name": "Confidence",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "confidence"
+            },
+            {
+              "name": "Variance",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "variance"
+            },
+            {
+              "name": "WeightChange",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "weightchange"
+            },
+            {
+              "name": "WeightsAt",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "weightsat"
+            },
+            {
+              "name": "WhatIf",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "whatif"
+            },
+            {
+              "name": "YearReturn",
+              "kind": "class",
+              "module": "finalytics.types",
+              "anchor": "yearreturn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "javascript-api",
+      "title": "JavaScript and TypeScript API reference",
+      "description": "Functions, classes, interfaces, options and result types from the npm package declarations.",
+      "file": "javascript.md",
+      "source": "docs/reference/javascript.md",
+      "modules": [
+        {
+          "module": "finalytics",
+          "source": "bindings/wasm/pkg/finalytics.d.ts",
+          "symbols": [
+            {
+              "name": "Observed",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-observed"
+            },
+            {
+              "name": "Holdings",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdings"
+            },
+            {
+              "name": "Document",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-document"
+            },
+            {
+              "name": "RebalanceChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancechoices"
+            },
+            {
+              "name": "PortfolioFiles",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-portfoliofiles"
+            },
+            {
+              "name": "AssetsOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-assetsoptions"
+            },
+            {
+              "name": "ReportChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-reportchoices"
+            },
+            {
+              "name": "Theme",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-theme"
+            },
+            {
+              "name": "ReportMethods",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-reportmethods"
+            },
+            {
+              "name": "setShowHandler",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-setshowhandler"
+            },
+            {
+              "name": "ResultsMethods",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-resultsmethods"
+            },
+            {
+              "name": "Result",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-result"
+            },
+            {
+              "name": "OptimiseLimits",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-optimiselimits"
+            },
+            {
+              "name": "FrontierOptions",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-frontieroptions"
+            },
+            {
+              "name": "OptimiseChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisechoices"
+            },
+            {
+              "name": "EvaluateChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-evaluatechoices"
+            },
+            {
+              "name": "ValidationChoice",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-validationchoice"
+            },
+            {
+              "name": "RebalanceChoice",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancechoice"
+            },
+            {
+              "name": "BacktestSettings",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-backtestsettings"
+            },
+            {
+              "name": "CompareChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-comparechoices"
+            },
+            {
+              "name": "BacktestChoices",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-backtestchoices"
+            },
+            {
+              "name": "MixChoice",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-mixchoice"
+            },
+            {
+              "name": "PlanChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-planchoices"
+            },
+            {
+              "name": "ScenarioChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariochoices"
+            },
+            {
+              "name": "SeriesInput",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-seriesinput"
+            },
+            {
+              "name": "UniverseColumns",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-universecolumns"
+            },
+            {
+              "name": "UniverseSettings",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-universesettings"
+            },
+            {
+              "name": "UniverseOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-universeoptions"
+            },
+            {
+              "name": "ScreenChoices",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screenchoices"
+            },
+            {
+              "name": "ScreenColumns",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screencolumns"
+            },
+            {
+              "name": "ValidationError",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-validationerror"
+            },
+            {
+              "name": "Account",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-account"
+            },
+            {
+              "name": "AccountHoldings",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-accountholdings"
+            },
+            {
+              "name": "AccountId",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-accountid"
+            },
+            {
+              "name": "AccountLine",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-accountline"
+            },
+            {
+              "name": "AccountSeries",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-accountseries"
+            },
+            {
+              "name": "AccountTrades",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-accounttrades"
+            },
+            {
+              "name": "AccountsPerformance",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-accountsperformance"
+            },
+            {
+              "name": "Allocation",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-allocation"
+            },
+            {
+              "name": "AllocationRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-allocationrow"
+            },
+            {
+              "name": "Amount",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-amount"
+            },
+            {
+              "name": "AmountChange",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-amountchange"
+            },
+            {
+              "name": "AssetBound",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-assetbound"
+            },
+            {
+              "name": "AssetFit",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-assetfit"
+            },
+            {
+              "name": "AssetGroup",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-assetgroup"
+            },
+            {
+              "name": "AssetStatistics",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-assetstatistics"
+            },
+            {
+              "name": "Attribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-attribution"
+            },
+            {
+              "name": "AttributionInputs",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-attributioninputs"
+            },
+            {
+              "name": "AttributionPeriod",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-attributionperiod"
+            },
+            {
+              "name": "AttributionReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-attributionreport"
+            },
+            {
+              "name": "Backtest",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-backtest"
+            },
+            {
+              "name": "BacktestContext",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-backtestcontext"
+            },
+            {
+              "name": "BacktestOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-backtestoptions"
+            },
+            {
+              "name": "BacktestReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-backtestreport"
+            },
+            {
+              "name": "BacktestResults",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-backtestresults"
+            },
+            {
+              "name": "Benchmark",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-benchmark"
+            },
+            {
+              "name": "BenchmarkPeriod",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-benchmarkperiod"
+            },
+            {
+              "name": "BenchmarkSegment",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-benchmarksegment"
+            },
+            {
+              "name": "Bin",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-bin"
+            },
+            {
+              "name": "BlackLitterman",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-blacklitterman"
+            },
+            {
+              "name": "BlackLittermanEstimate",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-blacklittermanestimate"
+            },
+            {
+              "name": "Bound",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-bound"
+            },
+            {
+              "name": "Breakdown",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-breakdown"
+            },
+            {
+              "name": "CalendarReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-calendarreturn"
+            },
+            {
+              "name": "CashBalance",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-cashbalance"
+            },
+            {
+              "name": "CashFlow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-cashflow"
+            },
+            {
+              "name": "CashValue",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-cashvalue"
+            },
+            {
+              "name": "Cell",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-cell"
+            },
+            {
+              "name": "Changes",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-changes"
+            },
+            {
+              "name": "Column",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-column"
+            },
+            {
+              "name": "ColumnKind",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-columnkind"
+            },
+            {
+              "name": "Comparison",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-comparison"
+            },
+            {
+              "name": "ComparisonReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-comparisonreport"
+            },
+            {
+              "name": "Concentration",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-concentration"
+            },
+            {
+              "name": "Constraints",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-constraints"
+            },
+            {
+              "name": "Contribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-contribution"
+            },
+            {
+              "name": "ConversionRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-conversionrow"
+            },
+            {
+              "name": "CorrelationStress",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-correlationstress"
+            },
+            {
+              "name": "CovarianceEstimate",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-covarianceestimate"
+            },
+            {
+              "name": "CovarianceMethod",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-covariancemethod"
+            },
+            {
+              "name": "Coverage",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-coverage"
+            },
+            {
+              "name": "CrashWindow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-crashwindow"
+            },
+            {
+              "name": "Currency",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-currency"
+            },
+            {
+              "name": "CurrencyAttribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-currencyattribution"
+            },
+            {
+              "name": "CurrencyAttributionPeriod",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-currencyattributionperiod"
+            },
+            {
+              "name": "CurrencyEffect",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-currencyeffect"
+            },
+            {
+              "name": "CurrencyPeriodAttribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-currencyperiodattribution"
+            },
+            {
+              "name": "CurrencyReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-currencyreturn"
+            },
+            {
+              "name": "CurrencySegment",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-currencysegment"
+            },
+            {
+              "name": "Date",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-date"
+            },
+            {
+              "name": "Decimal",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-decimal"
+            },
+            {
+              "name": "DocumentFxRates",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-documentfxrates"
+            },
+            {
+              "name": "DocumentMarketData",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-documentmarketdata"
+            },
+            {
+              "name": "Drawdown",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-drawdown"
+            },
+            {
+              "name": "DrawdownFigure",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-drawdownfigure"
+            },
+            {
+              "name": "Effect",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-effect"
+            },
+            {
+              "name": "Evaluation",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-evaluation"
+            },
+            {
+              "name": "Event",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-event"
+            },
+            {
+              "name": "ExcessReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-excessreturn"
+            },
+            {
+              "name": "FactorContribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-factorcontribution"
+            },
+            {
+              "name": "FactorExposureLimit",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-factorexposurelimit"
+            },
+            {
+              "name": "FactorMethod",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-factormethod"
+            },
+            {
+              "name": "FactorModel",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-factormodel"
+            },
+            {
+              "name": "FactorModelEstimate",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-factormodelestimate"
+            },
+            {
+              "name": "FactorRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-factorrisk"
+            },
+            {
+              "name": "FactorShocks",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-factorshocks"
+            },
+            {
+              "name": "Failure",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-failure"
+            },
+            {
+              "name": "Fees",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-fees"
+            },
+            {
+              "name": "FieldValue",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-fieldvalue"
+            },
+            {
+              "name": "Flow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-flow"
+            },
+            {
+              "name": "FlowKind",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-flowkind"
+            },
+            {
+              "name": "FlowSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-flowsummary"
+            },
+            {
+              "name": "FlowTiming",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-flowtiming"
+            },
+            {
+              "name": "FormulaResult",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-formularesult"
+            },
+            {
+              "name": "Frequency",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-frequency"
+            },
+            {
+              "name": "FrontierPoint",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-frontierpoint"
+            },
+            {
+              "name": "FrontierPortfolio",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-frontierportfolio"
+            },
+            {
+              "name": "GivenWeights",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-givenweights"
+            },
+            {
+              "name": "Goal",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-goal"
+            },
+            {
+              "name": "Grid",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-grid"
+            },
+            {
+              "name": "GroupContribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-groupcontribution"
+            },
+            {
+              "name": "GroupImpact",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-groupimpact"
+            },
+            {
+              "name": "GroupLimit",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-grouplimit"
+            },
+            {
+              "name": "GroupRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-grouprisk"
+            },
+            {
+              "name": "GroupRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-grouprow"
+            },
+            {
+              "name": "GroupShock",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-groupshock"
+            },
+            {
+              "name": "Headline",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-headline"
+            },
+            {
+              "name": "Histogram",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-histogram"
+            },
+            {
+              "name": "HistoricalWindow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-historicalwindow"
+            },
+            {
+              "name": "History",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-history"
+            },
+            {
+              "name": "HoldingImpact",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingimpact"
+            },
+            {
+              "name": "HoldingKey",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingkey"
+            },
+            {
+              "name": "HoldingLine",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingline"
+            },
+            {
+              "name": "HoldingMove",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingmove"
+            },
+            {
+              "name": "HoldingReturns",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingreturns"
+            },
+            {
+              "name": "HoldingRiskReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingriskreturn"
+            },
+            {
+              "name": "HoldingRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingrow"
+            },
+            {
+              "name": "HoldingSeries",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingseries"
+            },
+            {
+              "name": "HoldingsPeriod",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingsperiod"
+            },
+            {
+              "name": "HoldingsReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingsreport"
+            },
+            {
+              "name": "HoldingsRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-holdingsrisk"
+            },
+            {
+              "name": "Household",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-household"
+            },
+            {
+              "name": "HouseholdOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-householdoptions"
+            },
+            {
+              "name": "IncomeSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-incomesummary"
+            },
+            {
+              "name": "Inflation",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-inflation"
+            },
+            {
+              "name": "InflationBasis",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-inflationbasis"
+            },
+            {
+              "name": "Instrument",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-instrument"
+            },
+            {
+              "name": "InstrumentId",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-instrumentid"
+            },
+            {
+              "name": "InstrumentKind",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-instrumentkind"
+            },
+            {
+              "name": "Issue",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-issue"
+            },
+            {
+              "name": "KeepCash",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-keepcash"
+            },
+            {
+              "name": "KeptCash",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-keptcash"
+            },
+            {
+              "name": "Linkage",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-linkage"
+            },
+            {
+              "name": "Linking",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-linking"
+            },
+            {
+              "name": "Lot",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-lot"
+            },
+            {
+              "name": "LotId",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-lotid"
+            },
+            {
+              "name": "LotMethod",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-lotmethod"
+            },
+            {
+              "name": "LotPick",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-lotpick"
+            },
+            {
+              "name": "LotRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-lotrow"
+            },
+            {
+              "name": "LotSale",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-lotsale"
+            },
+            {
+              "name": "Matrix",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-matrix"
+            },
+            {
+              "name": "MeanMethod",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-meanmethod"
+            },
+            {
+              "name": "Measure",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-measure"
+            },
+            {
+              "name": "MeasureSpread",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-measurespread"
+            },
+            {
+              "name": "MeasureUnit",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-measureunit"
+            },
+            {
+              "name": "Method",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-method"
+            },
+            {
+              "name": "MethodInfo",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-methodinfo"
+            },
+            {
+              "name": "MethodParameter",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-methodparameter"
+            },
+            {
+              "name": "Mix",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-mix"
+            },
+            {
+              "name": "MixOutcome",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-mixoutcome"
+            },
+            {
+              "name": "MixRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-mixrisk"
+            },
+            {
+              "name": "Model",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-model"
+            },
+            {
+              "name": "Money",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-money"
+            },
+            {
+              "name": "MoneyFigures",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-moneyfigures"
+            },
+            {
+              "name": "Month",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-month"
+            },
+            {
+              "name": "MonthChange",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-monthchange"
+            },
+            {
+              "name": "MonthFlows",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-monthflows"
+            },
+            {
+              "name": "NamedScenario",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-namedscenario"
+            },
+            {
+              "name": "NearMiss",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-nearmiss"
+            },
+            {
+              "name": "Objective",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-objective"
+            },
+            {
+              "name": "Op",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-op"
+            },
+            {
+              "name": "Optimisation",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisation"
+            },
+            {
+              "name": "OptimisationContext",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisationcontext"
+            },
+            {
+              "name": "OptimisationHistory",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisationhistory"
+            },
+            {
+              "name": "OptimisationReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisationreport"
+            },
+            {
+              "name": "OptimisationResult",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisationresult"
+            },
+            {
+              "name": "OptimisationSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimisationsummary"
+            },
+            {
+              "name": "OptimiseOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-optimiseoptions"
+            },
+            {
+              "name": "Order",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-order"
+            },
+            {
+              "name": "Outcome",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-outcome"
+            },
+            {
+              "name": "OverviewReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-overviewreport"
+            },
+            {
+              "name": "ParameterKind",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-parameterkind"
+            },
+            {
+              "name": "PaymentsOutcome",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-paymentsoutcome"
+            },
+            {
+              "name": "Percentiles",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-percentiles"
+            },
+            {
+              "name": "PerformanceReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-performancereport"
+            },
+            {
+              "name": "Period",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-period"
+            },
+            {
+              "name": "PeriodAttribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-periodattribution"
+            },
+            {
+              "name": "PeriodReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-periodreturn"
+            },
+            {
+              "name": "PeriodRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-periodrow"
+            },
+            {
+              "name": "Plan",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-plan"
+            },
+            {
+              "name": "PlanContext",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-plancontext"
+            },
+            {
+              "name": "PlanFlow",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-planflow"
+            },
+            {
+              "name": "PlanOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-planoptions"
+            },
+            {
+              "name": "PlanReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-planreport"
+            },
+            {
+              "name": "PlanResults",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-planresults"
+            },
+            {
+              "name": "PortfolioData",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-portfoliodata"
+            },
+            {
+              "name": "PortfolioDocument",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-portfoliodocument"
+            },
+            {
+              "name": "PortfolioPoint",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-portfoliopoint"
+            },
+            {
+              "name": "PortfolioReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-portfolioreport"
+            },
+            {
+              "name": "Position",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-position"
+            },
+            {
+              "name": "PositionValue",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-positionvalue"
+            },
+            {
+              "name": "PriceTable",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-pricetable"
+            },
+            {
+              "name": "Prior",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-prior"
+            },
+            {
+              "name": "Problem",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-problem"
+            },
+            {
+              "name": "ProposedConversion",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-proposedconversion"
+            },
+            {
+              "name": "ProposedTrade",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-proposedtrade"
+            },
+            {
+              "name": "Provenance",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-provenance"
+            },
+            {
+              "name": "RealisedGain",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-realisedgain"
+            },
+            {
+              "name": "RealisedSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-realisedsummary"
+            },
+            {
+              "name": "Rebalance",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalance"
+            },
+            {
+              "name": "RebalanceContext",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancecontext"
+            },
+            {
+              "name": "RebalanceEstimates",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalanceestimates"
+            },
+            {
+              "name": "RebalanceOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalanceoptions"
+            },
+            {
+              "name": "RebalanceReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancereport"
+            },
+            {
+              "name": "RebalanceResults",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalanceresults"
+            },
+            {
+              "name": "RebalanceSchedule",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalanceschedule"
+            },
+            {
+              "name": "RebalanceSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancesummary"
+            },
+            {
+              "name": "Rebalancing",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancing"
+            },
+            {
+              "name": "RelativeStatistics",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-relativestatistics"
+            },
+            {
+              "name": "ReportBenchmark",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-reportbenchmark"
+            },
+            {
+              "name": "ReportKind",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-reportkind"
+            },
+            {
+              "name": "ReportOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-reportoptions"
+            },
+            {
+              "name": "ReportTable",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-reporttable"
+            },
+            {
+              "name": "ResampledSolution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-resampledsolution"
+            },
+            {
+              "name": "Resampling",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-resampling"
+            },
+            {
+              "name": "ResamplingSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-resamplingsummary"
+            },
+            {
+              "name": "ReturnUncertainty",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-returnuncertainty"
+            },
+            {
+              "name": "ReturnsTable",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-returnstable"
+            },
+            {
+              "name": "RiskContribution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-riskcontribution"
+            },
+            {
+              "name": "RiskDecomposition",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-riskdecomposition"
+            },
+            {
+              "name": "RiskReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-riskreport"
+            },
+            {
+              "name": "RiskReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-riskreturn"
+            },
+            {
+              "name": "Rule",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-rule"
+            },
+            {
+              "name": "RuleResult",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-ruleresult"
+            },
+            {
+              "name": "RuleValue",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-rulevalue"
+            },
+            {
+              "name": "Run",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-run"
+            },
+            {
+              "name": "RunReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-runreport"
+            },
+            {
+              "name": "SamplePath",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-samplepath"
+            },
+            {
+              "name": "ScenarioDefinition",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariodefinition"
+            },
+            {
+              "name": "ScenarioOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariooptions"
+            },
+            {
+              "name": "ScenarioOutcome",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariooutcome"
+            },
+            {
+              "name": "ScenarioPath",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariopath"
+            },
+            {
+              "name": "ScenarioResult",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenarioresult"
+            },
+            {
+              "name": "ScenarioRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariorisk"
+            },
+            {
+              "name": "ScenarioRiskModel",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenarioriskmodel"
+            },
+            {
+              "name": "ScenarioSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariosummary"
+            },
+            {
+              "name": "ScenariosReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-scenariosreport"
+            },
+            {
+              "name": "SchemeContributions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-schemecontributions"
+            },
+            {
+              "name": "SchemeImpact",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-schemeimpact"
+            },
+            {
+              "name": "SchemePerformance",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-schemeperformance"
+            },
+            {
+              "name": "SchemeRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-schemerisk"
+            },
+            {
+              "name": "Screen",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screen"
+            },
+            {
+              "name": "ScreenColumn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screencolumn"
+            },
+            {
+              "name": "ScreenContext",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screencontext"
+            },
+            {
+              "name": "ScreenExceptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screenexceptions"
+            },
+            {
+              "name": "ScreenMatch",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screenmatch"
+            },
+            {
+              "name": "ScreenOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screenoptions"
+            },
+            {
+              "name": "ScreenReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screenreport"
+            },
+            {
+              "name": "ScreenResults",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-screenresults"
+            },
+            {
+              "name": "ScreenStatus",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-screenstatus"
+            },
+            {
+              "name": "SecurityScreen",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-securityscreen"
+            },
+            {
+              "name": "SecuritySeries",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-securityseries"
+            },
+            {
+              "name": "Segment",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-segment"
+            },
+            {
+              "name": "SegmentEffects",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-segmenteffects"
+            },
+            {
+              "name": "Series",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-series"
+            },
+            {
+              "name": "Settings",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-settings"
+            },
+            {
+              "name": "Severity",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-severity"
+            },
+            {
+              "name": "ShockSource",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-shocksource"
+            },
+            {
+              "name": "Shocks",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-shocks"
+            },
+            {
+              "name": "ShortfallDecomposition",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-shortfalldecomposition"
+            },
+            {
+              "name": "ShortfallFigure",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-shortfallfigure"
+            },
+            {
+              "name": "Side",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-side"
+            },
+            {
+              "name": "Slice",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-slice"
+            },
+            {
+              "name": "Solution",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-solution"
+            },
+            {
+              "name": "SolveMethod",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-solvemethod"
+            },
+            {
+              "name": "SolveStatus",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-solvestatus"
+            },
+            {
+              "name": "Sort",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-sort"
+            },
+            {
+              "name": "Source",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-source"
+            },
+            {
+              "name": "Statistics",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-statistics"
+            },
+            {
+              "name": "StatisticsOptions",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-statisticsoptions"
+            },
+            {
+              "name": "Status",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-status"
+            },
+            {
+              "name": "Strategy",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-strategy"
+            },
+            {
+              "name": "StrategyReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-strategyreport"
+            },
+            {
+              "name": "StrategyResult",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-strategyresult"
+            },
+            {
+              "name": "StripPoint",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-strippoint"
+            },
+            {
+              "name": "TailMethod",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-tailmethod"
+            },
+            {
+              "name": "TailRisk",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-tailrisk"
+            },
+            {
+              "name": "TailRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-tailrow"
+            },
+            {
+              "name": "TaxRates",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-taxrates"
+            },
+            {
+              "name": "ThresholdStrip",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-thresholdstrip"
+            },
+            {
+              "name": "TimeSeries",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-timeseries"
+            },
+            {
+              "name": "TrackingErrorLimit",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-trackingerrorlimit"
+            },
+            {
+              "name": "Trade",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-trade"
+            },
+            {
+              "name": "TradeLimits",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-tradelimits"
+            },
+            {
+              "name": "TradeRow",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-traderow"
+            },
+            {
+              "name": "TradesSummary",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-tradessummary"
+            },
+            {
+              "name": "Transaction",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-transaction"
+            },
+            {
+              "name": "TransactionId",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-transactionid"
+            },
+            {
+              "name": "Turnover",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-turnover"
+            },
+            {
+              "name": "Unit",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-unit"
+            },
+            {
+              "name": "Validation",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-validation"
+            },
+            {
+              "name": "ValidationReport",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-validationreport"
+            },
+            {
+              "name": "Valuation",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-valuation"
+            },
+            {
+              "name": "ValueSeries",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-valueseries"
+            },
+            {
+              "name": "View",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-view"
+            },
+            {
+              "name": "ViewUncertainty",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-viewuncertainty"
+            },
+            {
+              "name": "WeightChange",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-weightchange"
+            },
+            {
+              "name": "WeightsAt",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-weightsat"
+            },
+            {
+              "name": "WhatIf",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-whatif"
+            },
+            {
+              "name": "YearReturn",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-yearreturn"
+            },
+            {
+              "name": "Assets",
+              "kind": "class",
+              "module": "finalytics",
+              "anchor": "finalytics-assets"
+            },
+            {
+              "name": "MarketData",
+              "kind": "class",
+              "module": "finalytics",
+              "anchor": "finalytics-marketdata"
+            },
+            {
+              "name": "Performance",
+              "kind": "class",
+              "module": "finalytics",
+              "anchor": "finalytics-performance"
+            },
+            {
+              "name": "Portfolio",
+              "kind": "class",
+              "module": "finalytics",
+              "anchor": "finalytics-portfolio"
+            },
+            {
+              "name": "Universe",
+              "kind": "class",
+              "module": "finalytics",
+              "anchor": "finalytics-universe"
+            },
+            {
+              "name": "blackLitterman",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-blacklitterman"
+            },
+            {
+              "name": "brinsonFachler",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-brinsonfachler"
+            },
+            {
+              "name": "correlation",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-correlation"
+            },
+            {
+              "name": "covariance",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-covariance"
+            },
+            {
+              "name": "datasets",
+              "kind": "class",
+              "module": "finalytics",
+              "anchor": "finalytics-datasets"
+            },
+            {
+              "name": "drawdownSeries",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-drawdownseries"
+            },
+            {
+              "name": "drawdowns",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-drawdowns"
+            },
+            {
+              "name": "factorModel",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-factormodel"
+            },
+            {
+              "name": "factorRisk",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-factorrisk"
+            },
+            {
+              "name": "factorTrackingError",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-factortrackingerror"
+            },
+            {
+              "name": "frontier",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-frontier"
+            },
+            {
+              "name": "fundamentalModel",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-fundamentalmodel"
+            },
+            {
+              "name": "impliedCovariance",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-impliedcovariance"
+            },
+            {
+              "name": "impliedRiskAversion",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-impliedriskaversion"
+            },
+            {
+              "name": "karnoskySinger",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-karnoskysinger"
+            },
+            {
+              "name": "methods",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-methods"
+            },
+            {
+              "name": "normalCdf",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-normalcdf"
+            },
+            {
+              "name": "normalPdf",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-normalpdf"
+            },
+            {
+              "name": "normalQuantile",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-normalquantile"
+            },
+            {
+              "name": "readDocument",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-readdocument"
+            },
+            {
+              "name": "rebalanceTransactions",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-rebalancetransactions"
+            },
+            {
+              "name": "regressionModel",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-regressionmodel"
+            },
+            {
+              "name": "relativeStatistics",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-relativestatistics"
+            },
+            {
+              "name": "reportHtml",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-reporthtml"
+            },
+            {
+              "name": "reportTables",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-reporttables"
+            },
+            {
+              "name": "reportText",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-reporttext"
+            },
+            {
+              "name": "resampled",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-resampled"
+            },
+            {
+              "name": "resultsText",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-resultstext"
+            },
+            {
+              "name": "riskDecomposition",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-riskdecomposition"
+            },
+            {
+              "name": "rollingRelativeStatistics",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-rollingrelativestatistics"
+            },
+            {
+              "name": "rollingStatistics",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-rollingstatistics"
+            },
+            {
+              "name": "rollingTailRisk",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-rollingtailrisk"
+            },
+            {
+              "name": "shortfallDecomposition",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-shortfalldecomposition"
+            },
+            {
+              "name": "solve",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-solve"
+            },
+            {
+              "name": "statisticalModel",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-statisticalmodel"
+            },
+            {
+              "name": "statistics",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-statistics"
+            },
+            {
+              "name": "stressedCovariance",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-stressedcovariance"
+            },
+            {
+              "name": "tailRisk",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-tailrisk"
+            },
+            {
+              "name": "trackingErrorDecomposition",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-trackingerrordecomposition"
+            },
+            {
+              "name": "validatePortfolio",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-validateportfolio"
+            },
+            {
+              "name": "version",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-version"
+            },
+            {
+              "name": "writeDocument",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-writedocument"
+            },
+            {
+              "name": "InitInput",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-initinput"
+            },
+            {
+              "name": "InitOutput",
+              "kind": "interface",
+              "module": "finalytics",
+              "anchor": "finalytics-initoutput"
+            },
+            {
+              "name": "SyncInitInput",
+              "kind": "type",
+              "module": "finalytics",
+              "anchor": "finalytics-syncinitinput"
+            },
+            {
+              "name": "initSync",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-initsync"
+            },
+            {
+              "name": "init",
+              "kind": "function",
+              "module": "finalytics",
+              "anchor": "finalytics-init"
+            }
+          ]
+        },
+        {
+          "module": "finalytics/client.js",
+          "source": "bindings/wasm/pkg/client.d.ts",
+          "symbols": [
+            {
+              "name": "WorkerLike",
+              "kind": "interface",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-workerlike"
+            },
+            {
+              "name": "RemoteObject",
+              "kind": "interface",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-remoteobject"
+            },
+            {
+              "name": "RemotePortfolio",
+              "kind": "type",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-remoteportfolio"
+            },
+            {
+              "name": "RemoteAssets",
+              "kind": "type",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-remoteassets"
+            },
+            {
+              "name": "RemoteUniverse",
+              "kind": "type",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-remoteuniverse"
+            },
+            {
+              "name": "RemotePerformance",
+              "kind": "type",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-remoteperformance"
+            },
+            {
+              "name": "RemoteMarketData",
+              "kind": "type",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-remotemarketdata"
+            },
+            {
+              "name": "Engine",
+              "kind": "interface",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-engine"
+            },
+            {
+              "name": "createEngine",
+              "kind": "function",
+              "module": "finalytics/client.js",
+              "anchor": "finalytics-client-js-createengine"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

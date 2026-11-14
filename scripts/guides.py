@@ -446,11 +446,14 @@ def main() -> int:
     if args.record and set(languages) != set(LANGUAGES):
         parser.error("--record runs every language, so that the output recorded is theirs")
 
+    from reference_docs import sync as sync_reference_docs
+
     found = examples()
     all_pages = pages()
     if args.page and args.page not in {e.page for e in found.values()}:
         parser.error(f"no page {args.page!r} has examples in docs/examples")
-    problems = check_layout(found, all_pages)
+    problems = sync_reference_docs(write=args.record)
+    problems += check_layout(found, all_pages)
     names = [e.cargo_name for e in found.values() if "rust" in e.files]
     for name in sorted({n for n in names if names.count(n) > 1}):
         problems.append(f"two Rust examples would both be the program {name}")

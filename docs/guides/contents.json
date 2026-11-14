@@ -96,6 +96,15 @@
         "run-off-main-thread",
         "work-with-pandas"
       ]
+    },
+    {
+      "title": "Reference",
+      "folder": "reference",
+      "pages": [
+        "api-reference",
+        "methods-and-validation",
+        "releases-and-migration"
+      ]
     }
   ]
 }
