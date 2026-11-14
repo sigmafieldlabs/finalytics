@@ -4,9 +4,8 @@ fn main() -> Result<()> {
     let covariance = risk::Matrix::new(
         vec!["equity".into(), "credit".into(), "bonds".into()],
         vec![
-            0.0400, 0.0060, 0.0020,
-            0.0060, 0.0144, 0.0015,
-            0.0020, 0.0015, 0.0036,
+            0.0400, 0.0060, 0.0020, 0.0060, 0.0144, 0.0015, 0.0020, 0.0015,
+            0.0036,
         ],
     )?;
     let mut constraints = opt::Constraints::default();
@@ -24,9 +23,6 @@ fn main() -> Result<()> {
     for (label, weight) in solution.labels.iter().zip(weights) {
         println!("{}: {:.6}", label, weight);
     }
-    println!(
-        "Largest violation: {:.9}",
-        solution.max_violation.unwrap(),
-    );
+    println!("Largest violation: {:.9}", solution.max_violation.unwrap(),);
     Ok(())
 }

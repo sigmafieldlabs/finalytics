@@ -12,9 +12,8 @@ fn main() -> Result<()> {
         "2026-01-02,500,98\n",
         "2026-01-05,505,98.2\n",
     );
-    let portfolio = Portfolio::from_csv(
-        &PortfolioCsv::new(transactions).prices(prices),
-    )?;
+    let portfolio =
+        Portfolio::from_csv(&PortfolioCsv::new(transactions).prices(prices))?;
     println!("Base currency: {}", portfolio.base_currency());
     println!("Value: {}", portfolio.valuation()?.total_base);
     Ok(())

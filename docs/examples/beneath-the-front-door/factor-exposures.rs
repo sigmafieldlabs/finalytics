@@ -18,8 +18,8 @@ fn main() -> Result<()> {
         max: 0.6,
         benchmark: None,
     }];
-    let problem = opt::Problem::from_factor_model(model)
-        .with_constraints(constraints);
+    let problem =
+        opt::Problem::from_factor_model(model).with_constraints(constraints);
     let solution = problem.solve(&opt::Objective::MinimumVariance)?;
     println!("Status: {}", solution.status);
     let weights = solution.weights.as_ref().unwrap();

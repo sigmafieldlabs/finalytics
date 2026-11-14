@@ -1,4 +1,7 @@
-use finalytics::{performance::{FlowTiming, Performance, Period}, prelude::*};
+use finalytics::{
+    performance::{FlowTiming, Performance, Period},
+    prelude::*,
+};
 
 fn main() -> Result<()> {
     let performance = Performance::from_parts(

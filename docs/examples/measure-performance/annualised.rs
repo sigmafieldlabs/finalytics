@@ -1,4 +1,7 @@
-use finalytics::{performance::{FlowTiming, Performance, Period}, prelude::*};
+use finalytics::{
+    performance::{FlowTiming, Performance, Period},
+    prelude::*,
+};
 
 fn main() -> Result<()> {
     let performance = Performance::from_parts(
@@ -7,7 +10,9 @@ fn main() -> Result<()> {
         vec![0.0, 0.0],
         FlowTiming::StartOfDay,
     )?;
-    let found = performance.period(Period::Years { years: 3 }, None).unwrap();
+    let found = performance
+        .period(Period::Years { years: 3 }, None)
+        .unwrap();
     println!("Cumulative: {:.6}", found.cumulative);
     println!("Annualised: {:.6}", found.annualised.unwrap());
     let short = datasets::portfolio()

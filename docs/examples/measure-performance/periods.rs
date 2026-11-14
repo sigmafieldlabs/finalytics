@@ -11,10 +11,9 @@ fn main() -> Result<()> {
     ] {
         match performance.period(period, None) {
             None => println!("{} insufficient history", name),
-            Some(found) => println!(
-                "{} {} {:.6}",
-                name, found.start, found.cumulative
-            ),
+            Some(found) => {
+                println!("{} {} {:.6}", name, found.start, found.cumulative)
+            }
         }
     }
     Ok(())

@@ -6,8 +6,10 @@ fn main() -> Result<()> {
     for position in holdings.positions() {
         println!(
             "{} {} {} {}",
-            position.account, position.instrument,
-            position.quantity, position.cost_base
+            position.account,
+            position.instrument,
+            position.quantity,
+            position.cost_base
         );
     }
     Ok(())

@@ -1,5 +1,5 @@
 use finalytics::{
-    performance::{brinson_fachler, AttributionPeriod, Linking, Segment},
+    performance::{AttributionPeriod, Linking, Segment, brinson_fachler},
     prelude::*,
 };
 
@@ -27,8 +27,10 @@ fn main() -> Result<()> {
     for segment in result.segments {
         println!(
             "{} {:.6} {:.6} {:.6}",
-            segment.name, segment.allocation,
-            segment.selection, segment.interaction
+            segment.name,
+            segment.allocation,
+            segment.selection,
+            segment.interaction
         );
     }
     Ok(())

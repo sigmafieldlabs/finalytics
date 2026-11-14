@@ -8,7 +8,7 @@ fn main() -> Result<()> {
         "AA,,10,100,,,,,,,\nt3,2026-06-01,merger,AAA,BBB,,,,,0.5,,10",
         ",,\n",
     );
-    let portfolio = Portfolio::from_csv(&PortfolioCsv::new(&transactions))?;
+    let portfolio = Portfolio::from_csv(&PortfolioCsv::new(transactions))?;
     for lot in portfolio.books().holdings().lots() {
         println!(
             "{} {} {} {}",

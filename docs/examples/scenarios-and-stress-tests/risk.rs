@@ -13,12 +13,9 @@ fn main() -> Result<()> {
     let covariance = risk::Matrix::new(
         labels,
         vec![
-            0.0400, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0625, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0036, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0225, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0400, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0001,
+            0.0400, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0625, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0036, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0225, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0400, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0001,
         ],
     )?;
     let mut model = risk::ScenarioRiskModel::from_covariance(covariance);
@@ -49,8 +46,7 @@ fn main() -> Result<()> {
         println!("{}: volatility={:.6}", name, scenario_risk.volatility);
         println!(
             "{}: value at risk={:.2}",
-            name,
-            scenario_risk.value_at_risk_base,
+            name, scenario_risk.value_at_risk_base,
         );
     }
     Ok(())

@@ -1,4 +1,4 @@
-use finalytics::{datasets, prelude::*, risk, Currency};
+use finalytics::{Currency, datasets, prelude::*, risk};
 
 fn main() -> Result<()> {
     let portfolio = datasets::portfolio();

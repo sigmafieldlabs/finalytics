@@ -8,7 +8,7 @@ fn main() -> Result<()> {
     let result = assets
         .optimise(Method::HierarchicalRiskParity)
         .linkage(Linkage::Ward)
-    .build()?;
+        .build()?;
     println!("{result}");
     result.show()?;
     Ok(())

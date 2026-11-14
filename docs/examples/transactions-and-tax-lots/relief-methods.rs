@@ -8,9 +8,7 @@ fn main() -> Result<()> {
         "t3,main,2026-03-02,buy,AAPL,10,200,5,,,,\n",
     );
     for method in ["fifo", "lifo", "highest_cost", "lowest_cost"] {
-        let sale = format!(
-            "t4,main,2026-06-01,sell,AAPL,5,190,0,,,{method},"
-        );
+        let sale = format!("t4,main,2026-06-01,sell,AAPL,5,190,0,,,{method},");
         let mut lines = base.lines();
         let header = lines.next().unwrap();
         let transactions = format!(
@@ -20,9 +18,13 @@ fn main() -> Result<()> {
             lines.collect::<Vec<_>>().join("\n")
         );
         let portfolio = Portfolio::from_csv(&PortfolioCsv::new(&transactions))?;
-        let lots = portfolio.books().realised_gains().iter()
+        let lots = portfolio
+            .books()
+            .realised_gains()
+            .iter()
             .map(|gain| gain.lot.to_string())
-            .collect::<Vec<_>>().join(",");
+            .collect::<Vec<_>>()
+            .join(",");
         println!("{} {}", method, lots);
     }
     Ok(())

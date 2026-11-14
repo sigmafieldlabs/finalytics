@@ -9,6 +9,10 @@ fn main() -> Result<()> {
         .build()?;
     println!("Expected return: {:.6}", result.results.expected_return);
     println!("Volatility: {:.6}", result.results.volatility);
-    println!("Sharpe ratio: {:.6}", result.results.sharpe_ratio.unwrap());
+    let sharpe = result
+        .results
+        .sharpe_ratio
+        .expect("Sharpe ratio is defined");
+    println!("Sharpe ratio: {:.6}", sharpe);
     Ok(())
 }

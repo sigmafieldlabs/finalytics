@@ -13,6 +13,10 @@ fn main() -> Result<()> {
         portfolio.base_currency(),
         portfolio.data().transactions.len()
     );
-    println!("Universe: {} {}", universe.len(), universe.benchmark().unwrap());
+    println!(
+        "Universe: {} {}",
+        universe.len(),
+        universe.benchmark().unwrap()
+    );
     Ok(())
 }

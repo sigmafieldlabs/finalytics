@@ -8,8 +8,8 @@ fn main() -> Result<()> {
     let result = assets
         .optimise(Method::MinimumCvar)
         .confidence(0.95)
-    .target(0.06)
-    .max_weight(0.5)
+        .target(0.06)
+        .max_weight(0.5)
         .build()?;
     println!("{result}");
     result.show()?;

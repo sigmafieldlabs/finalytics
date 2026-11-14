@@ -14,8 +14,7 @@ fn main() -> Result<()> {
     for point in frontier {
         println!(
             "return={:.6}, volatility={:.6}",
-            point.expected_return,
-            point.volatility,
+            point.expected_return, point.volatility,
         );
         for (asset, weight) in &point.weights {
             println!("  {}: {:.6}", asset, weight);

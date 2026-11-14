@@ -8,7 +8,7 @@ fn main() -> Result<()> {
     let result = assets
         .optimise(Method::MinimumCdar)
         .confidence(0.95)
-    .max_weight(0.5)
+        .max_weight(0.5)
         .build()?;
     println!("{result}");
     result.show()?;

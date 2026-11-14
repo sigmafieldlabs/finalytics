@@ -6,9 +6,8 @@ fn main() -> Result<()> {
     let covariance = risk::Matrix::new(
         vec!["us equity".into(), "intl equity".into(), "bonds".into()],
         vec![
-            0.0256, 0.02304, 0.0008,
-            0.02304, 0.0324, 0.0009,
-            0.0008, 0.0009, 0.0025,
+            0.0256, 0.02304, 0.0008, 0.02304, 0.0324, 0.0009, 0.0008, 0.0009,
+            0.0025,
         ],
     )?;
     let prior = opt::Prior::Market {
@@ -23,14 +22,12 @@ fn main() -> Result<()> {
             ("us equity".into(), -1.0),
         ]),
         expected_return: 0.02,
-        uncertainty: opt::ViewUncertainty::Confidence {
-            confidence: 0.6,
-        },
+        uncertainty: opt::ViewUncertainty::Confidence { confidence: 0.6 },
     });
     let estimate = model.estimate()?;
-    let solution = estimate.problem().solve(
-        &opt::Objective::MeanVariance { risk_aversion: 2.5 },
-    )?;
+    let solution = estimate
+        .problem()
+        .solve(&opt::Objective::MeanVariance { risk_aversion: 2.5 })?;
     println!("Status: {}", solution.status);
     let weights = solution.weights.as_ref().unwrap();
     for (label, weight) in solution.labels.iter().zip(weights) {

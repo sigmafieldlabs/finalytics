@@ -14,11 +14,7 @@ fn main() -> Result<()> {
     let weights = [0.4, 0.3, 0.3];
     let benchmark = [0.3, 0.3, 0.4];
     let portfolio = risk::factor_risk(&weights, &model)?;
-    let active = risk::factor_tracking_error(
-        &weights,
-        &benchmark,
-        &model,
-    )?;
+    let active = risk::factor_tracking_error(&weights, &benchmark, &model)?;
     for (name, result) in [("Portfolio", portfolio), ("Active", active)] {
         println!("{}: volatility={:.6}", name, result.volatility);
         for item in &result.factors {

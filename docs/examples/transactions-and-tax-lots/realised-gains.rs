@@ -8,12 +8,15 @@ fn main() -> Result<()> {
         "t3,main,2026-03-02,buy,AAPL,10,200,5,,,,\nt4,main,2026-06-0",
         "1,sell,AAPL,12,190,6,,,highest_cost,\n",
     );
-    let portfolio = Portfolio::from_csv(&PortfolioCsv::new(&transactions))?;
+    let portfolio = Portfolio::from_csv(&PortfolioCsv::new(transactions))?;
     for gain in portfolio.books().realised_gains() {
         println!(
             "{} {} {} {} {}",
-            gain.lot, gain.quantity, gain.cost_local,
-            gain.proceeds_local, gain.gain_local
+            gain.lot,
+            gain.quantity,
+            gain.cost_local,
+            gain.proceeds_local,
+            gain.gain_local
         );
     }
     Ok(())

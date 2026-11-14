@@ -17,7 +17,8 @@ fn main() -> Result<()> {
     for account in household.accounts {
         println!(
             "{} {:.6} {:.6}",
-            account.name, account.time_weighted.unwrap(),
+            account.name,
+            account.time_weighted.unwrap(),
             account.contribution
         );
     }

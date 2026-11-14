@@ -1,4 +1,7 @@
-use finalytics::{prelude::*, risk::{StatisticsOptions, relative_statistics}};
+use finalytics::{
+    prelude::*,
+    risk::{StatisticsOptions, relative_statistics},
+};
 
 fn main() -> Result<()> {
     let returns = [0.020, -0.010, 0.015, 0.005, -0.004, 0.012];

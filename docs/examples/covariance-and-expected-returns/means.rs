@@ -12,10 +12,7 @@ fn main() -> Result<()> {
             .mean_returns(method)
             .build()?;
         println!("{}", name);
-        for (label, value) in assets
-            .labels()
-            .iter()
-            .zip(assets.mean_returns())
+        for (label, value) in assets.labels().iter().zip(assets.mean_returns())
         {
             println!("  {}: {:.6}", label, value);
         }

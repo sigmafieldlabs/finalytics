@@ -11,9 +11,8 @@ fn main() -> Result<()> {
         "2026-01-02,VOO,500\n",
         "2026-01-05,VOO,505\n",
     );
-    let portfolio = Portfolio::from_csv(
-        &PortfolioCsv::new(transactions).prices(prices),
-    )?;
+    let portfolio =
+        Portfolio::from_csv(&PortfolioCsv::new(transactions).prices(prices))?;
     println!("{}", portfolio.valuation()?.total_base);
     Ok(())
 }

@@ -4,9 +4,8 @@ fn main() -> Result<()> {
     let covariance = risk::Matrix::new(
         vec!["equity".into(), "credit".into(), "bonds".into()],
         vec![
-            0.0400, 0.0100, 0.0000,
-            0.0100, 0.0900, 0.0000,
-            0.0000, 0.0000, 0.0025,
+            0.0400, 0.0100, 0.0000, 0.0100, 0.0900, 0.0000, 0.0000, 0.0000,
+            0.0025,
         ],
     )?;
     let result = covariance.correlation()?;

@@ -14,9 +14,9 @@ fn main() -> Result<()> {
         println!(
             "{}: marginal={:.6} component={:.6} share={:.6}",
             item.label,
-            item.marginal.unwrap(),
+            item.marginal.expect("decomposition includes marginal risk"),
             item.component,
-            item.share.unwrap(),
+            item.share.expect("decomposition includes a risk share"),
         );
     }
     Ok(())
