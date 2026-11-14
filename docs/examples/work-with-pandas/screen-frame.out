@@ -1,0 +1,12 @@
+      matched  rank  return_1y  sharpe_ratio                  sector
+id                                                                  
+PEMD     True    10   2.115801      2.454478              Technology
+HALW     True     4   1.515944      2.792876             Health Care
+IVOD     True     5   1.862751      2.702759             Health Care
+YARD     True     1   1.540884      3.160335             Health Care
+NORC     True     8   1.610876      2.535291  Consumer Discretionary
+FALS     True     9   1.833775      2.508822  Consumer Discretionary
+NORD     True     7   1.244461      2.537064             Industrials
+DUNC     True     6   0.992768      2.551320  Communication Services
+PEMC     True     2   0.886489      2.891251        Consumer Staples
+ASHS     True     3   0.779995      2.808649        Consumer Staples

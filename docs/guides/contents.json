@@ -67,6 +67,35 @@
         "evaluate-given-weights",
         "beneath-the-front-door"
       ]
+    },
+    {
+      "title": "Test and plan",
+      "folder": "test-and-plan",
+      "pages": [
+        "backtest-a-strategy",
+        "compare-strategies-honestly",
+        "rebalance-a-real-portfolio",
+        "plan-for-a-goal"
+      ]
+    },
+    {
+      "title": "Screen",
+      "folder": "screen",
+      "pages": [
+        "screen-a-universe",
+        "formulas-and-technicals",
+        "from-screen-to-portfolio"
+      ]
+    },
+    {
+      "title": "Reports",
+      "folder": "reports",
+      "pages": [
+        "reports",
+        "report-options",
+        "run-off-main-thread",
+        "work-with-pandas"
+      ]
     }
   ]
 }

@@ -1,0 +1,85 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 30 Oct 2026
+Utility income
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+12 of 200 securities pass both rules. The 10 with the highest 1-year Sharpe
+ratio are shown.
+
+  Securities 200   ·   Matches 10   ·   Rules 2   ·   Prices to 30 Oct 2026
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                             ██████████████████████████████  200
+  With a price in the 5 days to 30 Oct 2026  ██████████████████████████████  199
+  Sector is Utilities                        ██                               12
+                                             12 pass this rule on its own
+  Dividend yield above 3%                    ██                               12
+                                             51 pass this rule on its own
+  Top 10 by 1-year Sharpe ratio              ██                               10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by 1-year Sharpe ratio
+───────────────────────────────
+                         Sharpe  Dividend
+   #  Ticker  Sector     1-year     yield
+   1  OSBS    Utilities    1.49      4.2%
+   2  ELMH    Utilities    1.37      3.2%◆
+   3  TORD    Utilities    0.95      4.1%
+   4  CALS    Utilities    0.84      3.3%◆
+   5  ROSH    Utilities    0.48      3.7%
+   6  FALC    Utilities    0.08      4.4%
+   7  GARB    Utilities    0.07      3.4%
+   8  DUNM    Utilities   −0.13      3.8%
+   9  ULVM    Utilities   −0.48      3.7%
+  10  WEXM    Utilities   −0.62      4.8%
+
+  ◆ close to a rule's limit: within 10% of it (for a limit of 0, within 10% of
+  a typical value).
+  Also pass every rule, outside the top 10: NORB (−1.10), MARH (−2.08).
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  ALDD  In Consumer Staples, a sector the rules do not include
+  ALDG  In Materials, a sector the rules do not include
+  ALDM  In Consumer Staples, a sector the rules do not include
+  ASHW  In Financials, a sector the rules do not include
+  BRAC  In Materials, a sector the rules do not include
+  CALH  In Financials, a sector the rules do not include
+  CALM  In Financials, a sector the rules do not include
+  ELMG  In Real Estate, a sector the rules do not include
+  ELMM  In Real Estate, a sector the rules do not include
+  ELMW  In Real Estate, a sector the rules do not include
+  FALD  In Consumer Staples, a sector the rules do not include
+  FALH  In Financials, a sector the rules do not include
+  IVOB  In Real Estate, a sector the rules do not include
+  IVOC  In Energy, a sector the rules do not include
+  IVOH  In Financials, a sector the rules do not include
+  KELH  In Energy, a sector the rules do not include
+  KELM  In Real Estate, a sector the rules do not include
+  KELS  In Consumer Staples, a sector the rules do not include
+  MARB  In Financials, a sector the rules do not include
+  NORS  In Real Estate, a sector the rules do not include
+
+  And 19 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  Dividend yield above 3%                                         51 of 200 pass
+     █    ▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁  ▁▁▁▁▁ ▁▁▁ ▁▁▁▁ ▁▁▁▁▁▁▁▁▁ ▁▁  ▁▁▁  ▁
+  ───────────────────────────────────────────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  −0.2%                                     3%                            5.4%
+
+Data
+────
+  199 of 200 securities have the prices every rule needs. 1 has no price in
+  the 5 days to 30 Oct 2026 and is left out: NORH. 42 closes are not numbers,
+  and their dates are left out: YARW, OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs d43a67febe31
+

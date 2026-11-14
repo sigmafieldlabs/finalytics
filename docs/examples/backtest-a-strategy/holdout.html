@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Finalytics 1.0.0-rc.7"><title>Maximum Sharpe</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
+--grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
+--muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec;
+--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#fff;--on-s8:#000;
+--on-muted-fill:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d0d0d;
+--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;
+--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;--muted-fill:#52514e;--pos:#3987e5;
+--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;
+--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;
+--muted-fill:#52514e;--pos:#3987e5;--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;
+--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.page{max-width:1000px;margin:0 auto;padding:32px 16px 64px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+border-bottom:1px solid var(--grid);padding-bottom:16px}
+.brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
+.logo img{height:36px;width:auto;display:block;margin-bottom:14px}.lg-dark{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-light{display:none!important}
+:root:not([data-theme="light"]) .lg-dark{display:block!important}}
+:root[data-theme="dark"] .lg-light{display:none!important}:root[data-theme="dark"] .lg-dark{display:block!important}
+h1{margin:4px 0 0;font-size:28px;font-weight:600}.meta{color:var(--ink2);font-size:14px;text-align:right}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 8px}
+nav a{color:var(--ink2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:999px;
+border:1px solid var(--grid)}nav a:hover{color:var(--ink);background:var(--surface)}
+section{margin-top:40px}.sh h2{margin:0;font-size:22px;font-weight:600}.sh p{margin:2px 0 12px;color:var(--ink2)}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px 20px;margin:12px 0}
+.card h3{margin:0 0 10px;font-size:15px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin:0}
+@media (max-width:720px){.two{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px}
+.tl{font-size:13px;color:var(--ink2)}.tv{font-size:22px;font-weight:600;margin-top:2px}
+.tv.long{font-size:18px}
+.ts{font-size:12.5px;color:var(--muted);margin-top:2px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.grid{stroke:var(--grid);stroke-width:1}.base{stroke:var(--axis);stroke-width:1}
+.tick{fill:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.lab{fill:var(--ink2);font-size:13px}.val,.end{fill:var(--ink);font-size:12.5px;font-variant-numeric:tabular-nums}
+.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dot{stroke:var(--surface);stroke-width:2}.hit{fill:transparent}.hit:hover{fill:var(--ink);opacity:.04}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:0 0 8px}
+.key{display:inline-flex;align-items:center;gap:6px}.key i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.segbar{display:flex;gap:2px;height:28px;margin:4px 0 10px}
+.seg{border-radius:4px;display:flex;align-items:center;padding-left:8px;min-width:2px;color:#fff;
+font-size:12.5px;font-weight:600;overflow:hidden;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{font-weight:600;color:var(--ink2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid)}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}.r{text-align:right}
+.heat{table-layout:fixed}.heat td{text-align:center;border:2px solid var(--surface);border-radius:4px;padding:7px 2px}
+.heat th{text-align:center;border-bottom:0}.heat tbody th{text-align:left}.heat td.na{background:transparent}
+.heat .yr{font-weight:600;text-align:right}.heat td.diag{color:var(--muted)}
+.wide td{font-size:13px}.heat{min-width:520px}
+.tw{overflow-x:auto}
+/* A shadow at an edge with more to scroll to: the covers scroll with the content, the shadows
+stay at the edges. */
+.tw{background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll}
+@media (max-width:720px){svg.chart{min-width:640px}
+.card{overflow-x:auto;background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll,var(--surface)}}.note{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.prov{color:var(--muted);font-size:12px;margin-top:8px}code{font-size:12px}
+.foot{margin-top:48px;border-top:1px solid var(--grid);padding-top:16px;color:var(--muted);font-size:12.5px}
+@media print{nav{display:none}html,body{background:#fff}.foot{break-before:avoid;margin-top:16px}section{break-before:page}section:first-of-type{break-before:auto}
+.card,.tile{break-inside:avoid}}
+.cmp td:first-child{white-space:nowrap}.heat thead th{font-size:12.5px;vertical-align:bottom;line-height:1.25}
+table b{font-weight:650}.hollow{background:var(--surface)!important;box-shadow:inset 0 0 0 2px var(--ink2)}
+</style></head>
+<body><div class="page">
+<div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,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"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAVAAAABICAMAAACXxF2pAAAAkFBMVEVcym9ly29irmZjxmxgwWlV/6patGNVqqpgvmgAfwBgv2l06YD//wAAAAD///////9dvGZixWtdu2b///9du2b///////////////////9du2ZdvGVVqlVcuWUA/wB//39cuWU/v39/f39YuWdgvmg/vz9q1XVV/1Vyu3JixGtjx2YA//9cul1hxGsAf39XxW7XfgUtAAAAMHRSTlMZ9R1mkwNMA64CxP8BAPsE+P2xsNCOM2xQ0o8sA28BAlEEAhT7BP8DCdEMAQyzAgyZ3IhnAAAMmklEQVR42u1ciXaiyhYl6e7b9w2VoqAEQURFY4xJJ///d+8MVVDFYBwwyV3PWr06QRBw5wz77HMwEN1VlLPn6L0Ut3XGCvoAFZFSS/hxW6MA+l+xC0OVi9UNnXEAXYmlClUkFjd0xgEUPT5U4au4RdFRAC3B4zdhGM5uJjoOoI/o8RBE57cgOg6g5PHXzUpyaF3nMl8LaCn2IQGqbzF0FEB/U47XAOpeyE82UHmdy3wtoL9ErsJnDSZ6JWovRfIwsOJRLyMzPutEyK8BtNiRj7+HajPX6mpZSYrpEKCZa12XA1r/meTxFt1+5WILLSjHqyhXQO2LrwJUjmKhJwLac4oz7iRoktHyR1CVj+jxKtLPEEd3wESr1vHdV85w+TiOCb/YXQ6gcEg6vRBWANRc5jhA4ZrT6TRxjsW7SE6+iaC2zJnaIlNao7fnWhG17/2jjbIwvqXtVzLXhuMxskl8AqAT/1gpUrpHeR6gK7JMgHCmVLjcRnOFWSl69uslgP05uq9GSL8I6MTL8DWgZu/D9NI/H5zofEBtyJAn3kXQ1JvIlgqZYwid6zDaqHm+VXrlAFqJnVKQrH6Nk4Ennn81gJqPkorLE9MlgDIZSc4DtKjrTXT2P380BFFaYKaPdZh9XGA8CPfVyzUBFWxYD8nXAiqNhcozAc0J0HCJNdIcszzBianprXTDAqH+eGVAk2wMA70IUDTR7CGbnhtDX7HeZBDz/A546BIkJ6W1Q0dZJ8VD1i/V+IDGDbGHlxM5QgK8CFC8yzPuInDqzYhUkfBO5/AruLxSawwE71XJhGm2UUpHpJs8jQ0op6rjGODRXngZoJfw0F/MPhnQUP/kXyF+vmsF8KGHl8Uew6uOoCoNg3IxIqCtCqVVgsvOtv2vXxgYBnTgxPb3CXM1KQekqt4LdV40Lr8OIalrNQc/37LLkyHuKFety8ryKh1FbKLFVS30cPmCnni4vjnDQgXRzslR5z30YuDVm9sIYmYYzhWKI3pdVIuKTLRg2ZnwRONV9xch6gMqE1jOraUTWqk0qYE3J3QIRtfYUFhTA0y8lSbtwGwAhWvaQ8x2Um/yWfCWMnxFdg42dZN/KYlvlP71pxZQTN+R1kCXomeInxEmJ+T0DPVM3BPhZzzRRKPRAGXW6VqREYmYUjeVf0qxU6amQLeATtqCQOomag/QWjGQrqQQIy7eWWTn4N4LSVNM+XpZQKx+jQQJ2Pw8hISURyqqCSj16CMR7DAIMJ4YRQHtwpL98wE1cacf0KwLqEAmY1ZiYOl8TqfC6gc07gE0HQLU3FifogM7Oi9OCNAnMEOlsd78zzza/oUuX3dACnFPJSknLbMg4GpTklYXWKit5Y+0UPTDNmx9gE7OAHTyIaBZH6DxQ6+F/qYuEigibKEUJPV9UTZjJFETQK3Ts/wMDZOy1UE5HtA45dXmfwkDZzggmHDCCE75Q02SFqBZYlerdveTEpzH299sstJEehf8nBKg3sEG4FS615FG4rEvJhZQ00V6/kMx9O/nCPLQphZFFuX9hskU+Lo2YRT4vn5acOqPije32q9OUtMf+jXL1Jcl+NOwFWHt0ga0eePkAKDd/f5mJ8t3AJ165zGA1i9KCyhXQHq+hSw/jyDLk9D01ChMXIaiYUJickx0tRIsShWuHnUxoGCSHqC2qmbzRONpA9rQwEMWKizXbLbr3b08tAuod53aQmWTCyiGklPnACbUm1jHt1rIVbmu8QxtYgIj1q8rw7ZqFCsAOD/CRj+wUOlbaBPQHuLEsRbzSdEDa8p/2EJb+73Nnlq+x0LtHSV81YxRbu4SLZRz/J3+SXyJSk5drJxY+MSkiqhU6FCnOVApCgZrg+ELnkkdMXFiY+iU19GAplx2yl61FD9X+vApgHr5c2LrNgnpAHmomRThejMnfW7nWZl8QcQ1lpxRY6Lw0kyzmmLlEyb/RwxIHM7yQ4DGxKQ71lJTfKb8nwMoXZWPMG7TVEpPNBuWR1vABiWmbv+YQyUy1TJ02H2IehQ5f/HiTJnp1wt56ACgqRCOb7WsRTqc6tMstG6Ip+ZPTbU8e/w8NLpI3wxOWZEuAsHSOD9HUTROdv6ZoVCsAS4/1KJalVJ2FKBT6W+2dKFp9vDZgCKXzSz1sLsCziwIJEMKsK2682NzkpqhpRSGrolqdn5OS1b1/7gsbdXybVlkyEKHAEXzZG/Pss+NoY1fcGWPgPJsGDq90exJW2o3j3d6e7cWRYUHG0D1ho1VU1oqa0F/Uyep09SmcwF1CvyJnHwuoE7kRj6KkAaiCM2wHZih8npIzXoT+x9ryN6rEo0wJ0Bz+gf/UVraibIsKKMdMXJyWA89DdCmwMfkEJ8GaHwpoA23sMkpMH4KgRNdFsAYDIDEpPZNWopqrYQm9QpiUTmEDv3WKUD9tt6IFto4HXGq0yxUXmyhXsAhvw/Y4+cY9wrxGgyJseVT2ZRN2l8s9TFdzc3WJ7m8tOZJMew0Yi/F5RYqmcjVyUnKYE0er49eoenltZbZZclCe0Vr8a8rAGp0E5tlTwG0JlqXWqhH2jIZLJmcH7/CvtXsUX1ng74KRNkrAMqqmk2xxwPqhr6ziX2rrKBbSYK17ofIRav5qfrt88PVCNJjAtr8KgemPwYAdZLzZcQ+y0znvq6IA7EOZkPrfhapOx1hOQTS3d8h9keI4s9hZ7Due0sQ9cZYv6s3MqCJlOIUQB2ida44MsWeF2vUac2mGdDDijASeihIiaaSHBVqlvOhUdr3VCNmetVmAeDy68Vb/7BYf9s9NUMw0hzN9Z2n5k1lo5P48l3m+GPsS3IGtFqq7iYl2fvmIflu2pbv0ELLRbUYWPsKeyO5cXI7oJMj+2eKtfffWuwDXUumDZ590+Xdcca2wOzIxsJXd+tNa6FtgbmtEbeGGWQtVXuAdgTm5mRDAvO0LTAjoAdWRXW+vkPFREcwQvZM/ow+j7IpjOSU3RK1RVM1FaOPnr9z24NaID0mOk1Tim+wN6HubX205G6u3ZyaDzFJ60WtYDotX8bdtoBmDdHqAIrHptOeN7NLedcxgMb1ix8DCpexKQub9jj+sAntGFm3JFqgw2/CrsO/V9XQSHjP8FDmt4Sn3sFuPw1avDLrHy5PXFm6r0fKZY0HaOKct/1m2e3H9XY9H+RhQH+JqEnxTLA2aqntZF64L8vOI2M+npFqy0/jARr3Nj0PApr6UrXXsxNu3u8AekobeXiREorhEz0fuvUbNlZ6uDZvm2ifw/NQxC8hrmWhcnIKoLIlVftNUXuuHkAbpe4goJBmDwPK9TkkdTBKTfMksKBPglMkP7GGXzcmWpX7sC+ChjN/sozbQHXjt3tRb693tLTtHLNEPcnTXrJzmXqwJ54ktVQddzrYiZkL6rxZdi4kO9eWA9/o4D+ZDLAFFTxlw+MPGsVoTPjzba49EzXPiIZtA51fOPv40Rz9yU/KiKYOaNFUKcSJw2LdYz5ISgsRbfFRhqWpkl5zh5Iq10SNvOyzUNwsi0OPJn7w5KK/2d49/KDj4HXcrR4L9Qcc/Tf3XKPnpQ8AhUbmjxlEx5lV80nehw6pKZqwO88HVmu0xqWXlY5Rnr5wnTbteMGXuPQYcsEtpJlgcYo4fk4tudWbSV9Ypb7jcdp3+NX3wjAxszZfBmi5W2ACp6dttHzkoQiYyN3+xVHVDukt6XdK9DWeUGbti/J7ATppni/5Mgu19AkAe+Xq3looJnok7S/QdKKJ5/K1UfT1XUtk+jaADkzufCKgCwyi2L+D6UbUj//8GyrRiJ5lUn8BZjijD8256m3VmKj+jt9VJG0VfuqTiyMDir0kAw9FSZ7H19Q90aJ6IpEJFZASBqE2G12PPy3K7who5jywO/bj9EcCCr2kLTWYV2SLOJx7x8MmaKI7FJki4puP1kT7RabvAejAwPNnAgozpECfSp52puHczU9ozGMz3wyUKH4a7IVm9bR5VuRRfHtA45G/QyM44dhS8Dw+TzvnOBi+WgOqs5lqCqKVeQACpZNF9R0BdWryLEvlyF+gcTygT5WtnUAYwflc4qUCTTSyDl+Pk+qjZpy+BNJOtSPEV1moM4pnnwwj9UQplx89mUdso+/n8Bc85Xg9QBciCI1sD9NjZWEHJR79iee7cC2r74qhvOI3EAWnv2VlVHyySjZRvfLG7HN1bZFJ/KO+kPUjnwe8miResB7lKCCLchZuo/9TPM8AlIjThqyyJJ6EhKry2cDsx7t4uQF6LHlah2FLl5Pi9Ke/boA6orNy01C569RD5kvKboAeTZxUJH/fvrxxJEBBAMHvc6pu4PWt/wG4UW3J83GtlwAAAABJRU5ErkJggg=="></div>
+<h1>Maximum Sharpe</h1><div class="brand">Backtest report</div></div>
+<div class="meta">In sample Nov 1996 to Oct 2016 · out of sample Nov 2016 to Oct 2026<br>4 assets · monthly · rebalanced quarterly · 10 bp trading costs · against Benchmark</div></div>
+<nav><a href="#b-summary">Summary</a><a href="#b-growth">Growth</a><a href="#b-weights">Weights</a><a href="#b-returns">Returns</a><a href="#b-method">Method</a></nav>
+<section id="b-summary"><header class="sh"><h2>Summary</h2><p>The allocation, and how it did on returns it had not seen</p></header><div class="card"><h3>The allocation</h3><div class="segbar" role="img" aria-label="The allocation"><div class="seg" style="flex:0.4000;background:var(--s1);color:var(--on-s1)" title="US Equity: 40.0%"><span>40%</span></div><div class="seg" style="flex:0.4000;background:var(--s2);color:var(--on-s2)" title="Bonds: 40.0%"><span>40%</span></div><div class="seg" style="flex:0.1208;background:var(--s3);color:var(--on-s3)" title="Real Estate: 12.1%"><span>12%</span></div><div class="seg" style="flex:0.0792;background:var(--s4);color:var(--on-s4)" title="Gold: 7.9%"><span>8%</span></div></div><div class="legend"><span class="key"><i style="background:var(--s1)"></i>US Equity 40.0%</span><span class="key"><i style="background:var(--s2)"></i>Bonds 40.0%</span><span class="key"><i style="background:var(--s3)"></i>Real Estate 12.1%</span><span class="key"><i style="background:var(--s4)"></i>Gold 7.9%</span></div><p class="note">Maximum Sharpe, fitted to the returns from Nov 1996 to Oct 2016. Limits: at most 40% in any asset. Rebalanced quarterly. Benchmark: 60.0% US Equity and 40.0% Bonds, held the same way.</p></div><div class="tiles"><div class="tile"><div class="tl">Return, out of sample</div><div class="tv long">5.9% a year</div><div class="ts">Benchmark 6.0%</div></div><div class="tile"><div class="tl">Volatility</div><div class="tv">9.5%</div><div class="ts">Benchmark 10.6%</div></div><div class="tile"><div class="tl">Sharpe ratio</div><div class="tv">0.39</div><div class="ts">0.61 in sample · Benchmark 0.37</div></div><div class="tile"><div class="tl">Maximum drawdown</div><div class="tv">−21.4%</div><div class="ts">Benchmark −25.0%</div></div><div class="tile"><div class="tl">Tracking error</div><div class="tv">2.5%</div><div class="ts">Information ratio −0.08</div></div></div><div class="card"><h3>Statistics</h3><div class="tw"><table class=""><thead><tr><th></th><th class="r">Maximum Sharpe, in sample</th><th class="r">Maximum Sharpe, out of sample</th><th class="r">Benchmark, in sample</th><th class="r">Benchmark, out of sample</th></tr></thead><tbody><tr><td>Return a year</td><td class="r">7.8%</td><td class="r">5.9%</td><td class="r">8.1%</td><td class="r">6.0%</td></tr><tr><td>Volatility</td><td class="r">9.4%</td><td class="r">9.5%</td><td class="r">10.4%</td><td class="r">10.6%</td></tr><tr><td>Sharpe ratio</td><td class="r">0.61</td><td class="r">0.39</td><td class="r">0.58</td><td class="r">0.37</td></tr><tr><td>Sortino ratio</td><td class="r">1.01</td><td class="r">0.57</td><td class="r">0.98</td><td class="r">0.54</td></tr><tr><td>Maximum drawdown</td><td class="r">−32.4%</td><td class="r">−21.4%</td><td class="r">−36.2%</td><td class="r">−25.0%</td></tr><tr><td>Conditional drawdown at risk, 95%</td><td class="r">−26.8%</td><td class="r">−19.7%</td><td class="r">−29.6%</td><td class="r">−22.8%</td></tr><tr><td>Ulcer index</td><td class="r">8.1%</td><td class="r">8.6%</td><td class="r">9.3%</td><td class="r">10.0%</td></tr><tr><td>Calmar ratio</td><td class="r">0.24</td><td class="r">0.28</td><td class="r">0.22</td><td class="r">0.24</td></tr><tr><td>Best month</td><td class="r">+10.0%</td><td class="r">+7.2%</td><td class="r">+9.4%</td><td class="r">+8.0%</td></tr><tr><td>Worst month</td><td class="r">−7.1%</td><td class="r">−8.4%</td><td class="r">−8.4%</td><td class="r">−9.7%</td></tr><tr><td>Value at risk, 95%, 1 month</td><td class="r">3.5%</td><td class="r">3.8%</td><td class="r">3.7%</td><td class="r">4.2%</td></tr><tr><td>Expected shortfall, 95%, 1 month</td><td class="r">4.9%</td><td class="r">6.3%</td><td class="r">5.5%</td><td class="r">6.7%</td></tr><tr><td>Tracking error</td><td class="r">2.9%</td><td class="r">2.5%</td><td class="r"></td><td class="r"></td></tr><tr><td>Information ratio</td><td class="r">−0.12</td><td class="r">−0.08</td><td class="r"></td><td class="r"></td></tr><tr><td>Beta to the benchmark</td><td class="r">0.87</td><td class="r">0.87</td><td class="r"></td><td class="r"></td></tr><tr><td>Downside beta and capture</td><td class="r">0.87 · 0.87</td><td class="r">0.86 · 0.88</td><td class="r"></td><td class="r"></td></tr><tr><td>Upside beta and capture</td><td class="r">0.85 · 0.89</td><td class="r">0.85 · 0.89</td><td class="r"></td><td class="r"></td></tr></tbody></table></div><p class="note">In sample: Nov 1996 to Oct 2016, the history the weights were fitted to. Out of sample: Nov 2016 to Oct 2026.</p></div></section><section id="b-growth"><header class="sh"><h2>Growth and drawdown</h2><p>The whole history, with the holdout shaded apart</p></header><div class="card"><h3>Growth of 100</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Maximum Sharpe 793</span><span class="key"><i style="background:var(--s2)"></i>Benchmark 844</span></div><svg class="chart" viewBox="0 0 880 280" role="img"><rect x="56" y="12" width="508.8" height="240" style="fill:var(--mid);opacity:.55"/><line class="base" x1="564.8" x2="564.8" y1="12" y2="252" style="stroke-dasharray:3 3"/><text class="lab" x="64" y="28">In sample</text><text class="lab" x="572.8" y="28">Out of sample</text><line class="grid" x1="56" x2="816" y1="252.0" y2="252.0"/><text class="tick" x="48" y="256.0" text-anchor="end">0</text><line class="grid" x1="56" x2="816" y1="204.0" y2="204.0"/><text class="tick" x="48" y="208.0" text-anchor="end">250</text><line class="grid" x1="56" x2="816" y1="156.0" y2="156.0"/><text class="tick" x="48" y="160.0" text-anchor="end">500</text><line class="grid" x1="56" x2="816" y1="108.0" y2="108.0"/><text class="tick" x="48" y="112.0" text-anchor="end">750</text><line class="grid" x1="56" x2="816" y1="60.0" y2="60.0"/><text class="tick" x="48" y="64.0" text-anchor="end">1000</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">1250</text><text class="tick" x="136.3" y="272" text-anchor="middle">2000</text><text class="tick" x="263.0" y="272" text-anchor="middle">2005</text><text class="tick" x="389.7" y="272" text-anchor="middle">2010</text><text class="tick" x="516.3" y="272" text-anchor="middle">2015</text><text class="tick" x="643.0" y="272" text-anchor="middle">2020</text><text class="tick" x="769.7" y="272" text-anchor="middle">2025</text><path class="line" d="M56.0,232.8 L58.0,233.3 L60.2,233.1 L62.4,232.6 L64.3,231.8 L66.5,231.9 L68.6,231.7 L70.6,231.1 L72.8,231.6 L74.9,231.3 L76.9,231.9 L79.2,231.5 L81.3,231.3 L83.3,231.1 L85.6,231.0 L87.6,230.6 L89.6,231.0 L91.8,230.7 L93.9,230.7 L95.9,230.5 L98.1,231.2 L100.3,230.5 L102.4,230.4 L104.5,230.1 L106.6,230.5 L108.7,230.9 L110.9,231.1 L112.9,231.8 L114.8,230.6 L117.1,230.4 L119.2,230.0 L121.3,230.4 L123.4,231.2 L125.5,230.6 L127.7,229.8 L129.8,229.1 L131.8,228.8 L134.0,227.6 L136.2,227.7 L138.3,227.3 L140.4,227.0 L142.5,227.4 L144.4,227.6 L146.7,228.4 L148.8,229.2 L151.0,228.7 L153.1,228.8 L155.1,228.2 L157.3,228.2 L159.4,227.5 L161.4,228.3 L163.7,228.1 L165.7,228.2 L167.8,227.4 L169.9,227.6 L172.1,228.1 L174.1,227.2 L176.3,226.9 L178.4,227.4 L180.4,227.3 L182.7,228.1 L184.7,227.4 L186.9,227.8 L189.0,228.3 L191.0,228.0 L193.0,227.9 L195.2,226.9 L197.4,227.4 L199.3,227.2 L201.6,226.7 L203.7,228.3 L205.8,228.5 L208.0,228.5 L210.0,227.7 L212.2,226.3 L214.4,225.8 L216.3,224.7 L218.5,223.1 L220.5,222.3 L222.6,221.8 L224.8,220.6 L226.9,220.8 L228.9,220.6 L231.2,220.4 L233.3,220.3 L235.2,220.6 L237.5,221.2 L239.6,220.9 L241.6,220.4 L243.8,220.6 L245.9,221.0 L248.1,221.0 L250.2,220.3 L252.2,220.5 L254.5,219.3 L256.5,219.1 L258.6,218.6 L260.8,218.8 L262.9,219.1 L265.1,217.9 L267.0,218.7 L269.2,219.0 L271.2,219.2 L273.4,218.0 L275.5,217.9 L277.5,218.1 L279.8,217.9 L281.9,219.4 L284.0,217.8 L286.1,217.9 L288.2,217.6 L290.4,217.9 L292.3,216.6 L294.5,216.4 L296.4,215.3 L298.7,217.3 L300.8,217.6 L303.0,217.9 L305.1,218.6 L307.1,219.1 L309.3,219.2 L311.4,219.3 L313.4,219.9 L315.7,219.1 L317.7,219.7 L319.7,220.8 L321.9,221.0 L324.0,221.4 L326.1,221.2 L328.3,221.9 L330.4,221.3 L332.4,220.3 L334.7,218.6 L336.7,219.3 L338.9,220.8 L341.0,220.5 L343.0,220.8 L345.2,221.1 L347.3,222.0 L349.4,223.3 L351.5,222.8 L353.7,223.3 L355.7,223.6 L357.9,225.6 L360.0,226.0 L362.0,227.2 L364.3,226.8 L366.4,225.2 L368.3,226.6 L370.5,226.2 L372.6,224.5 L374.6,223.2 L376.8,221.2 L379.0,221.6 L381.1,220.4 L383.2,219.5 L385.3,219.4 L387.4,218.3 L389.6,216.3 L391.6,214.5 L393.5,212.3 L395.8,211.6 L397.9,211.5 L400.1,211.8 L402.1,211.8 L404.2,210.6 L406.4,208.9 L408.5,209.0 L410.5,208.0 L412.8,208.6 L414.9,209.8 L417.1,208.6 L419.0,208.9 L421.2,210.1 L423.2,210.4 L425.4,209.6 L427.5,208.8 L429.5,208.4 L431.8,207.5 L433.8,207.3 L436.0,208.0 L438.1,206.5 L440.2,202.0 L442.4,200.1 L444.4,199.7 L446.5,199.0 L448.6,198.3 L450.8,197.9 L452.8,195.8 L455.0,197.8 L457.2,197.1 L459.1,196.8 L461.4,197.1 L463.5,198.3 L465.6,195.7 L467.8,195.9 L469.7,193.3 L471.7,191.3 L473.9,189.7 L476.1,189.7 L478.0,187.1 L480.3,190.9 L482.4,191.9 L484.6,190.0 L486.7,189.0 L488.7,188.7 L490.9,187.7 L493.1,185.8 L495.0,187.3 L497.2,188.8 L499.3,186.5 L501.3,187.3 L503.5,184.3 L505.6,183.3 L507.7,182.2 L509.9,183.2 L512.0,183.4 L514.0,183.0 L516.3,185.3 L518.3,185.6 L520.3,185.6 L522.5,184.5 L524.6,183.7 L526.6,180.7 L528.8,179.9 L531.0,177.8 L533.1,176.8 L535.2,177.0 L537.3,176.9 L539.4,173.3 L541.6,174.0 L543.6,169.0 L545.7,169.7 L547.9,167.3 L549.9,166.4 L552.1,166.0 L554.2,168.2 L556.2,169.2 L558.5,171.5 L560.6,170.2 L562.7,166.1 L564.8,162.9 L566.9,160.9 L569.1,163.6 L571.1,158.8 L573.2,157.1 L575.2,154.2 L577.4,153.5 L579.5,152.6 L581.7,147.7 L583.8,149.2 L585.8,149.9 L588.1,151.0 L590.1,149.7 L592.1,148.7 L594.4,147.2 L596.4,148.7 L598.5,145.2 L600.6,143.0 L602.8,140.9 L604.8,136.3 L607.0,132.0 L609.1,129.3 L611.1,129.8 L613.4,128.6 L615.5,123.1 L617.6,120.7 L619.8,120.7 L621.7,119.0 L623.7,118.2 L625.9,120.0 L628.1,120.5 L630.0,119.9 L632.3,118.3 L634.4,118.9 L636.5,109.4 L638.7,111.8 L640.7,114.7 L642.9,110.9 L645.1,108.6 L647.0,120.7 L649.2,127.3 L651.3,129.9 L653.3,125.0 L655.6,115.9 L657.7,117.4 L659.9,113.1 L661.9,111.8 L664.0,108.9 L666.2,101.7 L668.3,101.8 L670.3,104.0 L672.3,103.6 L674.6,105.0 L676.6,105.8 L678.8,103.9 L680.9,108.2 L683.0,107.7 L685.2,109.9 L687.3,107.0 L689.3,107.5 L691.5,109.3 L693.6,106.2 L695.8,108.3 L697.7,115.7 L699.9,114.0 L701.9,111.3 L704.1,116.5 L706.2,121.3 L708.2,126.1 L710.5,129.8 L712.6,129.3 L714.7,128.8 L716.8,126.3 L718.9,124.5 L721.1,119.8 L723.0,115.6 L725.2,114.1 L727.1,114.8 L729.4,116.1 L731.5,117.4 L733.7,115.0 L735.8,115.5 L737.8,117.4 L740.0,115.1 L742.1,109.2 L744.1,104.9 L746.4,99.6 L748.4,98.5 L750.4,96.3 L752.7,94.5 L754.8,87.4 L756.8,79.5 L759.0,78.1 L761.1,75.6 L763.3,74.2 L765.4,71.8 L767.4,67.2 L769.7,62.5 L771.8,76.1 L773.8,74.0 L775.9,76.9 L778.0,75.1 L780.1,78.3 L782.2,89.9 L784.4,91.7 L786.4,91.7 L788.6,87.7 L790.7,86.8 L792.7,88.5 L795.0,91.8 L797.1,91.0 L799.0,92.2 L801.2,88.7 L803.3,93.0 L805.3,95.1 L807.5,103.1 L809.7,98.7 L811.8,102.0 L813.9,95.4 L816.0,99.7" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="99.7" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,232.8 L58.0,233.3 L60.2,232.9 L62.4,232.3 L64.3,231.8 L66.5,231.7 L68.6,231.2 L70.6,230.6 L72.8,231.1 L74.9,230.8 L76.9,231.5 L79.2,231.4 L81.3,230.9 L83.3,231.0 L85.6,231.0 L87.6,230.9 L89.6,231.4 L91.8,231.1 L93.9,230.9 L95.9,230.6 L98.1,231.1 L100.3,230.0 L102.4,229.7 L104.5,229.5 L106.6,230.2 L108.7,230.3 L110.9,230.7 L112.9,231.4 L114.8,230.0 L117.1,230.0 L119.2,229.4 L121.3,229.8 L123.4,230.5 L125.5,230.0 L127.7,228.8 L129.8,228.0 L131.8,227.8 L134.0,226.0 L136.2,226.2 L138.3,225.6 L140.4,225.3 L142.5,225.7 L144.4,226.0 L146.7,226.9 L148.8,227.9 L151.0,227.3 L153.1,227.2 L155.1,226.7 L157.3,227.0 L159.4,226.0 L161.4,226.9 L163.7,226.9 L165.7,226.8 L167.8,226.3 L169.9,226.3 L172.1,226.7 L174.1,226.0 L176.3,226.0 L178.4,226.6 L180.4,226.4 L182.7,227.7 L184.7,226.9 L186.9,227.4 L189.0,228.1 L191.0,227.6 L193.0,227.5 L195.2,226.9 L197.4,227.2 L199.3,227.1 L201.6,226.8 L203.7,228.6 L205.8,228.9 L208.0,229.1 L210.0,228.1 L212.2,226.7 L214.4,226.0 L216.3,225.0 L218.5,223.3 L220.5,222.4 L222.6,221.5 L224.8,220.6 L226.9,221.0 L228.9,220.6 L231.2,220.1 L233.3,219.9 L235.2,219.9 L237.5,220.7 L239.6,220.6 L241.6,220.1 L243.8,220.1 L245.9,220.1 L248.1,220.1 L250.2,219.2 L252.2,219.2 L254.5,218.2 L256.5,217.7 L258.6,217.1 L260.8,217.4 L262.9,217.7 L265.1,216.3 L267.0,217.4 L269.2,217.9 L271.2,218.1 L273.4,216.9 L275.5,216.9 L277.5,217.0 L279.8,216.5 L281.9,218.1 L284.0,215.9 L286.1,216.0 L288.2,215.6 L290.4,215.9 L292.3,214.5 L294.5,214.3 L296.4,213.4 L298.7,215.7 L300.8,215.6 L303.0,215.9 L305.1,217.1 L307.1,217.8 L309.3,218.1 L311.4,218.2 L313.4,218.8 L315.7,217.6 L317.7,218.2 L319.7,219.5 L321.9,219.9 L324.0,220.7 L326.1,220.8 L328.3,221.6 L330.4,221.2 L332.4,219.7 L334.7,217.9 L336.7,218.7 L338.9,219.9 L341.0,219.7 L343.0,219.7 L345.2,220.1 L347.3,221.0 L349.4,222.7 L351.5,222.2 L353.7,222.4 L355.7,223.2 L357.9,225.7 L360.0,225.8 L362.0,227.4 L364.3,226.8 L366.4,225.0 L368.3,226.3 L370.5,226.1 L372.6,223.9 L374.6,222.2 L376.8,219.7 L379.0,220.4 L381.1,219.2 L383.2,218.1 L385.3,218.0 L387.4,217.0 L389.6,215.4 L391.6,213.0 L393.5,211.0 L395.8,209.9 L397.9,210.1 L400.1,210.2 L402.1,210.1 L404.2,208.7 L406.4,206.9 L408.5,207.3 L410.5,205.3 L412.8,205.6 L414.9,205.9 L417.1,204.7 L419.0,204.8 L421.2,206.3 L423.2,207.6 L425.4,207.2 L427.5,206.7 L429.5,206.8 L431.8,205.6 L433.8,205.0 L436.0,206.0 L438.1,204.1 L440.2,199.6 L442.4,197.7 L444.4,197.7 L446.5,197.1 L448.6,196.1 L450.8,195.7 L452.8,192.5 L455.0,195.5 L457.2,194.5 L459.1,194.2 L461.4,194.2 L463.5,196.1 L465.6,194.0 L467.8,193.8 L469.7,190.7 L471.7,188.9 L473.9,186.0 L476.1,186.0 L478.0,183.0 L480.3,186.7 L482.4,187.6 L484.6,185.8 L486.7,185.1 L488.7,185.8 L490.9,184.5 L493.1,182.2 L495.0,183.3 L497.2,185.1 L499.3,183.3 L501.3,184.0 L503.5,180.5 L505.6,179.8 L507.7,177.6 L509.9,178.5 L512.0,179.1 L514.0,178.3 L516.3,181.1 L518.3,181.2 L520.3,181.4 L522.5,180.3 L524.6,179.7 L526.6,176.6 L528.8,177.1 L531.0,173.4 L533.1,172.4 L535.2,172.6 L537.3,173.5 L539.4,170.0 L541.6,171.2 L543.6,164.7 L545.7,166.2 L547.9,163.2 L549.9,162.1 L552.1,161.9 L554.2,163.3 L556.2,163.5 L558.5,165.7 L560.6,165.8 L562.7,161.6 L564.8,157.9 L566.9,156.6 L569.1,159.1 L571.1,154.5 L573.2,152.9 L575.2,148.7 L577.4,148.1 L579.5,146.8 L581.7,140.3 L583.8,142.1 L585.8,142.9 L588.1,143.7 L590.1,142.9 L592.1,141.8 L594.4,139.9 L596.4,143.7 L598.5,139.7 L600.6,136.2 L602.8,132.8 L604.8,126.3 L607.0,122.0 L609.1,117.7 L611.1,117.7 L613.4,114.7 L615.5,108.1 L617.6,105.0 L619.8,106.1 L621.7,102.7 L623.7,103.1 L625.9,105.9 L628.1,106.9 L630.0,105.4 L632.3,103.5 L634.4,103.9 L636.5,92.1 L638.7,93.8 L640.7,95.8 L642.9,90.8 L645.1,86.8 L647.0,102.9 L649.2,111.9 L651.3,116.1 L653.3,110.9 L655.6,99.8 L657.7,102.2 L659.9,96.2 L661.9,95.9 L664.0,93.1 L666.2,85.4 L668.3,86.2 L670.3,88.9 L672.3,87.0 L674.6,86.9 L676.6,89.1 L678.8,88.0 L680.9,92.1 L683.0,92.4 L685.2,94.1 L687.3,90.5 L689.3,89.7 L691.5,90.9 L693.6,86.8 L695.8,91.5 L697.7,99.2 L699.9,98.2 L701.9,94.6 L704.1,101.1 L706.2,107.4 L708.2,112.9 L710.5,118.8 L712.6,118.9 L714.7,117.9 L716.8,115.2 L718.9,113.9 L721.1,107.8 L723.0,104.6 L725.2,102.4 L727.1,103.0 L729.4,104.4 L731.5,104.7 L733.7,103.7 L735.8,105.7 L737.8,106.2 L740.0,102.6 L742.1,95.8 L744.1,90.1 L746.4,82.9 L748.4,81.9 L750.4,78.5 L752.7,76.2 L754.8,66.8 L756.8,59.2 L759.0,56.2 L761.1,51.1 L763.3,48.0 L765.4,47.2 L767.4,43.6 L769.7,41.2 L771.8,57.6 L773.8,54.6 L775.9,58.5 L778.0,56.0 L780.1,60.2 L782.2,75.1 L784.4,78.6 L786.4,79.6 L788.6,75.5 L790.7,75.0 L792.7,77.5 L795.0,79.8 L797.1,78.8 L799.0,79.1 L801.2,75.6 L803.3,80.7 L805.3,85.9 L807.5,93.0 L809.7,87.8 L811.8,93.8 L813.9,85.5 L816.0,90.0" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="90.0" r="4" style="fill:var(--s2)"/><rect class="hit" x="56.0" y="12" width="6.9" height="240"><title>Nov 1996
+Maximum Sharpe: 97
+Benchmark: 98</title></rect><rect class="hit" x="62.4" y="12" width="6.7" height="240"><title>Feb 1997
+Maximum Sharpe: 105
+Benchmark: 105</title></rect><rect class="hit" x="68.6" y="12" width="6.9" height="240"><title>May 1997
+Maximum Sharpe: 109
+Benchmark: 112</title></rect><rect class="hit" x="74.9" y="12" width="8.8" height="240"><title>Sep 1997
+Maximum Sharpe: 107
+Benchmark: 107</title></rect><rect class="hit" x="83.3" y="12" width="6.8" height="240"><title>Dec 1997
+Maximum Sharpe: 109
+Benchmark: 110</title></rect><rect class="hit" x="89.6" y="12" width="6.8" height="240"><title>Mar 1998
+Maximum Sharpe: 111
+Benchmark: 109</title></rect><rect class="hit" x="95.9" y="12" width="7.0" height="240"><title>Jun 1998
+Maximum Sharpe: 108
+Benchmark: 109</title></rect><rect class="hit" x="102.4" y="12" width="9.0" height="240"><title>Oct 1998
+Maximum Sharpe: 112
+Benchmark: 114</title></rect><rect class="hit" x="110.9" y="12" width="6.7" height="240"><title>Jan 1999
+Maximum Sharpe: 105
+Benchmark: 107</title></rect><rect class="hit" x="117.1" y="12" width="6.8" height="240"><title>Apr 1999
+Maximum Sharpe: 114
+Benchmark: 118</title></rect><rect class="hit" x="123.4" y="12" width="8.9" height="240"><title>Aug 1999
+Maximum Sharpe: 115
+Benchmark: 121</title></rect><rect class="hit" x="131.8" y="12" width="7.0" height="240"><title>Nov 1999
+Maximum Sharpe: 127
+Benchmark: 135</title></rect><rect class="hit" x="138.3" y="12" width="6.6" height="240"><title>Feb 2000
+Maximum Sharpe: 130
+Benchmark: 139</title></rect><rect class="hit" x="144.4" y="12" width="7.0" height="240"><title>May 2000
+Maximum Sharpe: 123
+Benchmark: 131</title></rect><rect class="hit" x="151.0" y="12" width="9.0" height="240"><title>Sep 2000
+Maximum Sharpe: 124
+Benchmark: 132</title></rect><rect class="hit" x="159.4" y="12" width="6.7" height="240"><title>Dec 2000
+Maximum Sharpe: 123
+Benchmark: 131</title></rect><rect class="hit" x="165.7" y="12" width="6.9" height="240"><title>Mar 2001
+Maximum Sharpe: 128
+Benchmark: 134</title></rect><rect class="hit" x="172.1" y="12" width="8.8" height="240"><title>Jul 2001
+Maximum Sharpe: 131
+Benchmark: 135</title></rect><rect class="hit" x="180.4" y="12" width="7.0" height="240"><title>Oct 2001
+Maximum Sharpe: 125
+Benchmark: 127</title></rect><rect class="hit" x="186.9" y="12" width="6.6" height="240"><title>Jan 2002
+Maximum Sharpe: 124
+Benchmark: 125</title></rect><rect class="hit" x="193.0" y="12" width="6.8" height="240"><title>Apr 2002
+Maximum Sharpe: 130
+Benchmark: 131</title></rect><rect class="hit" x="199.3" y="12" width="9.2" height="240"><title>Aug 2002
+Maximum Sharpe: 123
+Benchmark: 122</title></rect><rect class="hit" x="208.0" y="12" width="6.9" height="240"><title>Nov 2002
+Maximum Sharpe: 127
+Benchmark: 124</title></rect><rect class="hit" x="214.4" y="12" width="6.7" height="240"><title>Feb 2003
+Maximum Sharpe: 142
+Benchmark: 141</title></rect><rect class="hit" x="220.5" y="12" width="8.9" height="240"><title>Jun 2003
+Maximum Sharpe: 164
+Benchmark: 164</title></rect><rect class="hit" x="228.9" y="12" width="6.8" height="240"><title>Sep 2003
+Maximum Sharpe: 164
+Benchmark: 166</title></rect><rect class="hit" x="235.2" y="12" width="6.8" height="240"><title>Dec 2003
+Maximum Sharpe: 160
+Benchmark: 163</title></rect><rect class="hit" x="241.6" y="12" width="7.0" height="240"><title>Mar 2004
+Maximum Sharpe: 163
+Benchmark: 166</title></rect><rect class="hit" x="248.1" y="12" width="9.0" height="240"><title>Jul 2004
+Maximum Sharpe: 164
+Benchmark: 171</title></rect><rect class="hit" x="256.5" y="12" width="6.9" height="240"><title>Oct 2004
+Maximum Sharpe: 174
+Benchmark: 182</title></rect><rect class="hit" x="262.9" y="12" width="6.7" height="240"><title>Jan 2005
+Maximum Sharpe: 178
+Benchmark: 186</title></rect><rect class="hit" x="269.2" y="12" width="8.8" height="240"><title>May 2005
+Maximum Sharpe: 177
+Benchmark: 183</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="240"><title>Aug 2005
+Maximum Sharpe: 177
+Benchmark: 185</title></rect><rect class="hit" x="284.0" y="12" width="6.9" height="240"><title>Nov 2005
+Maximum Sharpe: 177
+Benchmark: 188</title></rect><rect class="hit" x="290.4" y="12" width="6.5" height="240"><title>Feb 2006
+Maximum Sharpe: 184
+Benchmark: 195</title></rect><rect class="hit" x="296.4" y="12" width="9.2" height="240"><title>Jun 2006
+Maximum Sharpe: 179
+Benchmark: 189</title></rect><rect class="hit" x="305.1" y="12" width="6.8" height="240"><title>Sep 2006
+Maximum Sharpe: 171
+Benchmark: 178</title></rect><rect class="hit" x="311.4" y="12" width="6.7" height="240"><title>Dec 2006
+Maximum Sharpe: 167
+Benchmark: 173</title></rect><rect class="hit" x="317.7" y="12" width="6.9" height="240"><title>Mar 2007
+Maximum Sharpe: 162
+Benchmark: 169</title></rect><rect class="hit" x="324.0" y="12" width="8.8" height="240"><title>Jul 2007
+Maximum Sharpe: 157
+Benchmark: 158</title></rect><rect class="hit" x="332.4" y="12" width="7.0" height="240"><title>Oct 2007
+Maximum Sharpe: 174
+Benchmark: 177</title></rect><rect class="hit" x="338.9" y="12" width="6.8" height="240"><title>Jan 2008
+Maximum Sharpe: 164
+Benchmark: 168</title></rect><rect class="hit" x="345.2" y="12" width="9.0" height="240"><title>May 2008
+Maximum Sharpe: 150
+Benchmark: 153</title></rect><rect class="hit" x="353.7" y="12" width="6.9" height="240"><title>Aug 2008
+Maximum Sharpe: 148
+Benchmark: 150</title></rect><rect class="hit" x="360.0" y="12" width="6.8" height="240"><title>Nov 2008
+Maximum Sharpe: 129
+Benchmark: 128</title></rect><rect class="hit" x="366.4" y="12" width="6.7" height="240"><title>Feb 2009
+Maximum Sharpe: 132
+Benchmark: 134</title></rect><rect class="hit" x="372.6" y="12" width="9.0" height="240"><title>Jun 2009
+Maximum Sharpe: 161
+Benchmark: 168</title></rect><rect class="hit" x="381.1" y="12" width="6.8" height="240"><title>Sep 2009
+Maximum Sharpe: 169
+Benchmark: 177</title></rect><rect class="hit" x="387.4" y="12" width="6.6" height="240"><title>Dec 2009
+Maximum Sharpe: 186
+Benchmark: 191</title></rect><rect class="hit" x="393.5" y="12" width="9.1" height="240"><title>Apr 2010
+Maximum Sharpe: 211
+Benchmark: 218</title></rect><rect class="hit" x="402.1" y="12" width="6.9" height="240"><title>Jul 2010
+Maximum Sharpe: 215
+Benchmark: 225</title></rect><rect class="hit" x="408.5" y="12" width="6.9" height="240"><title>Oct 2010
+Maximum Sharpe: 229
+Benchmark: 243</title></rect><rect class="hit" x="414.9" y="12" width="6.7" height="240"><title>Jan 2011
+Maximum Sharpe: 226
+Benchmark: 246</title></rect><rect class="hit" x="421.2" y="12" width="8.8" height="240"><title>May 2011
+Maximum Sharpe: 221
+Benchmark: 234</title></rect><rect class="hit" x="429.5" y="12" width="7.0" height="240"><title>Aug 2011
+Maximum Sharpe: 232
+Benchmark: 241</title></rect><rect class="hit" x="436.0" y="12" width="6.9" height="240"><title>Nov 2011
+Maximum Sharpe: 237
+Benchmark: 249</title></rect><rect class="hit" x="442.4" y="12" width="8.9" height="240"><title>Mar 2012
+Maximum Sharpe: 276
+Benchmark: 286</title></rect><rect class="hit" x="450.8" y="12" width="6.9" height="240"><title>Jun 2012
+Maximum Sharpe: 293
+Benchmark: 310</title></rect><rect class="hit" x="457.2" y="12" width="6.8" height="240"><title>Sep 2012
+Maximum Sharpe: 287
+Benchmark: 301</title></rect><rect class="hit" x="463.5" y="12" width="6.7" height="240"><title>Dec 2012
+Maximum Sharpe: 293
+Benchmark: 302</title></rect><rect class="hit" x="469.7" y="12" width="8.8" height="240"><title>Apr 2013
+Maximum Sharpe: 325
+Benchmark: 344</title></rect><rect class="hit" x="478.0" y="12" width="7.0" height="240"><title>Jul 2013
+Maximum Sharpe: 318
+Benchmark: 340</title></rect><rect class="hit" x="484.6" y="12" width="6.9" height="240"><title>Oct 2013
+Maximum Sharpe: 328
+Benchmark: 348</title></rect><rect class="hit" x="490.9" y="12" width="8.8" height="240"><title>Feb 2014
+Maximum Sharpe: 337
+Benchmark: 358</title></rect><rect class="hit" x="499.3" y="12" width="6.9" height="240"><title>May 2014
+Maximum Sharpe: 337
+Benchmark: 354</title></rect><rect class="hit" x="505.6" y="12" width="6.9" height="240"><title>Aug 2014
+Maximum Sharpe: 363
+Benchmark: 388</title></rect><rect class="hit" x="512.0" y="12" width="6.8" height="240"><title>Nov 2014
+Maximum Sharpe: 359
+Benchmark: 384</title></rect><rect class="hit" x="518.3" y="12" width="8.8" height="240"><title>Mar 2015
+Maximum Sharpe: 351
+Benchmark: 374</title></rect><rect class="hit" x="526.6" y="12" width="7.0" height="240"><title>Jun 2015
+Maximum Sharpe: 375
+Benchmark: 390</title></rect><rect class="hit" x="533.1" y="12" width="6.8" height="240"><title>Sep 2015
+Maximum Sharpe: 391
+Benchmark: 413</title></rect><rect class="hit" x="539.4" y="12" width="9.0" height="240"><title>Jan 2016
+Maximum Sharpe: 432
+Benchmark: 455</title></rect><rect class="hit" x="547.9" y="12" width="6.8" height="240"><title>Apr 2016
+Maximum Sharpe: 446
+Benchmark: 468</title></rect><rect class="hit" x="554.2" y="12" width="6.9" height="240"><title>Jul 2016
+Maximum Sharpe: 431
+Benchmark: 461</title></rect><rect class="hit" x="560.6" y="12" width="6.8" height="240"><title>Oct 2016
+Maximum Sharpe: 447
+Benchmark: 471</title></rect><rect class="hit" x="566.9" y="12" width="8.8" height="240"><title>Feb 2017
+Maximum Sharpe: 486
+Benchmark: 508</title></rect><rect class="hit" x="575.2" y="12" width="7.0" height="240"><title>May 2017
+Maximum Sharpe: 513
+Benchmark: 541</title></rect><rect class="hit" x="581.7" y="12" width="6.9" height="240"><title>Aug 2017
+Maximum Sharpe: 536
+Benchmark: 573</title></rect><rect class="hit" x="588.1" y="12" width="6.9" height="240"><title>Nov 2017
+Maximum Sharpe: 533
+Benchmark: 568</title></rect><rect class="hit" x="594.4" y="12" width="8.8" height="240"><title>Mar 2018
+Maximum Sharpe: 556
+Benchmark: 585</title></rect><rect class="hit" x="602.8" y="12" width="6.9" height="240"><title>Jun 2018
+Maximum Sharpe: 603
+Benchmark: 655</title></rect><rect class="hit" x="609.1" y="12" width="6.8" height="240"><title>Sep 2018
+Maximum Sharpe: 636
+Benchmark: 700</title></rect><rect class="hit" x="615.5" y="12" width="8.8" height="240"><title>Jan 2019
+Maximum Sharpe: 684
+Benchmark: 760</title></rect><rect class="hit" x="623.7" y="12" width="6.8" height="240"><title>Apr 2019
+Maximum Sharpe: 688
+Benchmark: 761</title></rect><rect class="hit" x="630.0" y="12" width="7.0" height="240"><title>Jul 2019
+Maximum Sharpe: 697
+Benchmark: 773</title></rect><rect class="hit" x="636.5" y="12" width="6.9" height="240"><title>Oct 2019
+Maximum Sharpe: 730
+Benchmark: 824</title></rect><rect class="hit" x="642.9" y="12" width="8.9" height="240"><title>Feb 2020
+Maximum Sharpe: 684
+Benchmark: 777</title></rect><rect class="hit" x="651.3" y="12" width="6.9" height="240"><title>May 2020
+Maximum Sharpe: 662
+Benchmark: 735</title></rect><rect class="hit" x="657.7" y="12" width="6.8" height="240"><title>Aug 2020
+Maximum Sharpe: 724
+Benchmark: 812</title></rect><rect class="hit" x="664.0" y="12" width="8.8" height="240"><title>Dec 2020
+Maximum Sharpe: 782
+Benchmark: 863</title></rect><rect class="hit" x="672.3" y="12" width="7.0" height="240"><title>Mar 2021
+Maximum Sharpe: 766
+Benchmark: 860</title></rect><rect class="hit" x="678.8" y="12" width="6.9" height="240"><title>Jun 2021
+Maximum Sharpe: 749
+Benchmark: 833</title></rect><rect class="hit" x="685.2" y="12" width="6.8" height="240"><title>Sep 2021
+Maximum Sharpe: 755
+Benchmark: 841</title></rect><rect class="hit" x="691.5" y="12" width="8.9" height="240"><title>Jan 2022
+Maximum Sharpe: 749
+Benchmark: 836</title></rect><rect class="hit" x="699.9" y="12" width="6.8" height="240"><title>Apr 2022
+Maximum Sharpe: 733
+Benchmark: 820</title></rect><rect class="hit" x="706.2" y="12" width="6.9" height="240"><title>Jul 2022
+Maximum Sharpe: 656
+Benchmark: 724</title></rect><rect class="hit" x="712.6" y="12" width="9.0" height="240"><title>Nov 2022
+Maximum Sharpe: 654
+Benchmark: 713</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="240"><title>Feb 2023
+Maximum Sharpe: 711
+Benchmark: 768</title></rect><rect class="hit" x="727.1" y="12" width="7.0" height="240"><title>May 2023
+Maximum Sharpe: 708
+Benchmark: 769</title></rect><rect class="hit" x="733.7" y="12" width="6.9" height="240"><title>Aug 2023
+Maximum Sharpe: 711
+Benchmark: 762</title></rect><rect class="hit" x="740.0" y="12" width="8.9" height="240"><title>Dec 2023
+Maximum Sharpe: 766
+Benchmark: 843</title></rect><rect class="hit" x="748.4" y="12" width="6.9" height="240"><title>Mar 2024
+Maximum Sharpe: 811
+Benchmark: 904</title></rect><rect class="hit" x="754.8" y="12" width="6.8" height="240"><title>Jun 2024
+Maximum Sharpe: 899
+Benchmark: 1004</title></rect><rect class="hit" x="761.1" y="12" width="9.0" height="240"><title>Oct 2024
+Maximum Sharpe: 938
+Benchmark: 1067</title></rect><rect class="hit" x="769.7" y="12" width="6.7" height="240"><title>Jan 2025
+Maximum Sharpe: 916
+Benchmark: 1013</title></rect><rect class="hit" x="775.9" y="12" width="6.8" height="240"><title>Apr 2025
+Maximum Sharpe: 922
+Benchmark: 1021</title></rect><rect class="hit" x="782.2" y="12" width="6.9" height="240"><title>Jul 2025
+Maximum Sharpe: 835
+Benchmark: 903</title></rect><rect class="hit" x="788.6" y="12" width="9.0" height="240"><title>Nov 2025
+Maximum Sharpe: 851
+Benchmark: 909</title></rect><rect class="hit" x="797.1" y="12" width="6.7" height="240"><title>Feb 2026
+Maximum Sharpe: 832
+Benchmark: 900</title></rect><rect class="hit" x="803.3" y="12" width="6.9" height="240"><title>May 2026
+Maximum Sharpe: 817
+Benchmark: 865</title></rect><rect class="hit" x="809.7" y="12" width="6.8" height="240"><title>Aug 2026
+Maximum Sharpe: 781
+Benchmark: 824</title></rect><text class="tick" transform="translate(10 140.0) rotate(-90)" text-anchor="middle">Value of 100 invested</text></svg></div><div class="card"><h3>Drawdown</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Maximum Sharpe −21.4% at worst out of sample</span><span class="key"><i style="background:var(--s2)"></i>Benchmark −25.0%</span></div><svg class="chart" viewBox="0 0 880 220" role="img"><rect x="56" y="12" width="508.8" height="180" style="fill:var(--mid);opacity:.55"/><line class="base" x1="564.8" x2="564.8" y1="12" y2="192" style="stroke-dasharray:3 3"/><text class="lab" x="64" y="184">In sample</text><text class="lab" x="572.8" y="184">Out of sample</text><line class="grid" x1="56" x2="816" y1="192.0" y2="192.0"/><text class="tick" x="48" y="196.0" text-anchor="end">−40%</text><line class="grid" x1="56" x2="816" y1="147.0" y2="147.0"/><text class="tick" x="48" y="151.0" text-anchor="end">−30%</text><line class="grid" x1="56" x2="816" y1="102.0" y2="102.0"/><text class="tick" x="48" y="106.0" text-anchor="end">−20%</text><line class="grid" x1="56" x2="816" y1="57.0" y2="57.0"/><text class="tick" x="48" y="61.0" text-anchor="end">−10%</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">0%</text><text class="tick" x="136.3" y="212" text-anchor="middle">2000</text><text class="tick" x="263.0" y="212" text-anchor="middle">2005</text><text class="tick" x="389.7" y="212" text-anchor="middle">2010</text><text class="tick" x="516.3" y="212" text-anchor="middle">2015</text><text class="tick" x="643.0" y="212" text-anchor="middle">2020</text><text class="tick" x="769.7" y="212" text-anchor="middle">2025</text><path class="line" d="M56.0,12.0 L58.0,23.5 L60.2,18.6 L62.4,12.0 L64.3,12.0 L66.5,12.4 L68.6,12.0 L70.6,12.0 L72.8,22.8 L74.9,15.2 L76.9,28.9 L79.2,21.5 L81.3,15.9 L83.3,12.3 L85.6,12.0 L87.6,12.0 L89.6,21.5 L91.8,15.1 L93.9,14.3 L95.9,12.0 L98.1,26.4 L100.3,12.0 L102.4,12.0 L104.5,12.0 L106.6,20.1 L108.7,27.3 L110.9,30.6 L112.9,45.9 L114.8,21.8 L117.1,16.6 L119.2,12.0 L121.3,20.2 L123.4,35.6 L125.5,24.5 L127.7,12.0 L129.8,12.0 L131.8,12.0 L134.0,12.0 L136.2,15.3 L138.3,12.0 L140.4,12.0 L142.5,19.4 L144.4,22.2 L146.7,38.2 L148.8,52.5 L151.0,42.0 L153.1,44.6 L155.1,34.7 L157.3,34.7 L159.4,21.6 L161.4,35.6 L163.7,32.8 L165.7,33.1 L167.8,18.7 L169.9,23.1 L172.1,31.5 L174.1,15.7 L176.3,12.0 L178.4,21.5 L180.4,19.0 L182.7,33.3 L184.7,20.6 L186.9,28.3 L189.0,37.2 L191.0,31.3 L193.0,30.1 L195.2,13.3 L197.4,21.9 L199.3,17.8 L201.6,12.0 L203.7,41.0 L205.8,45.0 L208.0,44.0 L210.0,29.8 L212.2,12.0 L214.4,12.0 L216.3,12.0 L218.5,12.0 L220.5,12.0 L222.6,12.0 L224.8,12.0 L226.9,15.5 L228.9,12.1 L231.2,12.0 L233.3,12.0 L235.2,15.5 L237.5,24.4 L239.6,20.6 L241.6,13.0 L243.8,16.3 L245.9,21.6 L248.1,21.4 L250.2,12.0 L252.2,14.5 L254.5,12.0 L256.5,12.0 L258.6,12.0 L260.8,14.8 L262.9,18.4 L265.1,12.0 L267.0,22.9 L269.2,26.9 L271.2,29.0 L273.4,13.1 L275.5,12.0 L277.5,14.8 L279.8,12.6 L281.9,32.1 L284.0,12.0 L286.1,13.9 L288.2,12.0 L290.4,15.7 L292.3,12.0 L294.5,12.0 L296.4,12.0 L298.7,36.7 L300.8,40.2 L303.0,44.1 L305.1,52.7 L307.1,59.1 L309.3,59.5 L311.4,61.1 L313.4,68.7 L315.7,58.6 L317.7,66.2 L319.7,80.0 L321.9,82.4 L324.0,87.3 L326.1,84.6 L328.3,93.1 L330.4,85.5 L332.4,74.1 L334.7,52.5 L336.7,61.8 L338.9,79.3 L341.0,76.1 L343.0,79.2 L345.2,83.0 L347.3,94.2 L349.4,110.0 L351.5,103.6 L353.7,110.6 L355.7,114.2 L357.9,138.9 L360.0,143.1 L362.0,158.0 L364.3,153.6 L366.4,133.6 L368.3,150.6 L370.5,145.2 L372.6,125.1 L374.6,109.0 L376.8,84.0 L379.0,89.3 L381.1,74.9 L383.2,63.4 L385.3,62.0 L387.4,48.7 L389.6,24.2 L391.6,12.0 L393.5,12.0 L395.8,12.0 L397.9,12.0 L400.1,14.6 L402.1,14.3 L404.2,12.0 L406.4,12.0 L408.5,13.0 L410.5,12.0 L412.8,18.3 L414.9,30.1 L417.1,18.7 L419.0,21.3 L421.2,33.2 L423.2,36.6 L425.4,28.4 L427.5,20.5 L429.5,15.9 L431.8,12.0 L433.8,12.0 L436.0,19.5 L438.1,12.0 L440.2,12.0 L442.4,12.0 L444.4,12.0 L446.5,12.0 L448.6,12.0 L450.8,12.0 L452.8,12.0 L455.0,28.6 L457.2,22.5 L459.1,20.4 L461.4,23.1 L463.5,32.4 L465.6,12.0 L467.8,13.2 L469.7,12.0 L471.7,12.0 L473.9,12.0 L476.1,12.0 L478.0,12.0 L480.3,38.1 L482.4,45.2 L484.6,31.9 L486.7,24.9 L488.7,23.2 L490.9,15.7 L493.1,12.0 L495.0,22.3 L497.2,32.7 L499.3,16.7 L501.3,22.2 L503.5,12.0 L505.6,12.0 L507.7,12.0 L509.9,18.3 L512.0,19.2 L514.0,17.2 L516.3,31.8 L518.3,33.5 L520.3,33.7 L522.5,26.7 L524.6,21.3 L526.6,12.0 L528.8,12.0 L531.0,12.0 L533.1,12.0 L535.2,13.1 L537.3,12.5 L539.4,12.0 L541.6,15.6 L543.6,12.0 L545.7,15.6 L547.9,12.0 L549.9,12.0 L552.1,12.0 L554.2,23.1 L556.2,28.3 L558.5,40.4 L560.6,33.6 L562.7,12.4 L564.8,12.0 L566.9,12.0 L569.1,25.4 L571.1,12.0 L573.2,12.0 L575.2,12.0 L577.4,12.0 L579.5,12.0 L581.7,12.0 L583.8,18.5 L585.8,21.7 L588.1,26.2 L590.1,20.8 L592.1,16.5 L594.4,12.0 L596.4,18.4 L598.5,12.0 L600.6,12.0 L602.8,12.0 L604.8,12.0 L607.0,12.0 L609.1,12.0 L611.1,13.8 L613.4,12.0 L615.5,12.0 L617.6,12.0 L619.8,12.2 L621.7,12.0 L623.7,12.0 L625.9,18.2 L628.1,20.0 L630.0,17.7 L632.3,12.3 L634.4,14.4 L636.5,12.0 L638.7,19.6 L640.7,28.5 L642.9,16.6 L645.1,12.0 L647.0,49.8 L649.2,70.7 L651.3,78.8 L653.3,63.3 L655.6,34.7 L657.7,39.6 L659.9,25.9 L661.9,22.0 L664.0,12.8 L666.2,12.0 L668.3,12.4 L670.3,18.8 L672.3,17.8 L674.6,21.8 L676.6,24.2 L678.8,18.7 L680.9,31.5 L683.0,30.0 L685.2,36.7 L687.3,27.8 L689.3,29.3 L691.5,34.7 L693.6,25.6 L695.8,31.7 L697.7,54.0 L699.9,48.9 L701.9,40.8 L704.1,56.4 L706.2,70.8 L708.2,85.2 L710.5,96.2 L712.6,94.7 L714.7,93.3 L716.8,85.8 L718.9,80.4 L721.1,66.2 L723.0,53.5 L725.2,49.1 L727.1,51.2 L729.4,55.3 L731.5,59.0 L733.7,51.9 L735.8,53.5 L737.8,58.9 L740.0,52.0 L742.1,34.6 L744.1,21.7 L746.4,12.0 L748.4,12.0 L750.4,12.0 L752.7,12.0 L754.8,12.0 L756.8,12.0 L759.0,12.0 L761.1,12.0 L763.3,12.0 L765.4,12.0 L767.4,12.0 L769.7,12.0 L771.8,44.1 L773.8,39.3 L775.9,46.2 L778.0,41.8 L780.1,49.3 L782.2,77.0 L784.4,81.4 L786.4,81.3 L788.6,71.9 L790.7,69.7 L792.7,73.8 L795.0,81.5 L797.1,79.5 L799.0,82.6 L801.2,74.1 L803.3,84.3 L805.3,89.3 L807.5,108.4 L809.7,97.9 L811.8,105.7 L813.9,90.1 L816.0,100.2" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="100.2" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,12.0 L58.0,23.1 L60.2,14.9 L62.4,12.0 L64.3,12.0 L66.5,12.0 L68.6,12.0 L70.6,12.0 L72.8,24.3 L74.9,17.9 L76.9,32.3 L79.2,29.3 L81.3,20.1 L83.3,21.2 L85.6,20.5 L87.6,18.3 L89.6,29.4 L91.8,24.2 L93.9,19.1 L95.9,12.3 L98.1,23.1 L100.3,12.0 L102.4,12.0 L104.5,12.0 L106.6,24.5 L108.7,26.8 L110.9,35.0 L112.9,49.6 L114.8,22.3 L117.1,21.2 L119.2,12.0 L121.3,19.9 L123.4,34.2 L125.5,24.0 L127.7,12.0 L129.8,12.0 L131.8,12.0 L134.0,12.0 L136.2,15.1 L138.3,12.0 L140.4,12.0 L142.5,19.6 L144.4,23.7 L146.7,39.5 L148.8,56.5 L151.0,46.2 L153.1,44.5 L155.1,36.8 L157.3,41.6 L159.4,24.7 L161.4,38.8 L163.7,39.4 L165.7,38.4 L167.8,29.3 L169.9,28.8 L172.1,36.6 L174.1,23.5 L176.3,24.2 L178.4,34.0 L180.4,31.3 L182.7,52.2 L184.7,38.8 L186.9,47.6 L189.0,59.1 L191.0,51.7 L193.0,49.8 L195.2,39.8 L197.4,45.1 L199.3,41.9 L201.6,37.1 L203.7,68.8 L205.8,73.6 L208.0,76.8 L210.0,60.2 L212.2,35.9 L214.4,23.9 L216.3,12.0 L218.5,12.0 L220.5,12.0 L222.6,12.0 L224.8,12.0 L226.9,17.4 L228.9,12.0 L231.2,12.0 L233.3,12.0 L235.2,12.8 L237.5,23.2 L239.6,22.3 L241.6,14.8 L243.8,15.2 L245.9,14.8 L248.1,14.8 L250.2,12.0 L252.2,12.0 L254.5,12.0 L256.5,12.0 L258.6,12.0 L260.8,15.3 L262.9,19.7 L265.1,12.0 L267.0,25.5 L269.2,31.7 L271.2,34.3 L273.4,19.3 L275.5,19.6 L277.5,20.4 L279.8,13.5 L281.9,34.2 L284.0,12.0 L286.1,13.1 L288.2,12.0 L290.4,15.7 L292.3,12.0 L294.5,12.0 L296.4,12.0 L298.7,38.8 L300.8,38.7 L303.0,41.8 L305.1,55.7 L307.1,63.2 L309.3,67.0 L311.4,68.0 L313.4,75.5 L315.7,61.8 L317.7,68.9 L319.7,84.0 L321.9,88.3 L324.0,97.6 L326.1,98.4 L328.3,107.7 L330.4,102.9 L332.4,86.1 L334.7,65.4 L336.7,73.8 L338.9,88.3 L341.0,85.4 L343.0,85.9 L345.2,91.1 L347.3,101.6 L349.4,120.5 L351.5,115.4 L353.7,117.4 L355.7,127.2 L357.9,155.4 L360.0,156.9 L362.0,175.0 L364.3,168.5 L366.4,147.6 L368.3,162.9 L370.5,160.5 L372.6,134.4 L374.6,115.4 L376.8,86.0 L379.0,94.6 L381.1,79.8 L383.2,66.9 L385.3,66.5 L387.4,54.2 L389.6,35.5 L391.6,12.0 L393.5,12.0 L395.8,12.0 L397.9,14.2 L400.1,15.0 L402.1,13.9 L404.2,12.0 L406.4,12.0 L408.5,15.7 L410.5,12.0 L412.8,14.4 L414.9,17.6 L417.1,12.0 L419.0,12.6 L421.2,27.0 L423.2,39.6 L425.4,35.3 L427.5,30.5 L429.5,31.6 L431.8,20.8 L433.8,14.9 L436.0,24.1 L438.1,12.0 L440.2,12.0 L442.4,12.0 L444.4,12.0 L446.5,12.0 L448.6,12.0 L450.8,12.0 L452.8,12.0 L455.0,34.8 L457.2,27.1 L459.1,24.9 L461.4,25.1 L463.5,39.8 L465.6,23.5 L467.8,21.9 L469.7,12.0 L471.7,12.0 L473.9,12.0 L476.1,12.1 L478.0,12.0 L480.3,36.5 L482.4,42.4 L484.6,30.3 L486.7,26.1 L488.7,30.1 L490.9,22.1 L493.1,12.0 L495.0,19.2 L497.2,30.8 L499.3,19.1 L501.3,23.7 L503.5,12.0 L505.6,12.0 L507.7,12.0 L509.9,17.3 L512.0,20.9 L514.0,16.4 L516.3,32.9 L518.3,33.7 L520.3,34.8 L522.5,28.2 L524.6,24.7 L526.6,12.0 L528.8,14.7 L531.0,12.0 L533.1,12.0 L535.2,13.3 L537.3,18.3 L539.4,12.0 L541.6,18.8 L543.6,12.0 L545.7,19.6 L547.9,12.0 L549.9,12.0 L552.1,12.0 L554.2,18.8 L556.2,20.2 L558.5,31.1 L560.6,31.3 L562.7,12.0 L564.8,12.0 L566.9,12.0 L569.1,23.6 L571.1,12.0 L573.2,12.0 L575.2,12.0 L577.4,12.0 L579.5,12.0 L581.7,12.0 L583.8,19.0 L585.8,22.4 L588.1,25.5 L590.1,22.5 L592.1,18.0 L594.4,12.0 L596.4,27.0 L598.5,12.0 L600.6,12.0 L602.8,12.0 L604.8,12.0 L607.0,12.0 L609.1,12.0 L611.1,12.0 L613.4,12.0 L615.5,12.0 L617.6,12.0 L619.8,15.2 L621.7,12.0 L623.7,13.2 L625.9,21.8 L628.1,24.8 L630.0,20.1 L632.3,14.6 L634.4,15.7 L636.5,12.0 L638.7,16.7 L640.7,22.2 L642.9,12.0 L645.1,12.0 L647.0,55.8 L649.2,80.3 L651.3,91.8 L653.3,77.6 L655.6,47.4 L657.7,54.0 L659.9,37.6 L661.9,36.8 L664.0,29.2 L666.2,12.0 L668.3,14.3 L670.3,21.5 L672.3,16.4 L674.6,16.0 L676.6,22.2 L678.8,19.2 L680.9,30.1 L683.0,30.9 L685.2,35.6 L687.3,25.8 L689.3,23.6 L691.5,27.0 L693.6,15.8 L695.8,28.5 L697.7,49.3 L699.9,46.6 L701.9,36.9 L704.1,54.4 L706.2,71.4 L708.2,86.4 L710.5,102.4 L712.6,102.6 L714.7,99.8 L716.8,92.4 L718.9,89.1 L721.1,72.6 L723.0,64.0 L725.2,58.0 L727.1,59.5 L729.4,63.3 L731.5,64.1 L733.7,61.3 L735.8,66.8 L737.8,68.2 L740.0,58.5 L742.1,40.0 L744.1,24.7 L746.4,12.0 L748.4,12.0 L750.4,12.0 L752.7,12.0 L754.8,12.0 L756.8,12.0 L759.0,12.0 L761.1,12.0 L763.3,12.0 L765.4,12.0 L767.4,12.0 L769.7,12.0 L771.8,47.0 L773.8,40.7 L775.9,48.9 L778.0,43.7 L780.1,52.6 L782.2,84.3 L784.4,91.9 L786.4,94.0 L788.6,85.2 L790.7,84.2 L792.7,89.5 L795.0,94.5 L797.1,92.3 L799.0,93.0 L801.2,85.4 L803.3,96.3 L805.3,107.5 L807.5,122.5 L809.7,111.6 L811.8,124.3 L813.9,106.5 L816.0,116.2" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="116.2" r="4" style="fill:var(--s2)"/><rect class="hit" x="56.0" y="12" width="6.9" height="180"><title>Nov 1996
+Maximum Sharpe: −2.6%
+Benchmark: −2.5%</title></rect><rect class="hit" x="62.4" y="12" width="6.7" height="180"><title>Feb 1997
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="68.6" y="12" width="6.9" height="180"><title>May 1997
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="74.9" y="12" width="8.8" height="180"><title>Sep 1997
+Maximum Sharpe: −2.1%
+Benchmark: −3.8%</title></rect><rect class="hit" x="83.3" y="12" width="6.8" height="180"><title>Dec 1997
+Maximum Sharpe: 0.0%
+Benchmark: −1.9%</title></rect><rect class="hit" x="89.6" y="12" width="6.8" height="180"><title>Mar 1998
+Maximum Sharpe: −0.7%
+Benchmark: −2.7%</title></rect><rect class="hit" x="95.9" y="12" width="7.0" height="180"><title>Jun 1998
+Maximum Sharpe: −3.2%
+Benchmark: −2.5%</title></rect><rect class="hit" x="102.4" y="12" width="9.0" height="180"><title>Oct 1998
+Maximum Sharpe: −1.8%
+Benchmark: −2.8%</title></rect><rect class="hit" x="110.9" y="12" width="6.7" height="180"><title>Jan 1999
+Maximum Sharpe: −7.5%
+Benchmark: −8.4%</title></rect><rect class="hit" x="117.1" y="12" width="6.8" height="180"><title>Apr 1999
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="123.4" y="12" width="8.9" height="180"><title>Aug 1999
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="131.8" y="12" width="7.0" height="180"><title>Nov 1999
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="138.3" y="12" width="6.6" height="180"><title>Feb 2000
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="144.4" y="12" width="7.0" height="180"><title>May 2000
+Maximum Sharpe: −5.8%
+Benchmark: −6.1%</title></rect><rect class="hit" x="151.0" y="12" width="9.0" height="180"><title>Sep 2000
+Maximum Sharpe: −5.0%
+Benchmark: −5.5%</title></rect><rect class="hit" x="159.4" y="12" width="6.7" height="180"><title>Dec 2000
+Maximum Sharpe: −5.2%
+Benchmark: −6.0%</title></rect><rect class="hit" x="165.7" y="12" width="6.9" height="180"><title>Mar 2001
+Maximum Sharpe: −1.5%
+Benchmark: −3.9%</title></rect><rect class="hit" x="172.1" y="12" width="8.8" height="180"><title>Jul 2001
+Maximum Sharpe: 0.0%
+Benchmark: −2.7%</title></rect><rect class="hit" x="180.4" y="12" width="7.0" height="180"><title>Oct 2001
+Maximum Sharpe: −4.7%
+Benchmark: −8.9%</title></rect><rect class="hit" x="186.9" y="12" width="6.6" height="180"><title>Jan 2002
+Maximum Sharpe: −5.6%
+Benchmark: −10.5%</title></rect><rect class="hit" x="193.0" y="12" width="6.8" height="180"><title>Apr 2002
+Maximum Sharpe: −0.3%
+Benchmark: −6.2%</title></rect><rect class="hit" x="199.3" y="12" width="9.2" height="180"><title>Aug 2002
+Maximum Sharpe: −6.4%
+Benchmark: −12.6%</title></rect><rect class="hit" x="208.0" y="12" width="6.9" height="180"><title>Nov 2002
+Maximum Sharpe: −4.0%
+Benchmark: −10.7%</title></rect><rect class="hit" x="214.4" y="12" width="6.7" height="180"><title>Feb 2003
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="220.5" y="12" width="8.9" height="180"><title>Jun 2003
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="228.9" y="12" width="6.8" height="180"><title>Sep 2003
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="235.2" y="12" width="6.8" height="180"><title>Dec 2003
+Maximum Sharpe: −2.7%
+Benchmark: −2.5%</title></rect><rect class="hit" x="241.6" y="12" width="7.0" height="180"><title>Mar 2004
+Maximum Sharpe: −0.9%
+Benchmark: −0.7%</title></rect><rect class="hit" x="248.1" y="12" width="9.0" height="180"><title>Jul 2004
+Maximum Sharpe: −0.6%
+Benchmark: 0.0%</title></rect><rect class="hit" x="256.5" y="12" width="6.9" height="180"><title>Oct 2004
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="262.9" y="12" width="6.7" height="180"><title>Jan 2005
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="269.2" y="12" width="8.8" height="180"><title>May 2005
+Maximum Sharpe: −0.3%
+Benchmark: −1.6%</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="180"><title>Aug 2005
+Maximum Sharpe: −0.1%
+Benchmark: −0.3%</title></rect><rect class="hit" x="284.0" y="12" width="6.9" height="180"><title>Nov 2005
+Maximum Sharpe: −0.4%
+Benchmark: −0.2%</title></rect><rect class="hit" x="290.4" y="12" width="6.5" height="180"><title>Feb 2006
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="296.4" y="12" width="9.2" height="180"><title>Jun 2006
+Maximum Sharpe: −6.3%
+Benchmark: −5.9%</title></rect><rect class="hit" x="305.1" y="12" width="6.8" height="180"><title>Sep 2006
+Maximum Sharpe: −10.5%
+Benchmark: −11.4%</title></rect><rect class="hit" x="311.4" y="12" width="6.7" height="180"><title>Dec 2006
+Maximum Sharpe: −12.6%
+Benchmark: −14.1%</title></rect><rect class="hit" x="317.7" y="12" width="6.9" height="180"><title>Mar 2007
+Maximum Sharpe: −15.1%
+Benchmark: −16.0%</title></rect><rect class="hit" x="324.0" y="12" width="8.8" height="180"><title>Jul 2007
+Maximum Sharpe: −18.0%
+Benchmark: −21.3%</title></rect><rect class="hit" x="332.4" y="12" width="7.0" height="180"><title>Oct 2007
+Maximum Sharpe: −9.0%
+Benchmark: −11.9%</title></rect><rect class="hit" x="338.9" y="12" width="6.8" height="180"><title>Jan 2008
+Maximum Sharpe: −14.2%
+Benchmark: −16.3%</title></rect><rect class="hit" x="345.2" y="12" width="9.0" height="180"><title>May 2008
+Maximum Sharpe: −21.8%
+Benchmark: −24.1%</title></rect><rect class="hit" x="353.7" y="12" width="6.9" height="180"><title>Aug 2008
+Maximum Sharpe: −22.7%
+Benchmark: −25.6%</title></rect><rect class="hit" x="360.0" y="12" width="6.8" height="180"><title>Nov 2008
+Maximum Sharpe: −32.4%
+Benchmark: −36.2%</title></rect><rect class="hit" x="366.4" y="12" width="6.7" height="180"><title>Feb 2009
+Maximum Sharpe: −30.8%
+Benchmark: −33.5%</title></rect><rect class="hit" x="372.6" y="12" width="9.0" height="180"><title>Jun 2009
+Maximum Sharpe: −16.0%
+Benchmark: −16.4%</title></rect><rect class="hit" x="381.1" y="12" width="6.8" height="180"><title>Sep 2009
+Maximum Sharpe: −11.4%
+Benchmark: −12.2%</title></rect><rect class="hit" x="387.4" y="12" width="6.6" height="180"><title>Dec 2009
+Maximum Sharpe: −2.7%
+Benchmark: −5.2%</title></rect><rect class="hit" x="393.5" y="12" width="9.1" height="180"><title>Apr 2010
+Maximum Sharpe: 0.0%
+Benchmark: −0.5%</title></rect><rect class="hit" x="402.1" y="12" width="6.9" height="180"><title>Jul 2010
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="408.5" y="12" width="6.9" height="180"><title>Oct 2010
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="414.9" y="12" width="6.7" height="180"><title>Jan 2011
+Maximum Sharpe: −1.5%
+Benchmark: 0.0%</title></rect><rect class="hit" x="421.2" y="12" width="8.8" height="180"><title>May 2011
+Maximum Sharpe: −3.6%
+Benchmark: −5.2%</title></rect><rect class="hit" x="429.5" y="12" width="7.0" height="180"><title>Aug 2011
+Maximum Sharpe: 0.0%
+Benchmark: −1.9%</title></rect><rect class="hit" x="436.0" y="12" width="6.9" height="180"><title>Nov 2011
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="442.4" y="12" width="8.9" height="180"><title>Mar 2012
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="450.8" y="12" width="6.9" height="180"><title>Jun 2012
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="457.2" y="12" width="6.8" height="180"><title>Sep 2012
+Maximum Sharpe: −1.9%
+Benchmark: −2.9%</title></rect><rect class="hit" x="463.5" y="12" width="6.7" height="180"><title>Dec 2012
+Maximum Sharpe: 0.0%
+Benchmark: −2.6%</title></rect><rect class="hit" x="469.7" y="12" width="8.8" height="180"><title>Apr 2013
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="478.0" y="12" width="7.0" height="180"><title>Jul 2013
+Maximum Sharpe: −5.8%
+Benchmark: −5.4%</title></rect><rect class="hit" x="484.6" y="12" width="6.9" height="180"><title>Oct 2013
+Maximum Sharpe: −2.9%
+Benchmark: −3.1%</title></rect><rect class="hit" x="490.9" y="12" width="8.8" height="180"><title>Feb 2014
+Maximum Sharpe: −2.3%
+Benchmark: −1.6%</title></rect><rect class="hit" x="499.3" y="12" width="6.9" height="180"><title>May 2014
+Maximum Sharpe: −2.3%
+Benchmark: −2.6%</title></rect><rect class="hit" x="505.6" y="12" width="6.9" height="180"><title>Aug 2014
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="512.0" y="12" width="6.8" height="180"><title>Nov 2014
+Maximum Sharpe: −1.2%
+Benchmark: −1.0%</title></rect><rect class="hit" x="518.3" y="12" width="8.8" height="180"><title>Mar 2015
+Maximum Sharpe: −3.3%
+Benchmark: −3.6%</title></rect><rect class="hit" x="526.6" y="12" width="7.0" height="180"><title>Jun 2015
+Maximum Sharpe: 0.0%
+Benchmark: −0.6%</title></rect><rect class="hit" x="533.1" y="12" width="6.8" height="180"><title>Sep 2015
+Maximum Sharpe: −0.3%
+Benchmark: −0.3%</title></rect><rect class="hit" x="539.4" y="12" width="9.0" height="180"><title>Jan 2016
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="547.9" y="12" width="6.8" height="180"><title>Apr 2016
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="554.2" y="12" width="6.9" height="180"><title>Jul 2016
+Maximum Sharpe: −3.6%
+Benchmark: −1.8%</title></rect><rect class="hit" x="560.6" y="12" width="6.8" height="180"><title>Oct 2016
+Maximum Sharpe: −0.1%
+Benchmark: 0.0%</title></rect><rect class="hit" x="566.9" y="12" width="8.8" height="180"><title>Feb 2017
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="575.2" y="12" width="7.0" height="180"><title>May 2017
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="581.7" y="12" width="6.9" height="180"><title>Aug 2017
+Maximum Sharpe: −1.4%
+Benchmark: −1.5%</title></rect><rect class="hit" x="588.1" y="12" width="6.9" height="180"><title>Nov 2017
+Maximum Sharpe: −2.0%
+Benchmark: −2.3%</title></rect><rect class="hit" x="594.4" y="12" width="8.8" height="180"><title>Mar 2018
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="602.8" y="12" width="6.9" height="180"><title>Jun 2018
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="609.1" y="12" width="6.8" height="180"><title>Sep 2018
+Maximum Sharpe: −0.4%
+Benchmark: 0.0%</title></rect><rect class="hit" x="615.5" y="12" width="8.8" height="180"><title>Jan 2019
+Maximum Sharpe: 0.0%
+Benchmark: −0.7%</title></rect><rect class="hit" x="623.7" y="12" width="6.8" height="180"><title>Apr 2019
+Maximum Sharpe: −1.4%
+Benchmark: −2.2%</title></rect><rect class="hit" x="630.0" y="12" width="7.0" height="180"><title>Jul 2019
+Maximum Sharpe: −0.1%
+Benchmark: −0.6%</title></rect><rect class="hit" x="636.5" y="12" width="6.9" height="180"><title>Oct 2019
+Maximum Sharpe: −1.7%
+Benchmark: −1.0%</title></rect><rect class="hit" x="642.9" y="12" width="8.9" height="180"><title>Feb 2020
+Maximum Sharpe: −8.4%
+Benchmark: −9.7%</title></rect><rect class="hit" x="651.3" y="12" width="6.9" height="180"><title>May 2020
+Maximum Sharpe: −11.4%
+Benchmark: −14.6%</title></rect><rect class="hit" x="657.7" y="12" width="6.8" height="180"><title>Aug 2020
+Maximum Sharpe: −3.1%
+Benchmark: −5.7%</title></rect><rect class="hit" x="664.0" y="12" width="8.8" height="180"><title>Dec 2020
+Maximum Sharpe: −0.1%
+Benchmark: −0.5%</title></rect><rect class="hit" x="672.3" y="12" width="7.0" height="180"><title>Mar 2021
+Maximum Sharpe: −2.2%
+Benchmark: −0.9%</title></rect><rect class="hit" x="678.8" y="12" width="6.9" height="180"><title>Jun 2021
+Maximum Sharpe: −4.3%
+Benchmark: −4.0%</title></rect><rect class="hit" x="685.2" y="12" width="6.8" height="180"><title>Sep 2021
+Maximum Sharpe: −3.5%
+Benchmark: −3.1%</title></rect><rect class="hit" x="691.5" y="12" width="8.9" height="180"><title>Jan 2022
+Maximum Sharpe: −4.4%
+Benchmark: −3.7%</title></rect><rect class="hit" x="699.9" y="12" width="6.8" height="180"><title>Apr 2022
+Maximum Sharpe: −6.4%
+Benchmark: −5.5%</title></rect><rect class="hit" x="706.2" y="12" width="6.9" height="180"><title>Jul 2022
+Maximum Sharpe: −16.3%
+Benchmark: −16.5%</title></rect><rect class="hit" x="712.6" y="12" width="9.0" height="180"><title>Nov 2022
+Maximum Sharpe: −16.4%
+Benchmark: −17.9%</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="180"><title>Feb 2023
+Maximum Sharpe: −9.2%
+Benchmark: −11.6%</title></rect><rect class="hit" x="727.1" y="12" width="7.0" height="180"><title>May 2023
+Maximum Sharpe: −9.6%
+Benchmark: −11.4%</title></rect><rect class="hit" x="733.7" y="12" width="6.9" height="180"><title>Aug 2023
+Maximum Sharpe: −9.2%
+Benchmark: −12.2%</title></rect><rect class="hit" x="740.0" y="12" width="8.9" height="180"><title>Dec 2023
+Maximum Sharpe: −2.2%
+Benchmark: −2.8%</title></rect><rect class="hit" x="748.4" y="12" width="6.9" height="180"><title>Mar 2024
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="754.8" y="12" width="6.8" height="180"><title>Jun 2024
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="761.1" y="12" width="9.0" height="180"><title>Oct 2024
+Maximum Sharpe: 0.0%
+Benchmark: 0.0%</title></rect><rect class="hit" x="769.7" y="12" width="6.7" height="180"><title>Jan 2025
+Maximum Sharpe: −7.1%
+Benchmark: −7.8%</title></rect><rect class="hit" x="775.9" y="12" width="6.8" height="180"><title>Apr 2025
+Maximum Sharpe: −6.6%
+Benchmark: −7.0%</title></rect><rect class="hit" x="782.2" y="12" width="6.9" height="180"><title>Jul 2025
+Maximum Sharpe: −15.4%
+Benchmark: −17.8%</title></rect><rect class="hit" x="788.6" y="12" width="9.0" height="180"><title>Nov 2025
+Maximum Sharpe: −13.7%
+Benchmark: −17.2%</title></rect><rect class="hit" x="797.1" y="12" width="6.7" height="180"><title>Feb 2026
+Maximum Sharpe: −15.7%
+Benchmark: −18.0%</title></rect><rect class="hit" x="803.3" y="12" width="6.9" height="180"><title>May 2026
+Maximum Sharpe: −17.2%
+Benchmark: −21.2%</title></rect><rect class="hit" x="809.7" y="12" width="6.8" height="180"><title>Aug 2026
+Maximum Sharpe: −20.8%
+Benchmark: −25.0%</title></rect></svg></div></section><section id="b-weights"><header class="sh"><h2>Weights and trading</h2><p>What drifting and rebalancing cost</p></header><div class="card"><h3>Weights held, out of sample</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>US Equity</span><span class="key"><i style="background:var(--s2)"></i>Bonds</span><span class="key"><i style="background:var(--s3)"></i>Real Estate</span><span class="key"><i style="background:var(--s4)"></i>Gold</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="856" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">0%</text><line class="grid" x1="56" x2="856" y1="162.0" y2="162.0"/><text class="tick" x="48" y="166.0" text-anchor="end">25%</text><line class="grid" x1="56" x2="856" y1="112.0" y2="112.0"/><text class="tick" x="48" y="116.0" text-anchor="end">50%</text><line class="grid" x1="56" x2="856" y1="62.0" y2="62.0"/><text class="tick" x="48" y="66.0" text-anchor="end">75%</text><line class="grid" x1="56" x2="856" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">100%</text><text class="tick" x="63.1" y="232" text-anchor="middle">2017</text><text class="tick" x="143.7" y="232" text-anchor="middle">2018</text><text class="tick" x="224.4" y="232" text-anchor="middle">2019</text><text class="tick" x="305.0" y="232" text-anchor="middle">2020</text><text class="tick" x="385.9" y="232" text-anchor="middle">2021</text><text class="tick" x="466.5" y="232" text-anchor="middle">2022</text><text class="tick" x="547.1" y="232" text-anchor="middle">2023</text><text class="tick" x="627.8" y="232" text-anchor="middle">2024</text><text class="tick" x="708.6" y="232" text-anchor="middle">2025</text><text class="tick" x="789.3" y="232" text-anchor="middle">2026</text><path d="M56.0,132.0 L62.6,130.2 L69.7,132.0 L75.9,132.8 L82.7,132.4 L88.9,132.0 L96.2,129.8 L102.8,130.2 L109.7,132.0 L116.5,128.2 L122.9,129.0 L130.0,132.0 L136.6,131.8 L143.0,132.7 L150.3,132.0 L156.5,131.5 L163.2,135.7 L170.0,132.0 L176.9,129.3 L183.3,125.8 L190.3,132.0 L197.2,131.0 L203.4,129.5 L210.7,132.0 L217.3,128.9 L224.1,126.2 L231.0,132.0 L237.2,134.6 L243.6,132.6 L250.6,132.0 L257.5,132.6 L263.7,132.4 L271.0,132.0 L277.6,131.2 L284.4,130.5 L291.3,132.0 L297.7,131.0 L304.8,129.6 L311.6,132.0 L317.8,130.1 L324.9,139.8 L331.5,132.0 L337.9,134.0 L345.0,134.3 L351.8,132.0 L358.7,132.9 L365.3,130.3 L371.9,132.0 L378.8,131.3 L385.6,129.9 L392.0,132.0 L398.2,133.0 L405.5,131.9 L412.1,132.0 L419.0,133.9 L425.6,133.9 L432.2,132.0 L439.3,132.5 L445.9,132.6 L452.4,132.0 L459.4,131.3 L466.3,131.3 L473.1,132.0 L479.3,134.8 L486.2,134.3 L492.6,132.0 L499.6,130.4 L506.3,131.8 L512.7,132.0 L520.0,133.9 L526.6,136.8 L533.4,132.0 L540.1,131.9 L546.7,131.7 L553.8,132.0 L559.9,129.4 L566.8,130.3 L573.0,132.0 L580.3,132.2 L586.9,131.1 L593.8,132.0 L600.6,132.5 L607.0,135.4 L614.1,132.0 L620.7,129.9 L627.1,127.7 L634.4,132.0 L640.8,129.2 L647.2,129.6 L654.3,132.0 L661.1,131.0 L667.3,127.7 L674.6,132.0 L681.2,130.6 L688.1,128.3 L694.9,132.0 L701.3,132.0 L708.4,133.8 L715.3,132.0 L721.5,135.5 L728.3,134.6 L734.9,132.0 L741.6,130.3 L748.4,131.9 L755.3,132.0 L761.7,132.9 L768.7,134.2 L775.6,132.0 L781.8,131.8 L789.1,133.1 L795.7,132.0 L801.9,132.4 L808.9,132.8 L815.6,132.0 L822.0,133.6 L829.0,137.2 L835.9,132.0 L842.7,130.1 L849.4,133.1 L856.0,132.0 L856.0,212.0 L849.4,212.0 L842.7,212.0 L835.9,212.0 L829.0,212.0 L822.0,212.0 L815.6,212.0 L808.9,212.0 L801.9,212.0 L795.7,212.0 L789.1,212.0 L781.8,212.0 L775.6,212.0 L768.7,212.0 L761.7,212.0 L755.3,212.0 L748.4,212.0 L741.6,212.0 L734.9,212.0 L728.3,212.0 L721.5,212.0 L715.3,212.0 L708.4,212.0 L701.3,212.0 L694.9,212.0 L688.1,212.0 L681.2,212.0 L674.6,212.0 L667.3,212.0 L661.1,212.0 L654.3,212.0 L647.2,212.0 L640.8,212.0 L634.4,212.0 L627.1,212.0 L620.7,212.0 L614.1,212.0 L607.0,212.0 L600.6,212.0 L593.8,212.0 L586.9,212.0 L580.3,212.0 L573.0,212.0 L566.8,212.0 L559.9,212.0 L553.8,212.0 L546.7,212.0 L540.1,212.0 L533.4,212.0 L526.6,212.0 L520.0,212.0 L512.7,212.0 L506.3,212.0 L499.6,212.0 L492.6,212.0 L486.2,212.0 L479.3,212.0 L473.1,212.0 L466.3,212.0 L459.4,212.0 L452.4,212.0 L445.9,212.0 L439.3,212.0 L432.2,212.0 L425.6,212.0 L419.0,212.0 L412.1,212.0 L405.5,212.0 L398.2,212.0 L392.0,212.0 L385.6,212.0 L378.8,212.0 L371.9,212.0 L365.3,212.0 L358.7,212.0 L351.8,212.0 L345.0,212.0 L337.9,212.0 L331.5,212.0 L324.9,212.0 L317.8,212.0 L311.6,212.0 L304.8,212.0 L297.7,212.0 L291.3,212.0 L284.4,212.0 L277.6,212.0 L271.0,212.0 L263.7,212.0 L257.5,212.0 L250.6,212.0 L243.6,212.0 L237.2,212.0 L231.0,212.0 L224.1,212.0 L217.3,212.0 L210.7,212.0 L203.4,212.0 L197.2,212.0 L190.3,212.0 L183.3,212.0 L176.9,212.0 L170.0,212.0 L163.2,212.0 L156.5,212.0 L150.3,212.0 L143.0,212.0 L136.6,212.0 L130.0,212.0 L122.9,212.0 L116.5,212.0 L109.7,212.0 L102.8,212.0 L96.2,212.0 L88.9,212.0 L82.7,212.0 L75.9,212.0 L69.7,212.0 L62.6,212.0 L56.0,212.0 Z" style="fill:var(--s1);stroke:var(--surface);stroke-width:1"/><path d="M56.0,52.0 L62.6,52.4 L69.7,52.0 L75.9,50.7 L82.7,52.1 L88.9,52.0 L96.2,50.7 L102.8,50.8 L109.7,52.0 L116.5,51.6 L122.9,51.4 L130.0,52.0 L136.6,51.5 L143.0,52.1 L150.3,52.0 L156.5,51.8 L163.2,53.5 L170.0,52.0 L176.9,51.4 L183.3,51.1 L190.3,52.0 L197.2,53.0 L203.4,51.8 L210.7,52.0 L217.3,51.1 L224.1,51.9 L231.0,52.0 L237.2,52.0 L243.6,51.0 L250.6,52.0 L257.5,52.8 L263.7,53.5 L271.0,52.0 L277.6,52.4 L284.4,52.3 L291.3,52.0 L297.7,51.2 L304.8,50.3 L311.6,52.0 L317.8,51.2 L324.9,49.2 L331.5,52.0 L337.9,52.9 L345.0,53.1 L351.8,52.0 L358.7,52.5 L365.3,52.3 L371.9,52.0 L378.8,53.0 L385.6,54.0 L392.0,52.0 L398.2,51.8 L405.5,50.6 L412.1,52.0 L419.0,52.7 L425.6,53.8 L432.2,52.0 L439.3,52.8 L445.9,51.8 L452.4,52.0 L459.4,50.6 L466.3,49.7 L473.1,52.0 L479.3,53.5 L486.2,53.0 L492.6,52.0 L499.6,52.1 L506.3,52.2 L512.7,52.0 L520.0,51.4 L526.6,52.7 L533.4,52.0 L540.1,51.3 L546.7,51.4 L553.8,52.0 L559.9,51.9 L566.8,53.4 L573.0,52.0 L580.3,51.6 L586.9,52.1 L593.8,52.0 L600.6,53.9 L607.0,54.4 L614.1,52.0 L620.7,51.5 L627.1,52.0 L634.4,52.0 L640.8,51.8 L647.2,52.0 L654.3,52.0 L661.1,52.1 L667.3,52.2 L674.6,52.0 L681.2,51.2 L688.1,50.0 L694.9,52.0 L701.3,53.8 L708.4,54.5 L715.3,52.0 L721.5,51.6 L728.3,51.4 L734.9,52.0 L741.6,52.5 L748.4,52.3 L755.3,52.0 L761.7,53.3 L768.7,53.8 L775.6,52.0 L781.8,52.7 L789.1,52.8 L795.7,52.0 L801.9,51.6 L808.9,50.2 L815.6,52.0 L822.0,51.7 L829.0,53.5 L835.9,52.0 L842.7,52.4 L849.4,54.0 L856.0,52.0 L856.0,132.0 L849.4,133.1 L842.7,130.1 L835.9,132.0 L829.0,137.2 L822.0,133.6 L815.6,132.0 L808.9,132.8 L801.9,132.4 L795.7,132.0 L789.1,133.1 L781.8,131.8 L775.6,132.0 L768.7,134.2 L761.7,132.9 L755.3,132.0 L748.4,131.9 L741.6,130.3 L734.9,132.0 L728.3,134.6 L721.5,135.5 L715.3,132.0 L708.4,133.8 L701.3,132.0 L694.9,132.0 L688.1,128.3 L681.2,130.6 L674.6,132.0 L667.3,127.7 L661.1,131.0 L654.3,132.0 L647.2,129.6 L640.8,129.2 L634.4,132.0 L627.1,127.7 L620.7,129.9 L614.1,132.0 L607.0,135.4 L600.6,132.5 L593.8,132.0 L586.9,131.1 L580.3,132.2 L573.0,132.0 L566.8,130.3 L559.9,129.4 L553.8,132.0 L546.7,131.7 L540.1,131.9 L533.4,132.0 L526.6,136.8 L520.0,133.9 L512.7,132.0 L506.3,131.8 L499.6,130.4 L492.6,132.0 L486.2,134.3 L479.3,134.8 L473.1,132.0 L466.3,131.3 L459.4,131.3 L452.4,132.0 L445.9,132.6 L439.3,132.5 L432.2,132.0 L425.6,133.9 L419.0,133.9 L412.1,132.0 L405.5,131.9 L398.2,133.0 L392.0,132.0 L385.6,129.9 L378.8,131.3 L371.9,132.0 L365.3,130.3 L358.7,132.9 L351.8,132.0 L345.0,134.3 L337.9,134.0 L331.5,132.0 L324.9,139.8 L317.8,130.1 L311.6,132.0 L304.8,129.6 L297.7,131.0 L291.3,132.0 L284.4,130.5 L277.6,131.2 L271.0,132.0 L263.7,132.4 L257.5,132.6 L250.6,132.0 L243.6,132.6 L237.2,134.6 L231.0,132.0 L224.1,126.2 L217.3,128.9 L210.7,132.0 L203.4,129.5 L197.2,131.0 L190.3,132.0 L183.3,125.8 L176.9,129.3 L170.0,132.0 L163.2,135.7 L156.5,131.5 L150.3,132.0 L143.0,132.7 L136.6,131.8 L130.0,132.0 L122.9,129.0 L116.5,128.2 L109.7,132.0 L102.8,130.2 L96.2,129.8 L88.9,132.0 L82.7,132.4 L75.9,132.8 L69.7,132.0 L62.6,130.2 L56.0,132.0 Z" style="fill:var(--s2);stroke:var(--surface);stroke-width:1"/><path d="M56.0,27.8 L62.6,27.5 L69.7,27.8 L75.9,28.5 L82.7,28.3 L88.9,27.8 L96.2,27.0 L102.8,26.5 L109.7,27.8 L116.5,26.6 L122.9,26.6 L130.0,27.8 L136.6,28.1 L143.0,28.5 L150.3,27.8 L156.5,27.7 L163.2,29.6 L170.0,27.8 L176.9,27.3 L183.3,26.5 L190.3,27.8 L197.2,28.1 L203.4,27.2 L210.7,27.8 L217.3,27.2 L224.1,26.9 L231.0,27.8 L237.2,28.3 L243.6,29.2 L250.6,27.8 L257.5,28.7 L263.7,28.1 L271.0,27.8 L277.6,27.5 L284.4,28.7 L291.3,27.8 L297.7,27.4 L304.8,26.8 L311.6,27.8 L317.8,27.3 L324.9,28.4 L331.5,27.8 L337.9,28.8 L345.0,29.2 L351.8,27.8 L358.7,27.9 L365.3,28.0 L371.9,27.8 L378.8,28.1 L385.6,27.5 L392.0,27.8 L398.2,28.2 L405.5,27.4 L412.1,27.8 L419.0,29.1 L425.6,30.1 L432.2,27.8 L439.3,28.2 L445.9,27.5 L452.4,27.8 L459.4,26.7 L466.3,25.9 L473.1,27.8 L479.3,28.8 L486.2,29.8 L492.6,27.8 L499.6,26.6 L506.3,26.1 L512.7,27.8 L520.0,29.1 L526.6,28.4 L533.4,27.8 L540.1,28.2 L546.7,27.7 L553.8,27.8 L559.9,27.4 L566.8,27.5 L573.0,27.8 L580.3,27.9 L586.9,28.2 L593.8,27.8 L600.6,28.7 L607.0,29.3 L614.1,27.8 L620.7,28.6 L627.1,28.5 L634.4,27.8 L640.8,26.7 L647.2,26.4 L654.3,27.8 L661.1,27.9 L667.3,27.5 L674.6,27.8 L681.2,28.4 L688.1,27.8 L694.9,27.8 L701.3,28.4 L708.4,29.8 L715.3,27.8 L721.5,28.6 L728.3,29.5 L734.9,27.8 L741.6,28.1 L748.4,29.6 L755.3,27.8 L761.7,28.2 L768.7,28.5 L775.6,27.8 L781.8,28.3 L789.1,27.9 L795.7,27.8 L801.9,27.7 L808.9,26.6 L815.6,27.8 L822.0,27.4 L829.0,28.7 L835.9,27.8 L842.7,27.0 L849.4,28.4 L856.0,27.8 L856.0,52.0 L849.4,54.0 L842.7,52.4 L835.9,52.0 L829.0,53.5 L822.0,51.7 L815.6,52.0 L808.9,50.2 L801.9,51.6 L795.7,52.0 L789.1,52.8 L781.8,52.7 L775.6,52.0 L768.7,53.8 L761.7,53.3 L755.3,52.0 L748.4,52.3 L741.6,52.5 L734.9,52.0 L728.3,51.4 L721.5,51.6 L715.3,52.0 L708.4,54.5 L701.3,53.8 L694.9,52.0 L688.1,50.0 L681.2,51.2 L674.6,52.0 L667.3,52.2 L661.1,52.1 L654.3,52.0 L647.2,52.0 L640.8,51.8 L634.4,52.0 L627.1,52.0 L620.7,51.5 L614.1,52.0 L607.0,54.4 L600.6,53.9 L593.8,52.0 L586.9,52.1 L580.3,51.6 L573.0,52.0 L566.8,53.4 L559.9,51.9 L553.8,52.0 L546.7,51.4 L540.1,51.3 L533.4,52.0 L526.6,52.7 L520.0,51.4 L512.7,52.0 L506.3,52.2 L499.6,52.1 L492.6,52.0 L486.2,53.0 L479.3,53.5 L473.1,52.0 L466.3,49.7 L459.4,50.6 L452.4,52.0 L445.9,51.8 L439.3,52.8 L432.2,52.0 L425.6,53.8 L419.0,52.7 L412.1,52.0 L405.5,50.6 L398.2,51.8 L392.0,52.0 L385.6,54.0 L378.8,53.0 L371.9,52.0 L365.3,52.3 L358.7,52.5 L351.8,52.0 L345.0,53.1 L337.9,52.9 L331.5,52.0 L324.9,49.2 L317.8,51.2 L311.6,52.0 L304.8,50.3 L297.7,51.2 L291.3,52.0 L284.4,52.3 L277.6,52.4 L271.0,52.0 L263.7,53.5 L257.5,52.8 L250.6,52.0 L243.6,51.0 L237.2,52.0 L231.0,52.0 L224.1,51.9 L217.3,51.1 L210.7,52.0 L203.4,51.8 L197.2,53.0 L190.3,52.0 L183.3,51.1 L176.9,51.4 L170.0,52.0 L163.2,53.5 L156.5,51.8 L150.3,52.0 L143.0,52.1 L136.6,51.5 L130.0,52.0 L122.9,51.4 L116.5,51.6 L109.7,52.0 L102.8,50.8 L96.2,50.7 L88.9,52.0 L82.7,52.1 L75.9,50.7 L69.7,52.0 L62.6,52.4 L56.0,52.0 Z" style="fill:var(--s3);stroke:var(--surface);stroke-width:1"/><path d="M56.0,12.0 L62.6,12.0 L69.7,12.0 L75.9,12.0 L82.7,12.0 L88.9,12.0 L96.2,12.0 L102.8,12.0 L109.7,12.0 L116.5,12.0 L122.9,12.0 L130.0,12.0 L136.6,12.0 L143.0,12.0 L150.3,12.0 L156.5,12.0 L163.2,12.0 L170.0,12.0 L176.9,12.0 L183.3,12.0 L190.3,12.0 L197.2,12.0 L203.4,12.0 L210.7,12.0 L217.3,12.0 L224.1,12.0 L231.0,12.0 L237.2,12.0 L243.6,12.0 L250.6,12.0 L257.5,12.0 L263.7,12.0 L271.0,12.0 L277.6,12.0 L284.4,12.0 L291.3,12.0 L297.7,12.0 L304.8,12.0 L311.6,12.0 L317.8,12.0 L324.9,12.0 L331.5,12.0 L337.9,12.0 L345.0,12.0 L351.8,12.0 L358.7,12.0 L365.3,12.0 L371.9,12.0 L378.8,12.0 L385.6,12.0 L392.0,12.0 L398.2,12.0 L405.5,12.0 L412.1,12.0 L419.0,12.0 L425.6,12.0 L432.2,12.0 L439.3,12.0 L445.9,12.0 L452.4,12.0 L459.4,12.0 L466.3,12.0 L473.1,12.0 L479.3,12.0 L486.2,12.0 L492.6,12.0 L499.6,12.0 L506.3,12.0 L512.7,12.0 L520.0,12.0 L526.6,12.0 L533.4,12.0 L540.1,12.0 L546.7,12.0 L553.8,12.0 L559.9,12.0 L566.8,12.0 L573.0,12.0 L580.3,12.0 L586.9,12.0 L593.8,12.0 L600.6,12.0 L607.0,12.0 L614.1,12.0 L620.7,12.0 L627.1,12.0 L634.4,12.0 L640.8,12.0 L647.2,12.0 L654.3,12.0 L661.1,12.0 L667.3,12.0 L674.6,12.0 L681.2,12.0 L688.1,12.0 L694.9,12.0 L701.3,12.0 L708.4,12.0 L715.3,12.0 L721.5,12.0 L728.3,12.0 L734.9,12.0 L741.6,12.0 L748.4,12.0 L755.3,12.0 L761.7,12.0 L768.7,12.0 L775.6,12.0 L781.8,12.0 L789.1,12.0 L795.7,12.0 L801.9,12.0 L808.9,12.0 L815.6,12.0 L822.0,12.0 L829.0,12.0 L835.9,12.0 L842.7,12.0 L849.4,12.0 L856.0,12.0 L856.0,27.8 L849.4,28.4 L842.7,27.0 L835.9,27.8 L829.0,28.7 L822.0,27.4 L815.6,27.8 L808.9,26.6 L801.9,27.7 L795.7,27.8 L789.1,27.9 L781.8,28.3 L775.6,27.8 L768.7,28.5 L761.7,28.2 L755.3,27.8 L748.4,29.6 L741.6,28.1 L734.9,27.8 L728.3,29.5 L721.5,28.6 L715.3,27.8 L708.4,29.8 L701.3,28.4 L694.9,27.8 L688.1,27.8 L681.2,28.4 L674.6,27.8 L667.3,27.5 L661.1,27.9 L654.3,27.8 L647.2,26.4 L640.8,26.7 L634.4,27.8 L627.1,28.5 L620.7,28.6 L614.1,27.8 L607.0,29.3 L600.6,28.7 L593.8,27.8 L586.9,28.2 L580.3,27.9 L573.0,27.8 L566.8,27.5 L559.9,27.4 L553.8,27.8 L546.7,27.7 L540.1,28.2 L533.4,27.8 L526.6,28.4 L520.0,29.1 L512.7,27.8 L506.3,26.1 L499.6,26.6 L492.6,27.8 L486.2,29.8 L479.3,28.8 L473.1,27.8 L466.3,25.9 L459.4,26.7 L452.4,27.8 L445.9,27.5 L439.3,28.2 L432.2,27.8 L425.6,30.1 L419.0,29.1 L412.1,27.8 L405.5,27.4 L398.2,28.2 L392.0,27.8 L385.6,27.5 L378.8,28.1 L371.9,27.8 L365.3,28.0 L358.7,27.9 L351.8,27.8 L345.0,29.2 L337.9,28.8 L331.5,27.8 L324.9,28.4 L317.8,27.3 L311.6,27.8 L304.8,26.8 L297.7,27.4 L291.3,27.8 L284.4,28.7 L277.6,27.5 L271.0,27.8 L263.7,28.1 L257.5,28.7 L250.6,27.8 L243.6,29.2 L237.2,28.3 L231.0,27.8 L224.1,26.9 L217.3,27.2 L210.7,27.8 L203.4,27.2 L197.2,28.1 L190.3,27.8 L183.3,26.5 L176.9,27.3 L170.0,27.8 L163.2,29.6 L156.5,27.7 L150.3,27.8 L143.0,28.5 L136.6,28.1 L130.0,27.8 L122.9,26.6 L116.5,26.6 L109.7,27.8 L102.8,26.5 L96.2,27.0 L88.9,27.8 L82.7,28.3 L75.9,28.5 L69.7,27.8 L62.6,27.5 L56.0,27.8 Z" style="fill:var(--s4);stroke:var(--surface);stroke-width:1"/><rect class="hit" x="56.0" y="12" width="7.1" height="200"><title>Nov 2016
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="62.6" y="12" width="7.6" height="200"><title>Dec 2016
+US Equity: 40.9%
+Bonds: 38.9%
+Real Estate: 12.4%
+Gold: 7.8%</title></rect><rect class="hit" x="69.7" y="12" width="6.7" height="200"><title>Jan 2017
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="75.9" y="12" width="7.3" height="200"><title>Feb 2017
+US Equity: 39.6%
+Bonds: 41.0%
+Real Estate: 11.1%
+Gold: 8.2%</title></rect><rect class="hit" x="82.7" y="12" width="6.7" height="200"><title>Mar 2017
+US Equity: 39.8%
+Bonds: 40.1%
+Real Estate: 11.9%
+Gold: 8.2%</title></rect><rect class="hit" x="88.9" y="12" width="7.8" height="200"><title>Apr 2017
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="96.2" y="12" width="7.1" height="200"><title>May 2017
+US Equity: 41.1%
+Bonds: 39.5%
+Real Estate: 11.9%
+Gold: 7.5%</title></rect><rect class="hit" x="102.8" y="12" width="7.3" height="200"><title>Jun 2017
+US Equity: 40.9%
+Bonds: 39.7%
+Real Estate: 12.2%
+Gold: 7.3%</title></rect><rect class="hit" x="109.7" y="12" width="7.3" height="200"><title>Jul 2017
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="116.5" y="12" width="6.9" height="200"><title>Aug 2017
+US Equity: 41.9%
+Bonds: 38.3%
+Real Estate: 12.5%
+Gold: 7.3%</title></rect><rect class="hit" x="122.9" y="12" width="14.2" height="200"><title>Oct 2017
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="136.6" y="12" width="6.9" height="200"><title>Nov 2017
+US Equity: 40.1%
+Bonds: 40.2%
+Real Estate: 11.7%
+Gold: 8.1%</title></rect><rect class="hit" x="143.0" y="12" width="7.8" height="200"><title>Dec 2017
+US Equity: 39.6%
+Bonds: 40.3%
+Real Estate: 11.8%
+Gold: 8.2%</title></rect><rect class="hit" x="150.3" y="12" width="6.7" height="200"><title>Jan 2018
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="156.5" y="12" width="7.1" height="200"><title>Feb 2018
+US Equity: 40.3%
+Bonds: 39.8%
+Real Estate: 12.0%
+Gold: 7.9%</title></rect><rect class="hit" x="163.2" y="12" width="7.3" height="200"><title>Mar 2018
+US Equity: 38.1%
+Bonds: 41.1%
+Real Estate: 12.0%
+Gold: 8.8%</title></rect><rect class="hit" x="170.0" y="12" width="7.3" height="200"><title>Apr 2018
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="176.9" y="12" width="6.9" height="200"><title>May 2018
+US Equity: 41.4%
+Bonds: 38.9%
+Real Estate: 12.0%
+Gold: 7.7%</title></rect><rect class="hit" x="183.3" y="12" width="7.6" height="200"><title>Jun 2018
+US Equity: 43.1%
+Bonds: 37.4%
+Real Estate: 12.3%
+Gold: 7.2%</title></rect><rect class="hit" x="190.3" y="12" width="7.3" height="200"><title>Jul 2018
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="197.2" y="12" width="6.7" height="200"><title>Aug 2018
+US Equity: 40.5%
+Bonds: 39.0%
+Real Estate: 12.5%
+Gold: 8.0%</title></rect><rect class="hit" x="203.4" y="12" width="14.4" height="200"><title>Oct 2018
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="217.3" y="12" width="7.3" height="200"><title>Nov 2018
+US Equity: 41.6%
+Bonds: 38.9%
+Real Estate: 11.9%
+Gold: 7.6%</title></rect><rect class="hit" x="224.1" y="12" width="7.3" height="200"><title>Dec 2018
+US Equity: 42.9%
+Bonds: 37.2%
+Real Estate: 12.5%
+Gold: 7.4%</title></rect><rect class="hit" x="231.0" y="12" width="6.7" height="200"><title>Jan 2019
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="237.2" y="12" width="6.9" height="200"><title>Feb 2019
+US Equity: 38.7%
+Bonds: 41.3%
+Real Estate: 11.9%
+Gold: 8.2%</title></rect><rect class="hit" x="243.6" y="12" width="7.6" height="200"><title>Mar 2019
+US Equity: 39.7%
+Bonds: 40.8%
+Real Estate: 10.9%
+Gold: 8.6%</title></rect><rect class="hit" x="250.6" y="12" width="7.3" height="200"><title>Apr 2019
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="257.5" y="12" width="6.7" height="200"><title>May 2019
+US Equity: 39.7%
+Bonds: 39.9%
+Real Estate: 12.1%
+Gold: 8.3%</title></rect><rect class="hit" x="263.7" y="12" width="7.8" height="200"><title>Jun 2019
+US Equity: 39.8%
+Bonds: 39.4%
+Real Estate: 12.7%
+Gold: 8.0%</title></rect><rect class="hit" x="271.0" y="12" width="7.1" height="200"><title>Jul 2019
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="277.6" y="12" width="7.3" height="200"><title>Aug 2019
+US Equity: 40.4%
+Bonds: 39.4%
+Real Estate: 12.4%
+Gold: 7.8%</title></rect><rect class="hit" x="284.4" y="12" width="13.8" height="200"><title>Oct 2019
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="297.7" y="12" width="7.6" height="200"><title>Nov 2019
+US Equity: 40.5%
+Bonds: 39.9%
+Real Estate: 11.9%
+Gold: 7.7%</title></rect><rect class="hit" x="304.8" y="12" width="7.3" height="200"><title>Dec 2019
+US Equity: 41.2%
+Bonds: 39.6%
+Real Estate: 11.7%
+Gold: 7.4%</title></rect><rect class="hit" x="311.6" y="12" width="6.7" height="200"><title>Jan 2020
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="317.8" y="12" width="7.6" height="200"><title>Feb 2020
+US Equity: 41.0%
+Bonds: 39.5%
+Real Estate: 11.9%
+Gold: 7.7%</title></rect><rect class="hit" x="324.9" y="12" width="7.1" height="200"><title>Mar 2020
+US Equity: 36.1%
+Bonds: 45.3%
+Real Estate: 10.4%
+Gold: 8.2%</title></rect><rect class="hit" x="331.5" y="12" width="6.9" height="200"><title>Apr 2020
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="337.9" y="12" width="7.6" height="200"><title>May 2020
+US Equity: 39.0%
+Bonds: 40.6%
+Real Estate: 12.0%
+Gold: 8.4%</title></rect><rect class="hit" x="345.0" y="12" width="7.3" height="200"><title>Jun 2020
+US Equity: 38.9%
+Bonds: 40.6%
+Real Estate: 11.9%
+Gold: 8.6%</title></rect><rect class="hit" x="351.8" y="12" width="7.3" height="200"><title>Jul 2020
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="358.7" y="12" width="7.1" height="200"><title>Aug 2020
+US Equity: 39.6%
+Bonds: 40.2%
+Real Estate: 12.3%
+Gold: 8.0%</title></rect><rect class="hit" x="365.3" y="12" width="14.0" height="200"><title>Oct 2020
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="378.8" y="12" width="7.3" height="200"><title>Nov 2020
+US Equity: 40.3%
+Bonds: 39.2%
+Real Estate: 12.4%
+Gold: 8.0%</title></rect><rect class="hit" x="385.6" y="12" width="6.9" height="200"><title>Dec 2020
+US Equity: 41.1%
+Bonds: 38.0%
+Real Estate: 13.2%
+Gold: 7.8%</title></rect><rect class="hit" x="392.0" y="12" width="6.7" height="200"><title>Jan 2021
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="398.2" y="12" width="7.8" height="200"><title>Feb 2021
+US Equity: 39.5%
+Bonds: 40.6%
+Real Estate: 11.8%
+Gold: 8.1%</title></rect><rect class="hit" x="405.5" y="12" width="7.1" height="200"><title>Mar 2021
+US Equity: 40.1%
+Bonds: 40.6%
+Real Estate: 11.6%
+Gold: 7.7%</title></rect><rect class="hit" x="412.1" y="12" width="7.3" height="200"><title>Apr 2021
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="419.0" y="12" width="7.1" height="200"><title>May 2021
+US Equity: 39.0%
+Bonds: 40.6%
+Real Estate: 11.8%
+Gold: 8.5%</title></rect><rect class="hit" x="425.6" y="12" width="7.1" height="200"><title>Jun 2021
+US Equity: 39.0%
+Bonds: 40.0%
+Real Estate: 11.9%
+Gold: 9.1%</title></rect><rect class="hit" x="432.2" y="12" width="7.6" height="200"><title>Jul 2021
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="439.3" y="12" width="7.1" height="200"><title>Aug 2021
+US Equity: 39.7%
+Bonds: 39.9%
+Real Estate: 12.3%
+Gold: 8.1%</title></rect><rect class="hit" x="445.9" y="12" width="14.0" height="200"><title>Oct 2021
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="459.4" y="12" width="7.3" height="200"><title>Nov 2021
+US Equity: 40.4%
+Bonds: 40.3%
+Real Estate: 11.9%
+Gold: 7.4%</title></rect><rect class="hit" x="466.3" y="12" width="7.3" height="200"><title>Dec 2021
+US Equity: 40.4%
+Bonds: 40.8%
+Real Estate: 11.9%
+Gold: 6.9%</title></rect><rect class="hit" x="473.1" y="12" width="6.7" height="200"><title>Jan 2022
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="479.3" y="12" width="7.3" height="200"><title>Feb 2022
+US Equity: 38.6%
+Bonds: 40.6%
+Real Estate: 12.4%
+Gold: 8.4%</title></rect><rect class="hit" x="486.2" y="12" width="6.9" height="200"><title>Mar 2022
+US Equity: 38.9%
+Bonds: 40.6%
+Real Estate: 11.6%
+Gold: 8.9%</title></rect><rect class="hit" x="492.6" y="12" width="7.6" height="200"><title>Apr 2022
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="499.6" y="12" width="7.1" height="200"><title>May 2022
+US Equity: 40.8%
+Bonds: 39.2%
+Real Estate: 12.7%
+Gold: 7.3%</title></rect><rect class="hit" x="506.3" y="12" width="6.9" height="200"><title>Jun 2022
+US Equity: 40.1%
+Bonds: 39.8%
+Real Estate: 13.1%
+Gold: 7.0%</title></rect><rect class="hit" x="512.7" y="12" width="7.8" height="200"><title>Jul 2022
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="520.0" y="12" width="7.1" height="200"><title>Aug 2022
+US Equity: 39.0%
+Bonds: 41.3%
+Real Estate: 11.1%
+Gold: 8.6%</title></rect><rect class="hit" x="526.6" y="12" width="14.0" height="200"><title>Oct 2022
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="540.1" y="12" width="7.1" height="200"><title>Nov 2022
+US Equity: 40.1%
+Bonds: 40.3%
+Real Estate: 11.6%
+Gold: 8.1%</title></rect><rect class="hit" x="546.7" y="12" width="7.6" height="200"><title>Dec 2022
+US Equity: 40.2%
+Bonds: 40.1%
+Real Estate: 11.9%
+Gold: 7.8%</title></rect><rect class="hit" x="553.8" y="12" width="6.7" height="200"><title>Jan 2023
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="559.9" y="12" width="7.3" height="200"><title>Feb 2023
+US Equity: 41.3%
+Bonds: 38.8%
+Real Estate: 12.3%
+Gold: 7.7%</title></rect><rect class="hit" x="566.8" y="12" width="6.7" height="200"><title>Mar 2023
+US Equity: 40.8%
+Bonds: 38.5%
+Real Estate: 12.9%
+Gold: 7.8%</title></rect><rect class="hit" x="573.0" y="12" width="7.8" height="200"><title>Apr 2023
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="580.3" y="12" width="7.1" height="200"><title>May 2023
+US Equity: 39.9%
+Bonds: 40.3%
+Real Estate: 11.9%
+Gold: 7.9%</title></rect><rect class="hit" x="586.9" y="12" width="7.3" height="200"><title>Jun 2023
+US Equity: 40.4%
+Bonds: 39.5%
+Real Estate: 12.0%
+Gold: 8.1%</title></rect><rect class="hit" x="593.8" y="12" width="7.3" height="200"><title>Jul 2023
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="600.6" y="12" width="6.9" height="200"><title>Aug 2023
+US Equity: 39.8%
+Bonds: 39.3%
+Real Estate: 12.6%
+Gold: 8.4%</title></rect><rect class="hit" x="607.0" y="12" width="14.2" height="200"><title>Oct 2023
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="620.7" y="12" width="6.9" height="200"><title>Nov 2023
+US Equity: 41.0%
+Bonds: 39.2%
+Real Estate: 11.5%
+Gold: 8.3%</title></rect><rect class="hit" x="627.1" y="12" width="7.8" height="200"><title>Dec 2023
+US Equity: 42.1%
+Bonds: 37.8%
+Real Estate: 11.8%
+Gold: 8.2%</title></rect><rect class="hit" x="634.4" y="12" width="6.9" height="200"><title>Jan 2024
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="640.8" y="12" width="6.9" height="200"><title>Feb 2024
+US Equity: 41.4%
+Bonds: 38.7%
+Real Estate: 12.6%
+Gold: 7.3%</title></rect><rect class="hit" x="647.2" y="12" width="7.6" height="200"><title>Mar 2024
+US Equity: 41.2%
+Bonds: 38.8%
+Real Estate: 12.8%
+Gold: 7.2%</title></rect><rect class="hit" x="654.3" y="12" width="7.3" height="200"><title>Apr 2024
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="661.1" y="12" width="6.7" height="200"><title>May 2024
+US Equity: 40.5%
+Bonds: 39.5%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="667.3" y="12" width="7.8" height="200"><title>Jun 2024
+US Equity: 42.2%
+Bonds: 37.7%
+Real Estate: 12.3%
+Gold: 7.8%</title></rect><rect class="hit" x="674.6" y="12" width="7.1" height="200"><title>Jul 2024
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="681.2" y="12" width="7.3" height="200"><title>Aug 2024
+US Equity: 40.7%
+Bonds: 39.7%
+Real Estate: 11.4%
+Gold: 8.2%</title></rect><rect class="hit" x="688.1" y="12" width="13.8" height="200"><title>Oct 2024
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="701.3" y="12" width="7.6" height="200"><title>Nov 2024
+US Equity: 40.0%
+Bonds: 39.1%
+Real Estate: 12.7%
+Gold: 8.2%</title></rect><rect class="hit" x="708.4" y="12" width="7.3" height="200"><title>Dec 2024
+US Equity: 39.1%
+Bonds: 39.6%
+Real Estate: 12.4%
+Gold: 8.9%</title></rect><rect class="hit" x="715.3" y="12" width="6.7" height="200"><title>Jan 2025
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="721.5" y="12" width="7.3" height="200"><title>Feb 2025
+US Equity: 38.2%
+Bonds: 42.0%
+Real Estate: 11.5%
+Gold: 8.3%</title></rect><rect class="hit" x="728.3" y="12" width="7.1" height="200"><title>Mar 2025
+US Equity: 38.7%
+Bonds: 41.6%
+Real Estate: 11.0%
+Gold: 8.7%</title></rect><rect class="hit" x="734.9" y="12" width="7.1" height="200"><title>Apr 2025
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="741.6" y="12" width="7.3" height="200"><title>May 2025
+US Equity: 40.9%
+Bonds: 38.9%
+Real Estate: 12.2%
+Gold: 8.0%</title></rect><rect class="hit" x="748.4" y="12" width="7.3" height="200"><title>Jun 2025
+US Equity: 40.0%
+Bonds: 39.8%
+Real Estate: 11.4%
+Gold: 8.8%</title></rect><rect class="hit" x="755.3" y="12" width="6.9" height="200"><title>Jul 2025
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="761.7" y="12" width="7.6" height="200"><title>Aug 2025
+US Equity: 39.6%
+Bonds: 39.8%
+Real Estate: 12.6%
+Gold: 8.1%</title></rect><rect class="hit" x="768.7" y="12" width="13.5" height="200"><title>Oct 2025
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="781.8" y="12" width="7.8" height="200"><title>Nov 2025
+US Equity: 40.1%
+Bonds: 39.6%
+Real Estate: 12.2%
+Gold: 8.1%</title></rect><rect class="hit" x="789.1" y="12" width="7.1" height="200"><title>Dec 2025
+US Equity: 39.5%
+Bonds: 40.2%
+Real Estate: 12.4%
+Gold: 8.0%</title></rect><rect class="hit" x="795.7" y="12" width="6.7" height="200"><title>Jan 2026
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="801.9" y="12" width="7.6" height="200"><title>Feb 2026
+US Equity: 39.8%
+Bonds: 40.4%
+Real Estate: 11.9%
+Gold: 7.9%</title></rect><rect class="hit" x="808.9" y="12" width="7.1" height="200"><title>Mar 2026
+US Equity: 39.6%
+Bonds: 41.3%
+Real Estate: 11.8%
+Gold: 7.3%</title></rect><rect class="hit" x="815.6" y="12" width="6.9" height="200"><title>Apr 2026
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="822.0" y="12" width="7.6" height="200"><title>May 2026
+US Equity: 39.2%
+Bonds: 41.0%
+Real Estate: 12.2%
+Gold: 7.7%</title></rect><rect class="hit" x="829.0" y="12" width="7.3" height="200"><title>Jun 2026
+US Equity: 37.4%
+Bonds: 41.9%
+Real Estate: 12.4%
+Gold: 8.3%</title></rect><rect class="hit" x="835.9" y="12" width="7.3" height="200"><title>Jul 2026
+US Equity: 40.0%
+Bonds: 40.0%
+Real Estate: 12.1%
+Gold: 7.9%</title></rect><rect class="hit" x="842.7" y="12" width="7.1" height="200"><title>Aug 2026
+US Equity: 40.9%
+Bonds: 38.8%
+Real Estate: 12.7%
+Gold: 7.5%</title></rect><rect class="hit" x="849.4" y="12" width="7.1" height="200"><title>Sep 2026
+US Equity: 39.4%
+Bonds: 39.6%
+Real Estate: 12.8%
+Gold: 8.2%</title></rect></svg><p class="note">Between rebalances the weights drift with prices; at each rebalance they return to the targets.</p></div><div class="tiles"><div class="tile"><div class="tl">Rebalances</div><div class="tv">40</div><div class="ts">Rebalanced quarterly</div></div><div class="tile"><div class="tl">Turnover</div><div class="tv long">8.4% a year</div><div class="ts">One-way: the share of value bought, or sold</div></div><div class="tile"><div class="tl">Trading costs</div><div class="tv long">0.02% a year</div><div class="ts">10 bp of the value traded</div></div><div class="tile"><div class="tl">Largest rebalance</div><div class="tv">9.6%</div><div class="ts">One-way turnover at one rebalance</div></div></div></section><section id="b-returns"><header class="sh"><h2>Returns</h2><p>By year and by month</p></header><div class="card"><h3>Calendar-year returns</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Maximum Sharpe</span><span class="key"><i style="background:var(--s2)"></i>Benchmark</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><rect x="56" y="12" width="547.4" height="200" style="fill:var(--mid);opacity:.55"/><text class="lab" x="64" y="26">In sample</text><text class="lab" x="611.4" y="26">Out of sample</text><line class="grid" x1="56" x2="864" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">−40%</text><line class="grid" x1="56" x2="864" y1="174.4" y2="174.4"/><text class="tick" x="48" y="178.4" text-anchor="end">−20%</text><line class="grid" x1="56" x2="864" y1="136.8" y2="136.8"/><text class="tick" x="48" y="140.8" text-anchor="end">0%</text><line class="grid" x1="56" x2="864" y1="99.2" y2="99.2"/><text class="tick" x="48" y="103.2" text-anchor="end">20%</text><line class="grid" x1="56" x2="864" y1="61.6" y2="61.6"/><text class="tick" x="48" y="65.6" text-anchor="end">40%</text><line class="grid" x1="56" x2="864" y1="24.0" y2="24.0"/><text class="tick" x="48" y="28.0" text-anchor="end">60%</text><line class="base" x1="56" x2="864" y1="136.8" y2="136.8"/><path d="M58.0,136.8 V136.8 Q58.0,139.6 60.8,139.6 H65.3 Q68.0,139.6 68.0,136.8 V136.8 Z" style="fill:var(--s1)"/><path d="M69.0,136.8 V136.8 Q69.0,138.0 70.2,138.0 H77.9 Q79.1,138.0 79.1,136.8 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="56.0" y="24" width="26.1" height="188"><title>1996 from Nov
+Maximum Sharpe: −1.5%
+Benchmark: −0.6%</title></rect><path d="M84.1,136.8 V119.9 Q84.1,115.9 88.1,115.9 H90.1 Q94.1,115.9 94.1,119.9 V136.8 Z" style="fill:var(--s1)"/><path d="M95.1,136.8 V121.4 Q95.1,117.4 99.1,117.4 H101.1 Q105.1,117.4 105.1,121.4 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="82.1" y="24" width="26.1" height="188"><title>1997
+Maximum Sharpe: +11.1%
+Benchmark: +10.3%</title></rect><path d="M110.1,136.8 V136.8 Q110.1,137.4 110.7,137.4 H119.5 Q120.2,137.4 120.2,136.8 V136.8 Z" style="fill:var(--s1)"/><path d="M121.2,136.8 V136.8 Q121.2,134.4 123.6,134.4 H128.7 Q131.2,134.4 131.2,136.8 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="108.1" y="24" width="26.1" height="188"><title>1998
+Maximum Sharpe: −0.3%
+Benchmark: +1.3%</title></rect><path d="M136.2,136.8 V111.1 Q136.2,107.1 140.2,107.1 H142.2 Q146.2,107.1 146.2,111.1 V136.8 Z" style="fill:var(--s1)"/><path d="M147.2,136.8 V101.0 Q147.2,97.0 151.2,97.0 H153.3 Q157.3,97.0 157.3,101.0 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="134.2" y="24" width="26.1" height="188"><title>1999
+Maximum Sharpe: +15.8%
+Benchmark: +21.2%</title></rect><path d="M162.3,136.8 V137.1 Q162.3,141.1 166.3,141.1 H168.3 Q172.3,141.1 172.3,137.1 V136.8 Z" style="fill:var(--s1)"/><path d="M173.3,136.8 V137.8 Q173.3,141.8 177.3,141.8 H179.3 Q183.3,141.8 183.3,137.8 V136.8 Z" style="fill:var(--s2)"/><text class="tick" x="173.3" y="232" text-anchor="middle">2000</text><rect class="hit" x="160.3" y="24" width="26.1" height="188"><title>2000
+Maximum Sharpe: −2.3%
+Benchmark: −2.7%</title></rect><path d="M188.3,136.8 V136.8 Q188.3,132.8 192.3,132.8 H194.4 Q198.4,132.8 198.4,136.8 V136.8 Z" style="fill:var(--s1)"/><path d="M199.4,136.8 V136.8 Q199.4,140.7 203.3,140.7 H205.5 Q209.4,140.7 209.4,136.8 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="186.3" y="24" width="26.1" height="188"><title>2001
+Maximum Sharpe: +2.2%
+Benchmark: −2.1%</title></rect><path d="M214.4,136.8 V129.1 Q214.4,125.1 218.4,125.1 H220.4 Q224.4,125.1 224.4,129.1 V136.8 Z" style="fill:var(--s1)"/><path d="M225.4,136.8 V135.5 Q225.4,131.5 229.4,131.5 H231.5 Q235.5,131.5 235.5,135.5 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="212.4" y="24" width="26.1" height="188"><title>2002
+Maximum Sharpe: +6.2%
+Benchmark: +2.8%</title></rect><path d="M240.5,136.8 V103.7 Q240.5,99.7 244.5,99.7 H246.5 Q250.5,99.7 250.5,103.7 V136.8 Z" style="fill:var(--s1)"/><path d="M251.5,136.8 V96.0 Q251.5,92.0 255.5,92.0 H257.5 Q261.5,92.0 261.5,96.0 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="238.5" y="24" width="26.1" height="188"><title>2003
+Maximum Sharpe: +19.8%
+Benchmark: +23.8%</title></rect><path d="M266.5,136.8 V128.0 Q266.5,124.0 270.5,124.0 H272.5 Q276.5,124.0 276.5,128.0 V136.8 Z" style="fill:var(--s1)"/><path d="M277.5,136.8 V123.1 Q277.5,119.1 281.5,119.1 H283.6 Q287.6,119.1 287.6,123.1 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="264.5" y="24" width="26.1" height="188"><title>2004
+Maximum Sharpe: +6.8%
+Benchmark: +9.4%</title></rect><path d="M292.6,136.8 V132.3 Q292.6,128.3 296.6,128.3 H298.6 Q302.6,128.3 302.6,132.3 V136.8 Z" style="fill:var(--s1)"/><path d="M303.6,136.8 V129.4 Q303.6,125.4 307.6,125.4 H309.6 Q313.6,125.4 313.6,129.4 V136.8 Z" style="fill:var(--s2)"/><text class="tick" x="303.6" y="232" text-anchor="middle">2005</text><rect class="hit" x="290.6" y="24" width="26.1" height="188"><title>2005
+Maximum Sharpe: +4.5%
+Benchmark: +6.0%</title></rect><path d="M318.6,136.8 V145.3 Q318.6,149.3 322.6,149.3 H324.7 Q328.7,149.3 328.7,145.3 V136.8 Z" style="fill:var(--s1)"/><path d="M329.7,136.8 V149.2 Q329.7,153.2 333.7,153.2 H335.7 Q339.7,153.2 339.7,149.2 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="316.6" y="24" width="26.1" height="188"><title>2006
+Maximum Sharpe: −6.7%
+Benchmark: −8.7%</title></rect><path d="M344.7,136.8 V137.9 Q344.7,141.9 348.7,141.9 H350.7 Q354.7,141.9 354.7,137.9 V136.8 Z" style="fill:var(--s1)"/><path d="M355.7,136.8 V139.0 Q355.7,143.0 359.7,143.0 H361.8 Q365.8,143.0 365.8,139.0 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="342.7" y="24" width="26.1" height="188"><title>2007
+Maximum Sharpe: −2.7%
+Benchmark: −3.3%</title></rect><path d="M370.8,136.8 V169.3 Q370.8,173.3 374.8,173.3 H376.8 Q380.8,173.3 380.8,169.3 V136.8 Z" style="fill:var(--s1)"/><path d="M381.8,136.8 V173.2 Q381.8,177.2 385.8,177.2 H387.8 Q391.8,177.2 391.8,173.2 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="368.8" y="24" width="26.1" height="188"><title>2008
+Maximum Sharpe: −19.4%
+Benchmark: −21.5%</title></rect><path d="M396.8,136.8 V61.9 Q396.8,57.9 400.8,57.9 H402.9 Q406.9,57.9 406.9,61.9 V136.8 Z" style="fill:var(--s1)"/><path d="M407.9,136.8 V55.6 Q407.9,51.6 411.9,51.6 H413.9 Q417.9,51.6 417.9,55.6 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="394.8" y="24" width="26.1" height="188"><title>2009
+Maximum Sharpe: +42.0%
+Benchmark: +45.3%</title></rect><path d="M422.9,136.8 V106.4 Q422.9,102.4 426.9,102.4 H428.9 Q432.9,102.4 432.9,106.4 V136.8 Z" style="fill:var(--s1)"/><path d="M433.9,136.8 V92.3 Q433.9,88.3 437.9,88.3 H440.0 Q444.0,88.3 444.0,92.3 V136.8 Z" style="fill:var(--s2)"/><text class="tick" x="433.9" y="232" text-anchor="middle">2010</text><rect class="hit" x="420.9" y="24" width="26.1" height="188"><title>2010
+Maximum Sharpe: +18.3%
+Benchmark: +25.8%</title></rect><path d="M449.0,136.8 V106.3 Q449.0,102.3 453.0,102.3 H455.0 Q459.0,102.3 459.0,106.3 V136.8 Z" style="fill:var(--s1)"/><path d="M460.0,136.8 V115.2 Q460.0,111.2 464.0,111.2 H466.0 Q470.0,111.2 470.0,115.2 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="447.0" y="24" width="26.1" height="188"><title>2011
+Maximum Sharpe: +18.4%
+Benchmark: +13.6%</title></rect><path d="M475.0,136.8 V117.2 Q475.0,113.2 479.0,113.2 H481.1 Q485.1,113.2 485.1,117.2 V136.8 Z" style="fill:var(--s1)"/><path d="M486.1,136.8 V120.5 Q486.1,116.5 490.1,116.5 H492.1 Q496.1,116.5 496.1,120.5 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="473.0" y="24" width="26.1" height="188"><title>2012
+Maximum Sharpe: +12.6%
+Benchmark: +10.8%</title></rect><path d="M501.1,136.8 V113.8 Q501.1,109.8 505.1,109.8 H507.1 Q511.1,109.8 511.1,113.8 V136.8 Z" style="fill:var(--s1)"/><path d="M512.1,136.8 V110.2 Q512.1,106.2 516.1,106.2 H518.2 Q522.2,106.2 522.2,110.2 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="499.1" y="24" width="26.1" height="188"><title>2013
+Maximum Sharpe: +14.3%
+Benchmark: +16.3%</title></rect><path d="M527.2,136.8 V134.0 Q527.2,130.0 531.2,130.0 H533.2 Q537.2,130.0 537.2,134.0 V136.8 Z" style="fill:var(--s1)"/><path d="M538.2,136.8 V131.1 Q538.2,127.1 542.2,127.1 H544.2 Q548.2,127.1 548.2,131.1 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="525.2" y="24" width="26.1" height="188"><title>2014
+Maximum Sharpe: +3.6%
+Benchmark: +5.1%</title></rect><path d="M553.2,136.8 V108.8 Q553.2,104.8 557.2,104.8 H559.3 Q563.3,104.8 563.3,108.8 V136.8 Z" style="fill:var(--s1)"/><path d="M564.3,136.8 V114.8 Q564.3,110.8 568.3,110.8 H570.3 Q574.3,110.8 574.3,114.8 V136.8 Z" style="fill:var(--s2)"/><text class="tick" x="564.3" y="232" text-anchor="middle">2015</text><rect class="hit" x="551.2" y="24" width="26.1" height="188"><title>2015
+Maximum Sharpe: +17.0%
+Benchmark: +13.8%</title></rect><path d="M579.3,136.8 V109.4 Q579.3,105.4 583.3,105.4 H585.3 Q589.3,105.4 589.3,109.4 V136.8 Z" style="fill:var(--s1)"/><path d="M590.3,136.8 V106.8 Q590.3,102.8 594.3,102.8 H596.4 Q600.4,102.8 600.4,106.8 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="577.3" y="24" width="26.1" height="188"><title>2016†
+Maximum Sharpe: +16.7%
+Benchmark: +18.1%</title></rect><path d="M605.4,136.8 V115.6 Q605.4,111.6 609.4,111.6 H611.4 Q615.4,111.6 615.4,115.6 V136.8 Z" style="fill:var(--s1)"/><path d="M616.4,136.8 V111.6 Q616.4,107.6 620.4,107.6 H622.4 Q626.4,107.6 626.4,111.6 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="603.4" y="24" width="26.1" height="188"><title>2017
+Maximum Sharpe: +13.4%
+Benchmark: +15.5%</title></rect><path d="M631.4,136.8 V89.7 Q631.4,85.7 635.4,85.7 H637.5 Q641.5,85.7 641.5,89.7 V136.8 Z" style="fill:var(--s1)"/><path d="M642.5,136.8 V78.0 Q642.5,74.0 646.5,74.0 H648.5 Q652.5,74.0 652.5,78.0 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="629.4" y="24" width="26.1" height="188"><title>2018
+Maximum Sharpe: +27.2%
+Benchmark: +33.4%</title></rect><path d="M657.5,136.8 V126.8 Q657.5,122.8 661.5,122.8 H663.5 Q667.5,122.8 667.5,126.8 V136.8 Z" style="fill:var(--s1)"/><path d="M668.5,136.8 V122.6 Q668.5,118.6 672.5,118.6 H674.5 Q678.5,118.6 678.5,122.6 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="655.5" y="24" width="26.1" height="188"><title>2019
+Maximum Sharpe: +7.5%
+Benchmark: +9.7%</title></rect><path d="M683.5,136.8 V128.8 Q683.5,124.8 687.5,124.8 H689.6 Q693.6,124.8 693.6,128.8 V136.8 Z" style="fill:var(--s1)"/><path d="M694.6,136.8 V135.5 Q694.6,131.5 698.6,131.5 H700.6 Q704.6,131.5 704.6,135.5 V136.8 Z" style="fill:var(--s2)"/><text class="tick" x="694.6" y="232" text-anchor="middle">2020</text><rect class="hit" x="681.5" y="24" width="26.1" height="188"><title>2020
+Maximum Sharpe: +6.4%
+Benchmark: +2.8%</title></rect><path d="M709.6,136.8 V138.3 Q709.6,142.3 713.6,142.3 H715.6 Q719.6,142.3 719.6,138.3 V136.8 Z" style="fill:var(--s1)"/><path d="M720.6,136.8 V136.8 Q720.6,137.4 721.3,137.4 H730.1 Q730.7,137.4 730.7,136.8 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="707.6" y="24" width="26.1" height="188"><title>2021
+Maximum Sharpe: −2.9%
+Benchmark: −0.3%</title></rect><path d="M735.7,136.8 V156.4 Q735.7,160.4 739.7,160.4 H741.7 Q745.7,160.4 745.7,156.4 V136.8 Z" style="fill:var(--s1)"/><path d="M746.7,136.8 V163.7 Q746.7,167.7 750.7,167.7 H752.7 Q756.7,167.7 756.7,163.7 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="733.7" y="24" width="26.1" height="188"><title>2022
+Maximum Sharpe: −12.6%
+Benchmark: −16.4%</title></rect><path d="M761.7,136.8 V111.9 Q761.7,107.9 765.7,107.9 H767.8 Q771.8,107.9 771.8,111.9 V136.8 Z" style="fill:var(--s1)"/><path d="M772.8,136.8 V108.3 Q772.8,104.3 776.8,104.3 H778.8 Q782.8,104.3 782.8,108.3 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="759.7" y="24" width="26.1" height="188"><title>2023
+Maximum Sharpe: +15.4%
+Benchmark: +17.3%</title></rect><path d="M787.8,136.8 V86.6 Q787.8,82.6 791.8,82.6 H793.8 Q797.8,82.6 797.8,86.6 V136.8 Z" style="fill:var(--s1)"/><path d="M798.8,136.8 V84.0 Q798.8,80.0 802.8,80.0 H804.9 Q808.9,80.0 808.9,84.0 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="785.8" y="24" width="26.1" height="188"><title>2024
+Maximum Sharpe: +28.9%
+Benchmark: +30.2%</title></rect><path d="M813.9,136.8 V161.8 Q813.9,165.8 817.9,165.8 H819.9 Q823.9,165.8 823.9,161.8 V136.8 Z" style="fill:var(--s1)"/><path d="M824.9,136.8 V167.3 Q824.9,171.3 828.9,171.3 H830.9 Q834.9,171.3 834.9,167.3 V136.8 Z" style="fill:var(--s2)"/><text class="tick" x="824.9" y="232" text-anchor="middle">2025</text><rect class="hit" x="811.9" y="24" width="26.1" height="188"><title>2025
+Maximum Sharpe: −15.4%
+Benchmark: −18.3%</title></rect><path d="M839.9,136.8 V142.0 Q839.9,146.0 843.9,146.0 H846.0 Q850.0,146.0 850.0,142.0 V136.8 Z" style="fill:var(--s1)"/><path d="M851.0,136.8 V143.9 Q851.0,147.9 855.0,147.9 H857.0 Q861.0,147.9 861.0,143.9 V136.8 Z" style="fill:var(--s2)"/><rect class="hit" x="837.9" y="24" width="26.1" height="188"><title>2026 to Oct
+Maximum Sharpe: −4.9%
+Benchmark: −5.9%</title></rect></svg><p class="note">Part years: 1996 from Nov, 2026 to Oct. † 2016 is in sample to Oct 2016 and out of sample after.</p></div><div class="card"><h3>Monthly returns, out of sample</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th><th class="r">Year</th></tr></thead><tbody><tr><th class="yr">2016</th><td class="na" title="Jan 2016: "></td><td class="na" title="Feb 2016: "></td><td class="na" title="Mar 2016: "></td><td class="na" title="Apr 2016: "></td><td class="na" title="May 2016: "></td><td class="na" title="Jun 2016: "></td><td class="na" title="Jul 2016: "></td><td class="na" title="Aug 2016: "></td><td class="na" title="Sep 2016: "></td><td class="na" title="Oct 2016: "></td><td style="background:color-mix(in oklab, var(--pos) 45%, var(--mid));color:var(--ink)" title="Nov 2016: 3.8%">3.8%</td><td style="background:color-mix(in oklab, var(--pos) 26%, var(--mid));color:var(--ink)" title="Dec 2016: 2.2%">2.2%</td><td class="r"><b>6.1%</b></td></tr><tr><th class="yr">2017</th><td style="background:color-mix(in oklab, var(--neg) 35%, var(--mid));color:var(--ink)" title="Jan 2017: −3.0%">−3.0%</td><td style="background:color-mix(in oklab, var(--pos) 66%, var(--mid));color:#fff" title="Feb 2017: 5.5%">5.5%</td><td style="background:color-mix(in oklab, var(--pos) 22%, var(--mid));color:var(--ink)" title="Mar 2017: 1.8%">1.8%</td><td style="background:color-mix(in oklab, var(--pos) 36%, var(--mid));color:var(--ink)" title="Apr 2017: 3.0%">3.0%</td><td style="background:color-mix(in oklab, var(--pos) 9%, var(--mid));color:var(--ink)" title="May 2017: 0.8%">0.8%</td><td style="background:color-mix(in oklab, var(--pos) 11%, var(--mid));color:var(--ink)" title="Jun 2017: 0.9%">0.9%</td><td style="background:color-mix(in oklab, var(--pos) 59%, var(--mid));color:#fff" title="Jul 2017: 4.9%">4.9%</td><td style="background:color-mix(in oklab, var(--neg) 17%, var(--mid));color:var(--ink)" title="Aug 2017: −1.4%">−1.4%</td><td style="background:color-mix(in oklab, var(--neg) 9%, var(--mid));color:var(--ink)" title="Sep 2017: −0.7%">−0.7%</td><td style="background:color-mix(in oklab, var(--neg) 12%, var(--mid));color:var(--ink)" title="Oct 2017: −1.0%">−1.0%</td><td style="background:color-mix(in oklab, var(--pos) 15%, var(--mid));color:var(--ink)" title="Nov 2017: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--pos) 12%, var(--mid));color:var(--ink)" title="Dec 2017: 1.0%">1.0%</td><td class="r"><b>13.4%</b></td></tr><tr><th class="yr">2018</th><td style="background:color-mix(in oklab, var(--pos) 18%, var(--mid));color:var(--ink)" title="Jan 2018: 1.5%">1.5%</td><td style="background:color-mix(in oklab, var(--neg) 17%, var(--mid));color:var(--ink)" title="Feb 2018: −1.4%">−1.4%</td><td style="background:color-mix(in oklab, var(--pos) 40%, var(--mid));color:var(--ink)" title="Mar 2018: 3.3%">3.3%</td><td style="background:color-mix(in oklab, var(--pos) 25%, var(--mid));color:var(--ink)" title="Apr 2018: 2.1%">2.1%</td><td style="background:color-mix(in oklab, var(--pos) 23%, var(--mid));color:var(--ink)" title="May 2018: 1.9%">1.9%</td><td style="background:color-mix(in oklab, var(--pos) 49%, var(--mid));color:var(--ink)" title="Jun 2018: 4.1%">4.1%</td><td style="background:color-mix(in oklab, var(--pos) 44%, var(--mid));color:var(--ink)" title="Jul 2018: 3.7%">3.7%</td><td style="background:color-mix(in oklab, var(--pos) 27%, var(--mid));color:var(--ink)" title="Aug 2018: 2.3%">2.3%</td><td style="background:color-mix(in oklab, var(--neg) 5%, var(--mid));color:var(--ink)" title="Sep 2018: −0.4%">−0.4%</td><td style="background:color-mix(in oklab, var(--pos) 12%, var(--mid));color:var(--ink)" title="Oct 2018: 1.0%">1.0%</td><td style="background:color-mix(in oklab, var(--pos) 53%, var(--mid));color:var(--ink)" title="Nov 2018: 4.5%">4.5%</td><td style="background:color-mix(in oklab, var(--pos) 22%, var(--mid));color:var(--ink)" title="Dec 2018: 1.9%">1.9%</td><td class="r"><b>27.2%</b></td></tr><tr><th class="yr">2019</th><td style="background:color-mix(in oklab, var(--neg) 0%, var(--mid));color:var(--ink)" title="Jan 2019: 0.0%">0.0%</td><td style="background:color-mix(in oklab, var(--pos) 16%, var(--mid));color:var(--ink)" title="Feb 2019: 1.3%">1.3%</td><td style="background:color-mix(in oklab, var(--pos) 7%, var(--mid));color:var(--ink)" title="Mar 2019: 0.6%">0.6%</td><td style="background:color-mix(in oklab, var(--neg) 16%, var(--mid));color:var(--ink)" title="Apr 2019: −1.4%">−1.4%</td><td style="background:color-mix(in oklab, var(--neg) 5%, var(--mid));color:var(--ink)" title="May 2019: −0.4%">−0.4%</td><td style="background:color-mix(in oklab, var(--pos) 6%, var(--mid));color:var(--ink)" title="Jun 2019: 0.5%">0.5%</td><td style="background:color-mix(in oklab, var(--pos) 14%, var(--mid));color:var(--ink)" title="Jul 2019: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--neg) 6%, var(--mid));color:var(--ink)" title="Aug 2019: −0.5%">−0.5%</td><td style="background:color-mix(in oklab, var(--pos) 85%, var(--mid));color:#fff" title="Sep 2019: 7.1%">7.1%</td><td style="background:color-mix(in oklab, var(--neg) 20%, var(--mid));color:var(--ink)" title="Oct 2019: −1.7%">−1.7%</td><td style="background:color-mix(in oklab, var(--neg) 24%, var(--mid));color:var(--ink)" title="Nov 2019: −2.0%">−2.0%</td><td style="background:color-mix(in oklab, var(--pos) 33%, var(--mid));color:var(--ink)" title="Dec 2019: 2.8%">2.8%</td><td class="r"><b>7.5%</b></td></tr><tr><th class="yr">2020</th><td style="background:color-mix(in oklab, var(--pos) 19%, var(--mid));color:var(--ink)" title="Jan 2020: 1.6%">1.6%</td><td style="background:color-mix(in oklab, var(--neg) 100%, var(--mid));color:#fff" title="Feb 2020: −8.4%">−8.4%</td><td style="background:color-mix(in oklab, var(--neg) 60%, var(--mid));color:#fff" title="Mar 2020: −5.1%">−5.1%</td><td style="background:color-mix(in oklab, var(--neg) 25%, var(--mid));color:var(--ink)" title="Apr 2020: −2.1%">−2.1%</td><td style="background:color-mix(in oklab, var(--pos) 48%, var(--mid));color:var(--ink)" title="May 2020: 4.0%">4.0%</td><td style="background:color-mix(in oklab, var(--pos) 85%, var(--mid));color:#fff" title="Jun 2020: 7.2%">7.2%</td><td style="background:color-mix(in oklab, var(--neg) 14%, var(--mid));color:var(--ink)" title="Jul 2020: −1.1%">−1.1%</td><td style="background:color-mix(in oklab, var(--pos) 39%, var(--mid));color:var(--ink)" title="Aug 2020: 3.2%">3.2%</td><td style="background:color-mix(in oklab, var(--pos) 11%, var(--mid));color:var(--ink)" title="Sep 2020: 0.9%">0.9%</td><td style="background:color-mix(in oklab, var(--pos) 25%, var(--mid));color:var(--ink)" title="Oct 2020: 2.1%">2.1%</td><td style="background:color-mix(in oklab, var(--pos) 60%, var(--mid));color:#fff" title="Nov 2020: 5.0%">5.0%</td><td style="background:color-mix(in oklab, var(--neg) 1%, var(--mid));color:var(--ink)" title="Dec 2020: −0.1%">−0.1%</td><td class="r"><b>6.4%</b></td></tr><tr><th class="yr">2021</th><td style="background:color-mix(in oklab, var(--neg) 17%, var(--mid));color:var(--ink)" title="Jan 2021: −1.4%">−1.4%</td><td style="background:color-mix(in oklab, var(--pos) 3%, var(--mid));color:var(--ink)" title="Feb 2021: 0.2%">0.2%</td><td style="background:color-mix(in oklab, var(--neg) 11%, var(--mid));color:var(--ink)" title="Mar 2021: −0.9%">−0.9%</td><td style="background:color-mix(in oklab, var(--neg) 6%, var(--mid));color:var(--ink)" title="Apr 2021: −0.5%">−0.5%</td><td style="background:color-mix(in oklab, var(--pos) 15%, var(--mid));color:var(--ink)" title="May 2021: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--neg) 34%, var(--mid));color:var(--ink)" title="Jun 2021: −2.9%">−2.9%</td><td style="background:color-mix(in oklab, var(--pos) 4%, var(--mid));color:var(--ink)" title="Jul 2021: 0.3%">0.3%</td><td style="background:color-mix(in oklab, var(--neg) 18%, var(--mid));color:var(--ink)" title="Aug 2021: −1.5%">−1.5%</td><td style="background:color-mix(in oklab, var(--pos) 25%, var(--mid));color:var(--ink)" title="Sep 2021: 2.1%">2.1%</td><td style="background:color-mix(in oklab, var(--neg) 4%, var(--mid));color:var(--ink)" title="Oct 2021: −0.3%">−0.3%</td><td style="background:color-mix(in oklab, var(--neg) 15%, var(--mid));color:var(--ink)" title="Nov 2021: −1.2%">−1.2%</td><td style="background:color-mix(in oklab, var(--pos) 25%, var(--mid));color:var(--ink)" title="Dec 2021: 2.1%">2.1%</td><td class="r"><b>−2.9%</b></td></tr><tr><th class="yr">2022</th><td style="background:color-mix(in oklab, var(--neg) 17%, var(--mid));color:var(--ink)" title="Jan 2022: −1.4%">−1.4%</td><td style="background:color-mix(in oklab, var(--neg) 62%, var(--mid));color:#fff" title="Feb 2022: −5.2%">−5.2%</td><td style="background:color-mix(in oklab, var(--pos) 15%, var(--mid));color:var(--ink)" title="Mar 2022: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--pos) 23%, var(--mid));color:var(--ink)" title="Apr 2022: 2.0%">2.0%</td><td style="background:color-mix(in oklab, var(--neg) 44%, var(--mid));color:var(--ink)" title="May 2022: −3.7%">−3.7%</td><td style="background:color-mix(in oklab, var(--neg) 42%, var(--mid));color:var(--ink)" title="Jun 2022: −3.5%">−3.5%</td><td style="background:color-mix(in oklab, var(--neg) 44%, var(--mid));color:var(--ink)" title="Jul 2022: −3.7%">−3.7%</td><td style="background:color-mix(in oklab, var(--neg) 35%, var(--mid));color:var(--ink)" title="Aug 2022: −2.9%">−2.9%</td><td style="background:color-mix(in oklab, var(--pos) 5%, var(--mid));color:var(--ink)" title="Sep 2022: 0.4%">0.4%</td><td style="background:color-mix(in oklab, var(--pos) 5%, var(--mid));color:var(--ink)" title="Oct 2022: 0.4%">0.4%</td><td style="background:color-mix(in oklab, var(--pos) 24%, var(--mid));color:var(--ink)" title="Nov 2022: 2.0%">2.0%</td><td style="background:color-mix(in oklab, var(--pos) 17%, var(--mid));color:var(--ink)" title="Dec 2022: 1.4%">1.4%</td><td class="r"><b>−12.6%</b></td></tr><tr><th class="yr">2023</th><td style="background:color-mix(in oklab, var(--pos) 44%, var(--mid));color:var(--ink)" title="Jan 2023: 3.7%">3.7%</td><td style="background:color-mix(in oklab, var(--pos) 38%, var(--mid));color:var(--ink)" title="Feb 2023: 3.2%">3.2%</td><td style="background:color-mix(in oklab, var(--pos) 13%, var(--mid));color:var(--ink)" title="Mar 2023: 1.1%">1.1%</td><td style="background:color-mix(in oklab, var(--neg) 6%, var(--mid));color:var(--ink)" title="Apr 2023: −0.5%">−0.5%</td><td style="background:color-mix(in oklab, var(--neg) 12%, var(--mid));color:var(--ink)" title="May 2023: −1.0%">−1.0%</td><td style="background:color-mix(in oklab, var(--neg) 11%, var(--mid));color:var(--ink)" title="Jun 2023: −0.9%">−0.9%</td><td style="background:color-mix(in oklab, var(--pos) 21%, var(--mid));color:var(--ink)" title="Jul 2023: 1.8%">1.8%</td><td style="background:color-mix(in oklab, var(--neg) 5%, var(--mid));color:var(--ink)" title="Aug 2023: −0.4%">−0.4%</td><td style="background:color-mix(in oklab, var(--neg) 16%, var(--mid));color:var(--ink)" title="Sep 2023: −1.3%">−1.3%</td><td style="background:color-mix(in oklab, var(--pos) 20%, var(--mid));color:var(--ink)" title="Oct 2023: 1.7%">1.7%</td><td style="background:color-mix(in oklab, var(--pos) 51%, var(--mid));color:var(--ink)" title="Nov 2023: 4.3%">4.3%</td><td style="background:color-mix(in oklab, var(--pos) 36%, var(--mid));color:var(--ink)" title="Dec 2023: 3.0%">3.0%</td><td class="r"><b>15.4%</b></td></tr><tr><th class="yr">2024</th><td style="background:color-mix(in oklab, var(--pos) 43%, var(--mid));color:var(--ink)" title="Jan 2024: 3.6%">3.6%</td><td style="background:color-mix(in oklab, var(--pos) 9%, var(--mid));color:var(--ink)" title="Feb 2024: 0.8%">0.8%</td><td style="background:color-mix(in oklab, var(--pos) 17%, var(--mid));color:var(--ink)" title="Mar 2024: 1.4%">1.4%</td><td style="background:color-mix(in oklab, var(--pos) 13%, var(--mid));color:var(--ink)" title="Apr 2024: 1.1%">1.1%</td><td style="background:color-mix(in oklab, var(--pos) 54%, var(--mid));color:var(--ink)" title="May 2024: 4.6%">4.6%</td><td style="background:color-mix(in oklab, var(--pos) 57%, var(--mid));color:var(--ink)" title="Jun 2024: 4.8%">4.8%</td><td style="background:color-mix(in oklab, var(--pos) 10%, var(--mid));color:var(--ink)" title="Jul 2024: 0.8%">0.8%</td><td style="background:color-mix(in oklab, var(--pos) 17%, var(--mid));color:var(--ink)" title="Aug 2024: 1.4%">1.4%</td><td style="background:color-mix(in oklab, var(--pos) 9%, var(--mid));color:var(--ink)" title="Sep 2024: 0.8%">0.8%</td><td style="background:color-mix(in oklab, var(--pos) 16%, var(--mid));color:var(--ink)" title="Oct 2024: 1.3%">1.3%</td><td style="background:color-mix(in oklab, var(--pos) 30%, var(--mid));color:var(--ink)" title="Nov 2024: 2.6%">2.6%</td><td style="background:color-mix(in oklab, var(--pos) 30%, var(--mid));color:var(--ink)" title="Dec 2024: 2.6%">2.6%</td><td class="r"><b>28.9%</b></td></tr><tr><th class="yr">2025</th><td style="background:color-mix(in oklab, var(--neg) 85%, var(--mid));color:#fff" title="Jan 2025: −7.1%">−7.1%</td><td style="background:color-mix(in oklab, var(--pos) 14%, var(--mid));color:var(--ink)" title="Feb 2025: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--neg) 19%, var(--mid));color:var(--ink)" title="Mar 2025: −1.6%">−1.6%</td><td style="background:color-mix(in oklab, var(--pos) 13%, var(--mid));color:var(--ink)" title="Apr 2025: 1.1%">1.1%</td><td style="background:color-mix(in oklab, var(--neg) 21%, var(--mid));color:var(--ink)" title="May 2025: −1.8%">−1.8%</td><td style="background:color-mix(in oklab, var(--neg) 80%, var(--mid));color:#fff" title="Jun 2025: −6.7%">−6.7%</td><td style="background:color-mix(in oklab, var(--neg) 14%, var(--mid));color:var(--ink)" title="Jul 2025: −1.1%">−1.1%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)" title="Aug 2025: 0.0%">0.0%</td><td style="background:color-mix(in oklab, var(--pos) 29%, var(--mid));color:var(--ink)" title="Sep 2025: 2.5%">2.5%</td><td style="background:color-mix(in oklab, var(--pos) 7%, var(--mid));color:var(--ink)" title="Oct 2025: 0.6%">0.6%</td><td style="background:color-mix(in oklab, var(--neg) 12%, var(--mid));color:var(--ink)" title="Nov 2025: −1.0%">−1.0%</td><td style="background:color-mix(in oklab, var(--neg) 24%, var(--mid));color:var(--ink)" title="Dec 2025: −2.0%">−2.0%</td><td class="r"><b>−15.4%</b></td></tr><tr><th class="yr">2026</th><td style="background:color-mix(in oklab, var(--pos) 6%, var(--mid));color:var(--ink)" title="Jan 2026: 0.5%">0.5%</td><td style="background:color-mix(in oklab, var(--neg) 9%, var(--mid));color:var(--ink)" title="Feb 2026: −0.8%">−0.8%</td><td style="background:color-mix(in oklab, var(--pos) 26%, var(--mid));color:var(--ink)" title="Mar 2026: 2.2%">2.2%</td><td style="background:color-mix(in oklab, var(--neg) 31%, var(--mid));color:var(--ink)" title="Apr 2026: −2.6%">−2.6%</td><td style="background:color-mix(in oklab, var(--neg) 16%, var(--mid));color:var(--ink)" title="May 2026: −1.3%">−1.3%</td><td style="background:color-mix(in oklab, var(--neg) 61%, var(--mid));color:#fff" title="Jun 2026: −5.1%">−5.1%</td><td style="background:color-mix(in oklab, var(--pos) 35%, var(--mid));color:var(--ink)" title="Jul 2026: 3.0%">3.0%</td><td style="background:color-mix(in oklab, var(--neg) 26%, var(--mid));color:var(--ink)" title="Aug 2026: −2.2%">−2.2%</td><td style="background:color-mix(in oklab, var(--pos) 52%, var(--mid));color:var(--ink)" title="Sep 2026: 4.4%">4.4%</td><td style="background:color-mix(in oklab, var(--neg) 32%, var(--mid));color:var(--ink)" title="Oct 2026: −2.7%">−2.7%</td><td class="na" title="Nov 2026: "></td><td class="na" title="Dec 2026: "></td><td class="r"><b>−4.9%</b></td></tr></tbody></table></div></div></section><section id="b-method"><header class="sh"><h2>Method</h2><p>How the backtest was run</p></header><div class="card"><h3>How the allocation was tested</h3><table><tbody><tr><th style="white-space:nowrap">Assets</th><td>US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as the risk-free asset, held as cash. Monthly returns, Nov 1996 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Validation</th><td>A holdout: weights fitted to the history to Oct 2016 and scored on Nov 2016 to Oct 2026, returns they had not seen.</td></tr><tr><th style="white-space:nowrap">Estimates</th><td>The Ledoit–Wolf covariance and historical mean returns, annualised by 12.</td></tr><tr><th style="white-space:nowrap">Limits</th><td>At most 40% in any asset; fully invested.</td></tr><tr><th style="white-space:nowrap">Rebalancing</th><td>Quarterly, to the targets; between rebalances the weights drift with prices.</td></tr><tr><th style="white-space:nowrap">Trading costs</th><td>10 bp of the value traded, paid from the next period&#39;s return.</td></tr><tr><th style="white-space:nowrap">In sample</th><td>The same weights over the history they were fitted to, Nov 1996 to Oct 2016.</td></tr><tr><th style="white-space:nowrap">Ratios</th><td>Sharpe and Sortino ratios against the T-Bills return over each period scored (2.5% a year over the test); value at risk and expected shortfall from history, at 95% over one month.</td></tr></tbody></table></div></section>
+<div class="foot">Every figure is computed by Finalytics 1.0.0-rc.7 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>3da1af4b14e3</code>.</div>
+</div></body></html>

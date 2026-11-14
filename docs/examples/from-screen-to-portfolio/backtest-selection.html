@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Finalytics 1.0.0-rc.7"><title>Screened funds, rebalanced monthly</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
+--grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
+--muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec;
+--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#fff;--on-s8:#000;
+--on-muted-fill:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d0d0d;
+--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;
+--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;--muted-fill:#52514e;--pos:#3987e5;
+--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;
+--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;
+--muted-fill:#52514e;--pos:#3987e5;--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;
+--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.page{max-width:1000px;margin:0 auto;padding:32px 16px 64px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+border-bottom:1px solid var(--grid);padding-bottom:16px}
+.brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
+.logo img{height:36px;width:auto;display:block;margin-bottom:14px}.lg-dark{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-light{display:none!important}
+:root:not([data-theme="light"]) .lg-dark{display:block!important}}
+:root[data-theme="dark"] .lg-light{display:none!important}:root[data-theme="dark"] .lg-dark{display:block!important}
+h1{margin:4px 0 0;font-size:28px;font-weight:600}.meta{color:var(--ink2);font-size:14px;text-align:right}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 8px}
+nav a{color:var(--ink2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:999px;
+border:1px solid var(--grid)}nav a:hover{color:var(--ink);background:var(--surface)}
+section{margin-top:40px}.sh h2{margin:0;font-size:22px;font-weight:600}.sh p{margin:2px 0 12px;color:var(--ink2)}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px 20px;margin:12px 0}
+.card h3{margin:0 0 10px;font-size:15px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin:0}
+@media (max-width:720px){.two{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px}
+.tl{font-size:13px;color:var(--ink2)}.tv{font-size:22px;font-weight:600;margin-top:2px}
+.tv.long{font-size:18px}
+.ts{font-size:12.5px;color:var(--muted);margin-top:2px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.grid{stroke:var(--grid);stroke-width:1}.base{stroke:var(--axis);stroke-width:1}
+.tick{fill:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.lab{fill:var(--ink2);font-size:13px}.val,.end{fill:var(--ink);font-size:12.5px;font-variant-numeric:tabular-nums}
+.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dot{stroke:var(--surface);stroke-width:2}.hit{fill:transparent}.hit:hover{fill:var(--ink);opacity:.04}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:0 0 8px}
+.key{display:inline-flex;align-items:center;gap:6px}.key i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.segbar{display:flex;gap:2px;height:28px;margin:4px 0 10px}
+.seg{border-radius:4px;display:flex;align-items:center;padding-left:8px;min-width:2px;color:#fff;
+font-size:12.5px;font-weight:600;overflow:hidden;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{font-weight:600;color:var(--ink2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid)}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}.r{text-align:right}
+.heat{table-layout:fixed}.heat td{text-align:center;border:2px solid var(--surface);border-radius:4px;padding:7px 2px}
+.heat th{text-align:center;border-bottom:0}.heat tbody th{text-align:left}.heat td.na{background:transparent}
+.heat .yr{font-weight:600;text-align:right}.heat td.diag{color:var(--muted)}
+.wide td{font-size:13px}.heat{min-width:520px}
+.tw{overflow-x:auto}
+/* A shadow at an edge with more to scroll to: the covers scroll with the content, the shadows
+stay at the edges. */
+.tw{background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll}
+@media (max-width:720px){svg.chart{min-width:640px}
+.card{overflow-x:auto;background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll,var(--surface)}}.note{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.prov{color:var(--muted);font-size:12px;margin-top:8px}code{font-size:12px}
+.foot{margin-top:48px;border-top:1px solid var(--grid);padding-top:16px;color:var(--muted);font-size:12.5px}
+@media print{nav{display:none}html,body{background:#fff}.foot{break-before:avoid;margin-top:16px}section{break-before:page}section:first-of-type{break-before:auto}
+.card,.tile{break-inside:avoid}}
+.cmp td:first-child{white-space:nowrap}.heat thead th{font-size:12.5px;vertical-align:bottom;line-height:1.25}
+table b{font-weight:650}.hollow{background:var(--surface)!important;box-shadow:inset 0 0 0 2px var(--ink2)}
+</style></head>
+<body><div class="page">
+<div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,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"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,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"></div>
+<h1>Screened funds, rebalanced monthly</h1><div class="brand">Backtest report</div></div>
+<div class="meta">Fixed weights, Nov 2023 to Oct 2026<br>3 assets · daily · rebalanced monthly · 10 bp trading costs · against BENCH</div></div>
+<nav><a href="#b-summary">Summary</a><a href="#b-growth">Growth</a><a href="#b-weights">Weights</a><a href="#b-returns">Returns</a><a href="#b-method">Method</a></nav>
+<section id="b-summary"><header class="sh"><h2>Summary</h2><p>The allocation, and how it did</p></header><div class="card"><h3>The allocation: fixed weights</h3><div class="segbar" role="img" aria-label="The allocation: fixed weights"><div class="seg" style="flex:0.3333;background:var(--s1);color:var(--on-s1)" title="VTI: 33.3%"><span>33%</span></div><div class="seg" style="flex:0.3333;background:var(--s2);color:var(--on-s2)" title="EXSA: 33.3%"><span>33%</span></div><div class="seg" style="flex:0.3333;background:var(--s3);color:var(--on-s3)" title="VNQ: 33.3%"><span>33%</span></div></div><div class="legend"><span class="key"><i style="background:var(--s1)"></i>VTI 33.3%</span><span class="key"><i style="background:var(--s2)"></i>EXSA 33.3%</span><span class="key"><i style="background:var(--s3)"></i>VNQ 33.3%</span></div><p class="note">Screened funds, rebalanced monthly: fixed weights, not fitted to these returns. Rebalanced monthly. Benchmark: BENCH.</p></div><div class="tiles"><div class="tile"><div class="tl">Return</div><div class="tv long">14.8% a year</div><div class="ts">BENCH 15.9%</div></div><div class="tile"><div class="tl">Volatility</div><div class="tv">11.5%</div><div class="ts">BENCH 8.4%</div></div><div class="tile"><div class="tl">Sharpe ratio</div><div class="tv">0.92</div><div class="ts">BENCH 1.32</div></div><div class="tile"><div class="tl">Maximum drawdown</div><div class="tv">−15.0%</div><div class="ts">BENCH −9.2%</div></div><div class="tile"><div class="tl">Tracking error</div><div class="tv">4.9%</div><div class="ts">Information ratio −0.12</div></div></div><div class="card"><h3>Statistics</h3><div class="tw"><table class=""><thead><tr><th></th><th class="r">Screened funds, rebalanced monthly</th><th class="r">BENCH</th></tr></thead><tbody><tr><td>Return a year</td><td class="r">14.8%</td><td class="r">15.9%</td></tr><tr><td>Volatility</td><td class="r">11.5%</td><td class="r">8.4%</td></tr><tr><td>Sharpe ratio</td><td class="r">0.92</td><td class="r">1.32</td></tr><tr><td>Sortino ratio</td><td class="r">1.30</td><td class="r">1.95</td></tr><tr><td>Maximum drawdown</td><td class="r">−15.0%</td><td class="r">−9.2%</td></tr><tr><td>Conditional drawdown at risk, 95%</td><td class="r">−8.2%</td><td class="r">−5.0%</td></tr><tr><td>Ulcer index</td><td class="r">2.7%</td><td class="r">1.7%</td></tr><tr><td>Calmar ratio</td><td class="r">0.99</td><td class="r">1.73</td></tr><tr><td>Best day</td><td class="r">+4.0%</td><td class="r">+3.8%</td></tr><tr><td>Worst day</td><td class="r">−5.2%</td><td class="r">−3.2%</td></tr><tr><td>Value at risk, 95%, 1 day</td><td class="r">1.1%</td><td class="r">0.7%</td></tr><tr><td>Expected shortfall, 95%, 1 day</td><td class="r">1.6%</td><td class="r">1.2%</td></tr><tr><td>Tracking error</td><td class="r">4.9%</td><td class="r"></td></tr><tr><td>Information ratio</td><td class="r">−0.12</td><td class="r"></td></tr><tr><td>Beta to the benchmark</td><td class="r">1.26</td><td class="r"></td></tr><tr><td>Downside beta and capture</td><td class="r">1.39 · 1.14</td><td class="r"></td></tr><tr><td>Upside beta and capture</td><td class="r">1.21 · 1.32</td><td class="r"></td></tr></tbody></table></div><p class="note">Fixed weights, not fitted to these returns, scored on Nov 2023 to Oct 2026.</p></div></section><section id="b-growth"><header class="sh"><h2>Growth and drawdown</h2><p>Nov 2023 to Oct 2026</p></header><div class="card"><h3>Growth of 100</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Screened funds, rebalanced monthly</span><span class="key"><i style="background:var(--s2)"></i>BENCH</span></div><svg class="chart" viewBox="0 0 880 280" role="img"><line class="grid" x1="56" x2="816" y1="252.0" y2="252.0"/><text class="tick" x="48" y="256.0" text-anchor="end">100</text><line class="grid" x1="56" x2="816" y1="172.0" y2="172.0"/><text class="tick" x="48" y="176.0" text-anchor="end">120</text><line class="grid" x1="56" x2="816" y1="92.0" y2="92.0"/><text class="tick" x="48" y="96.0" text-anchor="end">140</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">160</text><text class="tick" x="98.4" y="272" text-anchor="middle">2024</text><text class="tick" x="352.6" y="272" text-anchor="middle">2025</text><text class="tick" x="606.2" y="272" text-anchor="middle">2026</text><path class="line" d="M56.0,252.0 L76.1,217.9 L96.3,194.1 L119.2,197.9 L139.4,184.1 L158.8,171.8 L181.7,192.9 L203.3,173.4 L222.7,171.8 L245.7,154.0 L266.5,139.1 L288.0,134.3 L309.6,146.9 L329.7,126.7 L351.9,150.9 L373.5,131.5 L392.9,122.4 L414.5,147.1 L435.3,153.2 L456.1,132.6 L477.7,129.1 L499.2,123.0 L519.4,111.1 L541.6,106.3 L563.1,101.8 L582.6,95.4 L605.5,97.4 L626.3,83.5 L645.8,67.0 L668.0,107.0 L688.9,62.6 L709.0,47.8 L731.2,44.3 L752.8,37.5 L774.3,36.4 L795.2,59.7 L816.0,47.8" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="47.8" r="4" style="fill:var(--s1)"/><text class="end" x="826.0" y="51.8">151</text><path class="line" d="M56.0,252.0 L76.1,224.9 L96.3,205.2 L119.2,205.4 L139.4,196.5 L158.8,184.0 L181.7,198.4 L203.3,182.5 L222.7,176.9 L245.7,164.5 L266.5,152.9 L288.0,144.2 L309.6,154.8 L329.7,141.4 L351.9,154.8 L373.5,140.2 L392.9,135.7 L414.5,145.6 L435.3,140.7 L456.1,125.1 L477.7,110.1 L499.2,107.3 L519.4,95.0 L541.6,80.5 L563.1,72.8 L582.6,67.7 L605.5,64.5 L626.3,51.0 L645.8,42.1 L668.0,73.1 L688.9,40.4 L709.0,25.5 L731.2,28.2 L752.8,28.8 L774.3,18.3 L795.2,34.6 L816.0,31.2" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="31.2" r="4" style="fill:var(--s2)"/><text class="end" x="826.0" y="35.2">155</text><rect class="hit" x="56.0" y="12" width="20.6" height="240"><title>Nov 2023
+Screened funds, rebalanced monthly: 100
+BENCH: 100</title></rect><rect class="hit" x="76.1" y="12" width="20.6" height="240"><title>Nov 2023
+Screened funds, rebalanced monthly: 109
+BENCH: 107</title></rect><rect class="hit" x="96.3" y="12" width="23.4" height="240"><title>Dec 2023
+Screened funds, rebalanced monthly: 114
+BENCH: 112</title></rect><rect class="hit" x="119.2" y="12" width="20.6" height="240"><title>Jan 2024
+Screened funds, rebalanced monthly: 114
+BENCH: 112</title></rect><rect class="hit" x="139.4" y="12" width="20.0" height="240"><title>Feb 2024
+Screened funds, rebalanced monthly: 117
+BENCH: 114</title></rect><rect class="hit" x="158.8" y="12" width="23.4" height="240"><title>Mar 2024
+Screened funds, rebalanced monthly: 120
+BENCH: 117</title></rect><rect class="hit" x="181.7" y="12" width="22.0" height="240"><title>Apr 2024
+Screened funds, rebalanced monthly: 115
+BENCH: 113</title></rect><rect class="hit" x="203.3" y="12" width="20.0" height="240"><title>May 2024
+Screened funds, rebalanced monthly: 120
+BENCH: 117</title></rect><rect class="hit" x="222.7" y="12" width="23.4" height="240"><title>Jun 2024
+Screened funds, rebalanced monthly: 120
+BENCH: 119</title></rect><rect class="hit" x="245.7" y="12" width="21.3" height="240"><title>Jul 2024
+Screened funds, rebalanced monthly: 125
+BENCH: 122</title></rect><rect class="hit" x="266.5" y="12" width="22.0" height="240"><title>Aug 2024
+Screened funds, rebalanced monthly: 128
+BENCH: 125</title></rect><rect class="hit" x="288.0" y="12" width="22.0" height="240"><title>Sep 2024
+Screened funds, rebalanced monthly: 129
+BENCH: 127</title></rect><rect class="hit" x="309.6" y="12" width="20.6" height="240"><title>Oct 2024
+Screened funds, rebalanced monthly: 126
+BENCH: 124</title></rect><rect class="hit" x="329.7" y="12" width="22.7" height="240"><title>Nov 2024
+Screened funds, rebalanced monthly: 131
+BENCH: 128</title></rect><rect class="hit" x="351.9" y="12" width="22.0" height="240"><title>Dec 2024
+Screened funds, rebalanced monthly: 125
+BENCH: 124</title></rect><rect class="hit" x="373.5" y="12" width="20.0" height="240"><title>Jan 2025
+Screened funds, rebalanced monthly: 130
+BENCH: 128</title></rect><rect class="hit" x="392.9" y="12" width="22.0" height="240"><title>Feb 2025
+Screened funds, rebalanced monthly: 132
+BENCH: 129</title></rect><rect class="hit" x="414.5" y="12" width="21.3" height="240"><title>Mar 2025
+Screened funds, rebalanced monthly: 126
+BENCH: 127</title></rect><rect class="hit" x="435.3" y="12" width="21.3" height="240"><title>Apr 2025
+Screened funds, rebalanced monthly: 125
+BENCH: 128</title></rect><rect class="hit" x="456.1" y="12" width="22.0" height="240"><title>May 2025
+Screened funds, rebalanced monthly: 130
+BENCH: 132</title></rect><rect class="hit" x="477.7" y="12" width="22.0" height="240"><title>Jun 2025
+Screened funds, rebalanced monthly: 131
+BENCH: 135</title></rect><rect class="hit" x="499.2" y="12" width="20.6" height="240"><title>Jul 2025
+Screened funds, rebalanced monthly: 132
+BENCH: 136</title></rect><rect class="hit" x="519.4" y="12" width="22.7" height="240"><title>Aug 2025
+Screened funds, rebalanced monthly: 135
+BENCH: 139</title></rect><rect class="hit" x="541.6" y="12" width="22.0" height="240"><title>Sep 2025
+Screened funds, rebalanced monthly: 136
+BENCH: 143</title></rect><rect class="hit" x="563.1" y="12" width="20.0" height="240"><title>Oct 2025
+Screened funds, rebalanced monthly: 138
+BENCH: 145</title></rect><rect class="hit" x="582.6" y="12" width="23.4" height="240"><title>Nov 2025
+Screened funds, rebalanced monthly: 139
+BENCH: 146</title></rect><rect class="hit" x="605.5" y="12" width="21.3" height="240"><title>Dec 2025
+Screened funds, rebalanced monthly: 139
+BENCH: 147</title></rect><rect class="hit" x="626.3" y="12" width="20.0" height="240"><title>Jan 2026
+Screened funds, rebalanced monthly: 142
+BENCH: 150</title></rect><rect class="hit" x="645.8" y="12" width="22.7" height="240"><title>Feb 2026
+Screened funds, rebalanced monthly: 146
+BENCH: 152</title></rect><rect class="hit" x="668.0" y="12" width="21.3" height="240"><title>Mar 2026
+Screened funds, rebalanced monthly: 136
+BENCH: 145</title></rect><rect class="hit" x="688.9" y="12" width="20.6" height="240"><title>Apr 2026
+Screened funds, rebalanced monthly: 147
+BENCH: 153</title></rect><rect class="hit" x="709.0" y="12" width="22.7" height="240"><title>May 2026
+Screened funds, rebalanced monthly: 151
+BENCH: 157</title></rect><rect class="hit" x="731.2" y="12" width="22.0" height="240"><title>Jun 2026
+Screened funds, rebalanced monthly: 152
+BENCH: 156</title></rect><rect class="hit" x="752.8" y="12" width="22.0" height="240"><title>Jul 2026
+Screened funds, rebalanced monthly: 154
+BENCH: 156</title></rect><rect class="hit" x="774.3" y="12" width="21.3" height="240"><title>Aug 2026
+Screened funds, rebalanced monthly: 154
+BENCH: 158</title></rect><rect class="hit" x="795.2" y="12" width="21.3" height="240"><title>Sep 2026
+Screened funds, rebalanced monthly: 148
+BENCH: 154</title></rect><rect class="hit" x="816.0" y="12" width="1.5" height="240"><title>Oct 2026
+Screened funds, rebalanced monthly: 151
+BENCH: 155</title></rect><text class="tick" transform="translate(10 140.0) rotate(-90)" text-anchor="middle">Value of 100 invested</text></svg></div><div class="card"><h3>Drawdown</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Screened funds, rebalanced monthly −15.0% at worst</span><span class="key"><i style="background:var(--s2)"></i>BENCH −9.2%</span></div><svg class="chart" viewBox="0 0 880 220" role="img"><line class="grid" x1="56" x2="816" y1="192.0" y2="192.0"/><text class="tick" x="48" y="196.0" text-anchor="end">−20%</text><line class="grid" x1="56" x2="816" y1="147.0" y2="147.0"/><text class="tick" x="48" y="151.0" text-anchor="end">−15%</text><line class="grid" x1="56" x2="816" y1="102.0" y2="102.0"/><text class="tick" x="48" y="106.0" text-anchor="end">−10%</text><line class="grid" x1="56" x2="816" y1="57.0" y2="57.0"/><text class="tick" x="48" y="61.0" text-anchor="end">−5%</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">0%</text><text class="tick" x="98.4" y="212" text-anchor="middle">2024</text><text class="tick" x="352.6" y="212" text-anchor="middle">2025</text><text class="tick" x="606.2" y="212" text-anchor="middle">2026</text><path class="line" d="M56.0,12.0 L76.1,22.0 L96.3,19.9 L119.2,38.3 L139.4,26.0 L158.8,23.6 L181.7,62.4 L203.3,52.2 L222.7,22.8 L245.7,34.1 L266.5,57.0 L288.0,36.0 L309.6,41.4 L329.7,40.3 L351.9,57.0 L373.5,64.6 L392.9,26.4 L414.5,63.7 L435.3,147.2 L456.1,64.8 L477.7,36.8 L499.2,25.2 L519.4,37.9 L541.6,28.9 L563.1,33.6 L582.6,48.7 L605.5,28.2 L626.3,29.6 L645.8,26.1 L668.0,90.4 L688.9,64.1 L709.0,28.3 L731.2,24.3 L752.8,23.3 L774.3,27.6 L795.2,61.1 L816.0,65.4" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="65.4" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,12.0 L76.1,16.3 L96.3,16.1 L119.2,31.2 L139.4,23.7 L158.8,20.5 L181.7,45.3 L203.3,39.5 L222.7,18.1 L245.7,35.2 L266.5,45.4 L288.0,28.0 L309.6,31.8 L329.7,30.3 L351.9,44.8 L373.5,48.7 L392.9,23.9 L414.5,44.0 L435.3,94.9 L456.1,27.6 L477.7,20.8 L499.2,21.9 L519.4,27.7 L541.6,18.9 L563.1,26.4 L582.6,37.5 L605.5,20.8 L626.3,22.6 L645.8,26.4 L668.0,71.8 L688.9,49.8 L709.0,25.9 L731.2,34.2 L752.8,27.4 L774.3,19.9 L795.2,42.9 L816.0,43.2" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="43.2" r="4" style="fill:var(--s2)"/><rect class="hit" x="56.0" y="12" width="20.6" height="180"><title>Nov 2023
+Screened funds, rebalanced monthly: 0.0%
+BENCH: 0.0%</title></rect><rect class="hit" x="76.1" y="12" width="20.6" height="180"><title>Nov 2023
+Screened funds, rebalanced monthly: −1.1%
+BENCH: −0.5%</title></rect><rect class="hit" x="96.3" y="12" width="23.4" height="180"><title>Dec 2023
+Screened funds, rebalanced monthly: −0.9%
+BENCH: −0.5%</title></rect><rect class="hit" x="119.2" y="12" width="20.6" height="180"><title>Jan 2024
+Screened funds, rebalanced monthly: −2.9%
+BENCH: −2.1%</title></rect><rect class="hit" x="139.4" y="12" width="20.0" height="180"><title>Feb 2024
+Screened funds, rebalanced monthly: −1.6%
+BENCH: −1.3%</title></rect><rect class="hit" x="158.8" y="12" width="23.4" height="180"><title>Mar 2024
+Screened funds, rebalanced monthly: −1.3%
+BENCH: −0.9%</title></rect><rect class="hit" x="181.7" y="12" width="22.0" height="180"><title>Apr 2024
+Screened funds, rebalanced monthly: −5.6%
+BENCH: −3.7%</title></rect><rect class="hit" x="203.3" y="12" width="20.0" height="180"><title>May 2024
+Screened funds, rebalanced monthly: −4.5%
+BENCH: −3.1%</title></rect><rect class="hit" x="222.7" y="12" width="23.4" height="180"><title>Jun 2024
+Screened funds, rebalanced monthly: −1.2%
+BENCH: −0.7%</title></rect><rect class="hit" x="245.7" y="12" width="21.3" height="180"><title>Jul 2024
+Screened funds, rebalanced monthly: −2.5%
+BENCH: −2.6%</title></rect><rect class="hit" x="266.5" y="12" width="22.0" height="180"><title>Aug 2024
+Screened funds, rebalanced monthly: −5.0%
+BENCH: −3.7%</title></rect><rect class="hit" x="288.0" y="12" width="22.0" height="180"><title>Sep 2024
+Screened funds, rebalanced monthly: −2.7%
+BENCH: −1.8%</title></rect><rect class="hit" x="309.6" y="12" width="20.6" height="180"><title>Oct 2024
+Screened funds, rebalanced monthly: −3.3%
+BENCH: −2.2%</title></rect><rect class="hit" x="329.7" y="12" width="22.7" height="180"><title>Nov 2024
+Screened funds, rebalanced monthly: −3.1%
+BENCH: −2.0%</title></rect><rect class="hit" x="351.9" y="12" width="22.0" height="180"><title>Dec 2024
+Screened funds, rebalanced monthly: −5.0%
+BENCH: −3.6%</title></rect><rect class="hit" x="373.5" y="12" width="20.0" height="180"><title>Jan 2025
+Screened funds, rebalanced monthly: −5.8%
+BENCH: −4.1%</title></rect><rect class="hit" x="392.9" y="12" width="22.0" height="180"><title>Feb 2025
+Screened funds, rebalanced monthly: −1.6%
+BENCH: −1.3%</title></rect><rect class="hit" x="414.5" y="12" width="21.3" height="180"><title>Mar 2025
+Screened funds, rebalanced monthly: −5.7%
+BENCH: −3.6%</title></rect><rect class="hit" x="435.3" y="12" width="21.3" height="180"><title>Apr 2025
+Screened funds, rebalanced monthly: −15.0%
+BENCH: −9.2%</title></rect><rect class="hit" x="456.1" y="12" width="22.0" height="180"><title>May 2025
+Screened funds, rebalanced monthly: −5.9%
+BENCH: −1.7%</title></rect><rect class="hit" x="477.7" y="12" width="22.0" height="180"><title>Jun 2025
+Screened funds, rebalanced monthly: −2.8%
+BENCH: −1.0%</title></rect><rect class="hit" x="499.2" y="12" width="20.6" height="180"><title>Jul 2025
+Screened funds, rebalanced monthly: −1.5%
+BENCH: −1.1%</title></rect><rect class="hit" x="519.4" y="12" width="22.7" height="180"><title>Aug 2025
+Screened funds, rebalanced monthly: −2.9%
+BENCH: −1.7%</title></rect><rect class="hit" x="541.6" y="12" width="22.0" height="180"><title>Sep 2025
+Screened funds, rebalanced monthly: −1.9%
+BENCH: −0.8%</title></rect><rect class="hit" x="563.1" y="12" width="20.0" height="180"><title>Oct 2025
+Screened funds, rebalanced monthly: −2.4%
+BENCH: −1.6%</title></rect><rect class="hit" x="582.6" y="12" width="23.4" height="180"><title>Nov 2025
+Screened funds, rebalanced monthly: −4.1%
+BENCH: −2.8%</title></rect><rect class="hit" x="605.5" y="12" width="21.3" height="180"><title>Dec 2025
+Screened funds, rebalanced monthly: −1.8%
+BENCH: −1.0%</title></rect><rect class="hit" x="626.3" y="12" width="20.0" height="180"><title>Jan 2026
+Screened funds, rebalanced monthly: −2.0%
+BENCH: −1.2%</title></rect><rect class="hit" x="645.8" y="12" width="22.7" height="180"><title>Feb 2026
+Screened funds, rebalanced monthly: −1.6%
+BENCH: −1.6%</title></rect><rect class="hit" x="668.0" y="12" width="21.3" height="180"><title>Mar 2026
+Screened funds, rebalanced monthly: −8.7%
+BENCH: −6.6%</title></rect><rect class="hit" x="688.9" y="12" width="20.6" height="180"><title>Apr 2026
+Screened funds, rebalanced monthly: −5.8%
+BENCH: −4.2%</title></rect><rect class="hit" x="709.0" y="12" width="22.7" height="180"><title>May 2026
+Screened funds, rebalanced monthly: −1.8%
+BENCH: −1.5%</title></rect><rect class="hit" x="731.2" y="12" width="22.0" height="180"><title>Jun 2026
+Screened funds, rebalanced monthly: −1.4%
+BENCH: −2.5%</title></rect><rect class="hit" x="752.8" y="12" width="22.0" height="180"><title>Jul 2026
+Screened funds, rebalanced monthly: −1.3%
+BENCH: −1.7%</title></rect><rect class="hit" x="774.3" y="12" width="21.3" height="180"><title>Aug 2026
+Screened funds, rebalanced monthly: −1.7%
+BENCH: −0.9%</title></rect><rect class="hit" x="795.2" y="12" width="21.3" height="180"><title>Sep 2026
+Screened funds, rebalanced monthly: −5.5%
+BENCH: −3.4%</title></rect><rect class="hit" x="816.0" y="12" width="1.5" height="180"><title>Oct 2026
+Screened funds, rebalanced monthly: −5.9%
+BENCH: −3.5%</title></rect></svg></div></section><section id="b-weights"><header class="sh"><h2>Weights and trading</h2><p>What drifting and rebalancing cost</p></header><div class="card"><h3>Weights held</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>VTI</span><span class="key"><i style="background:var(--s2)"></i>EXSA</span><span class="key"><i style="background:var(--s3)"></i>VNQ</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="856" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">0%</text><line class="grid" x1="56" x2="856" y1="162.0" y2="162.0"/><text class="tick" x="48" y="166.0" text-anchor="end">25%</text><line class="grid" x1="56" x2="856" y1="112.0" y2="112.0"/><text class="tick" x="48" y="116.0" text-anchor="end">50%</text><line class="grid" x1="56" x2="856" y1="62.0" y2="62.0"/><text class="tick" x="48" y="66.0" text-anchor="end">75%</text><line class="grid" x1="56" x2="856" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">100%</text><text class="tick" x="80.0" y="232" text-anchor="middle">2024</text><text class="tick" x="355.0" y="232" text-anchor="middle">2025</text><text class="tick" x="629.1" y="232" text-anchor="middle">2026</text><path d="M56.0,145.4 L77.8,145.8 L102.6,143.5 L124.4,143.9 L145.4,145.0 L170.2,145.0 L193.5,144.9 L214.5,143.6 L239.3,147.1 L261.8,146.1 L285.1,145.0 L308.4,144.0 L330.2,143.7 L354.2,144.1 L377.5,145.6 L398.5,148.2 L421.8,146.8 L444.4,144.8 L466.9,143.9 L490.2,142.6 L513.5,144.9 L535.2,145.0 L559.3,143.8 L582.6,144.6 L603.6,146.0 L628.4,145.1 L650.9,145.5 L672.0,147.3 L696.0,145.1 L718.5,143.8 L740.3,143.9 L764.4,146.7 L787.6,146.8 L810.9,143.9 L833.5,143.6 L856.0,146.4 L856.0,212.0 L833.5,212.0 L810.9,212.0 L787.6,212.0 L764.4,212.0 L740.3,212.0 L718.5,212.0 L696.0,212.0 L672.0,212.0 L650.9,212.0 L628.4,212.0 L603.6,212.0 L582.6,212.0 L559.3,212.0 L535.2,212.0 L513.5,212.0 L490.2,212.0 L466.9,212.0 L444.4,212.0 L421.8,212.0 L398.5,212.0 L377.5,212.0 L354.2,212.0 L330.2,212.0 L308.4,212.0 L285.1,212.0 L261.8,212.0 L239.3,212.0 L214.5,212.0 L193.5,212.0 L170.2,212.0 L145.4,212.0 L124.4,212.0 L102.6,212.0 L77.8,212.0 L56.0,212.0 Z" style="fill:var(--s1);stroke:var(--surface);stroke-width:1"/><path d="M56.0,80.3 L77.8,80.8 L102.6,75.9 L124.4,77.7 L145.4,77.4 L170.2,76.5 L193.5,78.3 L214.5,78.9 L239.3,82.1 L261.8,79.9 L285.1,79.2 L308.4,78.1 L330.2,79.4 L354.2,75.0 L377.5,77.3 L398.5,79.9 L421.8,78.8 L444.4,77.8 L466.9,76.8 L490.2,77.7 L513.5,78.3 L535.2,78.9 L559.3,77.5 L582.6,76.4 L603.6,79.6 L628.4,77.0 L650.9,78.8 L672.0,80.1 L696.0,78.4 L718.5,78.9 L740.3,77.0 L764.4,80.0 L787.6,80.0 L810.9,77.0 L833.5,76.7 L856.0,80.0 L856.0,146.4 L833.5,143.6 L810.9,143.9 L787.6,146.8 L764.4,146.7 L740.3,143.9 L718.5,143.8 L696.0,145.1 L672.0,147.3 L650.9,145.5 L628.4,145.1 L603.6,146.0 L582.6,144.6 L559.3,143.8 L535.2,145.0 L513.5,144.9 L490.2,142.6 L466.9,143.9 L444.4,144.8 L421.8,146.8 L398.5,148.2 L377.5,145.6 L354.2,144.1 L330.2,143.7 L308.4,144.0 L285.1,145.0 L261.8,146.1 L239.3,147.1 L214.5,143.6 L193.5,144.9 L170.2,145.0 L145.4,145.0 L124.4,143.9 L102.6,143.5 L77.8,145.8 L56.0,145.4 Z" style="fill:var(--s2);stroke:var(--surface);stroke-width:1"/><path d="M56.0,12.0 L77.8,12.0 L102.6,12.0 L124.4,12.0 L145.4,12.0 L170.2,12.0 L193.5,12.0 L214.5,12.0 L239.3,12.0 L261.8,12.0 L285.1,12.0 L308.4,12.0 L330.2,12.0 L354.2,12.0 L377.5,12.0 L398.5,12.0 L421.8,12.0 L444.4,12.0 L466.9,12.0 L490.2,12.0 L513.5,12.0 L535.2,12.0 L559.3,12.0 L582.6,12.0 L603.6,12.0 L628.4,12.0 L650.9,12.0 L672.0,12.0 L696.0,12.0 L718.5,12.0 L740.3,12.0 L764.4,12.0 L787.6,12.0 L810.9,12.0 L833.5,12.0 L856.0,12.0 L856.0,80.0 L833.5,76.7 L810.9,77.0 L787.6,80.0 L764.4,80.0 L740.3,77.0 L718.5,78.9 L696.0,78.4 L672.0,80.1 L650.9,78.8 L628.4,77.0 L603.6,79.6 L582.6,76.4 L559.3,77.5 L535.2,78.9 L513.5,78.3 L490.2,77.7 L466.9,76.8 L444.4,77.8 L421.8,78.8 L398.5,79.9 L377.5,77.3 L354.2,75.0 L330.2,79.4 L308.4,78.1 L285.1,79.2 L261.8,79.9 L239.3,82.1 L214.5,78.9 L193.5,78.3 L170.2,76.5 L145.4,77.4 L124.4,77.7 L102.6,75.9 L77.8,80.8 L56.0,80.3 Z" style="fill:var(--s3);stroke:var(--surface);stroke-width:1"/><rect class="hit" x="56.0" y="12" width="22.3" height="200"><title>Nov 2023
+VTI: 33.3%
+EXSA: 32.5%
+VNQ: 34.2%</title></rect><rect class="hit" x="77.8" y="12" width="25.3" height="200"><title>Dec 2023
+VTI: 33.1%
+EXSA: 32.5%
+VNQ: 34.4%</title></rect><rect class="hit" x="102.6" y="12" width="22.3" height="200"><title>Jan 2024
+VTI: 34.3%
+EXSA: 33.8%
+VNQ: 31.9%</title></rect><rect class="hit" x="124.4" y="12" width="21.5" height="200"><title>Feb 2024
+VTI: 34.1%
+EXSA: 33.1%
+VNQ: 32.9%</title></rect><rect class="hit" x="145.4" y="12" width="25.3" height="200"><title>Mar 2024
+VTI: 33.5%
+EXSA: 33.8%
+VNQ: 32.7%</title></rect><rect class="hit" x="170.2" y="12" width="23.8" height="200"><title>Apr 2024
+VTI: 33.5%
+EXSA: 34.3%
+VNQ: 32.2%</title></rect><rect class="hit" x="193.5" y="12" width="21.5" height="200"><title>May 2024
+VTI: 33.6%
+EXSA: 33.3%
+VNQ: 33.1%</title></rect><rect class="hit" x="214.5" y="12" width="25.3" height="200"><title>Jun 2024
+VTI: 34.2%
+EXSA: 32.4%
+VNQ: 33.4%</title></rect><rect class="hit" x="239.3" y="12" width="23.0" height="200"><title>Jul 2024
+VTI: 32.5%
+EXSA: 32.5%
+VNQ: 35.0%</title></rect><rect class="hit" x="261.8" y="12" width="23.8" height="200"><title>Aug 2024
+VTI: 33.0%
+EXSA: 33.1%
+VNQ: 34.0%</title></rect><rect class="hit" x="285.1" y="12" width="23.8" height="200"><title>Sep 2024
+VTI: 33.5%
+EXSA: 32.9%
+VNQ: 33.6%</title></rect><rect class="hit" x="308.4" y="12" width="22.3" height="200"><title>Oct 2024
+VTI: 34.0%
+EXSA: 32.9%
+VNQ: 33.1%</title></rect><rect class="hit" x="330.2" y="12" width="24.5" height="200"><title>Nov 2024
+VTI: 34.1%
+EXSA: 32.2%
+VNQ: 33.7%</title></rect><rect class="hit" x="354.2" y="12" width="23.8" height="200"><title>Dec 2024
+VTI: 33.9%
+EXSA: 34.6%
+VNQ: 31.5%</title></rect><rect class="hit" x="377.5" y="12" width="21.5" height="200"><title>Jan 2025
+VTI: 33.2%
+EXSA: 34.2%
+VNQ: 32.6%</title></rect><rect class="hit" x="398.5" y="12" width="23.8" height="200"><title>Feb 2025
+VTI: 31.9%
+EXSA: 34.2%
+VNQ: 33.9%</title></rect><rect class="hit" x="421.8" y="12" width="23.0" height="200"><title>Mar 2025
+VTI: 32.6%
+EXSA: 34.0%
+VNQ: 33.4%</title></rect><rect class="hit" x="444.4" y="12" width="23.0" height="200"><title>Apr 2025
+VTI: 33.6%
+EXSA: 33.5%
+VNQ: 32.9%</title></rect><rect class="hit" x="466.9" y="12" width="23.8" height="200"><title>May 2025
+VTI: 34.1%
+EXSA: 33.6%
+VNQ: 32.4%</title></rect><rect class="hit" x="490.2" y="12" width="23.8" height="200"><title>Jun 2025
+VTI: 34.7%
+EXSA: 32.5%
+VNQ: 32.8%</title></rect><rect class="hit" x="513.5" y="12" width="22.3" height="200"><title>Jul 2025
+VTI: 33.6%
+EXSA: 33.3%
+VNQ: 33.2%</title></rect><rect class="hit" x="535.2" y="12" width="24.5" height="200"><title>Aug 2025
+VTI: 33.5%
+EXSA: 33.0%
+VNQ: 33.5%</title></rect><rect class="hit" x="559.3" y="12" width="23.8" height="200"><title>Sep 2025
+VTI: 34.1%
+EXSA: 33.2%
+VNQ: 32.7%</title></rect><rect class="hit" x="582.6" y="12" width="21.5" height="200"><title>Oct 2025
+VTI: 33.7%
+EXSA: 34.1%
+VNQ: 32.2%</title></rect><rect class="hit" x="603.6" y="12" width="25.3" height="200"><title>Nov 2025
+VTI: 33.0%
+EXSA: 33.2%
+VNQ: 33.8%</title></rect><rect class="hit" x="628.4" y="12" width="23.0" height="200"><title>Dec 2025
+VTI: 33.4%
+EXSA: 34.1%
+VNQ: 32.5%</title></rect><rect class="hit" x="650.9" y="12" width="21.5" height="200"><title>Jan 2026
+VTI: 33.2%
+EXSA: 33.4%
+VNQ: 33.4%</title></rect><rect class="hit" x="672.0" y="12" width="24.5" height="200"><title>Feb 2026
+VTI: 32.4%
+EXSA: 33.6%
+VNQ: 34.0%</title></rect><rect class="hit" x="696.0" y="12" width="23.0" height="200"><title>Mar 2026
+VTI: 33.5%
+EXSA: 33.3%
+VNQ: 33.2%</title></rect><rect class="hit" x="718.5" y="12" width="22.3" height="200"><title>Apr 2026
+VTI: 34.1%
+EXSA: 32.5%
+VNQ: 33.4%</title></rect><rect class="hit" x="740.3" y="12" width="24.5" height="200"><title>May 2026
+VTI: 34.1%
+EXSA: 33.4%
+VNQ: 32.5%</title></rect><rect class="hit" x="764.4" y="12" width="23.8" height="200"><title>Jun 2026
+VTI: 32.7%
+EXSA: 33.4%
+VNQ: 34.0%</title></rect><rect class="hit" x="787.6" y="12" width="23.8" height="200"><title>Jul 2026
+VTI: 32.6%
+EXSA: 33.4%
+VNQ: 34.0%</title></rect><rect class="hit" x="810.9" y="12" width="23.0" height="200"><title>Aug 2026
+VTI: 34.1%
+EXSA: 33.5%
+VNQ: 32.5%</title></rect><rect class="hit" x="833.5" y="12" width="23.0" height="200"><title>Sep 2026
+VTI: 34.2%
+EXSA: 33.5%
+VNQ: 32.3%</title></rect><rect class="hit" x="856.0" y="12" width="1.5" height="200"><title>Oct 2026
+VTI: 32.8%
+EXSA: 33.2%
+VNQ: 34.0%</title></rect></svg><p class="note">Between rebalances the weights drift with prices; at each rebalance they return to the targets.</p></div><div class="tiles"><div class="tile"><div class="tl">Rebalances</div><div class="tv">35</div><div class="ts">Rebalanced monthly</div></div><div class="tile"><div class="tl">Turnover</div><div class="tv long">9.7% a year</div><div class="ts">One-way: the share of value bought, or sold</div></div><div class="tile"><div class="tl">Trading costs</div><div class="tv long">0.02% a year</div><div class="ts">10 bp of the value traded</div></div><div class="tile"><div class="tl">Largest rebalance</div><div class="tv">1.6%</div><div class="ts">One-way turnover at one rebalance</div></div></div></section><section id="b-returns"><header class="sh"><h2>Returns</h2><p>By year and by month</p></header><div class="card"><h3>Calendar-year returns</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Screened funds, rebalanced monthly</span><span class="key"><i style="background:var(--s2)"></i>BENCH</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="864" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">0%</text><line class="grid" x1="56" x2="864" y1="165.0" y2="165.0"/><text class="tick" x="48" y="169.0" text-anchor="end">5%</text><line class="grid" x1="56" x2="864" y1="118.0" y2="118.0"/><text class="tick" x="48" y="122.0" text-anchor="end">10%</text><line class="grid" x1="56" x2="864" y1="71.0" y2="71.0"/><text class="tick" x="48" y="75.0" text-anchor="end">15%</text><line class="grid" x1="56" x2="864" y1="24.0" y2="24.0"/><text class="tick" x="48" y="28.0" text-anchor="end">20%</text><line class="base" x1="56" x2="864" y1="212.0" y2="212.0"/><path d="M142.0,212.0 V80.0 Q142.0,76.0 146.0,76.0 H152.0 Q156.0,76.0 156.0,80.0 V212.0 Z" style="fill:var(--s1)"/><path d="M157.0,212.0 V106.0 Q157.0,102.0 161.0,102.0 H167.0 Q171.0,102.0 171.0,106.0 V212.0 Z" style="fill:var(--s2)"/><text class="tick" x="157.0" y="232" text-anchor="middle">2023</text><rect class="hit" x="56.0" y="24" width="202.0" height="188"><title>2023 from Nov
+Screened funds, rebalanced monthly: +14.5%
+BENCH: +11.7%</title></rect><path d="M344.0,212.0 V127.2 Q344.0,123.2 348.0,123.2 H354.0 Q358.0,123.2 358.0,127.2 V212.0 Z" style="fill:var(--s1)"/><path d="M359.0,212.0 V109.9 Q359.0,105.9 363.0,105.9 H369.0 Q373.0,105.9 373.0,109.9 V212.0 Z" style="fill:var(--s2)"/><text class="tick" x="359.0" y="232" text-anchor="middle">2024</text><rect class="hit" x="258.0" y="24" width="202.0" height="188"><title>2024
+Screened funds, rebalanced monthly: +9.5%
+BENCH: +11.3%</title></rect><path d="M546.0,212.0 V115.7 Q546.0,111.7 550.0,111.7 H556.0 Q560.0,111.7 560.0,115.7 V212.0 Z" style="fill:var(--s1)"/><path d="M561.0,212.0 V45.4 Q561.0,41.4 565.0,41.4 H571.0 Q575.0,41.4 575.0,45.4 V212.0 Z" style="fill:var(--s2)"/><text class="tick" x="561.0" y="232" text-anchor="middle">2025</text><rect class="hit" x="460.0" y="24" width="202.0" height="188"><title>2025
+Screened funds, rebalanced monthly: +10.7%
+BENCH: +18.1%</title></rect><path d="M748.0,212.0 V132.0 Q748.0,128.0 752.0,128.0 H758.0 Q762.0,128.0 762.0,132.0 V212.0 Z" style="fill:var(--s1)"/><path d="M763.0,212.0 V162.7 Q763.0,158.7 767.0,158.7 H773.0 Q777.0,158.7 777.0,162.7 V212.0 Z" style="fill:var(--s2)"/><text class="tick" x="763.0" y="232" text-anchor="middle">2026</text><rect class="hit" x="662.0" y="24" width="202.0" height="188"><title>2026 to Oct
+Screened funds, rebalanced monthly: +8.9%
+BENCH: +5.7%</title></rect></svg><p class="note">Part years: 2023 from Nov, 2026 to Oct.</p></div><div class="card"><h3>Monthly returns</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th><th class="r">Year</th></tr></thead><tbody><tr><th class="yr">2023</th><td class="na" title="Jan 2023: "></td><td class="na" title="Feb 2023: "></td><td class="na" title="Mar 2023: "></td><td class="na" title="Apr 2023: "></td><td class="na" title="May 2023: "></td><td class="na" title="Jun 2023: "></td><td class="na" title="Jul 2023: "></td><td class="na" title="Aug 2023: "></td><td class="na" title="Sep 2023: "></td><td class="na" title="Oct 2023: "></td><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff" title="Nov 2023: 8.5%">8.5%</td><td style="background:color-mix(in oklab, var(--pos) 64%, var(--mid));color:#fff" title="Dec 2023: 5.5%">5.5%</td><td class="r"><b>14.5%</b></td></tr><tr><th class="yr">2024</th><td style="background:color-mix(in oklab, var(--neg) 10%, var(--mid));color:var(--ink)" title="Jan 2024: −0.8%">−0.8%</td><td style="background:color-mix(in oklab, var(--pos) 36%, var(--mid));color:var(--ink)" title="Feb 2024: 3.0%">3.0%</td><td style="background:color-mix(in oklab, var(--pos) 31%, var(--mid));color:var(--ink)" title="Mar 2024: 2.6%">2.6%</td><td style="background:color-mix(in oklab, var(--neg) 52%, var(--mid));color:var(--ink)" title="Apr 2024: −4.4%">−4.4%</td><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)" title="May 2024: 4.2%">4.2%</td><td style="background:color-mix(in oklab, var(--pos) 4%, var(--mid));color:var(--ink)" title="Jun 2024: 0.3%">0.3%</td><td style="background:color-mix(in oklab, var(--pos) 44%, var(--mid));color:var(--ink)" title="Jul 2024: 3.7%">3.7%</td><td style="background:color-mix(in oklab, var(--pos) 35%, var(--mid));color:var(--ink)" title="Aug 2024: 3.0%">3.0%</td><td style="background:color-mix(in oklab, var(--pos) 11%, var(--mid));color:var(--ink)" title="Sep 2024: 0.9%">0.9%</td><td style="background:color-mix(in oklab, var(--neg) 29%, var(--mid));color:var(--ink)" title="Oct 2024: −2.4%">−2.4%</td><td style="background:color-mix(in oklab, var(--pos) 47%, var(--mid));color:var(--ink)" title="Nov 2024: 4.0%">4.0%</td><td style="background:color-mix(in oklab, var(--neg) 54%, var(--mid));color:var(--ink)" title="Dec 2024: −4.6%">−4.6%</td><td class="r"><b>9.5%</b></td></tr><tr><th class="yr">2025</th><td style="background:color-mix(in oklab, var(--pos) 45%, var(--mid));color:var(--ink)" title="Jan 2025: 3.9%">3.9%</td><td style="background:color-mix(in oklab, var(--pos) 21%, var(--mid));color:var(--ink)" title="Feb 2025: 1.8%">1.8%</td><td style="background:color-mix(in oklab, var(--neg) 55%, var(--mid));color:var(--ink)" title="Mar 2025: −4.7%">−4.7%</td><td style="background:color-mix(in oklab, var(--neg) 14%, var(--mid));color:var(--ink)" title="Apr 2025: −1.2%">−1.2%</td><td style="background:color-mix(in oklab, var(--pos) 49%, var(--mid));color:var(--ink)" title="May 2025: 4.1%">4.1%</td><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="Jun 2025: 0.7%">0.7%</td><td style="background:color-mix(in oklab, var(--pos) 14%, var(--mid));color:var(--ink)" title="Jul 2025: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--pos) 26%, var(--mid));color:var(--ink)" title="Aug 2025: 2.2%">2.2%</td><td style="background:color-mix(in oklab, var(--pos) 10%, var(--mid));color:var(--ink)" title="Sep 2025: 0.9%">0.9%</td><td style="background:color-mix(in oklab, var(--pos) 10%, var(--mid));color:var(--ink)" title="Oct 2025: 0.8%">0.8%</td><td style="background:color-mix(in oklab, var(--pos) 14%, var(--mid));color:var(--ink)" title="Nov 2025: 1.2%">1.2%</td><td style="background:color-mix(in oklab, var(--neg) 4%, var(--mid));color:var(--ink)" title="Dec 2025: −0.4%">−0.4%</td><td class="r"><b>10.7%</b></td></tr><tr><th class="yr">2026</th><td style="background:color-mix(in oklab, var(--pos) 29%, var(--mid));color:var(--ink)" title="Jan 2026: 2.5%">2.5%</td><td style="background:color-mix(in oklab, var(--pos) 34%, var(--mid));color:var(--ink)" title="Feb 2026: 2.9%">2.9%</td><td style="background:color-mix(in oklab, var(--neg) 80%, var(--mid));color:#fff" title="Mar 2026: −6.8%">−6.8%</td><td style="background:color-mix(in oklab, var(--pos) 95%, var(--mid));color:#fff" title="Apr 2026: 8.1%">8.1%</td><td style="background:color-mix(in oklab, var(--pos) 30%, var(--mid));color:var(--ink)" title="May 2026: 2.5%">2.5%</td><td style="background:color-mix(in oklab, var(--pos) 7%, var(--mid));color:var(--ink)" title="Jun 2026: 0.6%">0.6%</td><td style="background:color-mix(in oklab, var(--pos) 13%, var(--mid));color:var(--ink)" title="Jul 2026: 1.1%">1.1%</td><td style="background:color-mix(in oklab, var(--pos) 2%, var(--mid));color:var(--ink)" title="Aug 2026: 0.2%">0.2%</td><td style="background:color-mix(in oklab, var(--neg) 44%, var(--mid));color:var(--ink)" title="Sep 2026: −3.8%">−3.8%</td><td style="background:color-mix(in oklab, var(--pos) 24%, var(--mid));color:var(--ink)" title="Oct 2026: 2.0%">2.0%</td><td class="na" title="Nov 2026: "></td><td class="na" title="Dec 2026: "></td><td class="r"><b>8.9%</b></td></tr></tbody></table></div></div></section><section id="b-method"><header class="sh"><h2>Method</h2><p>How the backtest was run</p></header><div class="card"><h3>How the allocation was tested</h3><table><tbody><tr><th style="white-space:nowrap">Assets</th><td>EXSA, VTI and VNQ. Daily returns, Nov 2023 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Validation</th><td>Fixed weights, not fitted to these returns, scored on Nov 2023 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Rebalancing</th><td>Monthly, to the targets; between rebalances the weights drift with prices.</td></tr><tr><th style="white-space:nowrap">Trading costs</th><td>10 bp of the value traded, paid from the next period&#39;s return.</td></tr><tr><th style="white-space:nowrap">Ratios</th><td>Sharpe and Sortino ratios against the risk-free return over each period scored (4.0% a year over the test); value at risk and expected shortfall from history, at 95% over one day.</td></tr></tbody></table></div></section>
+<div class="foot">Every figure is computed by Finalytics 1.0.0-rc.7 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>38256f086b03</code>.</div>
+</div></body></html>

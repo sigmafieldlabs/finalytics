@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Finalytics 1.0.0-rc.7"><title>In-sample illustration</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
+--grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
+--muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec;
+--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#fff;--on-s8:#000;
+--on-muted-fill:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d0d0d;
+--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;
+--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;--muted-fill:#52514e;--pos:#3987e5;
+--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;
+--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;
+--muted-fill:#52514e;--pos:#3987e5;--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;
+--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.page{max-width:1000px;margin:0 auto;padding:32px 16px 64px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+border-bottom:1px solid var(--grid);padding-bottom:16px}
+.brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
+.logo img{height:36px;width:auto;display:block;margin-bottom:14px}.lg-dark{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-light{display:none!important}
+:root:not([data-theme="light"]) .lg-dark{display:block!important}}
+:root[data-theme="dark"] .lg-light{display:none!important}:root[data-theme="dark"] .lg-dark{display:block!important}
+h1{margin:4px 0 0;font-size:28px;font-weight:600}.meta{color:var(--ink2);font-size:14px;text-align:right}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 8px}
+nav a{color:var(--ink2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:999px;
+border:1px solid var(--grid)}nav a:hover{color:var(--ink);background:var(--surface)}
+section{margin-top:40px}.sh h2{margin:0;font-size:22px;font-weight:600}.sh p{margin:2px 0 12px;color:var(--ink2)}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px 20px;margin:12px 0}
+.card h3{margin:0 0 10px;font-size:15px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin:0}
+@media (max-width:720px){.two{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px}
+.tl{font-size:13px;color:var(--ink2)}.tv{font-size:22px;font-weight:600;margin-top:2px}
+.tv.long{font-size:18px}
+.ts{font-size:12.5px;color:var(--muted);margin-top:2px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.grid{stroke:var(--grid);stroke-width:1}.base{stroke:var(--axis);stroke-width:1}
+.tick{fill:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.lab{fill:var(--ink2);font-size:13px}.val,.end{fill:var(--ink);font-size:12.5px;font-variant-numeric:tabular-nums}
+.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dot{stroke:var(--surface);stroke-width:2}.hit{fill:transparent}.hit:hover{fill:var(--ink);opacity:.04}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:0 0 8px}
+.key{display:inline-flex;align-items:center;gap:6px}.key i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.segbar{display:flex;gap:2px;height:28px;margin:4px 0 10px}
+.seg{border-radius:4px;display:flex;align-items:center;padding-left:8px;min-width:2px;color:#fff;
+font-size:12.5px;font-weight:600;overflow:hidden;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{font-weight:600;color:var(--ink2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid)}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}.r{text-align:right}
+.heat{table-layout:fixed}.heat td{text-align:center;border:2px solid var(--surface);border-radius:4px;padding:7px 2px}
+.heat th{text-align:center;border-bottom:0}.heat tbody th{text-align:left}.heat td.na{background:transparent}
+.heat .yr{font-weight:600;text-align:right}.heat td.diag{color:var(--muted)}
+.wide td{font-size:13px}.heat{min-width:520px}
+.tw{overflow-x:auto}
+/* A shadow at an edge with more to scroll to: the covers scroll with the content, the shadows
+stay at the edges. */
+.tw{background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll}
+@media (max-width:720px){svg.chart{min-width:640px}
+.card{overflow-x:auto;background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll,var(--surface)}}.note{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.prov{color:var(--muted);font-size:12px;margin-top:8px}code{font-size:12px}
+.foot{margin-top:48px;border-top:1px solid var(--grid);padding-top:16px;color:var(--muted);font-size:12.5px}
+@media print{nav{display:none}html,body{background:#fff}.foot{break-before:avoid;margin-top:16px}section{break-before:page}section:first-of-type{break-before:auto}
+.card,.tile{break-inside:avoid}}
+.cmp td:first-child{white-space:nowrap}.heat thead th{font-size:12.5px;vertical-align:bottom;line-height:1.25}
+table b{font-weight:650}.hollow{background:var(--surface)!important;box-shadow:inset 0 0 0 2px var(--ink2)}
+</style></head>
+<body><div class="page">
+<div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,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"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,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"></div>
+<h1>In-sample illustration</h1><div class="brand">Comparison report</div></div>
+<div class="meta">In sample, Nov 1996 to Oct 2026<br>3 methods · 5 assets · monthly · rebalanced quarterly · no trading costs · risk-free T-Bills</div></div>
+<nav><a href="#c-summary">Summary</a><a href="#c-performance">Performance</a><a href="#c-risk">Risk</a><a href="#c-weights">Weights</a><a href="#c-method">Method</a></nav>
+<section id="c-summary"><header class="sh"><h2>Summary</h2><p>Each method, scored in sample</p></header><div class="tiles"><div class="tile"><div class="tl">Highest Sharpe ratio</div><div class="tv">0.58</div><div class="ts">Maximum Sharpe; next Minimum variance 0.55</div></div><div class="tile"><div class="tl">Smallest drawdown</div><div class="tv">−23.2%</div><div class="ts">Minimum variance</div></div><div class="tile"><div class="tl">Lowest turnover</div><div class="tv">9% a year</div><div class="ts">Maximum Sharpe</div></div><div class="tile"><div class="tl">Highest return</div><div class="tv long">7.3% a year</div><div class="ts">Equal weight</div></div></div><div class="card"><h3>In sample, Nov 1996 to Oct 2026</h3><div class="tw"><table class="cmp"><thead><tr><th>Method</th><th class="r">Return</th><th class="r">Volatility</th><th class="r">Sharpe</th><th class="r">Sortino</th><th class="r">Drawdown</th><th class="r">CVaR 95%</th><th class="r">Turnover</th></tr></thead><tbody><tr><td><span class="key"><i style="background:var(--s1)"></i>Equal weight</span></td><td class="r"><b>7.3%</b></td><td class="r">11.1%</td><td class="r">0.48</td><td class="r">0.75</td><td class="r">−37.7%</td><td class="r">6.6%</td><td class="r">10%</td></tr><tr><td><span class="key"><i style="background:var(--s2)"></i>Minimum variance</span></td><td class="r">6.6%</td><td class="r"><b>8.0%</b></td><td class="r">0.55</td><td class="r">0.89</td><td class="r"><b>−23.2%</b></td><td class="r"><b>4.4%</b></td><td class="r">9%</td></tr><tr><td><span class="key"><i style="background:var(--s3)"></i>Maximum Sharpe</span></td><td class="r">7.0%</td><td class="r">8.2%</td><td class="r"><b>0.58</b></td><td class="r"><b>0.95</b></td><td class="r">−25.8%</td><td class="r">4.6%</td><td class="r"><b>9%</b></td></tr></tbody></table></div><p class="note">Return, volatility and turnover are a year, turnover one-way (the share of value bought, or sold); drawdown is the largest fall; CVaR is the average loss in the worst 5% of months. Bold marks the best in each column. Limits: at most 40% in any asset. Equal weight: fully invested and long only; the limits on weights do not apply.</p></div></section><section id="c-performance"><header class="sh"><h2>Performance</h2><p>Growth and returns by year, in sample</p></header><div class="card"><h3>Growth of 100</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Equal weight 817</span><span class="key"><i style="background:var(--s2)"></i>Minimum variance 684</span><span class="key"><i style="background:var(--s3)"></i>Maximum Sharpe 763</span></div><svg class="chart" viewBox="0 0 880 280" role="img"><line class="grid" x1="56" x2="816" y1="252.0" y2="252.0"/><text class="tick" x="48" y="256.0" text-anchor="end">0</text><line class="grid" x1="56" x2="816" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">200</text><line class="grid" x1="56" x2="816" y1="172.0" y2="172.0"/><text class="tick" x="48" y="176.0" text-anchor="end">400</text><line class="grid" x1="56" x2="816" y1="132.0" y2="132.0"/><text class="tick" x="48" y="136.0" text-anchor="end">600</text><line class="grid" x1="56" x2="816" y1="92.0" y2="92.0"/><text class="tick" x="48" y="96.0" text-anchor="end">800</text><line class="grid" x1="56" x2="816" y1="52.0" y2="52.0"/><text class="tick" x="48" y="56.0" text-anchor="end">1000</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">1200</text><text class="tick" x="136.3" y="272" text-anchor="middle">2000</text><text class="tick" x="263.0" y="272" text-anchor="middle">2005</text><text class="tick" x="389.7" y="272" text-anchor="middle">2010</text><text class="tick" x="516.3" y="272" text-anchor="middle">2015</text><text class="tick" x="643.0" y="272" text-anchor="middle">2020</text><text class="tick" x="769.7" y="272" text-anchor="middle">2025</text><path class="line" d="M56.0,232.0 L58.0,232.5 L60.2,232.3 L62.4,232.0 L64.3,230.8 L66.5,230.9 L68.6,230.6 L70.6,230.0 L72.8,230.3 L74.9,229.9 L76.9,230.9 L79.2,230.4 L81.3,230.3 L83.3,229.9 L85.6,229.8 L87.6,229.0 L89.6,229.5 L91.8,229.1 L93.9,228.9 L95.9,228.8 L98.1,230.0 L100.3,228.8 L102.4,228.6 L104.5,228.0 L106.6,228.3 L108.7,228.8 L110.9,229.1 L112.9,230.1 L114.8,228.6 L117.1,228.2 L119.2,228.4 L121.3,228.6 L123.4,229.8 L125.5,229.4 L127.7,228.4 L129.8,227.4 L131.8,227.3 L134.0,226.0 L136.2,226.3 L138.3,225.9 L140.4,225.4 L142.5,226.0 L144.4,225.8 L146.7,227.2 L148.8,227.9 L151.0,227.2 L153.1,227.7 L155.1,227.2 L157.3,227.1 L159.4,226.4 L161.4,227.2 L163.7,226.6 L165.7,227.0 L167.8,225.9 L169.9,226.3 L172.1,227.0 L174.1,226.0 L176.3,225.5 L178.4,226.2 L180.4,226.1 L182.7,226.8 L184.7,226.3 L186.9,226.7 L189.0,227.1 L191.0,227.2 L193.0,227.3 L195.2,226.0 L197.4,226.8 L199.3,226.8 L201.6,226.3 L203.7,228.2 L205.8,228.7 L208.0,228.6 L210.0,227.6 L212.2,225.8 L214.4,225.3 L216.3,223.7 L218.5,221.9 L220.5,221.2 L222.6,220.6 L224.8,219.1 L226.9,219.3 L228.9,219.1 L231.2,219.0 L233.3,218.7 L235.2,219.0 L237.5,220.0 L239.6,219.8 L241.6,219.4 L243.8,220.0 L245.9,220.6 L248.1,220.7 L250.2,219.6 L252.2,219.8 L254.5,217.7 L256.5,217.4 L258.6,216.7 L260.8,216.6 L262.9,217.1 L265.1,215.2 L267.0,216.3 L269.2,216.5 L271.2,216.6 L273.4,214.6 L275.5,214.2 L277.5,214.2 L279.8,214.1 L281.9,216.1 L284.0,214.6 L286.1,215.3 L288.2,214.7 L290.4,215.4 L292.3,213.9 L294.5,213.8 L296.4,212.6 L298.7,215.0 L300.8,215.7 L303.0,216.2 L305.1,216.5 L307.1,216.9 L309.3,217.4 L311.4,217.6 L313.4,218.8 L315.7,218.3 L317.7,218.9 L319.7,219.8 L321.9,219.8 L324.0,220.1 L326.1,220.0 L328.3,220.8 L330.4,220.1 L332.4,218.9 L334.7,216.5 L336.7,217.7 L338.9,220.0 L341.0,219.8 L343.0,220.2 L345.2,220.4 L347.3,221.8 L349.4,222.9 L351.5,222.5 L353.7,223.6 L355.7,223.4 L357.9,225.4 L360.0,226.2 L362.0,227.2 L364.3,227.1 L366.4,225.7 L368.3,227.5 L370.5,227.0 L372.6,225.3 L374.6,223.6 L376.8,222.2 L379.0,222.6 L381.1,221.0 L383.2,220.2 L385.3,220.3 L387.4,219.1 L389.6,216.7 L391.6,215.3 L393.5,212.3 L395.8,211.1 L397.9,210.7 L400.1,210.9 L402.1,210.7 L404.2,209.7 L406.4,207.7 L408.5,207.6 L410.5,207.1 L412.8,208.1 L414.9,209.8 L417.1,209.1 L419.0,209.8 L421.2,210.9 L423.2,211.0 L425.4,209.6 L427.5,209.0 L429.5,207.9 L431.8,206.7 L433.8,206.5 L436.0,207.3 L438.1,206.0 L440.2,199.6 L442.4,197.0 L444.4,196.5 L446.5,195.7 L448.6,194.7 L450.8,193.6 L452.8,190.8 L455.0,192.2 L457.2,191.0 L459.1,190.6 L461.4,191.2 L463.5,191.9 L465.6,188.8 L467.8,189.1 L469.7,185.8 L471.7,183.3 L473.9,183.3 L476.1,183.2 L478.0,180.7 L480.3,186.3 L482.4,187.4 L484.6,185.1 L486.7,183.4 L488.7,182.8 L490.9,181.9 L493.1,179.9 L495.0,181.8 L497.2,184.5 L499.3,182.1 L501.3,183.9 L503.5,181.0 L505.6,180.6 L507.7,180.0 L509.9,181.2 L512.0,181.1 L514.0,182.0 L516.3,184.7 L518.3,185.3 L520.3,185.3 L522.5,184.7 L524.6,183.5 L526.6,180.3 L528.8,178.2 L531.0,177.5 L533.1,175.6 L535.2,176.5 L537.3,175.6 L539.4,172.2 L541.6,172.5 L543.6,168.5 L545.7,169.6 L547.9,166.3 L549.9,165.5 L552.1,165.9 L554.2,170.3 L556.2,170.7 L558.5,173.5 L560.6,170.4 L562.7,166.4 L564.8,162.5 L566.9,159.0 L569.1,162.2 L571.1,157.1 L573.2,153.3 L575.2,151.3 L577.4,150.4 L579.5,148.4 L581.7,143.8 L583.8,145.8 L585.8,145.7 L588.1,146.6 L590.1,145.0 L592.1,142.2 L594.4,140.5 L596.4,141.0 L598.5,136.5 L600.6,134.6 L602.8,132.4 L604.8,128.3 L607.0,121.5 L609.1,118.5 L611.1,119.4 L613.4,118.6 L615.5,111.7 L617.6,109.6 L619.8,109.5 L621.7,108.6 L623.7,106.4 L625.9,108.5 L628.1,109.1 L630.0,109.5 L632.3,107.7 L634.4,106.7 L636.5,95.3 L638.7,97.9 L640.7,102.0 L642.9,98.7 L645.1,98.3 L647.0,116.4 L649.2,125.7 L651.3,127.8 L653.3,123.4 L655.6,113.0 L657.7,114.3 L659.9,110.1 L661.9,108.0 L664.0,103.5 L666.2,95.5 L668.3,97.0 L670.3,98.8 L672.3,99.8 L674.6,102.3 L676.6,101.1 L678.8,97.4 L680.9,105.5 L683.0,105.4 L685.2,109.7 L687.3,107.9 L689.3,110.6 L691.5,114.6 L693.6,112.7 L695.8,114.2 L697.7,122.3 L699.9,120.2 L701.9,118.6 L704.1,123.7 L706.2,128.4 L708.2,132.0 L710.5,135.4 L712.6,132.9 L714.7,132.1 L716.8,130.0 L718.9,127.4 L721.1,122.0 L723.0,117.1 L725.2,117.6 L727.1,118.3 L729.4,118.1 L731.5,119.8 L733.7,114.8 L735.8,114.9 L737.8,116.4 L740.0,113.0 L742.1,106.1 L744.1,101.2 L746.4,96.1 L748.4,96.2 L750.4,94.5 L752.7,92.8 L754.8,85.6 L756.8,75.6 L759.0,75.2 L761.1,73.3 L763.3,72.4 L765.4,65.4 L767.4,58.0 L769.7,49.9 L771.8,64.2 L773.8,62.7 L775.9,64.7 L778.0,61.9 L780.1,67.2 L782.2,81.2 L784.4,81.0 L786.4,82.3 L788.6,76.9 L790.7,74.3 L792.7,77.2 L795.0,81.1 L797.1,79.7 L799.0,85.0 L801.2,79.6 L803.3,85.4 L805.3,86.3 L807.5,96.5 L809.7,90.5 L811.8,91.7 L813.9,83.1 L816.0,88.6" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="88.6" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,232.0 L58.0,232.1 L60.2,231.5 L62.4,231.3 L64.3,230.7 L66.5,230.4 L68.6,229.9 L70.6,229.3 L72.8,229.7 L74.9,229.4 L76.9,230.3 L79.2,229.5 L81.3,229.8 L83.3,229.5 L85.6,229.5 L87.6,228.7 L89.6,228.9 L91.8,228.4 L93.9,228.0 L95.9,228.3 L98.1,228.8 L100.3,228.0 L102.4,228.0 L104.5,227.7 L106.6,227.6 L108.7,227.8 L110.9,228.0 L112.9,228.9 L114.8,227.5 L117.1,226.8 L119.2,226.5 L121.3,226.4 L123.4,227.0 L125.5,226.7 L127.7,226.1 L129.8,225.2 L131.8,225.1 L134.0,224.2 L136.2,224.0 L138.3,223.9 L140.4,223.5 L142.5,223.8 L144.4,223.2 L146.7,223.8 L148.8,224.1 L151.0,223.4 L153.1,223.9 L155.1,223.6 L157.3,223.6 L159.4,223.1 L161.4,223.7 L163.7,223.6 L165.7,223.8 L167.8,223.0 L169.9,223.8 L172.1,224.3 L174.1,223.5 L176.3,223.2 L178.4,223.4 L180.4,223.7 L182.7,223.8 L184.7,223.7 L186.9,223.6 L189.0,223.6 L191.0,223.8 L193.0,224.3 L195.2,223.1 L197.4,223.7 L199.3,223.6 L201.6,223.2 L203.7,224.2 L205.8,224.7 L208.0,224.6 L210.0,224.2 L212.2,222.6 L214.4,222.0 L216.3,220.7 L218.5,219.3 L220.5,218.6 L222.6,218.7 L224.8,217.1 L226.9,217.2 L228.9,217.4 L231.2,217.8 L233.3,217.6 L235.2,218.4 L237.5,218.8 L239.6,218.6 L241.6,218.2 L243.8,218.0 L245.9,218.9 L248.1,218.7 L250.2,218.1 L252.2,218.7 L254.5,217.8 L256.5,217.6 L258.6,217.0 L260.8,216.8 L262.9,217.3 L265.1,216.9 L267.0,217.6 L269.2,217.9 L271.2,217.8 L273.4,217.3 L275.5,217.5 L277.5,218.1 L279.8,218.0 L281.9,219.5 L284.0,218.6 L286.1,218.6 L288.2,218.4 L290.4,218.8 L292.3,218.3 L294.5,218.1 L296.4,217.2 L298.7,218.5 L300.8,219.2 L303.0,219.2 L305.1,219.3 L307.1,219.5 L309.3,220.2 L311.4,220.6 L313.4,221.4 L315.7,221.2 L317.7,221.9 L319.7,222.6 L321.9,222.5 L324.0,222.1 L326.1,221.9 L328.3,222.5 L330.4,221.7 L332.4,221.0 L334.7,219.5 L336.7,220.2 L338.9,221.8 L341.0,221.1 L343.0,221.5 L345.2,221.3 L347.3,221.8 L349.4,222.4 L351.5,222.1 L353.7,222.8 L355.7,222.4 L357.9,223.8 L360.0,224.3 L362.0,225.0 L364.3,224.8 L366.4,223.6 L368.3,224.7 L370.5,224.3 L372.6,223.0 L374.6,221.5 L376.8,220.3 L379.0,220.4 L381.1,218.7 L383.2,218.5 L385.3,218.7 L387.4,217.6 L389.6,216.3 L391.6,215.7 L393.5,213.9 L395.8,213.8 L397.9,213.7 L400.1,213.4 L402.1,213.8 L404.2,213.4 L406.4,211.7 L408.5,210.7 L410.5,210.5 L412.8,211.1 L414.9,212.7 L417.1,212.2 L419.0,212.8 L421.2,213.1 L423.2,213.3 L425.4,212.1 L427.5,211.1 L429.5,210.6 L431.8,209.5 L433.8,209.4 L436.0,210.4 L438.1,210.0 L440.2,206.6 L442.4,205.0 L444.4,204.9 L446.5,204.2 L448.6,203.5 L450.8,203.5 L452.8,202.9 L455.0,203.4 L457.2,202.9 L459.1,202.2 L461.4,202.3 L463.5,202.4 L465.6,200.8 L467.8,200.4 L469.7,197.9 L471.7,197.0 L473.9,197.8 L476.1,198.5 L478.0,197.9 L480.3,200.5 L482.4,201.0 L484.6,199.5 L486.7,199.8 L488.7,200.0 L490.9,200.0 L493.1,198.8 L495.0,199.8 L497.2,201.0 L499.3,199.2 L501.3,200.0 L503.5,198.7 L505.6,198.4 L507.7,198.2 L509.9,198.3 L512.0,197.1 L514.0,197.4 L516.3,199.6 L518.3,199.6 L520.3,199.8 L522.5,197.6 L524.6,196.8 L526.6,194.4 L528.8,191.7 L531.0,192.0 L533.1,190.2 L535.2,191.4 L537.3,191.2 L539.4,189.6 L541.6,189.7 L543.6,187.6 L545.7,187.8 L547.9,185.0 L549.9,185.4 L552.1,186.0 L554.2,188.2 L556.2,188.6 L558.5,190.4 L560.6,187.7 L562.7,184.2 L564.8,182.3 L566.9,180.2 L569.1,181.0 L571.1,178.0 L573.2,175.7 L575.2,174.4 L577.4,174.4 L579.5,172.2 L581.7,170.4 L583.8,171.5 L585.8,171.1 L588.1,171.2 L590.1,169.9 L592.1,168.4 L594.4,167.3 L596.4,166.0 L598.5,163.4 L600.6,162.5 L602.8,162.4 L604.8,160.4 L607.0,156.9 L609.1,155.5 L611.1,154.6 L613.4,154.7 L615.5,151.7 L617.6,149.3 L619.8,148.0 L621.7,145.1 L623.7,145.5 L625.9,146.0 L628.1,148.0 L630.0,146.1 L632.3,145.8 L634.4,144.0 L636.5,138.2 L638.7,140.4 L640.7,143.6 L642.9,143.1 L645.1,142.5 L647.0,148.0 L649.2,150.9 L651.3,151.4 L653.3,147.0 L655.6,139.6 L657.7,140.8 L659.9,137.5 L661.9,135.5 L664.0,133.1 L666.2,129.3 L668.3,128.8 L670.3,129.3 L672.3,130.1 L674.6,133.8 L676.6,131.7 L678.8,128.6 L680.9,133.4 L683.0,133.0 L685.2,136.0 L687.3,135.2 L689.3,137.4 L691.5,140.3 L693.6,138.9 L695.8,139.2 L697.7,143.3 L699.9,142.4 L701.9,143.2 L704.1,148.0 L706.2,149.6 L708.2,150.2 L710.5,154.5 L712.6,152.4 L714.7,150.9 L716.8,149.9 L718.9,147.1 L721.1,144.3 L723.0,141.3 L725.2,140.0 L727.1,140.2 L729.4,140.9 L731.5,141.8 L733.7,138.9 L735.8,137.8 L737.8,138.1 L740.0,134.4 L742.1,130.3 L744.1,127.1 L746.4,125.7 L748.4,125.8 L750.4,126.2 L752.7,125.1 L754.8,121.0 L756.8,115.8 L759.0,113.4 L761.1,112.4 L763.3,111.6 L765.4,108.9 L767.4,101.5 L769.7,97.3 L771.8,105.0 L773.8,101.6 L775.9,101.1 L778.0,99.7 L780.1,98.7 L782.2,106.0 L784.4,107.3 L786.4,107.2 L788.6,105.4 L790.7,103.8 L792.7,106.2 L795.0,107.6 L797.1,106.4 L799.0,110.0 L801.2,109.1 L803.3,113.6 L805.3,112.8 L807.5,119.4 L809.7,117.7 L811.8,117.5 L813.9,111.2 L816.0,115.1" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="115.1" r="4" style="fill:var(--s2)"/><path class="line" d="M56.0,232.0 L58.0,232.2 L60.2,231.7 L62.4,231.3 L64.3,230.8 L66.5,230.5 L68.6,230.0 L70.6,229.4 L72.8,229.9 L74.9,229.7 L76.9,230.5 L79.2,229.8 L81.3,229.9 L83.3,229.7 L85.6,229.6 L87.6,229.1 L89.6,229.4 L91.8,228.9 L93.9,228.6 L95.9,228.7 L98.1,229.2 L100.3,228.3 L102.4,228.3 L104.5,228.1 L106.6,228.2 L108.7,228.3 L110.9,228.6 L112.9,229.5 L114.8,228.1 L117.1,227.5 L119.2,227.0 L121.3,227.2 L123.4,227.7 L125.5,227.4 L127.7,226.6 L129.8,225.6 L131.8,225.5 L134.0,224.3 L136.2,224.3 L138.3,224.0 L140.4,223.6 L142.5,224.0 L144.4,223.6 L146.7,224.2 L148.8,224.7 L151.0,224.1 L153.1,224.5 L155.1,224.1 L157.3,224.3 L159.4,223.6 L161.4,224.3 L163.7,224.3 L165.7,224.4 L167.8,223.6 L169.9,224.2 L172.1,224.7 L174.1,223.9 L176.3,223.7 L178.4,224.0 L180.4,224.2 L182.7,224.6 L184.7,224.2 L186.9,224.3 L189.0,224.6 L191.0,224.5 L193.0,224.9 L195.2,223.8 L197.4,224.3 L199.3,224.1 L201.6,223.7 L203.7,224.9 L205.8,225.4 L208.0,225.4 L210.0,224.9 L212.2,223.3 L214.4,222.7 L216.3,221.5 L218.5,220.0 L220.5,219.3 L222.6,219.1 L224.8,217.7 L226.9,217.9 L228.9,218.0 L231.2,218.1 L233.3,218.1 L235.2,218.7 L237.5,219.1 L239.6,218.9 L241.6,218.5 L243.8,218.3 L245.9,219.0 L248.1,218.8 L250.2,218.2 L252.2,218.7 L254.5,217.9 L256.5,217.7 L258.6,217.2 L260.8,217.1 L262.9,217.6 L265.1,217.1 L267.0,217.9 L269.2,218.2 L271.2,218.2 L273.4,217.6 L275.5,217.9 L277.5,218.4 L279.8,218.2 L281.9,219.7 L284.0,218.4 L286.1,218.4 L288.2,218.2 L290.4,218.5 L292.3,217.8 L294.5,217.5 L296.4,216.6 L298.7,218.0 L300.8,218.5 L303.0,218.6 L305.1,219.0 L307.1,219.3 L309.3,219.9 L311.4,220.2 L313.4,220.8 L315.7,220.4 L317.7,221.0 L319.7,222.0 L321.9,222.1 L324.0,222.0 L326.1,221.8 L328.3,222.4 L330.4,221.6 L332.4,220.8 L334.7,219.3 L336.7,220.0 L338.9,221.5 L341.0,220.9 L343.0,221.2 L345.2,221.3 L347.3,221.8 L349.4,222.6 L351.5,222.2 L353.7,222.7 L355.7,222.7 L357.9,224.4 L360.0,224.8 L362.0,225.8 L364.3,225.4 L366.4,223.9 L368.3,225.1 L370.5,224.7 L372.6,223.1 L374.6,221.7 L376.8,220.0 L379.0,220.1 L381.1,218.6 L383.2,218.1 L385.3,218.2 L387.4,217.1 L389.6,215.8 L391.6,214.6 L393.5,212.7 L395.8,212.4 L397.9,212.4 L400.1,212.2 L402.1,212.5 L404.2,212.0 L406.4,210.2 L408.5,209.6 L410.5,208.8 L412.8,209.3 L414.9,210.7 L417.1,209.9 L419.0,210.4 L421.2,211.0 L423.2,211.4 L425.4,210.5 L427.5,209.6 L429.5,209.2 L431.8,208.2 L433.8,208.0 L436.0,209.0 L438.1,208.3 L440.2,204.8 L442.4,203.1 L444.4,203.0 L446.5,202.2 L448.6,201.5 L450.8,201.6 L452.8,200.5 L455.0,201.6 L457.2,201.0 L459.1,200.4 L461.4,200.4 L463.5,201.0 L465.6,199.2 L467.8,198.9 L469.7,196.1 L471.7,194.9 L473.9,194.7 L476.1,195.4 L478.0,194.0 L480.3,197.0 L482.4,197.5 L484.6,196.0 L486.7,196.1 L488.7,196.4 L490.9,196.2 L493.1,194.7 L495.0,195.8 L497.2,197.1 L499.3,195.2 L501.3,195.9 L503.5,193.9 L505.6,193.4 L507.7,192.8 L509.9,193.1 L512.0,192.2 L514.0,192.2 L516.3,194.7 L518.3,194.6 L520.3,194.8 L522.5,192.6 L524.6,191.8 L526.6,189.1 L528.8,187.0 L531.0,186.3 L533.1,184.8 L535.2,185.7 L537.3,185.8 L539.4,183.6 L541.6,184.0 L543.6,180.8 L545.7,181.1 L547.9,178.3 L549.9,178.4 L552.1,178.9 L554.2,180.8 L556.2,181.3 L558.5,183.2 L560.6,181.0 L562.7,177.0 L564.8,174.7 L566.9,172.7 L569.1,173.9 L571.1,170.3 L573.2,168.2 L575.2,166.1 L577.4,166.1 L579.5,164.0 L581.7,161.1 L583.8,162.3 L585.8,162.2 L588.1,162.5 L590.1,161.2 L592.1,159.9 L594.4,158.5 L596.4,158.3 L598.5,155.2 L600.6,153.7 L602.8,152.8 L604.8,149.5 L607.0,145.9 L609.1,144.1 L611.1,143.4 L613.4,142.8 L615.5,139.0 L617.6,135.9 L619.8,135.2 L621.7,131.7 L623.7,132.2 L625.9,132.9 L628.1,134.7 L630.0,132.7 L632.3,132.0 L634.4,130.6 L636.5,123.4 L638.7,125.8 L640.7,128.9 L642.9,127.2 L645.1,125.6 L647.0,133.1 L649.2,137.3 L651.3,138.6 L653.3,133.5 L655.6,124.6 L657.7,126.2 L659.9,121.8 L661.9,119.9 L664.0,117.4 L666.2,112.4 L668.3,111.9 L670.3,113.2 L672.3,113.5 L674.6,116.4 L676.6,115.3 L678.8,112.3 L680.9,116.8 L683.0,116.2 L685.2,119.0 L687.3,117.3 L689.3,118.9 L691.5,121.6 L693.6,119.1 L695.8,120.2 L697.7,125.0 L699.9,124.0 L701.9,123.8 L704.1,129.5 L706.2,132.0 L708.2,134.0 L710.5,139.2 L712.6,137.5 L714.7,136.1 L716.8,134.6 L718.9,132.0 L721.1,128.3 L723.0,125.0 L725.2,123.0 L727.1,123.3 L729.4,124.4 L731.5,125.3 L733.7,122.7 L735.8,122.3 L737.8,122.9 L740.0,119.0 L742.1,114.0 L744.1,110.1 L746.4,107.2 L748.4,106.8 L750.4,106.5 L752.7,104.9 L754.8,99.1 L756.8,92.9 L759.0,89.8 L761.1,88.0 L763.3,86.5 L765.4,84.5 L767.4,77.6 L769.7,73.8 L771.8,84.3 L773.8,80.3 L775.9,80.8 L778.0,78.9 L780.1,78.3 L782.2,87.9 L784.4,90.0 L786.4,89.7 L788.6,87.3 L790.7,85.9 L792.7,88.5 L795.0,90.1 L797.1,89.2 L799.0,92.0 L801.2,90.5 L803.3,95.5 L805.3,96.0 L807.5,103.2 L809.7,100.9 L811.8,102.3 L813.9,95.0 L816.0,99.3" style="stroke:var(--s3)"/><circle class="dot" cx="816.0" cy="99.3" r="4" style="fill:var(--s3)"/><rect class="hit" x="56.0" y="12" width="6.9" height="240"><title>Nov 1996
+Equal weight: 97
+Minimum variance: 100
+Maximum Sharpe: 99</title></rect><rect class="hit" x="62.4" y="12" width="6.7" height="240"><title>Feb 1997
+Equal weight: 106
+Minimum variance: 107
+Maximum Sharpe: 106</title></rect><rect class="hit" x="68.6" y="12" width="6.9" height="240"><title>May 1997
+Equal weight: 110
+Minimum variance: 114
+Maximum Sharpe: 113</title></rect><rect class="hit" x="74.9" y="12" width="8.8" height="240"><title>Sep 1997
+Equal weight: 108
+Minimum variance: 112
+Maximum Sharpe: 111</title></rect><rect class="hit" x="83.3" y="12" width="6.8" height="240"><title>Dec 1997
+Equal weight: 111
+Minimum variance: 113
+Maximum Sharpe: 112</title></rect><rect class="hit" x="89.6" y="12" width="6.8" height="240"><title>Mar 1998
+Equal weight: 115
+Minimum variance: 118
+Maximum Sharpe: 115</title></rect><rect class="hit" x="95.9" y="12" width="7.0" height="240"><title>Jun 1998
+Equal weight: 110
+Minimum variance: 116
+Maximum Sharpe: 114</title></rect><rect class="hit" x="102.4" y="12" width="9.0" height="240"><title>Oct 1998
+Equal weight: 118
+Minimum variance: 122
+Maximum Sharpe: 119</title></rect><rect class="hit" x="110.9" y="12" width="6.7" height="240"><title>Jan 1999
+Equal weight: 109
+Minimum variance: 115
+Maximum Sharpe: 113</title></rect><rect class="hit" x="117.1" y="12" width="6.8" height="240"><title>Apr 1999
+Equal weight: 118
+Minimum variance: 128
+Maximum Sharpe: 125</title></rect><rect class="hit" x="123.4" y="12" width="8.9" height="240"><title>Aug 1999
+Equal weight: 118
+Minimum variance: 129
+Maximum Sharpe: 127</title></rect><rect class="hit" x="131.8" y="12" width="7.0" height="240"><title>Nov 1999
+Equal weight: 130
+Minimum variance: 139
+Maximum Sharpe: 138</title></rect><rect class="hit" x="138.3" y="12" width="6.6" height="240"><title>Feb 2000
+Equal weight: 133
+Minimum variance: 143
+Maximum Sharpe: 142</title></rect><rect class="hit" x="144.4" y="12" width="7.0" height="240"><title>May 2000
+Equal weight: 124
+Minimum variance: 141
+Maximum Sharpe: 139</title></rect><rect class="hit" x="151.0" y="12" width="9.0" height="240"><title>Sep 2000
+Equal weight: 124
+Minimum variance: 142
+Maximum Sharpe: 139</title></rect><rect class="hit" x="159.4" y="12" width="6.7" height="240"><title>Dec 2000
+Equal weight: 124
+Minimum variance: 141
+Maximum Sharpe: 138</title></rect><rect class="hit" x="165.7" y="12" width="6.9" height="240"><title>Mar 2001
+Equal weight: 131
+Minimum variance: 145
+Maximum Sharpe: 142</title></rect><rect class="hit" x="172.1" y="12" width="8.8" height="240"><title>Jul 2001
+Equal weight: 132
+Minimum variance: 144
+Maximum Sharpe: 142</title></rect><rect class="hit" x="180.4" y="12" width="7.0" height="240"><title>Oct 2001
+Equal weight: 126
+Minimum variance: 141
+Maximum Sharpe: 137</title></rect><rect class="hit" x="186.9" y="12" width="6.6" height="240"><title>Jan 2002
+Equal weight: 125
+Minimum variance: 142
+Maximum Sharpe: 137</title></rect><rect class="hit" x="193.0" y="12" width="6.8" height="240"><title>Apr 2002
+Equal weight: 130
+Minimum variance: 144
+Maximum Sharpe: 141</title></rect><rect class="hit" x="199.3" y="12" width="9.2" height="240"><title>Aug 2002
+Equal weight: 119
+Minimum variance: 139
+Maximum Sharpe: 136</title></rect><rect class="hit" x="208.0" y="12" width="6.9" height="240"><title>Nov 2002
+Equal weight: 122
+Minimum variance: 139
+Maximum Sharpe: 136</title></rect><rect class="hit" x="214.4" y="12" width="6.7" height="240"><title>Feb 2003
+Equal weight: 141
+Minimum variance: 156
+Maximum Sharpe: 152</title></rect><rect class="hit" x="220.5" y="12" width="8.9" height="240"><title>Jun 2003
+Equal weight: 165
+Minimum variance: 174
+Maximum Sharpe: 171</title></rect><rect class="hit" x="228.9" y="12" width="6.8" height="240"><title>Sep 2003
+Equal weight: 165
+Minimum variance: 171
+Maximum Sharpe: 169</title></rect><rect class="hit" x="235.2" y="12" width="6.8" height="240"><title>Dec 2003
+Equal weight: 160
+Minimum variance: 166
+Maximum Sharpe: 165</title></rect><rect class="hit" x="241.6" y="12" width="7.0" height="240"><title>Mar 2004
+Equal weight: 160
+Minimum variance: 170
+Maximum Sharpe: 168</title></rect><rect class="hit" x="248.1" y="12" width="9.0" height="240"><title>Jul 2004
+Equal weight: 161
+Minimum variance: 166
+Maximum Sharpe: 166</title></rect><rect class="hit" x="256.5" y="12" width="6.9" height="240"><title>Oct 2004
+Equal weight: 176
+Minimum variance: 175
+Maximum Sharpe: 174</title></rect><rect class="hit" x="262.9" y="12" width="6.7" height="240"><title>Jan 2005
+Equal weight: 184
+Minimum variance: 175
+Maximum Sharpe: 174</title></rect><rect class="hit" x="269.2" y="12" width="8.8" height="240"><title>May 2005
+Equal weight: 187
+Minimum variance: 174
+Maximum Sharpe: 172</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="240"><title>Aug 2005
+Equal weight: 189
+Minimum variance: 170
+Maximum Sharpe: 169</title></rect><rect class="hit" x="284.0" y="12" width="6.9" height="240"><title>Nov 2005
+Equal weight: 183
+Minimum variance: 167
+Maximum Sharpe: 168</title></rect><rect class="hit" x="290.4" y="12" width="6.5" height="240"><title>Feb 2006
+Equal weight: 191
+Minimum variance: 169
+Maximum Sharpe: 171</title></rect><rect class="hit" x="296.4" y="12" width="9.2" height="240"><title>Jun 2006
+Equal weight: 182
+Minimum variance: 164
+Maximum Sharpe: 167</title></rect><rect class="hit" x="305.1" y="12" width="6.8" height="240"><title>Sep 2006
+Equal weight: 175
+Minimum variance: 163
+Maximum Sharpe: 164</title></rect><rect class="hit" x="311.4" y="12" width="6.7" height="240"><title>Dec 2006
+Equal weight: 166
+Minimum variance: 153
+Maximum Sharpe: 156</title></rect><rect class="hit" x="317.7" y="12" width="6.9" height="240"><title>Mar 2007
+Equal weight: 161
+Minimum variance: 147
+Maximum Sharpe: 150</title></rect><rect class="hit" x="324.0" y="12" width="8.8" height="240"><title>Jul 2007
+Equal weight: 156
+Minimum variance: 148
+Maximum Sharpe: 148</title></rect><rect class="hit" x="332.4" y="12" width="7.0" height="240"><title>Oct 2007
+Equal weight: 177
+Minimum variance: 162
+Maximum Sharpe: 163</title></rect><rect class="hit" x="338.9" y="12" width="6.8" height="240"><title>Jan 2008
+Equal weight: 161
+Minimum variance: 154
+Maximum Sharpe: 156</title></rect><rect class="hit" x="345.2" y="12" width="9.0" height="240"><title>May 2008
+Equal weight: 145
+Minimum variance: 148
+Maximum Sharpe: 147</title></rect><rect class="hit" x="353.7" y="12" width="6.9" height="240"><title>Aug 2008
+Equal weight: 143
+Minimum variance: 148
+Maximum Sharpe: 146</title></rect><rect class="hit" x="360.0" y="12" width="6.8" height="240"><title>Nov 2008
+Equal weight: 124
+Minimum variance: 135
+Maximum Sharpe: 131</title></rect><rect class="hit" x="366.4" y="12" width="6.7" height="240"><title>Feb 2009
+Equal weight: 123
+Minimum variance: 137
+Maximum Sharpe: 135</title></rect><rect class="hit" x="372.6" y="12" width="9.0" height="240"><title>Jun 2009
+Equal weight: 149
+Minimum variance: 158
+Maximum Sharpe: 160</title></rect><rect class="hit" x="381.1" y="12" width="6.8" height="240"><title>Sep 2009
+Equal weight: 159
+Minimum variance: 168
+Maximum Sharpe: 169</title></rect><rect class="hit" x="387.4" y="12" width="6.6" height="240"><title>Dec 2009
+Equal weight: 176
+Minimum variance: 178
+Maximum Sharpe: 181</title></rect><rect class="hit" x="393.5" y="12" width="9.1" height="240"><title>Apr 2010
+Equal weight: 206
+Minimum variance: 192
+Maximum Sharpe: 198</title></rect><rect class="hit" x="402.1" y="12" width="6.9" height="240"><title>Jul 2010
+Equal weight: 211
+Minimum variance: 193
+Maximum Sharpe: 200</title></rect><rect class="hit" x="408.5" y="12" width="6.9" height="240"><title>Oct 2010
+Equal weight: 225
+Minimum variance: 208
+Maximum Sharpe: 216</title></rect><rect class="hit" x="414.9" y="12" width="6.7" height="240"><title>Jan 2011
+Equal weight: 215
+Minimum variance: 199
+Maximum Sharpe: 211</title></rect><rect class="hit" x="421.2" y="12" width="8.8" height="240"><title>May 2011
+Equal weight: 212
+Minimum variance: 200
+Maximum Sharpe: 208</title></rect><rect class="hit" x="429.5" y="12" width="7.0" height="240"><title>Aug 2011
+Equal weight: 227
+Minimum variance: 212
+Maximum Sharpe: 219</title></rect><rect class="hit" x="436.0" y="12" width="6.9" height="240"><title>Nov 2011
+Equal weight: 230
+Minimum variance: 210
+Maximum Sharpe: 219</title></rect><rect class="hit" x="442.4" y="12" width="8.9" height="240"><title>Mar 2012
+Equal weight: 281
+Minimum variance: 239
+Maximum Sharpe: 249</title></rect><rect class="hit" x="450.8" y="12" width="6.9" height="240"><title>Jun 2012
+Equal weight: 306
+Minimum variance: 245
+Maximum Sharpe: 257</title></rect><rect class="hit" x="457.2" y="12" width="6.8" height="240"><title>Sep 2012
+Equal weight: 307
+Minimum variance: 249
+Maximum Sharpe: 258</title></rect><rect class="hit" x="463.5" y="12" width="6.7" height="240"><title>Dec 2012
+Equal weight: 316
+Minimum variance: 256
+Maximum Sharpe: 264</title></rect><rect class="hit" x="469.7" y="12" width="8.8" height="240"><title>Apr 2013
+Equal weight: 343
+Minimum variance: 271
+Maximum Sharpe: 286</title></rect><rect class="hit" x="478.0" y="12" width="7.0" height="240"><title>Jul 2013
+Equal weight: 329
+Minimum variance: 258
+Maximum Sharpe: 275</title></rect><rect class="hit" x="484.6" y="12" width="6.9" height="240"><title>Oct 2013
+Equal weight: 343
+Minimum variance: 261
+Maximum Sharpe: 280</title></rect><rect class="hit" x="490.9" y="12" width="8.8" height="240"><title>Feb 2014
+Equal weight: 351
+Minimum variance: 261
+Maximum Sharpe: 281</title></rect><rect class="hit" x="499.3" y="12" width="6.9" height="240"><title>May 2014
+Equal weight: 340
+Minimum variance: 260
+Maximum Sharpe: 281</title></rect><rect class="hit" x="505.6" y="12" width="6.9" height="240"><title>Aug 2014
+Equal weight: 360
+Minimum variance: 269
+Maximum Sharpe: 296</title></rect><rect class="hit" x="512.0" y="12" width="6.8" height="240"><title>Nov 2014
+Equal weight: 350
+Minimum variance: 273
+Maximum Sharpe: 299</title></rect><rect class="hit" x="518.3" y="12" width="8.8" height="240"><title>Mar 2015
+Equal weight: 336
+Minimum variance: 272
+Maximum Sharpe: 297</title></rect><rect class="hit" x="526.6" y="12" width="7.0" height="240"><title>Jun 2015
+Equal weight: 369
+Minimum variance: 301
+Maximum Sharpe: 325</title></rect><rect class="hit" x="533.1" y="12" width="6.8" height="240"><title>Sep 2015
+Equal weight: 377
+Minimum variance: 303
+Maximum Sharpe: 331</title></rect><rect class="hit" x="539.4" y="12" width="9.0" height="240"><title>Jan 2016
+Equal weight: 418
+Minimum variance: 322
+Maximum Sharpe: 356</title></rect><rect class="hit" x="547.9" y="12" width="6.8" height="240"><title>Apr 2016
+Equal weight: 432
+Minimum variance: 333
+Maximum Sharpe: 368</title></rect><rect class="hit" x="554.2" y="12" width="6.9" height="240"><title>Jul 2016
+Equal weight: 406
+Minimum variance: 317
+Maximum Sharpe: 354</title></rect><rect class="hit" x="560.6" y="12" width="6.8" height="240"><title>Oct 2016
+Equal weight: 428
+Minimum variance: 339
+Maximum Sharpe: 375</title></rect><rect class="hit" x="566.9" y="12" width="8.8" height="240"><title>Feb 2017
+Equal weight: 474
+Minimum variance: 370
+Maximum Sharpe: 409</title></rect><rect class="hit" x="575.2" y="12" width="7.0" height="240"><title>May 2017
+Equal weight: 508
+Minimum variance: 388
+Maximum Sharpe: 430</title></rect><rect class="hit" x="581.7" y="12" width="6.9" height="240"><title>Aug 2017
+Equal weight: 531
+Minimum variance: 403
+Maximum Sharpe: 448</title></rect><rect class="hit" x="588.1" y="12" width="6.9" height="240"><title>Nov 2017
+Equal weight: 535
+Minimum variance: 410
+Maximum Sharpe: 454</title></rect><rect class="hit" x="594.4" y="12" width="8.8" height="240"><title>Mar 2018
+Equal weight: 577
+Minimum variance: 443
+Maximum Sharpe: 484</title></rect><rect class="hit" x="602.8" y="12" width="6.9" height="240"><title>Jun 2018
+Equal weight: 619
+Minimum variance: 458
+Maximum Sharpe: 512</title></rect><rect class="hit" x="609.1" y="12" width="6.8" height="240"><title>Sep 2018
+Equal weight: 663
+Minimum variance: 487
+Maximum Sharpe: 543</title></rect><rect class="hit" x="615.5" y="12" width="8.8" height="240"><title>Jan 2019
+Equal weight: 712
+Minimum variance: 520
+Maximum Sharpe: 584</title></rect><rect class="hit" x="623.7" y="12" width="6.8" height="240"><title>Apr 2019
+Equal weight: 717
+Minimum variance: 530
+Maximum Sharpe: 596</title></rect><rect class="hit" x="630.0" y="12" width="7.0" height="240"><title>Jul 2019
+Equal weight: 721
+Minimum variance: 531
+Maximum Sharpe: 600</title></rect><rect class="hit" x="636.5" y="12" width="6.9" height="240"><title>Oct 2019
+Equal weight: 771
+Minimum variance: 558
+Maximum Sharpe: 631</title></rect><rect class="hit" x="642.9" y="12" width="8.9" height="240"><title>Feb 2020
+Equal weight: 678
+Minimum variance: 520
+Maximum Sharpe: 594</title></rect><rect class="hit" x="651.3" y="12" width="6.9" height="240"><title>May 2020
+Equal weight: 643
+Minimum variance: 525
+Maximum Sharpe: 593</title></rect><rect class="hit" x="657.7" y="12" width="6.8" height="240"><title>Aug 2020
+Equal weight: 709
+Minimum variance: 573
+Maximum Sharpe: 651</title></rect><rect class="hit" x="664.0" y="12" width="8.8" height="240"><title>Dec 2020
+Equal weight: 775
+Minimum variance: 616
+Maximum Sharpe: 700</title></rect><rect class="hit" x="672.3" y="12" width="7.0" height="240"><title>Mar 2021
+Equal weight: 748
+Minimum variance: 591
+Maximum Sharpe: 678</title></rect><rect class="hit" x="678.8" y="12" width="6.9" height="240"><title>Jun 2021
+Equal weight: 733
+Minimum variance: 593
+Maximum Sharpe: 676</title></rect><rect class="hit" x="685.2" y="12" width="6.8" height="240"><title>Sep 2021
+Equal weight: 720
+Minimum variance: 584
+Maximum Sharpe: 673</title></rect><rect class="hit" x="691.5" y="12" width="8.9" height="240"><title>Jan 2022
+Equal weight: 689
+Minimum variance: 564
+Maximum Sharpe: 659</title></rect><rect class="hit" x="699.9" y="12" width="6.8" height="240"><title>Apr 2022
+Equal weight: 667
+Minimum variance: 544
+Maximum Sharpe: 641</title></rect><rect class="hit" x="706.2" y="12" width="6.9" height="240"><title>Jul 2022
+Equal weight: 600
+Minimum variance: 509
+Maximum Sharpe: 590</title></rect><rect class="hit" x="712.6" y="12" width="9.0" height="240"><title>Nov 2022
+Equal weight: 610
+Minimum variance: 510
+Maximum Sharpe: 587</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="240"><title>Feb 2023
+Equal weight: 675
+Minimum variance: 554
+Maximum Sharpe: 635</title></rect><rect class="hit" x="727.1" y="12" width="7.0" height="240"><title>May 2023
+Equal weight: 669
+Minimum variance: 555
+Maximum Sharpe: 638</title></rect><rect class="hit" x="733.7" y="12" width="6.9" height="240"><title>Aug 2023
+Equal weight: 685
+Minimum variance: 571
+Maximum Sharpe: 648</title></rect><rect class="hit" x="740.0" y="12" width="8.9" height="240"><title>Dec 2023
+Equal weight: 754
+Minimum variance: 625
+Maximum Sharpe: 710</title></rect><rect class="hit" x="748.4" y="12" width="6.9" height="240"><title>Mar 2024
+Equal weight: 787
+Minimum variance: 629
+Maximum Sharpe: 728</title></rect><rect class="hit" x="754.8" y="12" width="6.8" height="240"><title>Jun 2024
+Equal weight: 882
+Minimum variance: 681
+Maximum Sharpe: 795</title></rect><rect class="hit" x="761.1" y="12" width="9.0" height="240"><title>Oct 2024
+Equal weight: 933
+Minimum variance: 716
+Maximum Sharpe: 837</title></rect><rect class="hit" x="769.7" y="12" width="6.7" height="240"><title>Jan 2025
+Equal weight: 939
+Minimum variance: 735
+Maximum Sharpe: 839</title></rect><rect class="hit" x="775.9" y="12" width="6.8" height="240"><title>Apr 2025
+Equal weight: 951
+Minimum variance: 761
+Maximum Sharpe: 866</title></rect><rect class="hit" x="782.2" y="12" width="6.9" height="240"><title>Jul 2025
+Equal weight: 855
+Minimum variance: 724
+Maximum Sharpe: 810</title></rect><rect class="hit" x="788.6" y="12" width="9.0" height="240"><title>Nov 2025
+Equal weight: 874
+Minimum variance: 729
+Maximum Sharpe: 818</title></rect><rect class="hit" x="797.1" y="12" width="6.7" height="240"><title>Feb 2026
+Equal weight: 835
+Minimum variance: 710
+Maximum Sharpe: 800</title></rect><rect class="hit" x="803.3" y="12" width="6.9" height="240"><title>May 2026
+Equal weight: 829
+Minimum variance: 696
+Maximum Sharpe: 780</title></rect><rect class="hit" x="809.7" y="12" width="6.8" height="240"><title>Aug 2026
+Equal weight: 802
+Minimum variance: 672
+Maximum Sharpe: 749</title></rect><text class="tick" transform="translate(10 140.0) rotate(-90)" text-anchor="middle">Value of 100 invested</text></svg></div><div class="card"><h3>Calendar-year returns</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>Equal weight</th><th>Minimum variance</th><th>Maximum Sharpe</th></tr></thead><tbody><tr><th class="yr">1996 from Nov</th><td style="background:color-mix(in oklab, var(--neg) 3%, var(--mid));color:var(--ink)" title="Equal weight · 1996: −1.3%">−1.3%</td><td style="background:color-mix(in oklab, var(--pos) 6%, var(--mid));color:var(--ink)" title="Minimum variance · 1996: 2.5%">2.5%</td><td style="background:color-mix(in oklab, var(--pos) 4%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 1996: 1.7%">1.7%</td></tr><tr><th class="yr">1997</th><td style="background:color-mix(in oklab, var(--pos) 30%, var(--mid));color:var(--ink)" title="Equal weight · 1997: 12.4%">12.4%</td><td style="background:color-mix(in oklab, var(--pos) 24%, var(--mid));color:var(--ink)" title="Minimum variance · 1997: 10.0%">10.0%</td><td style="background:color-mix(in oklab, var(--pos) 24%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 1997: 9.8%">9.8%</td></tr><tr><th class="yr">1998</th><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="Equal weight · 1998: 3.2%">3.2%</td><td style="background:color-mix(in oklab, var(--pos) 16%, var(--mid));color:var(--ink)" title="Minimum variance · 1998: 6.6%">6.6%</td><td style="background:color-mix(in oklab, var(--pos) 12%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 1998: 4.8%">4.8%</td></tr><tr><th class="yr">1999</th><td style="background:color-mix(in oklab, var(--pos) 30%, var(--mid));color:var(--ink)" title="Equal weight · 1999: 12.5%">12.5%</td><td style="background:color-mix(in oklab, var(--pos) 40%, var(--mid));color:var(--ink)" title="Minimum variance · 1999: 16.4%">16.4%</td><td style="background:color-mix(in oklab, var(--pos) 44%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 1999: 18.4%">18.4%</td></tr><tr><th class="yr">2000</th><td style="background:color-mix(in oklab, var(--neg) 9%, var(--mid));color:var(--ink)" title="Equal weight · 2000: −3.6%">−3.6%</td><td style="background:color-mix(in oklab, var(--pos) 3%, var(--mid));color:var(--ink)" title="Minimum variance · 2000: 1.0%">1.0%</td><td style="background:color-mix(in oklab, var(--neg) 1%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2000: −0.2%">−0.2%</td></tr><tr><th class="yr">2001</th><td style="background:color-mix(in oklab, var(--pos) 5%, var(--mid));color:var(--ink)" title="Equal weight · 2001: 2.0%">2.0%</td><td style="background:color-mix(in oklab, var(--pos) 1%, var(--mid));color:var(--ink)" title="Minimum variance · 2001: 0.6%">0.6%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2001: 0.1%">0.1%</td></tr><tr><th class="yr">2002</th><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="Equal weight · 2002: 3.4%">3.4%</td><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="Minimum variance · 2002: 3.3%">3.3%</td><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2002: 3.5%">3.5%</td></tr><tr><th class="yr">2003</th><td style="background:color-mix(in oklab, var(--pos) 53%, var(--mid));color:var(--ink)" title="Equal weight · 2003: 22.2%">22.2%</td><td style="background:color-mix(in oklab, var(--pos) 32%, var(--mid));color:var(--ink)" title="Minimum variance · 2003: 13.3%">13.3%</td><td style="background:color-mix(in oklab, var(--pos) 36%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2003: 14.8%">14.8%</td></tr><tr><th class="yr">2004</th><td style="background:color-mix(in oklab, var(--pos) 22%, var(--mid));color:var(--ink)" title="Equal weight · 2004: 9.2%">9.2%</td><td style="background:color-mix(in oklab, var(--pos) 11%, var(--mid));color:var(--ink)" title="Minimum variance · 2004: 4.5%">4.5%</td><td style="background:color-mix(in oklab, var(--pos) 11%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2004: 4.6%">4.6%</td></tr><tr><th class="yr">2005</th><td style="background:color-mix(in oklab, var(--pos) 17%, var(--mid));color:var(--ink)" title="Equal weight · 2005: 7.0%">7.0%</td><td style="background:color-mix(in oklab, var(--neg) 8%, var(--mid));color:var(--ink)" title="Minimum variance · 2005: −3.2%">−3.2%</td><td style="background:color-mix(in oklab, var(--neg) 4%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2005: −1.8%">−1.8%</td></tr><tr><th class="yr">2006</th><td style="background:color-mix(in oklab, var(--neg) 27%, var(--mid));color:var(--ink)" title="Equal weight · 2006: −11.1%">−11.1%</td><td style="background:color-mix(in oklab, var(--neg) 21%, var(--mid));color:var(--ink)" title="Minimum variance · 2006: −8.9%">−8.9%</td><td style="background:color-mix(in oklab, var(--neg) 19%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2006: −7.8%">−7.8%</td></tr><tr><th class="yr">2007</th><td style="background:color-mix(in oklab, var(--neg) 9%, var(--mid));color:var(--ink)" title="Equal weight · 2007: −3.6%">−3.6%</td><td style="background:color-mix(in oklab, var(--neg) 3%, var(--mid));color:var(--ink)" title="Minimum variance · 2007: −1.4%">−1.4%</td><td style="background:color-mix(in oklab, var(--neg) 5%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2007: −2.1%">−2.1%</td></tr><tr><th class="yr">2008</th><td style="background:color-mix(in oklab, var(--neg) 53%, var(--mid));color:var(--ink)" title="Equal weight · 2008: −22.1%">−22.1%</td><td style="background:color-mix(in oklab, var(--neg) 24%, var(--mid));color:var(--ink)" title="Minimum variance · 2008: −10.0%">−10.0%</td><td style="background:color-mix(in oklab, var(--neg) 31%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2008: −12.9%">−12.9%</td></tr><tr><th class="yr">2009</th><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff" title="Equal weight · 2009: 41.6%">41.6%</td><td style="background:color-mix(in oklab, var(--pos) 75%, var(--mid));color:#fff" title="Minimum variance · 2009: 31.2%">31.2%</td><td style="background:color-mix(in oklab, var(--pos) 87%, var(--mid));color:#fff" title="Maximum Sharpe · 2009: 36.2%">36.2%</td></tr><tr><th class="yr">2010</th><td style="background:color-mix(in oklab, var(--pos) 47%, var(--mid));color:var(--ink)" title="Equal weight · 2010: 19.4%">19.4%</td><td style="background:color-mix(in oklab, var(--pos) 24%, var(--mid));color:var(--ink)" title="Minimum variance · 2010: 10.0%">10.0%</td><td style="background:color-mix(in oklab, var(--pos) 34%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2010: 14.1%">14.1%</td></tr><tr><th class="yr">2011</th><td style="background:color-mix(in oklab, var(--pos) 58%, var(--mid));color:#fff" title="Equal weight · 2011: 24.3%">24.3%</td><td style="background:color-mix(in oklab, var(--pos) 38%, var(--mid));color:var(--ink)" title="Minimum variance · 2011: 15.7%">15.7%</td><td style="background:color-mix(in oklab, var(--pos) 34%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2011: 14.1%">14.1%</td></tr><tr><th class="yr">2012</th><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)" title="Equal weight · 2012: 20.7%">20.7%</td><td style="background:color-mix(in oklab, var(--pos) 30%, var(--mid));color:var(--ink)" title="Minimum variance · 2012: 12.7%">12.7%</td><td style="background:color-mix(in oklab, var(--pos) 29%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2012: 11.9%">11.9%</td></tr><tr><th class="yr">2013</th><td style="background:color-mix(in oklab, var(--pos) 26%, var(--mid));color:var(--ink)" title="Equal weight · 2013: 10.8%">10.8%</td><td style="background:color-mix(in oklab, var(--pos) 4%, var(--mid));color:var(--ink)" title="Minimum variance · 2013: 1.6%">1.6%</td><td style="background:color-mix(in oklab, var(--pos) 14%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2013: 5.8%">5.8%</td></tr><tr><th class="yr">2014</th><td style="background:color-mix(in oklab, var(--neg) 9%, var(--mid));color:var(--ink)" title="Equal weight · 2014: −3.9%">−3.9%</td><td style="background:color-mix(in oklab, var(--pos) 2%, var(--mid));color:var(--ink)" title="Minimum variance · 2014: 0.7%">0.7%</td><td style="background:color-mix(in oklab, var(--pos) 6%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2014: 2.6%">2.6%</td></tr><tr><th class="yr">2015</th><td style="background:color-mix(in oklab, var(--pos) 44%, var(--mid));color:var(--ink)" title="Equal weight · 2015: 18.2%">18.2%</td><td style="background:color-mix(in oklab, var(--pos) 46%, var(--mid));color:var(--ink)" title="Minimum variance · 2015: 19.0%">19.0%</td><td style="background:color-mix(in oklab, var(--pos) 45%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2015: 18.7%">18.7%</td></tr><tr><th class="yr">2016</th><td style="background:color-mix(in oklab, var(--pos) 41%, var(--mid));color:var(--ink)" title="Equal weight · 2016: 17.0%">17.0%</td><td style="background:color-mix(in oklab, var(--pos) 37%, var(--mid));color:var(--ink)" title="Minimum variance · 2016: 15.2%">15.2%</td><td style="background:color-mix(in oklab, var(--pos) 40%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2016: 16.6%">16.6%</td></tr><tr><th class="yr">2017</th><td style="background:color-mix(in oklab, var(--pos) 43%, var(--mid));color:var(--ink)" title="Equal weight · 2017: 18.0%">18.0%</td><td style="background:color-mix(in oklab, var(--pos) 39%, var(--mid));color:var(--ink)" title="Minimum variance · 2017: 16.4%">16.4%</td><td style="background:color-mix(in oklab, var(--pos) 39%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2017: 16.2%">16.2%</td></tr><tr><th class="yr">2018</th><td style="background:color-mix(in oklab, var(--pos) 71%, var(--mid));color:#fff" title="Equal weight · 2018: 29.6%">29.6%</td><td style="background:color-mix(in oklab, var(--pos) 55%, var(--mid));color:var(--ink)" title="Minimum variance · 2018: 22.9%">22.9%</td><td style="background:color-mix(in oklab, var(--pos) 63%, var(--mid));color:#fff" title="Maximum Sharpe · 2018: 26.0%">26.0%</td></tr><tr><th class="yr">2019</th><td style="background:color-mix(in oklab, var(--pos) 18%, var(--mid));color:var(--ink)" title="Equal weight · 2019: 7.6%">7.6%</td><td style="background:color-mix(in oklab, var(--pos) 15%, var(--mid));color:var(--ink)" title="Minimum variance · 2019: 6.0%">6.0%</td><td style="background:color-mix(in oklab, var(--pos) 18%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2019: 7.5%">7.5%</td></tr><tr><th class="yr">2020</th><td style="background:color-mix(in oklab, var(--pos) 3%, var(--mid));color:var(--ink)" title="Equal weight · 2020: 1.1%">1.1%</td><td style="background:color-mix(in oklab, var(--pos) 32%, var(--mid));color:var(--ink)" title="Minimum variance · 2020: 13.1%">13.1%</td><td style="background:color-mix(in oklab, var(--pos) 29%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2020: 12.2%">12.2%</td></tr><tr><th class="yr">2021</th><td style="background:color-mix(in oklab, var(--neg) 24%, var(--mid));color:var(--ink)" title="Equal weight · 2021: −10.1%">−10.1%</td><td style="background:color-mix(in oklab, var(--neg) 20%, var(--mid));color:var(--ink)" title="Minimum variance · 2021: −8.2%">−8.2%</td><td style="background:color-mix(in oklab, var(--neg) 12%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2021: −5.1%">−5.1%</td></tr><tr><th class="yr">2022</th><td style="background:color-mix(in oklab, var(--neg) 25%, var(--mid));color:var(--ink)" title="Equal weight · 2022: −10.5%">−10.5%</td><td style="background:color-mix(in oklab, var(--neg) 18%, var(--mid));color:var(--ink)" title="Minimum variance · 2022: −7.3%">−7.3%</td><td style="background:color-mix(in oklab, var(--neg) 23%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2022: −9.7%">−9.7%</td></tr><tr><th class="yr">2023</th><td style="background:color-mix(in oklab, var(--pos) 51%, var(--mid));color:var(--ink)" title="Equal weight · 2023: 21.0%">21.0%</td><td style="background:color-mix(in oklab, var(--pos) 46%, var(--mid));color:var(--ink)" title="Minimum variance · 2023: 19.1%">19.1%</td><td style="background:color-mix(in oklab, var(--pos) 44%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2023: 18.2%">18.2%</td></tr><tr><th class="yr">2024</th><td style="background:color-mix(in oklab, var(--pos) 82%, var(--mid));color:#fff" title="Equal weight · 2024: 34.0%">34.0%</td><td style="background:color-mix(in oklab, var(--pos) 57%, var(--mid));color:var(--ink)" title="Minimum variance · 2024: 23.9%">23.9%</td><td style="background:color-mix(in oklab, var(--pos) 61%, var(--mid));color:#fff" title="Maximum Sharpe · 2024: 25.5%">25.5%</td></tr><tr><th class="yr">2025</th><td style="background:color-mix(in oklab, var(--neg) 37%, var(--mid));color:var(--ink)" title="Equal weight · 2025: −15.4%">−15.4%</td><td style="background:color-mix(in oklab, var(--neg) 16%, var(--mid));color:var(--ink)" title="Minimum variance · 2025: −6.7%">−6.7%</td><td style="background:color-mix(in oklab, var(--neg) 22%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2025: −9.1%">−9.1%</td></tr><tr><th class="yr">2026 to Oct</th><td style="background:color-mix(in oklab, var(--neg) 10%, var(--mid));color:var(--ink)" title="Equal weight · 2026: −4.4%">−4.4%</td><td style="background:color-mix(in oklab, var(--neg) 13%, var(--mid));color:var(--ink)" title="Minimum variance · 2026: −5.2%">−5.2%</td><td style="background:color-mix(in oklab, var(--neg) 14%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2026: −5.7%">−5.7%</td></tr></tbody></table></div></div></section><section id="c-risk"><header class="sh"><h2>Risk</h2><p>How far and how long each method fell</p></header><div class="card"><h3>Drawdown</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Equal weight −37.7% at worst</span><span class="key"><i style="background:var(--s2)"></i>Minimum variance −23.2% at worst</span><span class="key"><i style="background:var(--s3)"></i>Maximum Sharpe −25.8% at worst</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="816" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">−40%</text><line class="grid" x1="56" x2="816" y1="162.0" y2="162.0"/><text class="tick" x="48" y="166.0" text-anchor="end">−30%</text><line class="grid" x1="56" x2="816" y1="112.0" y2="112.0"/><text class="tick" x="48" y="116.0" text-anchor="end">−20%</text><line class="grid" x1="56" x2="816" y1="62.0" y2="62.0"/><text class="tick" x="48" y="66.0" text-anchor="end">−10%</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">0%</text><text class="tick" x="136.3" y="232" text-anchor="middle">2000</text><text class="tick" x="263.0" y="232" text-anchor="middle">2005</text><text class="tick" x="389.7" y="232" text-anchor="middle">2010</text><text class="tick" x="516.3" y="232" text-anchor="middle">2015</text><text class="tick" x="643.0" y="232" text-anchor="middle">2020</text><text class="tick" x="769.7" y="232" text-anchor="middle">2025</text><path class="line" d="M56.0,12.0 L58.0,24.9 L60.2,18.5 L62.4,12.0 L64.3,12.0 L66.5,13.7 L68.6,12.0 L70.6,12.0 L72.8,18.8 L74.9,12.0 L76.9,33.9 L79.2,23.5 L81.3,20.3 L83.3,12.0 L85.6,12.0 L87.6,12.0 L89.6,22.3 L91.8,13.6 L93.9,12.0 L95.9,12.0 L98.1,36.9 L100.3,12.0 L102.4,12.0 L104.5,12.0 L106.6,18.1 L108.7,28.8 L110.9,34.8 L112.9,55.9 L114.8,24.2 L117.1,16.5 L119.2,20.0 L121.3,24.1 L123.4,49.3 L125.5,40.5 L127.7,20.7 L129.8,12.0 L131.8,12.0 L134.0,12.0 L136.2,16.1 L138.3,12.0 L140.4,12.0 L142.5,22.8 L144.4,18.6 L146.7,45.0 L148.8,59.0 L151.0,45.3 L153.1,54.5 L155.1,46.0 L157.3,44.6 L159.4,31.3 L161.4,45.5 L163.7,35.1 L165.7,41.2 L167.8,20.6 L169.9,28.7 L172.1,41.6 L174.1,23.7 L176.3,14.6 L178.4,26.8 L180.4,25.1 L182.7,38.4 L184.7,29.4 L186.9,36.2 L189.0,43.2 L191.0,45.8 L193.0,47.2 L195.2,22.8 L197.4,39.1 L199.3,38.8 L201.6,28.2 L203.7,65.0 L205.8,73.6 L208.0,71.5 L210.0,52.6 L212.2,19.9 L214.4,12.0 L216.3,12.0 L218.5,12.0 L220.5,12.0 L222.6,12.0 L224.8,12.0 L226.9,14.9 L228.9,12.0 L231.2,12.0 L233.3,12.0 L235.2,16.6 L237.5,32.5 L239.6,29.5 L241.6,22.7 L243.8,32.6 L245.9,41.0 L248.1,42.0 L250.2,26.6 L252.2,29.8 L254.5,12.0 L256.5,12.0 L258.6,12.0 L260.8,12.0 L262.9,18.4 L265.1,12.0 L267.0,25.8 L269.2,29.4 L271.2,30.1 L273.4,12.0 L275.5,12.0 L277.5,12.0 L279.8,12.0 L281.9,38.8 L284.0,18.0 L286.1,28.2 L288.2,19.2 L290.4,28.8 L292.3,12.0 L294.5,12.0 L296.4,12.0 L298.7,42.6 L300.8,50.9 L303.0,57.4 L305.1,61.5 L307.1,67.1 L309.3,72.8 L311.4,75.4 L313.4,91.0 L315.7,83.8 L317.7,91.6 L319.7,103.8 L321.9,103.7 L324.0,107.4 L326.1,105.9 L328.3,116.4 L330.4,107.1 L332.4,91.6 L334.7,61.6 L336.7,77.3 L338.9,106.2 L341.0,104.0 L343.0,107.9 L345.2,111.0 L347.3,129.3 L349.4,142.8 L351.5,138.3 L353.7,151.8 L355.7,149.0 L357.9,174.3 L360.0,184.7 L362.0,197.6 L364.3,195.7 L366.4,177.9 L368.3,200.7 L370.5,194.6 L372.6,172.9 L374.6,152.1 L376.8,133.4 L379.0,139.0 L381.1,118.8 L383.2,108.9 L385.3,109.9 L387.4,94.4 L389.6,64.2 L391.6,46.4 L393.5,12.0 L395.8,12.0 L397.9,12.0 L400.1,14.1 L402.1,12.0 L404.2,12.0 L406.4,12.0 L408.5,12.0 L410.5,12.0 L412.8,23.9 L414.9,42.9 L417.1,34.2 L419.0,42.3 L421.2,55.0 L423.2,55.3 L425.4,40.6 L427.5,33.0 L429.5,20.8 L431.8,12.0 L433.8,12.0 L436.0,20.9 L438.1,12.0 L440.2,12.0 L442.4,12.0 L444.4,12.0 L446.5,12.0 L448.6,12.0 L450.8,12.0 L452.8,12.0 L455.0,23.7 L457.2,13.9 L459.1,12.0 L461.4,16.7 L463.5,22.9 L465.6,12.0 L467.8,14.4 L469.7,12.0 L471.7,12.0 L473.9,12.5 L476.1,12.0 L478.0,12.0 L480.3,51.4 L482.4,58.8 L484.6,43.1 L486.7,31.1 L488.7,26.9 L490.9,20.8 L493.1,12.0 L495.0,25.0 L497.2,43.8 L499.3,27.0 L501.3,39.9 L503.5,19.5 L505.6,16.6 L507.7,12.4 L509.9,20.9 L512.0,20.6 L514.0,26.9 L516.3,45.2 L518.3,49.2 L520.3,49.7 L522.5,45.4 L524.6,36.6 L526.6,14.7 L528.8,12.0 L531.0,12.0 L533.1,12.0 L535.2,17.9 L537.3,12.0 L539.4,12.0 L541.6,14.0 L543.6,12.0 L545.7,18.9 L547.9,12.0 L549.9,12.0 L552.1,14.2 L554.2,39.5 L556.2,42.0 L558.5,58.0 L560.6,40.4 L562.7,17.1 L564.8,12.0 L566.9,12.0 L569.1,29.2 L571.1,12.0 L573.2,12.0 L575.2,12.0 L577.4,12.0 L579.5,12.0 L581.7,12.0 L583.8,21.3 L585.8,20.9 L588.1,25.0 L590.1,17.8 L592.1,12.0 L594.4,12.0 L596.4,14.4 L598.5,12.0 L600.6,12.0 L602.8,12.0 L604.8,12.0 L607.0,12.0 L609.1,12.0 L611.1,15.3 L613.4,12.4 L615.5,12.0 L617.6,12.0 L619.8,12.0 L621.7,12.0 L623.7,12.0 L625.9,19.2 L628.1,21.2 L630.0,22.4 L632.3,16.4 L634.4,13.0 L636.5,12.0 L638.7,20.1 L640.7,33.3 L642.9,22.9 L645.1,21.4 L647.0,79.2 L649.2,109.0 L651.3,115.8 L653.3,101.5 L655.6,68.5 L657.7,72.4 L659.9,59.2 L661.9,52.5 L664.0,38.2 L666.2,12.7 L668.3,17.4 L670.3,23.0 L672.3,26.4 L674.6,34.2 L676.6,30.4 L678.8,18.7 L680.9,44.3 L683.0,44.2 L685.2,57.8 L687.3,52.3 L689.3,60.6 L691.5,73.4 L693.6,67.5 L695.8,72.1 L697.7,98.2 L699.9,91.4 L701.9,86.3 L704.1,102.5 L706.2,117.6 L708.2,129.1 L710.5,139.9 L712.6,131.9 L714.7,129.4 L716.8,122.5 L718.9,114.3 L721.1,97.1 L723.0,81.4 L725.2,83.1 L727.1,85.1 L729.4,84.7 L731.5,90.0 L733.7,74.0 L735.8,74.5 L737.8,79.3 L740.0,68.3 L742.1,46.2 L744.1,30.6 L746.4,14.5 L748.4,14.8 L750.4,12.0 L752.7,12.0 L754.8,12.0 L756.8,12.0 L759.0,12.0 L761.1,12.0 L763.3,12.0 L765.4,12.0 L767.4,12.0 L769.7,12.0 L771.8,47.4 L773.8,43.5 L775.9,48.6 L778.0,41.6 L780.1,54.7 L782.2,89.5 L784.4,89.0 L786.4,92.1 L788.6,78.8 L790.7,72.3 L792.7,79.4 L795.0,89.1 L797.1,85.6 L799.0,98.9 L801.2,85.4 L803.3,99.7 L805.3,101.9 L807.5,127.2 L809.7,112.4 L811.8,115.3 L813.9,94.0 L816.0,107.6" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="107.6" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,12.0 L58.0,14.3 L60.2,12.0 L62.4,12.0 L64.3,12.0 L66.5,12.0 L68.6,12.0 L70.6,12.0 L72.8,21.2 L74.9,15.7 L76.9,34.3 L79.2,17.0 L81.3,22.4 L83.3,17.6 L85.6,15.9 L87.6,12.0 L89.6,16.7 L91.8,12.0 L93.9,12.0 L95.9,17.2 L98.1,28.8 L100.3,12.0 L102.4,12.1 L104.5,12.0 L106.6,12.0 L108.7,15.2 L110.9,19.7 L112.9,39.0 L114.8,12.0 L117.1,12.0 L119.2,12.0 L121.3,12.0 L123.4,22.6 L125.5,17.7 L127.7,12.0 L129.8,12.0 L131.8,12.0 L134.0,12.0 L136.2,12.0 L138.3,12.0 L140.4,12.0 L142.5,18.6 L144.4,12.0 L146.7,22.3 L148.8,27.5 L151.0,14.9 L153.1,24.6 L155.1,19.7 L157.3,19.6 L159.4,12.0 L161.4,22.6 L163.7,19.7 L165.7,23.7 L167.8,12.0 L169.9,25.6 L172.1,35.3 L174.1,20.9 L176.3,14.9 L178.4,19.7 L180.4,24.8 L182.7,26.8 L184.7,23.4 L186.9,22.2 L189.0,23.1 L191.0,26.4 L193.0,35.3 L195.2,14.1 L197.4,24.4 L199.3,22.4 L201.6,15.2 L203.7,32.2 L205.8,41.8 L208.0,40.6 L210.0,33.6 L212.2,12.0 L214.4,12.0 L216.3,12.0 L218.5,12.0 L220.5,12.0 L222.6,12.6 L224.8,12.0 L226.9,13.8 L228.9,16.2 L231.2,21.6 L233.3,19.8 L235.2,30.2 L237.5,35.7 L239.6,33.3 L241.6,28.0 L243.8,24.9 L245.9,38.2 L248.1,34.3 L250.2,26.0 L252.2,35.2 L254.5,22.1 L256.5,18.7 L258.6,12.0 L260.8,12.0 L262.9,18.3 L265.1,13.3 L267.0,22.8 L269.2,27.3 L271.2,26.3 L273.4,18.0 L275.5,21.9 L277.5,30.5 L279.8,28.2 L281.9,49.7 L284.0,36.6 L286.1,37.5 L288.2,34.0 L290.4,39.7 L292.3,32.4 L294.5,29.9 L296.4,17.7 L298.7,35.8 L300.8,45.5 L303.0,45.1 L305.1,47.3 L307.1,49.5 L309.3,60.5 L311.4,65.3 L313.4,76.6 L315.7,74.6 L317.7,83.4 L319.7,94.0 L321.9,92.7 L324.0,87.1 L326.1,84.3 L328.3,92.1 L330.4,80.8 L332.4,71.0 L334.7,50.0 L336.7,60.0 L338.9,82.7 L341.0,73.1 L343.0,78.1 L345.2,75.9 L347.3,82.5 L349.4,91.1 L351.5,86.9 L353.7,96.2 L355.7,90.9 L357.9,111.4 L360.0,118.7 L362.0,128.1 L364.3,125.5 L366.4,107.6 L368.3,123.2 L370.5,118.2 L372.6,99.2 L374.6,78.6 L376.8,61.7 L379.0,62.2 L381.1,39.2 L383.2,35.2 L385.3,38.8 L387.4,22.7 L389.6,12.0 L391.6,12.0 L393.5,12.0 L395.8,12.0 L397.9,12.0 L400.1,12.0 L402.1,16.6 L404.2,12.2 L406.4,12.0 L408.5,12.0 L410.5,12.0 L412.8,19.0 L414.9,39.4 L417.1,32.6 L419.0,39.8 L421.2,43.2 L423.2,45.8 L425.4,31.4 L427.5,20.0 L429.5,13.3 L431.8,12.0 L433.8,12.0 L436.0,22.7 L438.1,18.5 L440.2,12.0 L442.4,12.0 L444.4,12.0 L446.5,12.0 L448.6,12.0 L450.8,12.6 L452.8,12.0 L455.0,16.9 L457.2,12.1 L459.1,12.0 L461.4,12.1 L463.5,13.7 L465.6,12.0 L467.8,12.0 L469.7,12.0 L471.7,12.0 L473.9,19.7 L476.1,26.0 L478.0,20.1 L480.3,43.8 L482.4,48.3 L484.6,35.0 L486.7,37.3 L488.7,39.1 L490.9,39.5 L493.1,28.8 L495.0,37.2 L497.2,48.1 L499.3,32.1 L501.3,39.8 L503.5,27.6 L505.6,24.5 L507.7,23.1 L509.9,23.9 L512.0,13.4 L514.0,15.5 L516.3,36.1 L518.3,35.5 L520.3,37.9 L522.5,17.6 L524.6,12.0 L526.6,12.0 L528.8,12.0 L531.0,14.2 L533.1,12.0 L535.2,21.5 L537.3,19.7 L539.4,12.0 L541.6,12.8 L543.6,12.0 L545.7,12.9 L547.9,12.0 L549.9,15.1 L552.1,19.8 L554.2,36.6 L556.2,39.4 L558.5,52.9 L560.6,32.7 L562.7,12.0 L564.8,12.0 L566.9,12.0 L569.1,17.5 L571.1,12.0 L573.2,12.0 L575.2,12.0 L577.4,12.1 L579.5,12.0 L581.7,12.0 L583.8,18.5 L585.8,16.3 L588.1,16.9 L590.1,12.0 L592.1,12.0 L594.4,12.0 L596.4,12.0 L598.5,12.0 L600.6,12.0 L602.8,12.0 L604.8,12.0 L607.0,12.0 L609.1,12.0 L611.1,12.0 L613.4,12.7 L615.5,12.0 L617.6,12.0 L619.8,12.0 L621.7,12.0 L623.7,14.0 L625.9,16.6 L628.1,25.8 L630.0,17.0 L632.3,15.6 L634.4,12.0 L636.5,12.0 L638.7,21.6 L640.7,35.6 L642.9,33.4 L645.1,30.9 L647.0,54.9 L649.2,67.6 L651.3,70.2 L653.3,50.6 L655.6,18.2 L657.7,23.4 L659.9,12.0 L661.9,12.0 L664.0,12.0 L666.2,12.0 L668.3,12.0 L670.3,14.3 L672.3,17.6 L674.6,32.3 L676.6,23.8 L678.8,12.0 L680.9,31.5 L683.0,30.0 L685.2,42.0 L687.3,39.0 L689.3,47.7 L691.5,59.7 L693.6,53.9 L695.8,55.2 L697.7,71.9 L699.9,68.3 L701.9,71.4 L704.1,90.7 L706.2,97.1 L708.2,99.7 L710.5,117.3 L712.6,108.7 L714.7,102.7 L716.8,98.5 L718.9,87.3 L721.1,75.8 L723.0,63.6 L725.2,58.6 L727.1,59.1 L729.4,62.1 L731.5,65.8 L733.7,53.8 L735.8,49.6 L737.8,50.8 L740.0,35.9 L742.1,19.2 L744.1,12.0 L746.4,12.0 L748.4,12.5 L750.4,14.0 L752.7,12.0 L754.8,12.0 L756.8,12.0 L759.0,12.0 L761.1,12.0 L763.3,12.0 L765.4,12.0 L767.4,12.0 L769.7,12.0 L771.8,37.1 L773.8,26.1 L775.9,24.5 L778.0,20.0 L780.1,16.7 L782.2,40.3 L784.4,44.4 L786.4,44.0 L788.6,38.3 L790.7,33.1 L792.7,40.9 L795.0,45.4 L797.1,41.5 L799.0,53.2 L801.2,50.2 L803.3,64.7 L805.3,62.4 L807.5,83.5 L809.7,78.2 L811.8,77.5 L813.9,57.1 L816.0,69.8" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="69.8" r="4" style="fill:var(--s2)"/><path class="line" d="M56.0,12.0 L58.0,17.4 L60.2,12.0 L62.4,12.0 L64.3,12.0 L66.5,12.0 L68.6,12.0 L70.6,12.0 L72.8,24.0 L74.9,18.6 L76.9,36.3 L79.2,22.7 L81.3,24.0 L83.3,20.6 L85.6,18.5 L87.6,12.0 L89.6,19.0 L91.8,12.0 L93.9,12.0 L95.9,14.0 L98.1,25.1 L100.3,12.0 L102.4,12.0 L104.5,12.0 L106.6,14.3 L108.7,16.8 L110.9,22.5 L112.9,41.6 L114.8,12.0 L117.1,12.0 L119.2,12.0 L121.3,14.5 L123.4,25.2 L125.5,18.3 L127.7,12.0 L129.8,12.0 L131.8,12.0 L134.0,12.0 L136.2,12.0 L138.3,12.0 L140.4,12.0 L142.5,18.5 L144.4,12.0 L146.7,23.0 L148.8,31.9 L151.0,20.5 L153.1,27.7 L155.1,21.3 L157.3,23.8 L159.4,12.3 L161.4,24.9 L163.7,23.7 L165.7,25.8 L167.8,12.0 L169.9,23.1 L172.1,32.7 L174.1,18.1 L176.3,13.8 L178.4,20.0 L180.4,23.1 L182.7,30.9 L184.7,23.6 L186.9,24.9 L189.0,29.3 L191.0,29.0 L193.0,34.8 L195.2,15.7 L197.4,24.4 L199.3,21.2 L201.6,13.7 L203.7,35.3 L205.8,43.9 L208.0,43.9 L210.0,35.1 L212.2,12.0 L214.4,12.0 L216.3,12.0 L218.5,12.0 L220.5,12.0 L222.6,12.0 L224.8,12.0 L226.9,15.1 L228.9,15.6 L231.2,17.9 L233.3,17.4 L235.2,25.9 L237.5,32.2 L239.6,29.5 L241.6,23.6 L243.8,20.7 L245.9,30.8 L248.1,27.9 L250.2,19.0 L252.2,26.6 L254.5,15.2 L256.5,12.0 L258.6,12.0 L260.8,12.0 L262.9,18.3 L265.1,12.0 L267.0,23.0 L269.2,28.1 L271.2,28.2 L273.4,19.1 L275.5,22.7 L277.5,30.0 L279.8,26.9 L281.9,48.8 L284.0,30.3 L286.1,30.2 L288.2,27.5 L290.4,31.6 L292.3,21.8 L294.5,18.1 L296.4,12.0 L298.7,31.8 L300.8,38.9 L303.0,39.6 L305.1,45.3 L307.1,49.4 L309.3,57.9 L311.4,61.9 L313.4,71.2 L315.7,65.2 L317.7,74.3 L319.7,87.9 L321.9,89.2 L324.0,87.6 L326.1,85.6 L328.3,93.8 L330.4,82.7 L332.4,71.3 L334.7,49.9 L336.7,59.7 L338.9,80.6 L341.0,72.1 L343.0,76.5 L345.2,77.4 L347.3,84.8 L349.4,96.7 L351.5,90.9 L353.7,98.2 L355.7,98.1 L357.9,122.3 L360.0,127.6 L362.0,141.0 L364.3,136.0 L366.4,115.2 L368.3,131.5 L370.5,126.6 L372.6,104.0 L374.6,83.2 L376.8,59.6 L379.0,61.7 L381.1,39.4 L383.2,33.5 L385.3,34.6 L387.4,18.5 L389.6,12.0 L391.6,12.0 L393.5,12.0 L395.8,12.0 L397.9,12.0 L400.1,12.0 L402.1,16.0 L404.2,12.0 L406.4,12.0 L408.5,12.0 L410.5,12.0 L412.8,17.4 L414.9,33.5 L417.1,24.5 L419.0,30.5 L421.2,37.0 L423.2,42.6 L425.4,31.3 L427.5,20.7 L429.5,16.8 L431.8,12.0 L433.8,12.0 L436.0,23.4 L438.1,15.5 L440.2,12.0 L442.4,12.0 L444.4,12.0 L446.5,12.0 L448.6,12.0 L450.8,12.3 L452.8,12.0 L455.0,22.1 L457.2,17.0 L459.1,12.0 L461.4,12.2 L463.5,18.4 L465.6,12.0 L467.8,12.0 L469.7,12.0 L471.7,12.0 L473.9,12.0 L476.1,17.6 L478.0,12.0 L480.3,37.2 L482.4,42.3 L484.6,29.1 L486.7,29.8 L488.7,32.7 L490.9,30.4 L493.1,18.1 L495.0,27.2 L497.2,38.2 L499.3,21.9 L501.3,28.1 L503.5,12.0 L505.6,12.0 L507.7,12.0 L509.9,14.2 L512.0,12.0 L514.0,12.0 L516.3,32.7 L518.3,31.8 L520.3,34.0 L522.5,15.1 L524.6,12.0 L526.6,12.0 L528.8,12.0 L531.0,12.0 L533.1,12.0 L535.2,19.1 L537.3,20.0 L539.4,12.0 L541.6,15.0 L543.6,12.0 L545.7,14.2 L547.9,12.0 L549.9,12.4 L552.1,15.8 L554.2,29.1 L556.2,32.2 L558.5,45.2 L560.6,30.3 L562.7,12.0 L564.8,12.0 L566.9,12.0 L569.1,19.4 L571.1,12.0 L573.2,12.0 L575.2,12.0 L577.4,12.0 L579.5,12.0 L581.7,12.0 L583.8,18.6 L585.8,17.8 L588.1,19.4 L590.1,12.5 L592.1,12.0 L594.4,12.0 L596.4,12.0 L598.5,12.0 L600.6,12.0 L602.8,12.0 L604.8,12.0 L607.0,12.0 L609.1,12.0 L611.1,12.0 L613.4,12.0 L615.5,12.0 L617.6,12.0 L619.8,12.0 L621.7,12.0 L623.7,14.0 L625.9,17.1 L628.1,24.7 L630.0,16.0 L632.3,13.2 L634.4,12.0 L636.5,12.0 L638.7,21.2 L640.7,33.1 L642.9,26.6 L645.1,20.4 L647.0,49.6 L649.2,65.9 L651.3,70.9 L653.3,51.0 L655.6,16.6 L657.7,22.7 L659.9,12.0 L661.9,12.0 L664.0,12.0 L666.2,12.0 L668.3,12.0 L670.3,16.3 L672.3,17.4 L674.6,27.7 L676.6,23.9 L678.8,13.4 L680.9,29.4 L683.0,27.3 L685.2,37.1 L687.3,31.3 L689.3,37.0 L691.5,46.3 L693.6,37.7 L695.8,41.4 L697.7,58.6 L699.9,55.1 L701.9,54.3 L704.1,74.5 L706.2,83.5 L708.2,90.6 L710.5,109.1 L712.6,103.2 L714.7,98.3 L716.8,93.0 L718.9,83.5 L721.1,70.4 L723.0,58.5 L725.2,51.4 L727.1,52.5 L729.4,56.4 L731.5,59.6 L733.7,50.3 L735.8,49.1 L737.8,51.1 L740.0,37.3 L742.1,19.3 L744.1,12.0 L746.4,12.0 L748.4,12.0 L750.4,12.0 L752.7,12.0 L754.8,12.0 L756.8,12.0 L759.0,12.0 L761.1,12.0 L763.3,12.0 L765.4,12.0 L767.4,12.0 L769.7,12.0 L771.8,41.4 L773.8,30.2 L775.9,31.5 L778.0,26.2 L780.1,24.5 L782.2,51.4 L784.4,57.4 L786.4,56.6 L788.6,49.7 L790.7,46.0 L792.7,53.1 L795.0,57.7 L797.1,55.1 L799.0,62.9 L801.2,58.7 L803.3,72.7 L805.3,74.1 L807.5,94.5 L809.7,87.9 L811.8,91.9 L813.9,71.3 L816.0,83.5" style="stroke:var(--s3)"/><circle class="dot" cx="816.0" cy="83.5" r="4" style="fill:var(--s3)"/><rect class="hit" x="56.0" y="12" width="6.9" height="200"><title>Nov 1996
+Equal weight: −2.6%
+Minimum variance: −0.5%
+Maximum Sharpe: −1.1%</title></rect><rect class="hit" x="62.4" y="12" width="6.7" height="200"><title>Feb 1997
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="68.6" y="12" width="6.9" height="200"><title>May 1997
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="74.9" y="12" width="8.8" height="200"><title>Sep 1997
+Equal weight: −2.3%
+Minimum variance: −1.0%
+Maximum Sharpe: −2.1%</title></rect><rect class="hit" x="83.3" y="12" width="6.8" height="200"><title>Dec 1997
+Equal weight: 0.0%
+Minimum variance: −0.8%
+Maximum Sharpe: −1.3%</title></rect><rect class="hit" x="89.6" y="12" width="6.8" height="200"><title>Mar 1998
+Equal weight: −0.3%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="95.9" y="12" width="7.0" height="200"><title>Jun 1998
+Equal weight: −5.0%
+Minimum variance: −3.4%
+Maximum Sharpe: −2.6%</title></rect><rect class="hit" x="102.4" y="12" width="9.0" height="200"><title>Oct 1998
+Equal weight: −1.2%
+Minimum variance: 0.0%
+Maximum Sharpe: −0.5%</title></rect><rect class="hit" x="110.9" y="12" width="6.7" height="200"><title>Jan 1999
+Equal weight: −8.8%
+Minimum variance: −5.4%
+Maximum Sharpe: −5.9%</title></rect><rect class="hit" x="117.1" y="12" width="6.8" height="200"><title>Apr 1999
+Equal weight: −1.6%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="123.4" y="12" width="8.9" height="200"><title>Aug 1999
+Equal weight: −1.7%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="131.8" y="12" width="7.0" height="200"><title>Nov 1999
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="138.3" y="12" width="6.6" height="200"><title>Feb 2000
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="144.4" y="12" width="7.0" height="200"><title>May 2000
+Equal weight: −6.6%
+Minimum variance: −2.1%
+Maximum Sharpe: −2.2%</title></rect><rect class="hit" x="151.0" y="12" width="9.0" height="200"><title>Sep 2000
+Equal weight: −6.8%
+Minimum variance: −1.5%
+Maximum Sharpe: −1.9%</title></rect><rect class="hit" x="159.4" y="12" width="6.7" height="200"><title>Dec 2000
+Equal weight: −6.7%
+Minimum variance: −2.1%
+Maximum Sharpe: −2.6%</title></rect><rect class="hit" x="165.7" y="12" width="6.9" height="200"><title>Mar 2001
+Equal weight: −1.7%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="172.1" y="12" width="8.8" height="200"><title>Jul 2001
+Equal weight: −0.5%
+Minimum variance: −0.6%
+Maximum Sharpe: −0.4%</title></rect><rect class="hit" x="180.4" y="12" width="7.0" height="200"><title>Oct 2001
+Equal weight: −5.3%
+Minimum variance: −3.0%
+Maximum Sharpe: −3.8%</title></rect><rect class="hit" x="186.9" y="12" width="6.6" height="200"><title>Jan 2002
+Equal weight: −6.2%
+Minimum variance: −2.2%
+Maximum Sharpe: −3.5%</title></rect><rect class="hit" x="193.0" y="12" width="6.8" height="200"><title>Apr 2002
+Equal weight: −2.2%
+Minimum variance: −0.4%
+Maximum Sharpe: −0.7%</title></rect><rect class="hit" x="199.3" y="12" width="9.2" height="200"><title>Aug 2002
+Equal weight: −10.6%
+Minimum variance: −4.0%
+Maximum Sharpe: −4.7%</title></rect><rect class="hit" x="208.0" y="12" width="6.9" height="200"><title>Nov 2002
+Equal weight: −8.1%
+Minimum variance: −4.3%
+Maximum Sharpe: −4.6%</title></rect><rect class="hit" x="214.4" y="12" width="6.7" height="200"><title>Feb 2003
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="220.5" y="12" width="8.9" height="200"><title>Jun 2003
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="228.9" y="12" width="6.8" height="200"><title>Sep 2003
+Equal weight: 0.0%
+Minimum variance: −1.9%
+Maximum Sharpe: −1.2%</title></rect><rect class="hit" x="235.2" y="12" width="6.8" height="200"><title>Dec 2003
+Equal weight: −4.1%
+Minimum variance: −4.7%
+Maximum Sharpe: −4.0%</title></rect><rect class="hit" x="241.6" y="12" width="7.0" height="200"><title>Mar 2004
+Equal weight: −4.1%
+Minimum variance: −2.6%
+Maximum Sharpe: −1.7%</title></rect><rect class="hit" x="248.1" y="12" width="9.0" height="200"><title>Jul 2004
+Equal weight: −3.6%
+Minimum variance: −4.6%
+Maximum Sharpe: −2.9%</title></rect><rect class="hit" x="256.5" y="12" width="6.9" height="200"><title>Oct 2004
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="262.9" y="12" width="6.7" height="200"><title>Jan 2005
+Equal weight: 0.0%
+Minimum variance: −0.3%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="269.2" y="12" width="8.8" height="200"><title>May 2005
+Equal weight: 0.0%
+Minimum variance: −1.2%
+Maximum Sharpe: −1.4%</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="200"><title>Aug 2005
+Equal weight: 0.0%
+Minimum variance: −3.2%
+Maximum Sharpe: −3.0%</title></rect><rect class="hit" x="284.0" y="12" width="6.9" height="200"><title>Nov 2005
+Equal weight: −3.2%
+Minimum variance: −5.1%
+Maximum Sharpe: −3.6%</title></rect><rect class="hit" x="290.4" y="12" width="6.5" height="200"><title>Feb 2006
+Equal weight: 0.0%
+Minimum variance: −4.1%
+Maximum Sharpe: −2.0%</title></rect><rect class="hit" x="296.4" y="12" width="9.2" height="200"><title>Jun 2006
+Equal weight: −7.8%
+Minimum variance: −6.7%
+Maximum Sharpe: −5.4%</title></rect><rect class="hit" x="305.1" y="12" width="6.8" height="200"><title>Sep 2006
+Equal weight: −11.0%
+Minimum variance: −7.5%
+Maximum Sharpe: −7.5%</title></rect><rect class="hit" x="311.4" y="12" width="6.7" height="200"><title>Dec 2006
+Equal weight: −15.8%
+Minimum variance: −12.9%
+Maximum Sharpe: −11.8%</title></rect><rect class="hit" x="317.7" y="12" width="6.9" height="200"><title>Mar 2007
+Equal weight: −18.4%
+Minimum variance: −16.4%
+Maximum Sharpe: −15.2%</title></rect><rect class="hit" x="324.0" y="12" width="8.8" height="200"><title>Jul 2007
+Equal weight: −20.9%
+Minimum variance: −16.0%
+Maximum Sharpe: −16.4%</title></rect><rect class="hit" x="332.4" y="12" width="7.0" height="200"><title>Oct 2007
+Equal weight: −9.9%
+Minimum variance: −7.6%
+Maximum Sharpe: −7.6%</title></rect><rect class="hit" x="338.9" y="12" width="6.8" height="200"><title>Jan 2008
+Equal weight: −18.4%
+Minimum variance: −12.2%
+Maximum Sharpe: −12.0%</title></rect><rect class="hit" x="345.2" y="12" width="9.0" height="200"><title>May 2008
+Equal weight: −26.2%
+Minimum variance: −15.8%
+Maximum Sharpe: −16.9%</title></rect><rect class="hit" x="353.7" y="12" width="6.9" height="200"><title>Aug 2008
+Equal weight: −27.4%
+Minimum variance: −15.8%
+Maximum Sharpe: −17.2%</title></rect><rect class="hit" x="360.0" y="12" width="6.8" height="200"><title>Nov 2008
+Equal weight: −37.1%
+Minimum variance: −23.2%
+Maximum Sharpe: −25.8%</title></rect><rect class="hit" x="366.4" y="12" width="6.7" height="200"><title>Feb 2009
+Equal weight: −37.7%
+Minimum variance: −22.2%
+Maximum Sharpe: −23.9%</title></rect><rect class="hit" x="372.6" y="12" width="9.0" height="200"><title>Jun 2009
+Equal weight: −24.3%
+Minimum variance: −9.9%
+Maximum Sharpe: −9.5%</title></rect><rect class="hit" x="381.1" y="12" width="6.8" height="200"><title>Sep 2009
+Equal weight: −19.4%
+Minimum variance: −4.6%
+Maximum Sharpe: −4.3%</title></rect><rect class="hit" x="387.4" y="12" width="6.6" height="200"><title>Dec 2009
+Equal weight: −10.4%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="393.5" y="12" width="9.1" height="200"><title>Apr 2010
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="402.1" y="12" width="6.9" height="200"><title>Jul 2010
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="408.5" y="12" width="6.9" height="200"><title>Oct 2010
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="414.9" y="12" width="6.7" height="200"><title>Jan 2011
+Equal weight: −4.4%
+Minimum variance: −4.1%
+Maximum Sharpe: −2.5%</title></rect><rect class="hit" x="421.2" y="12" width="8.8" height="200"><title>May 2011
+Equal weight: −5.7%
+Minimum variance: −3.9%
+Maximum Sharpe: −3.9%</title></rect><rect class="hit" x="429.5" y="12" width="7.0" height="200"><title>Aug 2011
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="436.0" y="12" width="6.9" height="200"><title>Nov 2011
+Equal weight: 0.0%
+Minimum variance: −1.3%
+Maximum Sharpe: −0.7%</title></rect><rect class="hit" x="442.4" y="12" width="8.9" height="200"><title>Mar 2012
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="450.8" y="12" width="6.9" height="200"><title>Jun 2012
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="457.2" y="12" width="6.8" height="200"><title>Sep 2012
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="463.5" y="12" width="6.7" height="200"><title>Dec 2012
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="469.7" y="12" width="8.8" height="200"><title>Apr 2013
+Equal weight: −0.1%
+Minimum variance: −1.5%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="478.0" y="12" width="7.0" height="200"><title>Jul 2013
+Equal weight: −7.9%
+Minimum variance: −6.4%
+Maximum Sharpe: −5.0%</title></rect><rect class="hit" x="484.6" y="12" width="6.9" height="200"><title>Oct 2013
+Equal weight: −3.8%
+Minimum variance: −5.1%
+Maximum Sharpe: −3.6%</title></rect><rect class="hit" x="490.9" y="12" width="8.8" height="200"><title>Feb 2014
+Equal weight: −2.6%
+Minimum variance: −5.0%
+Maximum Sharpe: −3.0%</title></rect><rect class="hit" x="499.3" y="12" width="6.9" height="200"><title>May 2014
+Equal weight: −5.6%
+Minimum variance: −5.6%
+Maximum Sharpe: −3.2%</title></rect><rect class="hit" x="505.6" y="12" width="6.9" height="200"><title>Aug 2014
+Equal weight: −0.1%
+Minimum variance: −2.2%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="512.0" y="12" width="6.8" height="200"><title>Nov 2014
+Equal weight: −3.0%
+Minimum variance: −0.7%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="518.3" y="12" width="8.8" height="200"><title>Mar 2015
+Equal weight: −6.7%
+Minimum variance: −1.1%
+Maximum Sharpe: −0.6%</title></rect><rect class="hit" x="526.6" y="12" width="7.0" height="200"><title>Jun 2015
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="533.1" y="12" width="6.8" height="200"><title>Sep 2015
+Equal weight: −1.2%
+Minimum variance: −1.9%
+Maximum Sharpe: −1.4%</title></rect><rect class="hit" x="539.4" y="12" width="9.0" height="200"><title>Jan 2016
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="547.9" y="12" width="6.8" height="200"><title>Apr 2016
+Equal weight: 0.0%
+Minimum variance: −0.6%
+Maximum Sharpe: −0.1%</title></rect><rect class="hit" x="554.2" y="12" width="6.9" height="200"><title>Jul 2016
+Equal weight: −6.0%
+Minimum variance: −5.5%
+Maximum Sharpe: −4.0%</title></rect><rect class="hit" x="560.6" y="12" width="6.8" height="200"><title>Oct 2016
+Equal weight: −1.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="566.9" y="12" width="8.8" height="200"><title>Feb 2017
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="575.2" y="12" width="7.0" height="200"><title>May 2017
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="581.7" y="12" width="6.9" height="200"><title>Aug 2017
+Equal weight: −1.9%
+Minimum variance: −1.3%
+Maximum Sharpe: −1.3%</title></rect><rect class="hit" x="588.1" y="12" width="6.9" height="200"><title>Nov 2017
+Equal weight: −1.2%
+Minimum variance: 0.0%
+Maximum Sharpe: −0.1%</title></rect><rect class="hit" x="594.4" y="12" width="8.8" height="200"><title>Mar 2018
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="602.8" y="12" width="6.9" height="200"><title>Jun 2018
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="609.1" y="12" width="6.8" height="200"><title>Sep 2018
+Equal weight: −0.7%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="615.5" y="12" width="8.8" height="200"><title>Jan 2019
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="623.7" y="12" width="6.8" height="200"><title>Apr 2019
+Equal weight: −1.4%
+Minimum variance: −0.9%
+Maximum Sharpe: −1.0%</title></rect><rect class="hit" x="630.0" y="12" width="7.0" height="200"><title>Jul 2019
+Equal weight: −0.9%
+Minimum variance: −0.7%
+Maximum Sharpe: −0.2%</title></rect><rect class="hit" x="636.5" y="12" width="6.9" height="200"><title>Oct 2019
+Equal weight: −1.6%
+Minimum variance: −1.9%
+Maximum Sharpe: −1.8%</title></rect><rect class="hit" x="642.9" y="12" width="8.9" height="200"><title>Feb 2020
+Equal weight: −13.4%
+Minimum variance: −8.6%
+Maximum Sharpe: −7.5%</title></rect><rect class="hit" x="651.3" y="12" width="6.9" height="200"><title>May 2020
+Equal weight: −17.9%
+Minimum variance: −7.7%
+Maximum Sharpe: −7.8%</title></rect><rect class="hit" x="657.7" y="12" width="6.8" height="200"><title>Aug 2020
+Equal weight: −9.4%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="664.0" y="12" width="8.8" height="200"><title>Dec 2020
+Equal weight: −1.1%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="672.3" y="12" width="7.0" height="200"><title>Mar 2021
+Equal weight: −4.4%
+Minimum variance: −4.1%
+Maximum Sharpe: −3.1%</title></rect><rect class="hit" x="678.8" y="12" width="6.9" height="200"><title>Jun 2021
+Equal weight: −6.5%
+Minimum variance: −3.9%
+Maximum Sharpe: −3.5%</title></rect><rect class="hit" x="685.2" y="12" width="6.8" height="200"><title>Sep 2021
+Equal weight: −8.1%
+Minimum variance: −5.4%
+Maximum Sharpe: −3.9%</title></rect><rect class="hit" x="691.5" y="12" width="8.9" height="200"><title>Jan 2022
+Equal weight: −12.0%
+Minimum variance: −8.6%
+Maximum Sharpe: −5.9%</title></rect><rect class="hit" x="699.9" y="12" width="6.8" height="200"><title>Apr 2022
+Equal weight: −14.9%
+Minimum variance: −11.9%
+Maximum Sharpe: −8.5%</title></rect><rect class="hit" x="706.2" y="12" width="6.9" height="200"><title>Jul 2022
+Equal weight: −23.4%
+Minimum variance: −17.5%
+Maximum Sharpe: −15.7%</title></rect><rect class="hit" x="712.6" y="12" width="9.0" height="200"><title>Nov 2022
+Equal weight: −22.1%
+Minimum variance: −17.3%
+Maximum Sharpe: −16.2%</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="200"><title>Feb 2023
+Equal weight: −13.9%
+Minimum variance: −10.3%
+Maximum Sharpe: −9.3%</title></rect><rect class="hit" x="727.1" y="12" width="7.0" height="200"><title>May 2023
+Equal weight: −14.5%
+Minimum variance: −10.0%
+Maximum Sharpe: −8.9%</title></rect><rect class="hit" x="733.7" y="12" width="6.9" height="200"><title>Aug 2023
+Equal weight: −12.5%
+Minimum variance: −7.5%
+Maximum Sharpe: −7.4%</title></rect><rect class="hit" x="740.0" y="12" width="8.9" height="200"><title>Dec 2023
+Equal weight: −3.7%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="748.4" y="12" width="6.9" height="200"><title>Mar 2024
+Equal weight: 0.0%
+Minimum variance: −0.4%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="754.8" y="12" width="6.8" height="200"><title>Jun 2024
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="761.1" y="12" width="9.0" height="200"><title>Oct 2024
+Equal weight: 0.0%
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%</title></rect><rect class="hit" x="769.7" y="12" width="6.7" height="200"><title>Jan 2025
+Equal weight: −7.1%
+Minimum variance: −5.0%
+Maximum Sharpe: −5.9%</title></rect><rect class="hit" x="775.9" y="12" width="6.8" height="200"><title>Apr 2025
+Equal weight: −5.9%
+Minimum variance: −1.6%
+Maximum Sharpe: −2.8%</title></rect><rect class="hit" x="782.2" y="12" width="6.9" height="200"><title>Jul 2025
+Equal weight: −15.4%
+Minimum variance: −6.5%
+Maximum Sharpe: −9.1%</title></rect><rect class="hit" x="788.6" y="12" width="9.0" height="200"><title>Nov 2025
+Equal weight: −13.5%
+Minimum variance: −5.8%
+Maximum Sharpe: −8.2%</title></rect><rect class="hit" x="797.1" y="12" width="6.7" height="200"><title>Feb 2026
+Equal weight: −17.4%
+Minimum variance: −8.2%
+Maximum Sharpe: −10.2%</title></rect><rect class="hit" x="803.3" y="12" width="6.9" height="200"><title>May 2026
+Equal weight: −18.0%
+Minimum variance: −10.1%
+Maximum Sharpe: −12.4%</title></rect><rect class="hit" x="809.7" y="12" width="6.8" height="200"><title>Aug 2026
+Equal weight: −20.7%
+Minimum variance: −13.1%
+Maximum Sharpe: −16.0%</title></rect></svg></div><div class="card"><h3>Sharpe ratio over the past 3 years</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Equal weight 0.15</span><span class="key"><i style="background:var(--s2)"></i>Minimum variance 0.13</span><span class="key"><i style="background:var(--s3)"></i>Maximum Sharpe 0.08</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="816" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">−2.0</text><line class="grid" x1="56" x2="816" y1="172.0" y2="172.0"/><text class="tick" x="48" y="176.0" text-anchor="end">−1.0</text><line class="grid" x1="56" x2="816" y1="132.0" y2="132.0"/><text class="tick" x="48" y="136.0" text-anchor="end">0.0</text><line class="grid" x1="56" x2="816" y1="92.0" y2="92.0"/><text class="tick" x="48" y="96.0" text-anchor="end">1.0</text><line class="grid" x1="56" x2="816" y1="52.0" y2="52.0"/><text class="tick" x="48" y="56.0" text-anchor="end">2.0</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">3.0</text><text class="tick" x="60.9" y="232" text-anchor="middle">2000</text><text class="tick" x="201.7" y="232" text-anchor="middle">2005</text><text class="tick" x="342.4" y="232" text-anchor="middle">2010</text><text class="tick" x="483.1" y="232" text-anchor="middle">2015</text><text class="tick" x="623.8" y="232" text-anchor="middle">2020</text><text class="tick" x="764.6" y="232" text-anchor="middle">2025</text><line class="base" x1="56" x2="816" y1="132.0" y2="132.0"/><path class="line" d="M56.0,122.5 L58.5,112.6 L60.9,115.4 L63.2,115.5 L65.5,120.0 L67.9,122.6 L70.0,123.1 L72.6,133.7 L74.9,135.7 L77.3,134.5 L79.7,131.5 L81.9,132.0 L84.4,132.4 L86.7,131.1 L88.9,135.1 L91.4,136.7 L93.6,135.5 L95.9,132.1 L98.3,135.1 L100.7,138.4 L102.9,127.5 L105.4,131.6 L107.8,135.6 L109.9,138.4 L112.5,140.1 L114.8,134.7 L117.2,134.7 L119.6,130.6 L121.7,140.8 L124.0,143.1 L126.4,134.0 L128.8,136.9 L131.0,129.4 L133.5,128.5 L135.8,143.8 L138.2,152.1 L140.6,151.5 L142.8,152.6 L145.3,140.8 L147.7,139.6 L149.9,134.1 L152.2,123.8 L154.6,121.7 L156.9,112.2 L159.3,102.5 L161.6,106.3 L163.9,102.5 L166.3,104.1 L168.7,103.0 L170.9,107.1 L173.4,107.1 L175.7,108.7 L177.9,105.1 L180.4,112.5 L182.8,112.4 L185.1,108.8 L187.5,109.2 L189.8,112.2 L192.2,101.7 L194.5,101.0 L196.8,94.4 L199.2,96.3 L201.6,96.0 L204.0,88.5 L206.2,92.0 L208.6,92.8 L210.8,98.6 L213.3,88.0 L215.6,86.9 L217.8,89.8 L220.4,73.6 L222.7,81.5 L225.1,77.4 L227.4,85.8 L229.7,90.2 L232.1,96.4 L234.3,98.4 L236.7,105.8 L238.9,105.2 L241.4,118.4 L243.7,127.5 L246.1,129.1 L248.5,131.6 L250.7,134.0 L253.2,137.4 L255.5,137.3 L257.7,138.2 L260.3,137.1 L262.4,141.8 L264.7,143.3 L267.1,141.4 L269.5,142.7 L271.8,147.2 L274.2,150.0 L276.6,158.1 L278.8,153.5 L281.3,145.5 L283.6,150.3 L286.0,155.9 L288.4,162.7 L290.6,160.5 L293.0,160.3 L295.3,164.8 L297.6,177.8 L300.0,177.3 L302.4,181.1 L304.7,180.2 L307.1,180.8 L309.5,191.8 L311.7,193.3 L314.2,195.3 L316.5,182.0 L318.7,193.9 L321.1,190.6 L323.5,183.1 L325.7,168.3 L328.2,159.3 L330.5,159.0 L332.9,151.3 L335.2,147.0 L337.6,145.6 L340.0,140.6 L342.3,129.6 L344.6,127.1 L346.7,117.9 L349.3,112.0 L351.6,110.9 L354.0,110.1 L356.3,109.5 L358.6,104.4 L361.1,102.2 L363.4,104.8 L365.6,109.2 L368.1,107.6 L370.5,103.8 L372.9,102.4 L375.0,103.2 L377.4,105.2 L379.6,99.9 L382.1,92.4 L384.4,91.9 L386.6,84.5 L389.2,82.5 L391.5,70.4 L393.9,68.0 L396.2,57.3 L398.5,54.8 L401.0,55.1 L403.2,39.8 L405.5,40.7 L407.9,43.9 L410.3,47.0 L412.5,47.2 L415.0,48.9 L417.4,51.5 L419.5,53.8 L422.1,54.9 L424.4,61.1 L426.8,61.9 L429.2,66.9 L431.3,67.8 L433.6,67.2 L436.0,68.5 L438.4,67.8 L440.6,64.3 L443.1,82.2 L445.4,88.7 L447.8,85.5 L450.2,84.1 L452.5,79.8 L454.9,72.2 L457.3,71.1 L459.5,72.6 L461.9,74.6 L464.2,70.8 L466.5,78.2 L468.9,75.8 L471.3,77.8 L473.5,79.7 L476.0,82.3 L478.3,79.9 L480.5,84.6 L483.0,97.5 L485.4,104.4 L487.5,105.9 L490.0,106.3 L492.3,106.4 L494.5,103.5 L497.0,105.5 L499.4,100.6 L501.8,100.0 L504.1,102.6 L506.4,99.6 L508.8,92.7 L511.2,99.1 L513.4,92.7 L515.8,100.7 L518.2,100.6 L520.4,99.3 L522.9,100.1 L525.2,112.9 L527.4,99.4 L530.0,102.8 L532.3,102.5 L534.7,100.1 L537.0,95.9 L539.3,93.1 L541.8,102.4 L543.9,92.5 L546.3,81.3 L548.5,83.0 L551.0,77.1 L553.3,79.4 L555.7,75.3 L558.1,79.9 L560.3,77.0 L562.8,78.7 L565.1,74.5 L567.3,62.7 L569.9,58.8 L572.0,59.7 L574.4,56.4 L576.7,56.9 L579.1,59.6 L581.4,59.2 L583.8,55.3 L586.2,55.8 L588.4,54.9 L590.9,56.2 L593.2,56.1 L595.6,53.0 L598.0,58.9 L600.2,54.8 L602.4,57.7 L604.9,62.5 L607.3,62.6 L609.4,48.6 L612.0,45.1 L614.3,32.4 L616.7,34.3 L619.0,45.1 L621.3,58.3 L623.7,60.2 L626.1,50.1 L628.3,92.3 L630.8,107.6 L633.1,111.9 L635.3,108.8 L637.8,103.7 L640.2,109.1 L642.5,103.7 L644.9,102.0 L647.2,97.7 L649.6,94.1 L651.9,98.0 L654.2,100.8 L656.3,100.9 L658.9,106.5 L661.2,107.2 L663.6,106.6 L665.9,116.0 L668.2,121.1 L670.7,126.4 L673.0,124.3 L675.2,126.6 L677.7,134.8 L680.1,134.8 L682.5,135.8 L684.6,142.2 L687.0,142.0 L689.2,139.2 L691.7,142.5 L694.0,145.7 L696.3,149.7 L698.8,153.0 L701.1,160.6 L703.5,158.2 L705.8,153.6 L708.1,153.8 L710.6,149.3 L712.7,133.7 L715.1,125.9 L717.3,124.8 L719.8,129.8 L722.1,143.6 L724.5,137.2 L726.9,142.3 L729.2,146.8 L731.6,148.2 L733.9,149.7 L736.2,143.7 L738.7,137.7 L740.9,137.5 L743.2,134.2 L745.6,134.4 L748.0,131.9 L750.2,117.0 L752.7,117.2 L755.0,111.9 L757.4,113.4 L759.8,106.1 L762.1,96.7 L764.5,94.0 L766.9,105.7 L769.1,94.8 L771.5,99.1 L773.8,99.0 L776.1,97.4 L778.5,105.5 L780.9,101.2 L783.1,98.3 L785.6,97.2 L788.0,96.1 L790.1,101.0 L792.7,107.1 L795.0,111.1 L797.1,120.1 L799.6,115.4 L801.9,119.2 L804.1,120.0 L806.6,126.3 L809.0,126.2 L811.4,126.8 L813.7,119.4 L816.0,126.0" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="126.0" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,105.5 L58.5,99.5 L60.9,103.1 L63.2,104.2 L65.5,106.2 L67.9,111.4 L70.0,111.4 L72.6,119.5 L74.9,118.1 L77.3,115.7 L79.7,111.9 L81.9,116.2 L84.4,113.9 L86.7,112.5 L88.9,117.4 L91.4,121.9 L93.6,121.4 L95.9,120.3 L98.3,127.8 L100.7,129.3 L102.9,119.7 L105.4,123.6 L107.8,125.1 L109.9,129.2 L112.5,130.0 L114.8,127.4 L117.2,125.0 L119.6,116.8 L121.7,129.4 L124.0,138.6 L126.4,131.4 L128.8,135.0 L131.0,129.3 L133.5,127.8 L135.8,139.1 L138.2,150.2 L140.6,149.6 L142.8,153.3 L145.3,140.9 L147.7,137.2 L149.9,131.6 L152.2,121.2 L154.6,121.0 L156.9,116.9 L159.3,107.4 L161.6,111.6 L163.9,108.3 L166.3,111.5 L168.7,110.4 L170.9,116.6 L173.4,114.2 L175.7,114.1 L177.9,110.5 L180.4,113.7 L182.8,113.4 L185.1,107.8 L187.5,109.5 L189.8,115.0 L192.2,108.6 L194.5,105.1 L196.8,101.4 L199.2,101.3 L201.6,104.0 L204.0,102.1 L206.2,104.8 L208.6,103.3 L210.8,109.7 L213.3,102.7 L215.6,105.3 L217.8,111.7 L220.4,103.5 L222.7,109.7 L225.1,105.8 L227.4,108.9 L229.7,116.5 L232.1,123.3 L234.3,129.1 L236.7,138.2 L238.9,137.7 L241.4,145.2 L243.7,162.3 L246.1,162.0 L248.5,162.7 L250.7,162.0 L253.2,168.0 L255.5,166.8 L257.7,169.8 L260.3,170.5 L262.4,177.7 L264.7,184.3 L267.1,179.5 L269.5,178.8 L271.8,182.5 L274.2,183.0 L276.6,183.7 L278.8,179.7 L281.3,169.9 L283.6,175.3 L286.0,179.5 L288.4,176.4 L290.6,174.9 L293.0,172.1 L295.3,174.7 L297.6,181.4 L300.0,177.6 L302.4,177.9 L304.7,176.0 L307.1,176.0 L309.5,185.3 L311.7,188.4 L314.2,188.3 L316.5,174.2 L318.7,181.4 L321.1,179.2 L323.5,173.1 L325.7,158.1 L328.2,148.3 L330.5,147.9 L332.9,139.0 L335.2,136.6 L337.6,133.7 L340.0,127.1 L342.3,118.1 L344.6,115.8 L346.7,106.5 L349.3,101.8 L351.6,101.1 L354.0,101.3 L356.3,103.0 L358.6,98.4 L361.1,96.0 L363.4,95.4 L365.6,99.5 L368.1,97.7 L370.5,95.3 L372.9,96.2 L375.0,96.7 L377.4,98.3 L379.6,96.6 L382.1,88.9 L384.4,87.1 L386.6,80.8 L389.2,79.1 L391.5,67.0 L393.9,67.5 L396.2,60.2 L398.5,56.0 L401.0,56.6 L403.2,46.0 L405.5,45.5 L407.9,48.6 L410.3,54.6 L412.5,57.6 L415.0,59.6 L417.4,63.6 L419.5,62.6 L422.1,61.0 L424.4,66.7 L426.8,67.1 L429.2,68.8 L431.3,68.8 L433.6,66.4 L436.0,71.0 L438.4,75.3 L440.6,71.0 L443.1,85.0 L445.4,92.6 L447.8,91.9 L450.2,93.8 L452.5,91.8 L454.9,82.2 L457.3,80.9 L459.5,81.4 L461.9,85.1 L464.2,79.1 L466.5,87.0 L468.9,86.8 L471.3,88.0 L473.5,91.3 L476.0,91.9 L478.3,83.9 L480.5,86.3 L483.0,104.2 L485.4,109.9 L487.5,111.2 L490.0,107.3 L492.3,107.0 L494.5,100.6 L497.0,96.3 L499.4,95.3 L501.8,92.6 L504.1,98.5 L506.4,97.9 L508.8,93.4 L511.2,98.4 L513.4,95.0 L515.8,101.9 L518.2,98.6 L520.4,96.9 L522.9,96.3 L525.2,105.1 L527.4,96.0 L530.0,100.1 L532.3,98.5 L534.7,91.1 L537.0,86.4 L539.3,82.3 L541.8,87.8 L543.9,79.3 L546.3,70.4 L548.5,72.4 L551.0,69.2 L553.3,69.0 L555.7,66.8 L558.1,70.2 L560.3,69.2 L562.8,73.1 L565.1,69.7 L567.3,55.3 L569.9,53.1 L572.0,49.2 L574.4,50.3 L576.7,51.6 L579.1,57.3 L581.4,59.5 L583.8,53.0 L586.2,55.2 L588.4,47.6 L590.9,49.1 L593.2,49.0 L595.6,44.1 L598.0,47.2 L600.2,41.5 L602.4,48.9 L604.9,48.8 L607.3,52.3 L609.4,34.6 L612.0,32.0 L614.3,12.7 L616.7,14.3 L619.0,29.1 L621.3,48.3 L623.7,52.8 L626.1,47.9 L628.3,74.7 L630.8,87.6 L633.1,92.0 L635.3,85.4 L637.8,82.7 L640.2,88.2 L642.5,81.0 L644.9,78.7 L647.2,74.9 L649.6,72.8 L651.9,74.9 L654.2,78.0 L656.3,81.5 L658.9,91.9 L661.2,90.5 L663.6,86.7 L665.9,97.5 L668.2,101.9 L670.7,108.1 L673.0,108.3 L675.2,110.8 L677.7,118.8 L680.1,120.1 L682.5,122.1 L684.6,131.4 L687.0,129.5 L689.2,129.8 L691.7,133.2 L694.0,137.8 L696.3,139.0 L698.8,146.9 L701.1,152.4 L703.5,147.7 L705.8,142.3 L708.1,139.1 L710.6,136.2 L712.7,125.2 L715.1,119.6 L717.3,119.5 L719.8,127.6 L722.1,141.4 L724.5,135.4 L726.9,139.9 L729.2,144.4 L731.6,142.7 L733.9,142.9 L736.2,139.5 L738.7,137.4 L740.9,137.3 L743.2,133.5 L745.6,135.7 L748.0,135.3 L750.2,122.2 L752.7,120.3 L755.0,115.0 L757.4,115.7 L759.8,109.4 L762.1,96.8 L764.5,95.1 L766.9,106.5 L769.1,95.7 L771.5,97.0 L773.8,94.3 L776.1,82.0 L778.5,91.9 L780.9,92.8 L783.1,81.7 L785.6,83.4 L788.0,84.2 L790.1,90.3 L792.7,97.2 L795.0,100.2 L797.1,110.2 L799.6,110.9 L801.9,116.8 L804.1,114.6 L806.6,121.9 L809.0,124.0 L811.4,125.1 L813.7,117.4 L816.0,126.7" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="126.7" r="4" style="fill:var(--s2)"/><path class="line" d="M56.0,107.9 L58.5,99.4 L60.9,103.6 L63.2,105.0 L65.5,106.6 L67.9,111.5 L70.0,113.0 L72.6,121.7 L74.9,120.5 L77.3,118.5 L79.7,114.2 L81.9,116.8 L84.4,117.2 L86.7,114.3 L88.9,120.0 L91.4,123.5 L93.6,121.5 L95.9,120.0 L98.3,126.2 L100.7,128.7 L102.9,119.6 L105.4,124.3 L107.8,126.8 L109.9,129.1 L112.5,130.9 L114.8,127.1 L117.2,125.4 L119.6,119.1 L121.7,129.6 L124.0,135.9 L126.4,131.3 L128.8,133.2 L131.0,127.1 L133.5,126.2 L135.8,140.1 L138.2,150.9 L140.6,151.4 L142.8,156.8 L145.3,143.5 L147.7,140.5 L149.9,135.1 L152.2,124.1 L154.6,122.1 L156.9,116.8 L159.3,106.6 L161.6,110.9 L163.9,107.9 L166.3,110.4 L168.7,108.9 L170.9,115.2 L173.4,112.3 L175.7,111.5 L177.9,108.4 L180.4,111.7 L182.8,111.1 L185.1,105.8 L187.5,107.4 L189.8,111.7 L192.2,105.2 L194.5,102.2 L196.8,96.2 L199.2,98.4 L201.6,100.3 L204.0,96.2 L206.2,101.2 L208.6,101.1 L210.8,107.5 L213.3,100.8 L215.6,103.7 L217.8,109.8 L220.4,98.3 L222.7,105.8 L225.1,99.8 L227.4,103.3 L229.7,110.7 L232.1,117.1 L234.3,121.2 L236.7,129.9 L238.9,129.8 L241.4,139.6 L243.7,153.3 L246.1,153.1 L248.5,156.0 L250.7,157.4 L253.2,161.8 L255.5,160.9 L257.7,162.9 L260.3,161.6 L262.4,168.9 L264.7,176.0 L267.1,173.5 L269.5,174.7 L271.8,178.8 L274.2,180.0 L276.6,179.5 L278.8,174.9 L281.3,165.7 L283.6,169.8 L286.0,174.0 L288.4,172.5 L290.6,170.5 L293.0,168.8 L295.3,171.3 L297.6,179.0 L300.0,174.7 L302.4,174.8 L304.7,175.7 L307.1,176.2 L309.5,187.7 L311.7,192.2 L314.2,190.3 L316.5,174.7 L318.7,182.8 L321.1,181.1 L323.5,173.0 L325.7,158.6 L328.2,147.6 L330.5,147.5 L332.9,138.7 L335.2,135.5 L337.6,132.9 L340.0,127.1 L342.3,119.3 L344.6,116.6 L346.7,107.9 L349.3,102.1 L351.6,101.2 L354.0,100.6 L356.3,101.7 L358.6,96.6 L361.1,94.5 L363.4,95.2 L365.6,97.7 L368.1,95.7 L370.5,92.7 L372.9,92.7 L375.0,92.9 L377.4,94.4 L379.6,93.5 L382.1,85.7 L384.4,84.6 L386.6,80.4 L389.2,77.1 L391.5,62.3 L393.9,64.3 L396.2,52.8 L398.5,49.7 L401.0,50.5 L403.2,38.3 L405.5,38.1 L407.9,41.1 L410.3,47.2 L412.5,49.3 L415.0,53.6 L417.4,57.3 L419.5,57.2 L422.1,56.8 L424.4,64.9 L426.8,65.1 L429.2,68.7 L431.3,68.7 L433.6,66.8 L436.0,66.2 L438.4,69.9 L440.6,64.0 L443.1,80.4 L445.4,88.1 L447.8,86.4 L450.2,89.4 L452.5,88.4 L454.9,80.3 L457.3,79.3 L459.5,80.7 L461.9,82.8 L464.2,75.7 L466.5,82.0 L468.9,80.6 L471.3,80.5 L473.5,82.4 L476.0,84.0 L478.3,76.7 L480.5,79.4 L483.0,96.4 L485.4,101.6 L487.5,103.1 L490.0,99.7 L492.3,99.8 L494.5,93.7 L497.0,92.1 L499.4,86.1 L501.8,84.2 L504.1,89.3 L506.4,89.5 L508.8,82.3 L511.2,88.5 L513.4,83.7 L515.8,91.0 L518.2,89.0 L520.4,89.7 L522.9,88.9 L525.2,98.1 L527.4,87.5 L530.0,91.5 L532.3,91.1 L534.7,84.3 L537.0,78.8 L539.3,76.0 L541.8,82.9 L543.9,73.6 L546.3,64.7 L548.5,65.8 L551.0,63.0 L553.3,64.3 L555.7,61.2 L558.1,66.1 L560.3,65.1 L562.8,68.6 L565.1,66.3 L567.3,51.4 L569.9,49.3 L572.0,47.5 L574.4,48.4 L576.7,48.2 L579.1,52.3 L581.4,52.6 L583.8,49.7 L586.2,51.0 L588.4,45.5 L590.9,44.0 L593.2,44.2 L595.6,37.6 L598.0,42.4 L600.2,35.6 L602.4,43.1 L604.9,45.0 L607.3,48.2 L609.4,34.0 L612.0,30.4 L614.3,13.6 L616.7,16.3 L619.0,30.1 L621.3,46.3 L623.7,48.4 L626.1,40.1 L628.3,71.9 L630.8,85.7 L633.1,91.8 L635.3,85.6 L637.8,82.2 L640.2,88.9 L642.5,81.6 L644.9,79.4 L647.2,75.6 L649.6,72.9 L651.9,74.5 L654.2,78.2 L656.3,78.9 L658.9,86.9 L661.2,87.9 L663.6,86.0 L665.9,96.0 L668.2,99.8 L670.7,105.2 L673.0,104.2 L675.2,106.5 L677.7,113.9 L680.1,114.8 L682.5,116.6 L684.6,126.0 L687.0,124.2 L689.2,123.0 L691.7,127.1 L694.0,132.3 L696.3,135.2 L698.8,142.2 L701.1,149.3 L703.5,145.2 L705.8,140.2 L708.1,139.0 L710.6,136.7 L712.7,124.7 L715.1,117.2 L717.3,116.4 L719.8,124.8 L722.1,139.1 L724.5,133.8 L726.9,140.6 L729.2,145.0 L731.6,143.6 L733.9,144.2 L736.2,140.1 L738.7,135.6 L740.9,135.6 L743.2,132.1 L745.6,132.3 L748.0,129.9 L750.2,117.9 L752.7,116.0 L755.0,110.9 L757.4,112.1 L759.8,108.3 L762.1,98.5 L764.5,98.7 L766.9,110.7 L769.1,100.5 L771.5,102.7 L773.8,101.4 L776.1,91.0 L778.5,100.5 L780.9,100.2 L783.1,90.0 L785.6,90.0 L788.0,90.8 L790.1,96.5 L792.7,102.5 L795.0,106.3 L797.1,114.0 L799.6,114.9 L801.9,120.1 L804.1,119.1 L806.6,126.0 L809.0,126.7 L811.4,128.4 L813.7,120.3 L816.0,128.9" style="stroke:var(--s3)"/><circle class="dot" cx="816.0" cy="128.9" r="4" style="fill:var(--s3)"/><rect class="hit" x="56.0" y="12" width="5.4" height="200"><title>Nov 1999
+Equal weight: 0.48
+Minimum variance: 0.81
+Maximum Sharpe: 0.81</title></rect><rect class="hit" x="60.9" y="12" width="7.5" height="200"><title>Jan 2000
+Equal weight: 0.41
+Minimum variance: 0.69
+Maximum Sharpe: 0.68</title></rect><rect class="hit" x="67.9" y="12" width="7.5" height="200"><title>Apr 2000
+Equal weight: 0.22
+Minimum variance: 0.51
+Maximum Sharpe: 0.48</title></rect><rect class="hit" x="74.9" y="12" width="7.5" height="200"><title>Jul 2000
+Equal weight: −0.06
+Minimum variance: 0.41
+Maximum Sharpe: 0.34</title></rect><rect class="hit" x="81.9" y="12" width="7.5" height="200"><title>Oct 2000
+Equal weight: −0.01
+Minimum variance: 0.45
+Maximum Sharpe: 0.37</title></rect><rect class="hit" x="88.9" y="12" width="7.5" height="200"><title>Jan 2001
+Equal weight: −0.12
+Minimum variance: 0.25
+Maximum Sharpe: 0.21</title></rect><rect class="hit" x="95.9" y="12" width="7.5" height="200"><title>Apr 2001
+Equal weight: −0.08
+Minimum variance: 0.10
+Maximum Sharpe: 0.15</title></rect><rect class="hit" x="102.9" y="12" width="7.5" height="200"><title>Jul 2001
+Equal weight: 0.01
+Minimum variance: 0.21
+Maximum Sharpe: 0.19</title></rect><rect class="hit" x="109.9" y="12" width="7.7" height="200"><title>Oct 2001
+Equal weight: −0.20
+Minimum variance: 0.05
+Maximum Sharpe: 0.03</title></rect><rect class="hit" x="117.2" y="12" width="7.3" height="200"><title>Jan 2002
+Equal weight: 0.04
+Minimum variance: 0.38
+Maximum Sharpe: 0.32</title></rect><rect class="hit" x="124.0" y="12" width="7.5" height="200"><title>Apr 2002
+Equal weight: −0.05
+Minimum variance: 0.02
+Maximum Sharpe: 0.02</title></rect><rect class="hit" x="131.0" y="12" width="7.7" height="200"><title>Jul 2002
+Equal weight: 0.09
+Minimum variance: 0.11
+Maximum Sharpe: 0.14</title></rect><rect class="hit" x="138.2" y="12" width="7.6" height="200"><title>Oct 2002
+Equal weight: −0.49
+Minimum variance: −0.44
+Maximum Sharpe: −0.48</title></rect><rect class="hit" x="145.3" y="12" width="7.4" height="200"><title>Jan 2003
+Equal weight: −0.19
+Minimum variance: −0.13
+Maximum Sharpe: −0.21</title></rect><rect class="hit" x="152.2" y="12" width="7.5" height="200"><title>Apr 2003
+Equal weight: 0.26
+Minimum variance: 0.27
+Maximum Sharpe: 0.25</title></rect><rect class="hit" x="159.3" y="12" width="7.6" height="200"><title>Jul 2003
+Equal weight: 0.64
+Minimum variance: 0.51
+Maximum Sharpe: 0.53</title></rect><rect class="hit" x="166.3" y="12" width="7.6" height="200"><title>Oct 2003
+Equal weight: 0.73
+Minimum variance: 0.54
+Maximum Sharpe: 0.58</title></rect><rect class="hit" x="173.4" y="12" width="7.5" height="200"><title>Jan 2004
+Equal weight: 0.58
+Minimum variance: 0.45
+Maximum Sharpe: 0.51</title></rect><rect class="hit" x="180.4" y="12" width="7.5" height="200"><title>Apr 2004
+Equal weight: 0.49
+Minimum variance: 0.47
+Maximum Sharpe: 0.52</title></rect><rect class="hit" x="187.5" y="12" width="7.6" height="200"><title>Jul 2004
+Equal weight: 0.49
+Minimum variance: 0.42
+Maximum Sharpe: 0.51</title></rect><rect class="hit" x="194.5" y="12" width="7.6" height="200"><title>Oct 2004
+Equal weight: 0.94
+Minimum variance: 0.76
+Maximum Sharpe: 0.90</title></rect><rect class="hit" x="201.6" y="12" width="7.4" height="200"><title>Jan 2005
+Equal weight: 1.09
+Minimum variance: 0.75
+Maximum Sharpe: 0.90</title></rect><rect class="hit" x="208.6" y="12" width="5.2" height="200"><title>Apr 2005
+Equal weight: 0.84
+Minimum variance: 0.56
+Maximum Sharpe: 0.61</title></rect><rect class="hit" x="213.3" y="12" width="7.6" height="200"><title>Jun 2005
+Equal weight: 1.13
+Minimum variance: 0.67
+Maximum Sharpe: 0.71</title></rect><rect class="hit" x="220.4" y="12" width="7.5" height="200"><title>Sep 2005
+Equal weight: 1.26
+Minimum variance: 0.56
+Maximum Sharpe: 0.66</title></rect><rect class="hit" x="227.4" y="12" width="7.4" height="200"><title>Dec 2005
+Equal weight: 1.04
+Minimum variance: 0.39
+Maximum Sharpe: 0.53</title></rect><rect class="hit" x="234.3" y="12" width="7.6" height="200"><title>Mar 2006
+Equal weight: 0.65
+Minimum variance: −0.16
+Maximum Sharpe: 0.05</title></rect><rect class="hit" x="241.4" y="12" width="7.6" height="200"><title>Jun 2006
+Equal weight: 0.11
+Minimum variance: −0.76
+Maximum Sharpe: −0.53</title></rect><rect class="hit" x="248.5" y="12" width="7.5" height="200"><title>Sep 2006
+Equal weight: −0.05
+Minimum variance: −0.75
+Maximum Sharpe: −0.64</title></rect><rect class="hit" x="255.5" y="12" width="7.4" height="200"><title>Dec 2006
+Equal weight: −0.15
+Minimum variance: −0.94
+Maximum Sharpe: −0.77</title></rect><rect class="hit" x="262.4" y="12" width="7.6" height="200"><title>Mar 2007
+Equal weight: −0.28
+Minimum variance: −1.31
+Maximum Sharpe: −1.10</title></rect><rect class="hit" x="269.5" y="12" width="7.6" height="200"><title>Jun 2007
+Equal weight: −0.38
+Minimum variance: −1.26
+Maximum Sharpe: −1.17</title></rect><rect class="hit" x="276.6" y="12" width="7.5" height="200"><title>Sep 2007
+Equal weight: −0.54
+Minimum variance: −1.19
+Maximum Sharpe: −1.07</title></rect><rect class="hit" x="283.6" y="12" width="7.5" height="200"><title>Dec 2007
+Equal weight: −0.60
+Minimum variance: −1.19
+Maximum Sharpe: −1.05</title></rect><rect class="hit" x="290.6" y="12" width="7.5" height="200"><title>Mar 2008
+Equal weight: −0.71
+Minimum variance: −1.00
+Maximum Sharpe: −0.92</title></rect><rect class="hit" x="297.6" y="12" width="7.5" height="200"><title>Jun 2008
+Equal weight: −1.13
+Minimum variance: −1.14
+Maximum Sharpe: −1.07</title></rect><rect class="hit" x="304.7" y="12" width="7.5" height="200"><title>Sep 2008
+Equal weight: −1.22
+Minimum variance: −1.10
+Maximum Sharpe: −1.10</title></rect><rect class="hit" x="311.7" y="12" width="7.5" height="200"><title>Dec 2008
+Equal weight: −1.58
+Minimum variance: −1.41
+Maximum Sharpe: −1.46</title></rect><rect class="hit" x="318.7" y="12" width="7.5" height="200"><title>Mar 2009
+Equal weight: −1.46
+Minimum variance: −1.18
+Maximum Sharpe: −1.23</title></rect><rect class="hit" x="325.7" y="12" width="7.7" height="200"><title>Jun 2009
+Equal weight: −0.68
+Minimum variance: −0.41
+Maximum Sharpe: −0.39</title></rect><rect class="hit" x="332.9" y="12" width="7.5" height="200"><title>Sep 2009
+Equal weight: −0.38
+Minimum variance: −0.11
+Maximum Sharpe: −0.09</title></rect><rect class="hit" x="340.0" y="12" width="7.3" height="200"><title>Dec 2009
+Equal weight: 0.06
+Minimum variance: 0.35
+Maximum Sharpe: 0.32</title></rect><rect class="hit" x="346.7" y="12" width="7.7" height="200"><title>Mar 2010
+Equal weight: 0.50
+Minimum variance: 0.76
+Maximum Sharpe: 0.75</title></rect><rect class="hit" x="354.0" y="12" width="7.6" height="200"><title>Jun 2010
+Equal weight: 0.56
+Minimum variance: 0.72
+Maximum Sharpe: 0.76</title></rect><rect class="hit" x="361.1" y="12" width="5.0" height="200"><title>Sep 2010
+Equal weight: 0.68
+Minimum variance: 0.91
+Maximum Sharpe: 0.92</title></rect><rect class="hit" x="365.6" y="12" width="7.7" height="200"><title>Nov 2010
+Equal weight: 0.61
+Minimum variance: 0.86
+Maximum Sharpe: 0.91</title></rect><rect class="hit" x="372.9" y="12" width="7.3" height="200"><title>Feb 2011
+Equal weight: 0.72
+Minimum variance: 0.88
+Maximum Sharpe: 0.98</title></rect><rect class="hit" x="379.6" y="12" width="7.5" height="200"><title>May 2011
+Equal weight: 0.99
+Minimum variance: 1.08
+Maximum Sharpe: 1.16</title></rect><rect class="hit" x="386.6" y="12" width="7.7" height="200"><title>Aug 2011
+Equal weight: 1.24
+Minimum variance: 1.32
+Maximum Sharpe: 1.37</title></rect><rect class="hit" x="393.9" y="12" width="7.6" height="200"><title>Nov 2011
+Equal weight: 1.87
+Minimum variance: 1.80
+Maximum Sharpe: 1.98</title></rect><rect class="hit" x="401.0" y="12" width="7.4" height="200"><title>Feb 2012
+Equal weight: 2.31
+Minimum variance: 2.15
+Maximum Sharpe: 2.34</title></rect><rect class="hit" x="407.9" y="12" width="7.6" height="200"><title>May 2012
+Equal weight: 2.12
+Minimum variance: 1.93
+Maximum Sharpe: 2.12</title></rect><rect class="hit" x="415.0" y="12" width="7.6" height="200"><title>Aug 2012
+Equal weight: 2.01
+Minimum variance: 1.71
+Maximum Sharpe: 1.87</title></rect><rect class="hit" x="422.1" y="12" width="7.6" height="200"><title>Nov 2012
+Equal weight: 1.77
+Minimum variance: 1.63
+Maximum Sharpe: 1.68</title></rect><rect class="hit" x="429.2" y="12" width="7.4" height="200"><title>Feb 2013
+Equal weight: 1.61
+Minimum variance: 1.58
+Maximum Sharpe: 1.58</title></rect><rect class="hit" x="436.0" y="12" width="7.6" height="200"><title>May 2013
+Equal weight: 1.61
+Minimum variance: 1.42
+Maximum Sharpe: 1.55</title></rect><rect class="hit" x="443.1" y="12" width="7.6" height="200"><title>Aug 2013
+Equal weight: 1.08
+Minimum variance: 0.98
+Maximum Sharpe: 1.10</title></rect><rect class="hit" x="450.2" y="12" width="7.6" height="200"><title>Nov 2013
+Equal weight: 1.30
+Minimum variance: 1.01
+Maximum Sharpe: 1.09</title></rect><rect class="hit" x="457.3" y="12" width="7.4" height="200"><title>Feb 2014
+Equal weight: 1.49
+Minimum variance: 1.26
+Maximum Sharpe: 1.28</title></rect><rect class="hit" x="464.2" y="12" width="7.6" height="200"><title>May 2014
+Equal weight: 1.35
+Minimum variance: 1.12
+Maximum Sharpe: 1.25</title></rect><rect class="hit" x="471.3" y="12" width="7.6" height="200"><title>Aug 2014
+Equal weight: 1.31
+Minimum variance: 1.02
+Maximum Sharpe: 1.24</title></rect><rect class="hit" x="478.3" y="12" width="7.5" height="200"><title>Nov 2014
+Equal weight: 1.19
+Minimum variance: 1.14
+Maximum Sharpe: 1.32</title></rect><rect class="hit" x="485.4" y="12" width="7.4" height="200"><title>Feb 2015
+Equal weight: 0.65
+Minimum variance: 0.52
+Maximum Sharpe: 0.72</title></rect><rect class="hit" x="492.3" y="12" width="7.6" height="200"><title>May 2015
+Equal weight: 0.71
+Minimum variance: 0.79
+Maximum Sharpe: 0.96</title></rect><rect class="hit" x="499.4" y="12" width="7.5" height="200"><title>Aug 2015
+Equal weight: 0.80
+Minimum variance: 0.99
+Maximum Sharpe: 1.19</title></rect><rect class="hit" x="506.4" y="12" width="7.5" height="200"><title>Nov 2015
+Equal weight: 0.98
+Minimum variance: 0.96
+Maximum Sharpe: 1.24</title></rect><rect class="hit" x="513.4" y="12" width="5.3" height="200"><title>Feb 2016
+Equal weight: 0.78
+Minimum variance: 0.75
+Maximum Sharpe: 1.03</title></rect><rect class="hit" x="518.2" y="12" width="7.5" height="200"><title>Apr 2016
+Equal weight: 0.82
+Minimum variance: 0.88
+Maximum Sharpe: 1.06</title></rect><rect class="hit" x="525.2" y="12" width="7.6" height="200"><title>Jul 2016
+Equal weight: 0.81
+Minimum variance: 0.90
+Maximum Sharpe: 1.11</title></rect><rect class="hit" x="532.3" y="12" width="7.5" height="200"><title>Oct 2016
+Equal weight: 0.80
+Minimum variance: 1.02
+Maximum Sharpe: 1.19</title></rect><rect class="hit" x="539.3" y="12" width="7.5" height="200"><title>Jan 2017
+Equal weight: 0.74
+Minimum variance: 1.11
+Maximum Sharpe: 1.23</title></rect><rect class="hit" x="546.3" y="12" width="7.5" height="200"><title>Apr 2017
+Equal weight: 1.23
+Minimum variance: 1.49
+Maximum Sharpe: 1.65</title></rect><rect class="hit" x="553.3" y="12" width="7.5" height="200"><title>Jul 2017
+Equal weight: 1.42
+Minimum variance: 1.63
+Maximum Sharpe: 1.77</title></rect><rect class="hit" x="560.3" y="12" width="7.5" height="200"><title>Oct 2017
+Equal weight: 1.33
+Minimum variance: 1.47
+Maximum Sharpe: 1.59</title></rect><rect class="hit" x="567.3" y="12" width="7.5" height="200"><title>Jan 2018
+Equal weight: 1.83
+Minimum variance: 1.97
+Maximum Sharpe: 2.07</title></rect><rect class="hit" x="574.4" y="12" width="7.5" height="200"><title>Apr 2018
+Equal weight: 1.88
+Minimum variance: 2.01
+Maximum Sharpe: 2.10</title></rect><rect class="hit" x="581.4" y="12" width="7.5" height="200"><title>Jul 2018
+Equal weight: 1.92
+Minimum variance: 1.97
+Maximum Sharpe: 2.06</title></rect><rect class="hit" x="588.4" y="12" width="7.7" height="200"><title>Oct 2018
+Equal weight: 1.90
+Minimum variance: 2.07
+Maximum Sharpe: 2.20</title></rect><rect class="hit" x="595.6" y="12" width="7.3" height="200"><title>Jan 2019
+Equal weight: 1.83
+Minimum variance: 2.12
+Maximum Sharpe: 2.24</title></rect><rect class="hit" x="602.4" y="12" width="7.5" height="200"><title>Apr 2019
+Equal weight: 1.74
+Minimum variance: 2.08
+Maximum Sharpe: 2.18</title></rect><rect class="hit" x="609.4" y="12" width="7.7" height="200"><title>Jul 2019
+Equal weight: 2.17
+Minimum variance: 2.50
+Maximum Sharpe: 2.54</title></rect><rect class="hit" x="616.7" y="12" width="7.6" height="200"><title>Oct 2019
+Equal weight: 2.17
+Minimum variance: 2.57
+Maximum Sharpe: 2.55</title></rect><rect class="hit" x="623.7" y="12" width="7.5" height="200"><title>Jan 2020
+Equal weight: 2.05
+Minimum variance: 2.10
+Maximum Sharpe: 2.30</title></rect><rect class="hit" x="630.8" y="12" width="7.5" height="200"><title>Apr 2020
+Equal weight: 0.50
+Minimum variance: 1.00
+Maximum Sharpe: 1.00</title></rect><rect class="hit" x="637.8" y="12" width="7.6" height="200"><title>Jul 2020
+Equal weight: 0.57
+Minimum variance: 1.09
+Maximum Sharpe: 1.08</title></rect><rect class="hit" x="644.9" y="12" width="7.6" height="200"><title>Oct 2020
+Equal weight: 0.86
+Minimum variance: 1.43
+Maximum Sharpe: 1.41</title></rect><rect class="hit" x="651.9" y="12" width="7.4" height="200"><title>Jan 2021
+Equal weight: 0.78
+Minimum variance: 1.35
+Maximum Sharpe: 1.35</title></rect><rect class="hit" x="658.9" y="12" width="7.5" height="200"><title>Apr 2021
+Equal weight: 0.62
+Minimum variance: 1.04
+Maximum Sharpe: 1.10</title></rect><rect class="hit" x="665.9" y="12" width="5.3" height="200"><title>Jul 2021
+Equal weight: 0.27
+Minimum variance: 0.75
+Maximum Sharpe: 0.81</title></rect><rect class="hit" x="670.7" y="12" width="7.5" height="200"><title>Sep 2021
+Equal weight: 0.19
+Minimum variance: 0.59
+Maximum Sharpe: 0.70</title></rect><rect class="hit" x="677.7" y="12" width="7.4" height="200"><title>Dec 2021
+Equal weight: −0.07
+Minimum variance: 0.30
+Maximum Sharpe: 0.43</title></rect><rect class="hit" x="684.6" y="12" width="7.6" height="200"><title>Mar 2022
+Equal weight: −0.25
+Minimum variance: 0.06
+Maximum Sharpe: 0.19</title></rect><rect class="hit" x="691.7" y="12" width="7.6" height="200"><title>Jun 2022
+Equal weight: −0.34
+Minimum variance: −0.15
+Maximum Sharpe: −0.01</title></rect><rect class="hit" x="698.8" y="12" width="7.5" height="200"><title>Sep 2022
+Equal weight: −0.71
+Minimum variance: −0.51
+Maximum Sharpe: −0.43</title></rect><rect class="hit" x="705.8" y="12" width="7.4" height="200"><title>Dec 2022
+Equal weight: −0.54
+Minimum variance: −0.18
+Maximum Sharpe: −0.17</title></rect><rect class="hit" x="712.7" y="12" width="7.6" height="200"><title>Mar 2023
+Equal weight: 0.15
+Minimum variance: 0.31
+Maximum Sharpe: 0.37</title></rect><rect class="hit" x="719.8" y="12" width="7.6" height="200"><title>Jun 2023
+Equal weight: −0.29
+Minimum variance: −0.24
+Maximum Sharpe: −0.18</title></rect><rect class="hit" x="726.9" y="12" width="7.5" height="200"><title>Sep 2023
+Equal weight: −0.37
+Minimum variance: −0.31
+Maximum Sharpe: −0.33</title></rect><rect class="hit" x="733.9" y="12" width="7.5" height="200"><title>Dec 2023
+Equal weight: −0.29
+Minimum variance: −0.19
+Maximum Sharpe: −0.20</title></rect><rect class="hit" x="740.9" y="12" width="7.6" height="200"><title>Mar 2024
+Equal weight: −0.06
+Minimum variance: −0.04
+Maximum Sharpe: 0.00</title></rect><rect class="hit" x="748.0" y="12" width="7.5" height="200"><title>Jun 2024
+Equal weight: 0.37
+Minimum variance: 0.25
+Maximum Sharpe: 0.35</title></rect><rect class="hit" x="755.0" y="12" width="7.5" height="200"><title>Sep 2024
+Equal weight: 0.46
+Minimum variance: 0.41
+Maximum Sharpe: 0.50</title></rect><rect class="hit" x="762.1" y="12" width="7.5" height="200"><title>Dec 2024
+Equal weight: 0.95
+Minimum variance: 0.92
+Maximum Sharpe: 0.83</title></rect><rect class="hit" x="769.1" y="12" width="7.5" height="200"><title>Mar 2025
+Equal weight: 0.82
+Minimum variance: 0.88
+Maximum Sharpe: 0.73</title></rect><rect class="hit" x="776.1" y="12" width="7.5" height="200"><title>Jun 2025
+Equal weight: 0.66
+Minimum variance: 1.00
+Maximum Sharpe: 0.79</title></rect><rect class="hit" x="783.1" y="12" width="7.5" height="200"><title>Sep 2025
+Equal weight: 0.87
+Minimum variance: 1.22
+Maximum Sharpe: 1.05</title></rect><rect class="hit" x="790.1" y="12" width="7.5" height="200"><title>Dec 2025
+Equal weight: 0.62
+Minimum variance: 0.87
+Maximum Sharpe: 0.74</title></rect><rect class="hit" x="797.1" y="12" width="7.5" height="200"><title>Mar 2026
+Equal weight: 0.42
+Minimum variance: 0.53
+Maximum Sharpe: 0.43</title></rect><rect class="hit" x="804.1" y="12" width="7.7" height="200"><title>Jun 2026
+Equal weight: 0.14
+Minimum variance: 0.25
+Maximum Sharpe: 0.15</title></rect><rect class="hit" x="811.4" y="12" width="5.1" height="200"><title>Sep 2026
+Equal weight: 0.31
+Minimum variance: 0.37
+Maximum Sharpe: 0.29</title></rect></svg></div></section><section id="c-weights"><header class="sh"><h2>Weights</h2><p>What each method held, and how often it traded</p></header><div class="card"><h3>Weights, fitted to the whole history</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>US Equity</th><th>Intl Equity</th><th>Bonds</th><th>Gold</th><th>Real Estate</th></tr></thead><tbody><tr><th>Equal weight</th><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)">20%</td><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)">20%</td><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)">20%</td><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)">20%</td><td style="background:color-mix(in oklab, var(--pos) 50%, var(--mid));color:var(--ink)">20%</td></tr><tr><th>Minimum variance</th><td style="background:color-mix(in oklab, var(--pos) 61%, var(--mid));color:#fff">24%</td><td style="background:color-mix(in oklab, var(--pos) 19%, var(--mid));color:var(--ink)">7%</td><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff">40%</td><td style="background:color-mix(in oklab, var(--pos) 70%, var(--mid));color:#fff">28%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td></tr><tr><th>Maximum Sharpe</th><td style="background:color-mix(in oklab, var(--pos) 96%, var(--mid));color:#fff">38%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff">40%</td><td style="background:color-mix(in oklab, var(--pos) 54%, var(--mid));color:var(--ink)">22%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td></tr></tbody></table></div></div></section><section id="c-method"><header class="sh"><h2>Method</h2><p>How the comparison was run</p></header><div class="card"><h3>How the methods were tested</h3><table><tbody><tr><th style="white-space:nowrap">Assets</th><td>US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as the risk-free asset, held as cash. Monthly returns, Nov 1996 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Validation</th><td>In sample: weights fitted once to the whole history and scored on it, with knowledge of the very returns they are scored on.</td></tr><tr><th style="white-space:nowrap">Estimates</th><td>The Ledoit–Wolf covariance and historical mean returns, annualised by 12.</td></tr><tr><th style="white-space:nowrap">Limits</th><td>At most 40% in any asset; fully invested.</td></tr><tr><th style="white-space:nowrap">Rebalancing</th><td>Quarterly, to the targets; between rebalances the weights drift with prices.</td></tr><tr><th style="white-space:nowrap">Trading costs</th><td>None.</td></tr><tr><th style="white-space:nowrap">Ratios</th><td>Sharpe and Sortino ratios against the T-Bills return over each period scored (2.3% a year over the test); value at risk and expected shortfall from history, at 95% over one month.</td></tr></tbody></table></div></section>
+<div class="foot">Every figure is computed by Finalytics 1.0.0-rc.7 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>c8b35a9dfd77</code>.</div>
+</div></body></html>

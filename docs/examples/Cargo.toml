@@ -69,6 +69,22 @@ name = "attribution--single-period"
 path = "attribution/single-period.rs"
 
 [[example]]
+name = "backtest-a-strategy--buy-and-hold"
+path = "backtest-a-strategy/buy-and-hold.rs"
+
+[[example]]
+name = "backtest-a-strategy--drift-and-costs"
+path = "backtest-a-strategy/drift-and-costs.rs"
+
+[[example]]
+name = "backtest-a-strategy--holdout"
+path = "backtest-a-strategy/holdout.rs"
+
+[[example]]
+name = "backtest-a-strategy--money-flows"
+path = "backtest-a-strategy/money-flows.rs"
+
+[[example]]
 name = "beneath-the-front-door--costs"
 path = "beneath-the-front-door/costs.rs"
 
@@ -115,6 +131,22 @@ path = "bring-your-own-data/minimal.rs"
 [[example]]
 name = "bring-your-own-data--wide-prices"
 path = "bring-your-own-data/wide-prices.rs"
+
+[[example]]
+name = "compare-strategies-honestly--expanding"
+path = "compare-strategies-honestly/expanding.rs"
+
+[[example]]
+name = "compare-strategies-honestly--holdout"
+path = "compare-strategies-honestly/holdout.rs"
+
+[[example]]
+name = "compare-strategies-honestly--in-sample"
+path = "compare-strategies-honestly/in-sample.rs"
+
+[[example]]
+name = "compare-strategies-honestly--walk-forward"
+path = "compare-strategies-honestly/walk-forward.rs"
 
 [[example]]
 name = "compare-with-a-benchmark--blended"
@@ -269,6 +301,34 @@ name = "factor-models--supplied"
 path = "factor-models/supplied.rs"
 
 [[example]]
+name = "formulas-and-technicals--formula-functions"
+path = "formulas-and-technicals/formula-functions.rs"
+
+[[example]]
+name = "formulas-and-technicals--ordered-formulas"
+path = "formulas-and-technicals/ordered-formulas.rs"
+
+[[example]]
+name = "formulas-and-technicals--ranges-and-volume"
+path = "formulas-and-technicals/ranges-and-volume.rs"
+
+[[example]]
+name = "formulas-and-technicals--trend-and-momentum"
+path = "formulas-and-technicals/trend-and-momentum.rs"
+
+[[example]]
+name = "from-screen-to-portfolio--backtest-selection"
+path = "from-screen-to-portfolio/backtest-selection.rs"
+
+[[example]]
+name = "from-screen-to-portfolio--rebalance-household"
+path = "from-screen-to-portfolio/rebalance-household.rs"
+
+[[example]]
+name = "from-screen-to-portfolio--screen-and-optimise"
+path = "from-screen-to-portfolio/screen-and-optimise.rs"
+
+[[example]]
 name = "how-finalytics-works--errors"
 path = "how-finalytics-works/errors.rs"
 
@@ -371,6 +431,70 @@ path = "optimise-a-portfolio/optimise.rs"
 [[example]]
 name = "optimise-a-portfolio--target-volatility"
 path = "optimise-a-portfolio/target-volatility.rs"
+
+[[example]]
+name = "plan-for-a-goal--glide-path"
+path = "plan-for-a-goal/glide-path.rs"
+
+[[example]]
+name = "plan-for-a-goal--payments-and-alternatives"
+path = "plan-for-a-goal/payments-and-alternatives.rs"
+
+[[example]]
+name = "plan-for-a-goal--projection"
+path = "plan-for-a-goal/projection.rs"
+
+[[example]]
+name = "plan-for-a-goal--target"
+path = "plan-for-a-goal/target.rs"
+
+[[example]]
+name = "rebalance-a-real-portfolio--keep-cash-and-apply"
+path = "rebalance-a-real-portfolio/keep-cash-and-apply.rs"
+
+[[example]]
+name = "rebalance-a-real-portfolio--lots-and-fees"
+path = "rebalance-a-real-portfolio/lots-and-fees.rs"
+
+[[example]]
+name = "rebalance-a-real-portfolio--optimised-target"
+path = "rebalance-a-real-portfolio/optimised-target.rs"
+
+[[example]]
+name = "rebalance-a-real-portfolio--target-weights"
+path = "rebalance-a-real-portfolio/target-weights.rs"
+
+[[example]]
+name = "report-options--attribution-and-scenarios"
+path = "report-options/attribution-and-scenarios.rs"
+
+[[example]]
+name = "report-options--blend-and-attribution"
+path = "report-options/blend-and-attribution.rs"
+
+[[example]]
+name = "report-options--dates-and-accounts"
+path = "report-options/dates-and-accounts.rs"
+
+[[example]]
+name = "report-options--risk-settings"
+path = "report-options/risk-settings.rs"
+
+[[example]]
+name = "reports--full-report"
+path = "reports/full-report.rs"
+
+[[example]]
+name = "reports--individual-parts"
+path = "reports/individual-parts.rs"
+
+[[example]]
+name = "reports--provenance"
+path = "reports/provenance.rs"
+
+[[example]]
+name = "reports--themes-and-tables"
+path = "reports/themes-and-tables.rs"
 
 [[example]]
 name = "risk-decomposition--groups"
@@ -483,6 +607,22 @@ path = "scenarios-and-stress-tests/proxy.rs"
 [[example]]
 name = "scenarios-and-stress-tests--risk"
 path = "scenarios-and-stress-tests/risk.rs"
+
+[[example]]
+name = "screen-a-universe--date-and-benchmark"
+path = "screen-a-universe/date-and-benchmark.rs"
+
+[[example]]
+name = "screen-a-universe--income"
+path = "screen-a-universe/income.rs"
+
+[[example]]
+name = "screen-a-universe--measures-and-ranking"
+path = "screen-a-universe/measures-and-ranking.rs"
+
+[[example]]
+name = "screen-a-universe--value-fields"
+path = "screen-a-universe/value-fields.rs"
 
 [[example]]
 name = "tail-risk--assets"

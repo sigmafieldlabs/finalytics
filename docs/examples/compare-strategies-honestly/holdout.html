@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Finalytics 1.0.0-rc.7"><title>Comparison report</title><style>:root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#6f6e69;
+--grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
+--muted-fill:#c3c2b7;--pos:#2a78d6;--neg:#e34948;--mid:#f0efec;
+--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#fff;--on-s8:#000;
+--on-muted-fill:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d0d0d;
+--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;
+--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;--muted-fill:#52514e;--pos:#3987e5;
+--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;--on-s4:#000;--on-s5:#000;
+--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;
+--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;
+--s6:#008300;--s7:#9085e9;--s8:#e66767;
+--muted-fill:#52514e;--pos:#3987e5;--neg:#e66767;--mid:#383835;--on-s1:#000;--on-s2:#000;--on-s3:#000;
+--on-s4:#000;--on-s5:#000;--on-s6:#fff;--on-s7:#000;--on-s8:#000;--on-muted-fill:#fff}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.page{max-width:1000px;margin:0 auto;padding:32px 16px 64px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+border-bottom:1px solid var(--grid);padding-bottom:16px}
+.brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:2px}
+.logo img{height:36px;width:auto;display:block;margin-bottom:14px}.lg-dark{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lg-light{display:none!important}
+:root:not([data-theme="light"]) .lg-dark{display:block!important}}
+:root[data-theme="dark"] .lg-light{display:none!important}:root[data-theme="dark"] .lg-dark{display:block!important}
+h1{margin:4px 0 0;font-size:28px;font-weight:600}.meta{color:var(--ink2);font-size:14px;text-align:right}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 8px}
+nav a{color:var(--ink2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:999px;
+border:1px solid var(--grid)}nav a:hover{color:var(--ink);background:var(--surface)}
+section{margin-top:40px}.sh h2{margin:0;font-size:22px;font-weight:600}.sh p{margin:2px 0 12px;color:var(--ink2)}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px 20px;margin:12px 0}
+.card h3{margin:0 0 10px;font-size:15px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.two .card{margin:0}
+@media (max-width:720px){.two{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 16px}
+.tl{font-size:13px;color:var(--ink2)}.tv{font-size:22px;font-weight:600;margin-top:2px}
+.tv.long{font-size:18px}
+.ts{font-size:12.5px;color:var(--muted);margin-top:2px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.grid{stroke:var(--grid);stroke-width:1}.base{stroke:var(--axis);stroke-width:1}
+.tick{fill:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.lab{fill:var(--ink2);font-size:13px}.val,.end{fill:var(--ink);font-size:12.5px;font-variant-numeric:tabular-nums}
+.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.dot{stroke:var(--surface);stroke-width:2}.hit{fill:transparent}.hit:hover{fill:var(--ink);opacity:.04}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin:0 0 8px}
+.key{display:inline-flex;align-items:center;gap:6px}.key i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.segbar{display:flex;gap:2px;height:28px;margin:4px 0 10px}
+.seg{border-radius:4px;display:flex;align-items:center;padding-left:8px;min-width:2px;color:#fff;
+font-size:12.5px;font-weight:600;overflow:hidden;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{font-weight:600;color:var(--ink2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid)}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}.r{text-align:right}
+.heat{table-layout:fixed}.heat td{text-align:center;border:2px solid var(--surface);border-radius:4px;padding:7px 2px}
+.heat th{text-align:center;border-bottom:0}.heat tbody th{text-align:left}.heat td.na{background:transparent}
+.heat .yr{font-weight:600;text-align:right}.heat td.diag{color:var(--muted)}
+.wide td{font-size:13px}.heat{min-width:520px}
+.tw{overflow-x:auto}
+/* A shadow at an edge with more to scroll to: the covers scroll with the content, the shadows
+stay at the edges. */
+.tw{background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll}
+@media (max-width:720px){svg.chart{min-width:640px}
+.card{overflow-x:auto;background:linear-gradient(to right,var(--surface) 30%,transparent) left/40px 100% no-repeat local,
+linear-gradient(to left,var(--surface) 30%,transparent) right/40px 100% no-repeat local,
+linear-gradient(to right,var(--ring),transparent) left/12px 100% no-repeat scroll,
+linear-gradient(to left,var(--ring),transparent) right/12px 100% no-repeat scroll,var(--surface)}}.note{color:var(--muted);font-size:12.5px;margin:10px 0 0}
+.prov{color:var(--muted);font-size:12px;margin-top:8px}code{font-size:12px}
+.foot{margin-top:48px;border-top:1px solid var(--grid);padding-top:16px;color:var(--muted);font-size:12.5px}
+@media print{nav{display:none}html,body{background:#fff}.foot{break-before:avoid;margin-top:16px}section{break-before:page}section:first-of-type{break-before:auto}
+.card,.tile{break-inside:avoid}}
+.cmp td:first-child{white-space:nowrap}.heat thead th{font-size:12.5px;vertical-align:bottom;line-height:1.25}
+table b{font-weight:650}.hollow{background:var(--surface)!important;box-shadow:inset 0 0 0 2px var(--ink2)}
+</style></head>
+<body><div class="page">
+<div class="top"><div><div class="logo"><img class="lg-light" alt="Finalytics" src="data:image/png;base64,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"><img class="lg-dark" alt="Finalytics" src="data:image/png;base64,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"></div>
+<h1>Comparison report</h1></div>
+<div class="meta">Holdout from Nov 2016, Nov 2016 to Oct 2026<br>3 strategies · 5 assets · monthly · rebalanced quarterly · 10 bp trading costs · risk-free T-Bills</div></div>
+<nav><a href="#c-summary">Summary</a><a href="#c-performance">Performance</a><a href="#c-risk">Risk</a><a href="#c-robustness">In and out of sample</a><a href="#c-weights">Weights</a><a href="#c-method">Method</a></nav>
+<section id="c-summary"><header class="sh"><h2>Summary</h2><p>Each strategy, scored out of sample</p></header><div class="tiles"><div class="tile"><div class="tl">Highest Sharpe ratio</div><div class="tv">0.38</div><div class="ts">Minimum variance; next 60/40 0.37</div></div><div class="tile"><div class="tl">Smallest drawdown</div><div class="tv">−17.5%</div><div class="ts">Maximum Sharpe</div></div><div class="tile"><div class="tl">Lowest turnover</div><div class="tv">7% a year</div><div class="ts">60/40</div></div><div class="tile"><div class="tl">Largest fall out of sample</div><div class="tv long">0.69 → 0.29</div><div class="ts">Maximum Sharpe, Sharpe ratio</div></div></div><div class="card"><h3>Out of sample, Nov 2016 to Oct 2026</h3><div class="tw"><table class="cmp"><thead><tr><th>Strategy</th><th class="r">Return</th><th class="r">Volatility</th><th class="r">Sharpe</th><th class="r">Sortino</th><th class="r">Drawdown</th><th class="r">CVaR 95%</th><th class="r">Turnover</th></tr></thead><tbody><tr><td><span class="key"><i style="background:var(--s1)"></i>Minimum variance</span></td><td class="r">4.8%</td><td class="r"><b>6.4%</b></td><td class="r"><b>0.38</b></td><td class="r"><b>0.57</b></td><td class="r">−18.1%</td><td class="r"><b>3.8%</b></td><td class="r">8%</td></tr><tr><td><span class="key"><i style="background:var(--s2)"></i>Maximum Sharpe</span></td><td class="r">4.4%</td><td class="r">7.3%</td><td class="r">0.29</td><td class="r">0.42</td><td class="r"><b>−17.5%</b></td><td class="r">4.5%</td><td class="r">7%</td></tr><tr><td><span class="key"><i style="background:var(--s3)"></i>60/40</span></td><td class="r"><b>6.0%</b></td><td class="r">10.6%</td><td class="r">0.37</td><td class="r">0.54</td><td class="r">−25.0%</td><td class="r">6.7%</td><td class="r"><b>7%</b></td></tr></tbody></table></div><p class="note">Return, volatility and turnover are a year, turnover one-way (the share of value bought, or sold); drawdown is the largest fall; CVaR is the average loss in the worst 5% of months. Bold marks the best in each column. Limits: at most 60% in any asset.</p></div></section><section id="c-performance"><header class="sh"><h2>Performance</h2><p>Growth and returns by year, out of sample</p></header><div class="card"><h3>Growth of 100</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Minimum variance 160</span><span class="key"><i style="background:var(--s2)"></i>Maximum Sharpe 154</span><span class="key"><i style="background:var(--s3)"></i>60/40 179</span></div><svg class="chart" viewBox="0 0 880 280" role="img"><line class="grid" x1="56" x2="816" y1="252.0" y2="252.0"/><text class="tick" x="48" y="256.0" text-anchor="end">100</text><line class="grid" x1="56" x2="816" y1="172.0" y2="172.0"/><text class="tick" x="48" y="176.0" text-anchor="end">150</text><line class="grid" x1="56" x2="816" y1="92.0" y2="92.0"/><text class="tick" x="48" y="96.0" text-anchor="end">200</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">250</text><text class="tick" x="68.9" y="272" text-anchor="middle">2017</text><text class="tick" x="144.9" y="272" text-anchor="middle">2018</text><text class="tick" x="220.9" y="272" text-anchor="middle">2019</text><text class="tick" x="296.8" y="272" text-anchor="middle">2020</text><text class="tick" x="373.0" y="272" text-anchor="middle">2021</text><text class="tick" x="449.0" y="272" text-anchor="middle">2022</text><text class="tick" x="525.0" y="272" text-anchor="middle">2023</text><text class="tick" x="601.0" y="272" text-anchor="middle">2024</text><text class="tick" x="677.2" y="272" text-anchor="middle">2025</text><text class="tick" x="753.1" y="272" text-anchor="middle">2026</text><path class="line" d="M56.0,252.0 L62.2,248.2 L68.5,245.7 L75.2,247.3 L81.0,241.1 L87.4,238.9 L93.3,235.5 L100.1,234.6 L106.4,232.0 L112.8,228.6 L119.3,230.4 L125.3,231.5 L132.0,232.0 L138.2,229.3 L144.3,228.2 L151.1,225.7 L157.0,223.6 L163.2,219.4 L169.7,218.4 L176.1,219.2 L182.1,216.6 L188.8,210.8 L195.3,206.9 L201.1,204.6 L208.0,205.7 L214.2,201.4 L220.7,198.4 L227.1,194.6 L232.9,190.9 L239.0,192.1 L245.6,194.7 L252.1,198.4 L257.9,195.0 L264.8,194.7 L271.0,193.3 L277.5,183.3 L283.9,187.3 L290.0,193.3 L296.6,192.7 L303.1,191.8 L308.9,196.6 L315.6,199.1 L321.8,200.9 L327.9,192.2 L334.5,181.3 L341.0,183.5 L347.4,178.9 L353.7,176.2 L359.9,172.9 L366.4,166.2 L372.8,164.1 L378.9,164.9 L384.7,165.3 L391.6,172.7 L397.8,169.4 L404.3,165.7 L410.5,173.2 L416.7,173.2 L423.4,177.3 L429.7,175.3 L435.7,177.4 L442.3,181.4 L448.8,179.1 L455.3,180.1 L461.1,190.4 L467.5,188.5 L473.6,189.2 L480.2,197.1 L486.5,201.0 L492.5,202.6 L499.4,209.1 L505.6,206.7 L512.1,203.9 L518.3,201.2 L524.6,196.7 L531.2,192.0 L537.1,186.3 L543.5,184.0 L549.3,184.0 L556.2,187.0 L562.5,188.9 L568.9,185.1 L575.4,181.9 L581.4,183.3 L588.1,178.6 L594.3,172.4 L600.3,167.1 L607.2,164.4 L613.3,164.0 L619.3,163.9 L625.9,162.7 L632.4,157.2 L638.2,149.6 L645.1,146.9 L651.3,145.2 L657.8,144.7 L664.2,141.9 L670.3,129.5 L676.9,121.2 L683.4,133.9 L689.2,129.9 L695.7,130.1 L701.9,130.0 L708.2,129.7 L714.6,139.2 L721.1,142.3 L727.1,141.8 L733.8,139.9 L740.2,138.4 L746.1,141.0 L752.9,144.4 L759.2,141.3 L765.0,144.5 L771.7,143.8 L777.9,149.6 L783.9,148.8 L790.6,159.3 L797.1,156.5 L803.5,157.1 L809.8,149.6 L816.0,155.5" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="155.5" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,252.0 L62.2,247.4 L68.5,245.7 L75.2,249.0 L81.0,241.6 L87.4,240.8 L93.3,235.9 L100.1,234.3 L106.4,233.6 L112.8,226.9 L119.3,228.9 L125.3,231.2 L132.0,232.6 L138.2,230.4 L144.3,230.3 L151.1,227.7 L157.0,229.3 L163.2,224.9 L169.7,222.2 L176.1,220.6 L182.1,215.0 L188.8,209.7 L195.3,204.8 L201.1,204.0 L208.0,203.3 L214.2,197.0 L220.7,194.0 L227.1,192.1 L232.9,189.5 L239.0,189.8 L245.6,193.3 L252.1,195.3 L257.9,193.0 L264.8,191.4 L271.0,192.9 L277.5,180.4 L283.9,184.1 L290.0,188.7 L296.6,184.7 L303.1,181.5 L308.9,191.4 L315.6,196.9 L321.8,200.9 L327.9,192.4 L334.5,180.7 L341.0,183.3 L347.4,177.7 L353.7,176.3 L359.9,173.2 L366.4,163.9 L372.8,162.5 L378.9,164.9 L384.7,163.6 L391.6,167.5 L397.8,168.0 L404.3,166.5 L410.5,171.7 L416.7,171.4 L423.4,173.9 L429.7,169.5 L435.7,169.2 L442.3,171.0 L448.8,166.9 L455.3,170.0 L461.1,182.1 L467.5,179.8 L473.6,176.8 L480.2,184.6 L486.5,191.3 L492.5,197.2 L499.4,202.9 L505.6,203.0 L512.1,201.5 L518.3,197.5 L524.6,194.7 L531.2,188.5 L537.1,182.6 L543.5,179.5 L549.3,180.0 L556.2,183.8 L562.5,185.5 L568.9,183.5 L575.4,182.6 L581.4,185.1 L588.1,182.2 L594.3,175.0 L600.3,169.0 L607.2,162.5 L613.3,160.6 L619.3,157.8 L625.9,156.0 L632.4,147.7 L638.2,138.8 L645.1,136.7 L651.3,133.2 L657.8,131.8 L664.2,130.9 L670.3,122.9 L676.9,116.3 L683.4,133.3 L689.2,130.5 L695.7,134.1 L701.9,133.5 L708.2,136.5 L714.6,149.4 L721.1,153.5 L727.1,152.9 L733.8,149.3 L740.2,148.9 L746.1,150.7 L752.9,155.1 L759.2,152.9 L765.0,152.7 L771.7,150.1 L777.9,155.1 L783.9,157.7 L790.6,168.1 L797.1,163.2 L803.5,168.0 L809.8,160.7 L816.0,166.3" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="166.3" r="4" style="fill:var(--s2)"/><path class="line" d="M56.0,252.0 L62.2,245.5 L68.5,243.2 L75.2,247.5 L81.0,239.5 L87.4,236.6 L93.3,229.2 L100.1,228.1 L106.4,225.8 L112.8,214.4 L119.3,217.4 L125.3,218.9 L132.0,220.3 L138.2,219.0 L144.3,217.0 L151.1,213.6 L157.0,220.2 L163.2,213.3 L169.7,207.1 L176.1,201.0 L182.1,189.5 L188.8,181.9 L195.3,174.3 L201.1,174.2 L208.0,169.0 L214.2,157.4 L220.7,151.9 L227.1,153.8 L232.9,147.7 L239.0,148.4 L245.6,153.5 L252.1,155.2 L257.9,152.5 L264.8,149.3 L271.0,149.9 L277.5,129.1 L283.9,132.0 L290.0,135.5 L296.6,126.7 L303.1,119.6 L308.9,148.1 L315.6,164.0 L321.8,171.4 L327.9,162.2 L334.5,142.6 L341.0,146.9 L347.4,136.2 L353.7,135.7 L359.9,130.8 L366.4,117.1 L372.8,118.6 L378.9,123.4 L384.7,120.0 L391.6,119.7 L397.8,123.8 L404.3,121.8 L410.5,129.0 L416.7,129.5 L423.4,132.6 L429.7,126.2 L435.7,124.7 L442.3,126.9 L448.8,119.6 L455.3,127.9 L461.1,141.6 L467.5,139.8 L473.6,133.4 L480.2,144.9 L486.5,156.0 L492.5,165.9 L499.4,176.3 L505.6,176.5 L512.1,174.7 L518.3,169.8 L524.6,167.7 L531.2,156.8 L537.1,151.2 L543.5,147.2 L549.3,148.2 L556.2,150.7 L562.5,151.2 L568.9,149.5 L575.4,153.0 L581.4,154.0 L588.1,147.6 L594.3,135.5 L600.3,125.4 L607.2,112.6 L613.3,111.0 L619.3,105.0 L625.9,101.0 L632.4,84.2 L638.2,70.7 L645.1,65.5 L651.3,56.4 L657.8,51.0 L664.2,49.5 L670.3,43.2 L676.9,38.9 L683.4,67.9 L689.2,62.7 L695.7,69.5 L701.9,65.2 L708.2,72.5 L714.6,98.9 L721.1,105.2 L727.1,106.9 L733.8,99.6 L740.2,98.8 L746.1,103.1 L752.9,107.3 L759.2,105.5 L765.0,106.1 L771.7,99.7 L777.9,108.8 L783.9,118.0 L790.6,130.5 L797.1,121.5 L803.5,132.0 L809.8,117.3 L816.0,125.3" style="stroke:var(--s3)"/><circle class="dot" cx="816.0" cy="125.3" r="4" style="fill:var(--s3)"/><rect class="hit" x="56.0" y="12" width="6.7" height="240"><title>Oct 2016
+Minimum variance: 100
+Maximum Sharpe: 100
+60/40: 100</title></rect><rect class="hit" x="62.2" y="12" width="6.7" height="240"><title>Nov 2016
+Minimum variance: 102
+Maximum Sharpe: 103
+60/40: 104</title></rect><rect class="hit" x="68.5" y="12" width="7.2" height="240"><title>Dec 2016
+Minimum variance: 104
+Maximum Sharpe: 104
+60/40: 105</title></rect><rect class="hit" x="75.2" y="12" width="6.3" height="240"><title>Jan 2017
+Minimum variance: 103
+Maximum Sharpe: 102
+60/40: 103</title></rect><rect class="hit" x="81.0" y="12" width="7.0" height="240"><title>Feb 2017
+Minimum variance: 107
+Maximum Sharpe: 106
+60/40: 108</title></rect><rect class="hit" x="87.4" y="12" width="6.3" height="240"><title>Mar 2017
+Minimum variance: 108
+Maximum Sharpe: 107
+60/40: 110</title></rect><rect class="hit" x="93.3" y="12" width="7.4" height="240"><title>Apr 2017
+Minimum variance: 110
+Maximum Sharpe: 110
+60/40: 114</title></rect><rect class="hit" x="100.1" y="12" width="6.7" height="240"><title>May 2017
+Minimum variance: 111
+Maximum Sharpe: 111
+60/40: 115</title></rect><rect class="hit" x="106.4" y="12" width="7.0" height="240"><title>Jun 2017
+Minimum variance: 113
+Maximum Sharpe: 112
+60/40: 116</title></rect><rect class="hit" x="112.8" y="12" width="13.0" height="240"><title>Aug 2017
+Minimum variance: 114
+Maximum Sharpe: 114
+60/40: 122</title></rect><rect class="hit" x="125.3" y="12" width="7.2" height="240"><title>Sep 2017
+Minimum variance: 113
+Maximum Sharpe: 113
+60/40: 121</title></rect><rect class="hit" x="132.0" y="12" width="6.7" height="240"><title>Oct 2017
+Minimum variance: 112
+Maximum Sharpe: 112
+60/40: 120</title></rect><rect class="hit" x="138.2" y="12" width="6.5" height="240"><title>Nov 2017
+Minimum variance: 114
+Maximum Sharpe: 113
+60/40: 121</title></rect><rect class="hit" x="144.3" y="12" width="7.4" height="240"><title>Dec 2017
+Minimum variance: 115
+Maximum Sharpe: 114
+60/40: 122</title></rect><rect class="hit" x="151.1" y="12" width="6.3" height="240"><title>Jan 2018
+Minimum variance: 116
+Maximum Sharpe: 115
+60/40: 124</title></rect><rect class="hit" x="157.0" y="12" width="6.7" height="240"><title>Feb 2018
+Minimum variance: 118
+Maximum Sharpe: 114
+60/40: 120</title></rect><rect class="hit" x="163.2" y="12" width="7.0" height="240"><title>Mar 2018
+Minimum variance: 120
+Maximum Sharpe: 117
+60/40: 124</title></rect><rect class="hit" x="169.7" y="12" width="7.0" height="240"><title>Apr 2018
+Minimum variance: 121
+Maximum Sharpe: 119
+60/40: 128</title></rect><rect class="hit" x="176.1" y="12" width="6.5" height="240"><title>May 2018
+Minimum variance: 120
+Maximum Sharpe: 120
+60/40: 132</title></rect><rect class="hit" x="182.1" y="12" width="13.6" height="240"><title>Jul 2018
+Minimum variance: 126
+Maximum Sharpe: 126
+60/40: 144</title></rect><rect class="hit" x="195.3" y="12" width="6.3" height="240"><title>Aug 2018
+Minimum variance: 128
+Maximum Sharpe: 130
+60/40: 149</title></rect><rect class="hit" x="201.1" y="12" width="7.4" height="240"><title>Sep 2018
+Minimum variance: 130
+Maximum Sharpe: 130
+60/40: 149</title></rect><rect class="hit" x="208.0" y="12" width="6.7" height="240"><title>Oct 2018
+Minimum variance: 129
+Maximum Sharpe: 130
+60/40: 152</title></rect><rect class="hit" x="214.2" y="12" width="7.0" height="240"><title>Nov 2018
+Minimum variance: 132
+Maximum Sharpe: 134
+60/40: 159</title></rect><rect class="hit" x="220.7" y="12" width="7.0" height="240"><title>Dec 2018
+Minimum variance: 133
+Maximum Sharpe: 136
+60/40: 163</title></rect><rect class="hit" x="227.1" y="12" width="6.3" height="240"><title>Jan 2019
+Minimum variance: 136
+Maximum Sharpe: 137
+60/40: 161</title></rect><rect class="hit" x="232.9" y="12" width="6.5" height="240"><title>Feb 2019
+Minimum variance: 138
+Maximum Sharpe: 139
+60/40: 165</title></rect><rect class="hit" x="239.0" y="12" width="7.2" height="240"><title>Mar 2019
+Minimum variance: 137
+Maximum Sharpe: 139
+60/40: 165</title></rect><rect class="hit" x="245.6" y="12" width="7.0" height="240"><title>Apr 2019
+Minimum variance: 136
+Maximum Sharpe: 137
+60/40: 162</title></rect><rect class="hit" x="252.1" y="12" width="13.2" height="240"><title>Jun 2019
+Minimum variance: 136
+Maximum Sharpe: 137
+60/40: 162</title></rect><rect class="hit" x="264.8" y="12" width="6.7" height="240"><title>Jul 2019
+Minimum variance: 136
+Maximum Sharpe: 138
+60/40: 164</title></rect><rect class="hit" x="271.0" y="12" width="7.0" height="240"><title>Aug 2019
+Minimum variance: 137
+Maximum Sharpe: 137
+60/40: 164</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="240"><title>Sep 2019
+Minimum variance: 143
+Maximum Sharpe: 145
+60/40: 177</title></rect><rect class="hit" x="283.9" y="12" width="6.5" height="240"><title>Oct 2019
+Minimum variance: 140
+Maximum Sharpe: 142
+60/40: 175</title></rect><rect class="hit" x="290.0" y="12" width="7.2" height="240"><title>Nov 2019
+Minimum variance: 137
+Maximum Sharpe: 140
+60/40: 173</title></rect><rect class="hit" x="296.6" y="12" width="7.0" height="240"><title>Dec 2019
+Minimum variance: 137
+Maximum Sharpe: 142
+60/40: 178</title></rect><rect class="hit" x="303.1" y="12" width="6.3" height="240"><title>Jan 2020
+Minimum variance: 138
+Maximum Sharpe: 144
+60/40: 183</title></rect><rect class="hit" x="308.9" y="12" width="7.2" height="240"><title>Feb 2020
+Minimum variance: 135
+Maximum Sharpe: 138
+60/40: 165</title></rect><rect class="hit" x="315.6" y="12" width="6.7" height="240"><title>Mar 2020
+Minimum variance: 133
+Maximum Sharpe: 134
+60/40: 155</title></rect><rect class="hit" x="321.8" y="12" width="13.2" height="240"><title>May 2020
+Minimum variance: 137
+Maximum Sharpe: 137
+60/40: 156</title></rect><rect class="hit" x="334.5" y="12" width="7.0" height="240"><title>Jun 2020
+Minimum variance: 144
+Maximum Sharpe: 145
+60/40: 168</title></rect><rect class="hit" x="341.0" y="12" width="7.0" height="240"><title>Jul 2020
+Minimum variance: 143
+Maximum Sharpe: 143
+60/40: 166</title></rect><rect class="hit" x="347.4" y="12" width="6.7" height="240"><title>Aug 2020
+Minimum variance: 146
+Maximum Sharpe: 146
+60/40: 172</title></rect><rect class="hit" x="353.7" y="12" width="6.7" height="240"><title>Sep 2020
+Minimum variance: 147
+Maximum Sharpe: 147
+60/40: 173</title></rect><rect class="hit" x="359.9" y="12" width="7.0" height="240"><title>Oct 2020
+Minimum variance: 149
+Maximum Sharpe: 149
+60/40: 176</title></rect><rect class="hit" x="366.4" y="12" width="7.0" height="240"><title>Nov 2020
+Minimum variance: 154
+Maximum Sharpe: 155
+60/40: 184</title></rect><rect class="hit" x="372.8" y="12" width="6.5" height="240"><title>Dec 2020
+Minimum variance: 155
+Maximum Sharpe: 156
+60/40: 183</title></rect><rect class="hit" x="378.9" y="12" width="6.3" height="240"><title>Jan 2021
+Minimum variance: 154
+Maximum Sharpe: 154
+60/40: 180</title></rect><rect class="hit" x="384.7" y="12" width="7.4" height="240"><title>Feb 2021
+Minimum variance: 154
+Maximum Sharpe: 155
+60/40: 183</title></rect><rect class="hit" x="391.6" y="12" width="13.2" height="240"><title>Apr 2021
+Minimum variance: 152
+Maximum Sharpe: 152
+60/40: 180</title></rect><rect class="hit" x="404.3" y="12" width="6.7" height="240"><title>May 2021
+Minimum variance: 154
+Maximum Sharpe: 153
+60/40: 181</title></rect><rect class="hit" x="410.5" y="12" width="6.7" height="240"><title>Jun 2021
+Minimum variance: 149
+Maximum Sharpe: 150
+60/40: 177</title></rect><rect class="hit" x="416.7" y="12" width="7.2" height="240"><title>Jul 2021
+Minimum variance: 149
+Maximum Sharpe: 150
+60/40: 177</title></rect><rect class="hit" x="423.4" y="12" width="6.7" height="240"><title>Aug 2021
+Minimum variance: 147
+Maximum Sharpe: 149
+60/40: 175</title></rect><rect class="hit" x="429.7" y="12" width="6.5" height="240"><title>Sep 2021
+Minimum variance: 148
+Maximum Sharpe: 152
+60/40: 179</title></rect><rect class="hit" x="435.7" y="12" width="7.2" height="240"><title>Oct 2021
+Minimum variance: 147
+Maximum Sharpe: 152
+60/40: 180</title></rect><rect class="hit" x="442.3" y="12" width="7.0" height="240"><title>Nov 2021
+Minimum variance: 144
+Maximum Sharpe: 151
+60/40: 178</title></rect><rect class="hit" x="448.8" y="12" width="7.0" height="240"><title>Dec 2021
+Minimum variance: 146
+Maximum Sharpe: 153
+60/40: 183</title></rect><rect class="hit" x="455.3" y="12" width="6.3" height="240"><title>Jan 2022
+Minimum variance: 145
+Maximum Sharpe: 151
+60/40: 178</title></rect><rect class="hit" x="461.1" y="12" width="13.0" height="240"><title>Mar 2022
+Minimum variance: 140
+Maximum Sharpe: 145
+60/40: 170</title></rect><rect class="hit" x="473.6" y="12" width="7.2" height="240"><title>Apr 2022
+Minimum variance: 139
+Maximum Sharpe: 147
+60/40: 174</title></rect><rect class="hit" x="480.2" y="12" width="6.7" height="240"><title>May 2022
+Minimum variance: 134
+Maximum Sharpe: 142
+60/40: 167</title></rect><rect class="hit" x="486.5" y="12" width="6.5" height="240"><title>Jun 2022
+Minimum variance: 132
+Maximum Sharpe: 138
+60/40: 160</title></rect><rect class="hit" x="492.5" y="12" width="7.4" height="240"><title>Jul 2022
+Minimum variance: 131
+Maximum Sharpe: 134
+60/40: 154</title></rect><rect class="hit" x="499.4" y="12" width="6.7" height="240"><title>Aug 2022
+Minimum variance: 127
+Maximum Sharpe: 131
+60/40: 147</title></rect><rect class="hit" x="505.6" y="12" width="7.0" height="240"><title>Sep 2022
+Minimum variance: 128
+Maximum Sharpe: 131
+60/40: 147</title></rect><rect class="hit" x="512.1" y="12" width="6.7" height="240"><title>Oct 2022
+Minimum variance: 130
+Maximum Sharpe: 132
+60/40: 148</title></rect><rect class="hit" x="518.3" y="12" width="6.7" height="240"><title>Nov 2022
+Minimum variance: 132
+Maximum Sharpe: 134
+60/40: 151</title></rect><rect class="hit" x="524.6" y="12" width="7.2" height="240"><title>Dec 2022
+Minimum variance: 135
+Maximum Sharpe: 136
+60/40: 153</title></rect><rect class="hit" x="531.2" y="12" width="12.8" height="240"><title>Feb 2023
+Minimum variance: 141
+Maximum Sharpe: 143
+60/40: 163</title></rect><rect class="hit" x="543.5" y="12" width="6.3" height="240"><title>Mar 2023
+Minimum variance: 143
+Maximum Sharpe: 145
+60/40: 165</title></rect><rect class="hit" x="549.3" y="12" width="7.4" height="240"><title>Apr 2023
+Minimum variance: 143
+Maximum Sharpe: 145
+60/40: 165</title></rect><rect class="hit" x="556.2" y="12" width="6.7" height="240"><title>May 2023
+Minimum variance: 141
+Maximum Sharpe: 143
+60/40: 163</title></rect><rect class="hit" x="562.5" y="12" width="7.0" height="240"><title>Jun 2023
+Minimum variance: 139
+Maximum Sharpe: 142
+60/40: 163</title></rect><rect class="hit" x="568.9" y="12" width="7.0" height="240"><title>Jul 2023
+Minimum variance: 142
+Maximum Sharpe: 143
+60/40: 164</title></rect><rect class="hit" x="575.4" y="12" width="6.5" height="240"><title>Aug 2023
+Minimum variance: 144
+Maximum Sharpe: 143
+60/40: 162</title></rect><rect class="hit" x="581.4" y="12" width="7.2" height="240"><title>Sep 2023
+Minimum variance: 143
+Maximum Sharpe: 142
+60/40: 161</title></rect><rect class="hit" x="588.1" y="12" width="6.7" height="240"><title>Oct 2023
+Minimum variance: 146
+Maximum Sharpe: 144
+60/40: 165</title></rect><rect class="hit" x="594.3" y="12" width="6.5" height="240"><title>Nov 2023
+Minimum variance: 150
+Maximum Sharpe: 148
+60/40: 173</title></rect><rect class="hit" x="600.3" y="12" width="13.4" height="240"><title>Jan 2024
+Minimum variance: 155
+Maximum Sharpe: 156
+60/40: 187</title></rect><rect class="hit" x="613.3" y="12" width="6.5" height="240"><title>Feb 2024
+Minimum variance: 155
+Maximum Sharpe: 157
+60/40: 188</title></rect><rect class="hit" x="619.3" y="12" width="7.2" height="240"><title>Mar 2024
+Minimum variance: 155
+Maximum Sharpe: 159
+60/40: 192</title></rect><rect class="hit" x="625.9" y="12" width="7.0" height="240"><title>Apr 2024
+Minimum variance: 156
+Maximum Sharpe: 160
+60/40: 194</title></rect><rect class="hit" x="632.4" y="12" width="6.3" height="240"><title>May 2024
+Minimum variance: 159
+Maximum Sharpe: 165
+60/40: 205</title></rect><rect class="hit" x="638.2" y="12" width="7.4" height="240"><title>Jun 2024
+Minimum variance: 164
+Maximum Sharpe: 171
+60/40: 213</title></rect><rect class="hit" x="645.1" y="12" width="6.7" height="240"><title>Jul 2024
+Minimum variance: 166
+Maximum Sharpe: 172
+60/40: 217</title></rect><rect class="hit" x="651.3" y="12" width="7.0" height="240"><title>Aug 2024
+Minimum variance: 167
+Maximum Sharpe: 174
+60/40: 222</title></rect><rect class="hit" x="657.8" y="12" width="7.0" height="240"><title>Sep 2024
+Minimum variance: 167
+Maximum Sharpe: 175
+60/40: 226</title></rect><rect class="hit" x="664.2" y="12" width="6.5" height="240"><title>Oct 2024
+Minimum variance: 169
+Maximum Sharpe: 176
+60/40: 227</title></rect><rect class="hit" x="670.3" y="12" width="13.6" height="240"><title>Dec 2024
+Minimum variance: 182
+Maximum Sharpe: 185
+60/40: 233</title></rect><rect class="hit" x="683.4" y="12" width="6.3" height="240"><title>Jan 2025
+Minimum variance: 174
+Maximum Sharpe: 174
+60/40: 215</title></rect><rect class="hit" x="689.2" y="12" width="7.0" height="240"><title>Feb 2025
+Minimum variance: 176
+Maximum Sharpe: 176
+60/40: 218</title></rect><rect class="hit" x="695.7" y="12" width="6.7" height="240"><title>Mar 2025
+Minimum variance: 176
+Maximum Sharpe: 174
+60/40: 214</title></rect><rect class="hit" x="701.9" y="12" width="6.7" height="240"><title>Apr 2025
+Minimum variance: 176
+Maximum Sharpe: 174
+60/40: 217</title></rect><rect class="hit" x="708.2" y="12" width="7.0" height="240"><title>May 2025
+Minimum variance: 176
+Maximum Sharpe: 172
+60/40: 212</title></rect><rect class="hit" x="714.6" y="12" width="7.0" height="240"><title>Jun 2025
+Minimum variance: 171
+Maximum Sharpe: 164
+60/40: 196</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="240"><title>Jul 2025
+Minimum variance: 169
+Maximum Sharpe: 162
+60/40: 192</title></rect><rect class="hit" x="727.1" y="12" width="7.2" height="240"><title>Aug 2025
+Minimum variance: 169
+Maximum Sharpe: 162
+60/40: 191</title></rect><rect class="hit" x="733.8" y="12" width="7.0" height="240"><title>Sep 2025
+Minimum variance: 170
+Maximum Sharpe: 164
+60/40: 195</title></rect><rect class="hit" x="740.2" y="12" width="13.2" height="240"><title>Nov 2025
+Minimum variance: 169
+Maximum Sharpe: 163
+60/40: 193</title></rect><rect class="hit" x="752.9" y="12" width="6.7" height="240"><title>Dec 2025
+Minimum variance: 167
+Maximum Sharpe: 161
+60/40: 190</title></rect><rect class="hit" x="759.2" y="12" width="6.3" height="240"><title>Jan 2026
+Minimum variance: 169
+Maximum Sharpe: 162
+60/40: 192</title></rect><rect class="hit" x="765.0" y="12" width="7.2" height="240"><title>Feb 2026
+Minimum variance: 167
+Maximum Sharpe: 162
+60/40: 191</title></rect><rect class="hit" x="771.7" y="12" width="6.7" height="240"><title>Mar 2026
+Minimum variance: 168
+Maximum Sharpe: 164
+60/40: 195</title></rect><rect class="hit" x="777.9" y="12" width="6.5" height="240"><title>Apr 2026
+Minimum variance: 164
+Maximum Sharpe: 161
+60/40: 190</title></rect><rect class="hit" x="783.9" y="12" width="7.2" height="240"><title>May 2026
+Minimum variance: 164
+Maximum Sharpe: 159
+60/40: 184</title></rect><rect class="hit" x="790.6" y="12" width="7.0" height="240"><title>Jun 2026
+Minimum variance: 158
+Maximum Sharpe: 152
+60/40: 176</title></rect><rect class="hit" x="797.1" y="12" width="7.0" height="240"><title>Jul 2026
+Minimum variance: 160
+Maximum Sharpe: 155
+60/40: 182</title></rect><rect class="hit" x="803.5" y="12" width="6.7" height="240"><title>Aug 2026
+Minimum variance: 159
+Maximum Sharpe: 152
+60/40: 175</title></rect><rect class="hit" x="809.8" y="12" width="6.7" height="240"><title>Sep 2026
+Minimum variance: 164
+Maximum Sharpe: 157
+60/40: 184</title></rect><text class="tick" transform="translate(10 140.0) rotate(-90)" text-anchor="middle">Value of 100 invested</text></svg></div><div class="card"><h3>Calendar-year returns</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>Minimum variance</th><th>Maximum Sharpe</th><th>60/40</th></tr></thead><tbody><tr><th class="yr">2016 from Nov</th><td style="background:color-mix(in oklab, var(--pos) 12%, var(--mid));color:var(--ink)" title="Minimum variance · 2016: 4.0%">4.0%</td><td style="background:color-mix(in oklab, var(--pos) 12%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2016: 3.9%">3.9%</td><td style="background:color-mix(in oklab, var(--pos) 16%, var(--mid));color:var(--ink)" title="60/40 · 2016: 5.5%">5.5%</td></tr><tr><th class="yr">2017</th><td style="background:color-mix(in oklab, var(--pos) 32%, var(--mid));color:var(--ink)" title="Minimum variance · 2017: 10.5%">10.5%</td><td style="background:color-mix(in oklab, var(--pos) 28%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2017: 9.3%">9.3%</td><td style="background:color-mix(in oklab, var(--pos) 46%, var(--mid));color:var(--ink)" title="60/40 · 2017: 15.5%">15.5%</td></tr><tr><th class="yr">2018</th><td style="background:color-mix(in oklab, var(--pos) 48%, var(--mid));color:var(--ink)" title="Minimum variance · 2018: 16.2%">16.2%</td><td style="background:color-mix(in oklab, var(--pos) 60%, var(--mid));color:#fff" title="Maximum Sharpe · 2018: 20.0%">20.0%</td><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff" title="60/40 · 2018: 33.4%">33.4%</td></tr><tr><th class="yr">2019</th><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="Minimum variance · 2019: 2.7%">2.7%</td><td style="background:color-mix(in oklab, var(--pos) 13%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2019: 4.3%">4.3%</td><td style="background:color-mix(in oklab, var(--pos) 29%, var(--mid));color:var(--ink)" title="60/40 · 2019: 9.7%">9.7%</td></tr><tr><th class="yr">2020</th><td style="background:color-mix(in oklab, var(--pos) 39%, var(--mid));color:var(--ink)" title="Minimum variance · 2020: 13.0%">13.0%</td><td style="background:color-mix(in oklab, var(--pos) 29%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2020: 9.8%">9.8%</td><td style="background:color-mix(in oklab, var(--pos) 8%, var(--mid));color:var(--ink)" title="60/40 · 2020: 2.8%">2.8%</td></tr><tr><th class="yr">2021</th><td style="background:color-mix(in oklab, var(--neg) 18%, var(--mid));color:var(--ink)" title="Minimum variance · 2021: −6.1%">−6.1%</td><td style="background:color-mix(in oklab, var(--neg) 5%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2021: −1.8%">−1.8%</td><td style="background:color-mix(in oklab, var(--neg) 1%, var(--mid));color:var(--ink)" title="60/40 · 2021: −0.3%">−0.3%</td></tr><tr><th class="yr">2022</th><td style="background:color-mix(in oklab, var(--neg) 23%, var(--mid));color:var(--ink)" title="Minimum variance · 2022: −7.6%">−7.6%</td><td style="background:color-mix(in oklab, var(--neg) 34%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2022: −11.3%">−11.3%</td><td style="background:color-mix(in oklab, var(--neg) 49%, var(--mid));color:var(--ink)" title="60/40 · 2022: −16.4%">−16.4%</td></tr><tr><th class="yr">2023</th><td style="background:color-mix(in oklab, var(--pos) 41%, var(--mid));color:var(--ink)" title="Minimum variance · 2023: 13.8%">13.8%</td><td style="background:color-mix(in oklab, var(--pos) 35%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2023: 11.8%">11.8%</td><td style="background:color-mix(in oklab, var(--pos) 52%, var(--mid));color:var(--ink)" title="60/40 · 2023: 17.3%">17.3%</td></tr><tr><th class="yr">2024</th><td style="background:color-mix(in oklab, var(--pos) 56%, var(--mid));color:var(--ink)" title="Minimum variance · 2024: 18.7%">18.7%</td><td style="background:color-mix(in oklab, var(--pos) 65%, var(--mid));color:#fff" title="Maximum Sharpe · 2024: 21.7%">21.7%</td><td style="background:color-mix(in oklab, var(--pos) 90%, var(--mid));color:#fff" title="60/40 · 2024: 30.2%">30.2%</td></tr><tr><th class="yr">2025</th><td style="background:color-mix(in oklab, var(--neg) 24%, var(--mid));color:var(--ink)" title="Minimum variance · 2025: −8.0%">−8.0%</td><td style="background:color-mix(in oklab, var(--neg) 39%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2025: −13.1%">−13.1%</td><td style="background:color-mix(in oklab, var(--neg) 55%, var(--mid));color:var(--ink)" title="60/40 · 2025: −18.3%">−18.3%</td></tr><tr><th class="yr">2026 to Oct</th><td style="background:color-mix(in oklab, var(--neg) 12%, var(--mid));color:var(--ink)" title="Minimum variance · 2026: −4.1%">−4.1%</td><td style="background:color-mix(in oklab, var(--neg) 13%, var(--mid));color:var(--ink)" title="Maximum Sharpe · 2026: −4.3%">−4.3%</td><td style="background:color-mix(in oklab, var(--neg) 18%, var(--mid));color:var(--ink)" title="60/40 · 2026: −5.9%">−5.9%</td></tr></tbody></table></div></div></section><section id="c-risk"><header class="sh"><h2>Risk</h2><p>How far and how long each strategy fell</p></header><div class="card"><h3>Drawdown</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Minimum variance −18.1% at worst</span><span class="key"><i style="background:var(--s2)"></i>Maximum Sharpe −17.5% at worst</span><span class="key"><i style="background:var(--s3)"></i>60/40 −25.0% at worst</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="816" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">−25%</text><line class="grid" x1="56" x2="816" y1="172.0" y2="172.0"/><text class="tick" x="48" y="176.0" text-anchor="end">−20%</text><line class="grid" x1="56" x2="816" y1="132.0" y2="132.0"/><text class="tick" x="48" y="136.0" text-anchor="end">−15%</text><line class="grid" x1="56" x2="816" y1="92.0" y2="92.0"/><text class="tick" x="48" y="96.0" text-anchor="end">−10%</text><line class="grid" x1="56" x2="816" y1="52.0" y2="52.0"/><text class="tick" x="48" y="56.0" text-anchor="end">−5%</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">0%</text><text class="tick" x="68.9" y="232" text-anchor="middle">2017</text><text class="tick" x="144.9" y="232" text-anchor="middle">2018</text><text class="tick" x="220.9" y="232" text-anchor="middle">2019</text><text class="tick" x="296.8" y="232" text-anchor="middle">2020</text><text class="tick" x="373.0" y="232" text-anchor="middle">2021</text><text class="tick" x="449.0" y="232" text-anchor="middle">2022</text><text class="tick" x="525.0" y="232" text-anchor="middle">2023</text><text class="tick" x="601.0" y="232" text-anchor="middle">2024</text><text class="tick" x="677.2" y="232" text-anchor="middle">2025</text><text class="tick" x="753.1" y="232" text-anchor="middle">2026</text><path class="line" d="M56.0,12.0 L62.2,12.0 L68.5,12.0 L75.2,20.0 L81.0,12.0 L87.4,12.0 L93.3,12.0 L100.1,12.0 L106.4,12.0 L112.8,12.0 L119.3,19.6 L125.3,24.8 L132.0,27.0 L138.2,15.0 L144.3,12.0 L151.1,12.0 L157.0,12.0 L163.2,12.0 L169.7,12.0 L176.1,15.6 L182.1,12.0 L188.8,12.0 L195.3,12.0 L201.1,12.0 L208.0,16.4 L214.2,12.0 L220.7,12.0 L227.1,12.0 L232.9,12.0 L239.0,16.2 L245.6,25.6 L252.1,38.8 L257.9,26.6 L264.8,25.4 L271.0,20.5 L277.5,12.0 L283.9,26.1 L290.0,47.2 L296.6,44.8 L303.1,41.6 L308.9,58.6 L315.6,67.2 L321.8,73.7 L327.9,43.3 L334.5,12.0 L341.0,19.5 L347.4,12.0 L353.7,12.0 L359.9,12.0 L366.4,12.0 L372.8,12.0 L378.9,14.6 L384.7,15.9 L391.6,39.6 L397.8,29.1 L404.3,17.2 L410.5,41.3 L416.7,41.3 L423.4,54.6 L429.7,48.0 L435.7,55.0 L442.3,67.9 L448.8,60.4 L455.3,63.7 L461.1,97.0 L467.5,90.7 L473.6,93.1 L480.2,118.6 L486.5,131.0 L492.5,136.2 L499.4,157.1 L505.6,149.6 L512.1,140.4 L518.3,131.7 L524.6,117.2 L531.2,102.1 L537.1,83.6 L543.5,76.1 L549.3,76.1 L556.2,86.0 L562.5,92.0 L568.9,79.7 L575.4,69.5 L581.4,73.8 L588.1,58.8 L594.3,38.9 L600.3,21.6 L607.2,13.1 L613.3,12.0 L619.3,12.0 L625.9,12.0 L632.4,12.0 L638.2,12.0 L645.1,12.0 L651.3,12.0 L657.8,12.0 L664.2,12.0 L670.3,12.0 L676.9,12.0 L683.4,46.8 L689.2,35.8 L695.7,36.3 L701.9,36.1 L708.2,35.3 L714.6,61.4 L721.1,70.0 L727.1,68.6 L733.8,63.3 L740.2,59.1 L746.1,66.5 L752.9,75.8 L759.2,67.2 L765.0,76.0 L771.7,74.2 L777.9,90.1 L783.9,87.9 L790.6,116.8 L797.1,109.1 L803.5,110.8 L809.8,90.0 L816.0,106.2" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="106.2" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,12.0 L62.2,12.0 L68.5,12.0 L75.2,27.9 L81.0,12.0 L87.4,12.0 L93.3,12.0 L100.1,12.0 L106.4,12.0 L112.8,12.0 L119.3,20.3 L125.3,30.5 L132.0,36.5 L138.2,27.1 L144.3,26.6 L151.1,15.5 L157.0,22.3 L163.2,12.0 L169.7,12.0 L176.1,12.0 L182.1,12.0 L188.8,12.0 L195.3,12.0 L201.1,12.0 L208.0,12.0 L214.2,12.0 L220.7,12.0 L227.1,12.0 L232.9,12.0 L239.0,13.2 L245.6,26.0 L252.1,33.0 L257.9,24.8 L264.8,19.1 L271.0,24.2 L277.5,12.0 L283.9,24.8 L290.0,40.8 L296.6,26.7 L303.1,16.0 L308.9,49.9 L315.6,69.0 L321.8,82.7 L327.9,53.5 L334.5,13.2 L341.0,22.0 L347.4,12.0 L353.7,12.0 L359.9,12.0 L366.4,12.0 L372.8,12.0 L378.9,19.9 L384.7,15.8 L391.6,28.1 L397.8,29.9 L404.3,24.9 L410.5,41.5 L416.7,40.8 L423.4,48.8 L429.7,34.6 L435.7,33.6 L442.3,39.5 L448.8,26.1 L455.3,36.0 L461.1,75.0 L467.5,67.7 L473.6,57.9 L480.2,83.0 L486.5,104.6 L492.5,123.4 L499.4,141.7 L505.6,142.1 L512.1,137.0 L518.3,124.3 L524.6,115.2 L531.2,95.6 L537.1,76.4 L543.5,66.6 L549.3,68.3 L556.2,80.3 L562.5,85.8 L568.9,79.4 L575.4,76.4 L581.4,84.5 L588.1,75.2 L594.3,52.1 L600.3,33.0 L607.2,12.2 L613.3,12.0 L619.3,12.0 L625.9,12.0 L632.4,12.0 L638.2,12.0 L645.1,12.0 L651.3,12.0 L657.8,12.0 L664.2,12.0 L670.3,12.0 L676.9,12.0 L683.4,58.1 L689.2,50.6 L695.7,60.2 L701.9,58.6 L708.2,66.8 L714.6,101.6 L721.1,112.7 L727.1,111.1 L733.8,101.3 L740.2,100.4 L746.1,105.1 L752.9,117.1 L759.2,111.0 L765.0,110.7 L771.7,103.5 L777.9,117.1 L783.9,124.2 L790.6,152.4 L797.1,139.1 L803.5,152.0 L809.8,132.3 L816.0,147.3" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="147.3" r="4" style="fill:var(--s2)"/><path class="line" d="M56.0,12.0 L62.2,12.0 L68.5,12.0 L75.2,32.5 L81.0,12.0 L87.4,12.0 L93.3,12.0 L100.1,12.0 L106.4,12.0 L112.8,12.0 L119.3,24.4 L125.3,30.5 L132.0,36.0 L138.2,30.6 L144.3,22.7 L151.1,12.0 L157.0,38.6 L163.2,12.0 L169.7,12.0 L176.1,12.0 L182.1,12.0 L188.8,12.0 L195.3,12.0 L201.1,12.0 L208.0,12.0 L214.2,12.0 L220.7,12.0 L227.1,17.7 L232.9,12.0 L239.0,14.1 L245.6,29.4 L252.1,34.8 L257.9,26.4 L264.8,16.7 L271.0,18.6 L277.5,12.0 L283.9,20.4 L290.0,30.1 L296.6,12.0 L303.1,12.0 L308.9,89.9 L315.6,133.5 L321.8,153.9 L327.9,128.7 L334.5,74.9 L341.0,86.7 L347.4,57.5 L353.7,56.2 L359.9,42.6 L366.4,12.0 L372.8,16.2 L378.9,28.9 L384.7,19.8 L391.6,19.1 L397.8,30.1 L404.3,24.8 L410.5,44.1 L416.7,45.6 L423.4,53.9 L429.7,36.6 L435.7,32.6 L442.3,38.7 L448.8,18.8 L455.3,41.3 L461.1,78.4 L467.5,73.5 L473.6,56.3 L480.2,87.3 L486.5,117.5 L492.5,144.3 L499.4,172.6 L505.6,173.0 L512.1,168.2 L518.3,155.0 L524.6,149.1 L531.2,119.8 L537.1,104.4 L543.5,93.7 L549.3,96.4 L556.2,103.2 L562.5,104.5 L568.9,99.7 L575.4,109.4 L581.4,112.0 L588.1,94.7 L594.3,61.8 L600.3,34.5 L607.2,12.0 L613.3,12.0 L619.3,12.0 L625.9,12.0 L632.4,12.0 L638.2,12.0 L645.1,12.0 L651.3,12.0 L657.8,12.0 L664.2,12.0 L670.3,12.0 L676.9,12.0 L683.4,74.2 L689.2,63.0 L695.7,77.7 L701.9,68.3 L708.2,84.1 L714.6,140.6 L721.1,154.1 L727.1,157.8 L733.8,142.2 L740.2,140.4 L746.1,149.7 L752.9,158.6 L759.2,154.7 L765.0,156.0 L771.7,142.4 L777.9,161.8 L783.9,181.7 L790.6,208.5 L797.1,189.1 L803.5,211.6 L809.8,180.1 L816.0,197.3" style="stroke:var(--s3)"/><circle class="dot" cx="816.0" cy="197.3" r="4" style="fill:var(--s3)"/><rect class="hit" x="56.0" y="12" width="6.7" height="200"><title>Oct 2016
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="62.2" y="12" width="6.7" height="200"><title>Nov 2016
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="68.5" y="12" width="7.2" height="200"><title>Dec 2016
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="75.2" y="12" width="6.3" height="200"><title>Jan 2017
+Minimum variance: −1.0%
+Maximum Sharpe: −2.0%
+60/40: −2.6%</title></rect><rect class="hit" x="81.0" y="12" width="7.0" height="200"><title>Feb 2017
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="87.4" y="12" width="6.3" height="200"><title>Mar 2017
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="93.3" y="12" width="7.4" height="200"><title>Apr 2017
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="100.1" y="12" width="6.7" height="200"><title>May 2017
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="106.4" y="12" width="7.0" height="200"><title>Jun 2017
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="112.8" y="12" width="13.0" height="200"><title>Aug 2017
+Minimum variance: −1.0%
+Maximum Sharpe: −1.0%
+60/40: −1.5%</title></rect><rect class="hit" x="125.3" y="12" width="7.2" height="200"><title>Sep 2017
+Minimum variance: −1.6%
+Maximum Sharpe: −2.3%
+60/40: −2.3%</title></rect><rect class="hit" x="132.0" y="12" width="6.7" height="200"><title>Oct 2017
+Minimum variance: −1.9%
+Maximum Sharpe: −3.1%
+60/40: −3.0%</title></rect><rect class="hit" x="138.2" y="12" width="6.5" height="200"><title>Nov 2017
+Minimum variance: −0.4%
+Maximum Sharpe: −1.9%
+60/40: −2.3%</title></rect><rect class="hit" x="144.3" y="12" width="7.4" height="200"><title>Dec 2017
+Minimum variance: 0.0%
+Maximum Sharpe: −1.8%
+60/40: −1.3%</title></rect><rect class="hit" x="151.1" y="12" width="6.3" height="200"><title>Jan 2018
+Minimum variance: 0.0%
+Maximum Sharpe: −0.4%
+60/40: 0.0%</title></rect><rect class="hit" x="157.0" y="12" width="6.7" height="200"><title>Feb 2018
+Minimum variance: 0.0%
+Maximum Sharpe: −1.3%
+60/40: −3.3%</title></rect><rect class="hit" x="163.2" y="12" width="7.0" height="200"><title>Mar 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="169.7" y="12" width="7.0" height="200"><title>Apr 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="176.1" y="12" width="6.5" height="200"><title>May 2018
+Minimum variance: −0.4%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="182.1" y="12" width="13.6" height="200"><title>Jul 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="195.3" y="12" width="6.3" height="200"><title>Aug 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="201.1" y="12" width="7.4" height="200"><title>Sep 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="208.0" y="12" width="6.7" height="200"><title>Oct 2018
+Minimum variance: −0.5%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="214.2" y="12" width="7.0" height="200"><title>Nov 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="220.7" y="12" width="7.0" height="200"><title>Dec 2018
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="227.1" y="12" width="6.3" height="200"><title>Jan 2019
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: −0.7%</title></rect><rect class="hit" x="232.9" y="12" width="6.5" height="200"><title>Feb 2019
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="239.0" y="12" width="7.2" height="200"><title>Mar 2019
+Minimum variance: −0.5%
+Maximum Sharpe: −0.2%
+60/40: −0.3%</title></rect><rect class="hit" x="245.6" y="12" width="7.0" height="200"><title>Apr 2019
+Minimum variance: −1.7%
+Maximum Sharpe: −1.7%
+60/40: −2.2%</title></rect><rect class="hit" x="252.1" y="12" width="13.2" height="200"><title>Jun 2019
+Minimum variance: −1.8%
+Maximum Sharpe: −1.6%
+60/40: −1.8%</title></rect><rect class="hit" x="264.8" y="12" width="6.7" height="200"><title>Jul 2019
+Minimum variance: −1.7%
+Maximum Sharpe: −0.9%
+60/40: −0.6%</title></rect><rect class="hit" x="271.0" y="12" width="7.0" height="200"><title>Aug 2019
+Minimum variance: −1.1%
+Maximum Sharpe: −1.5%
+60/40: −0.8%</title></rect><rect class="hit" x="277.5" y="12" width="7.0" height="200"><title>Sep 2019
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="283.9" y="12" width="6.5" height="200"><title>Oct 2019
+Minimum variance: −1.8%
+Maximum Sharpe: −1.6%
+60/40: −1.0%</title></rect><rect class="hit" x="290.0" y="12" width="7.2" height="200"><title>Nov 2019
+Minimum variance: −4.4%
+Maximum Sharpe: −3.6%
+60/40: −2.3%</title></rect><rect class="hit" x="296.6" y="12" width="7.0" height="200"><title>Dec 2019
+Minimum variance: −4.1%
+Maximum Sharpe: −1.8%
+60/40: 0.0%</title></rect><rect class="hit" x="303.1" y="12" width="6.3" height="200"><title>Jan 2020
+Minimum variance: −3.7%
+Maximum Sharpe: −0.5%
+60/40: 0.0%</title></rect><rect class="hit" x="308.9" y="12" width="7.2" height="200"><title>Feb 2020
+Minimum variance: −5.8%
+Maximum Sharpe: −4.7%
+60/40: −9.7%</title></rect><rect class="hit" x="315.6" y="12" width="6.7" height="200"><title>Mar 2020
+Minimum variance: −6.9%
+Maximum Sharpe: −7.1%
+60/40: −15.2%</title></rect><rect class="hit" x="321.8" y="12" width="13.2" height="200"><title>May 2020
+Minimum variance: −3.9%
+Maximum Sharpe: −5.2%
+60/40: −14.6%</title></rect><rect class="hit" x="334.5" y="12" width="7.0" height="200"><title>Jun 2020
+Minimum variance: 0.0%
+Maximum Sharpe: −0.2%
+60/40: −7.9%</title></rect><rect class="hit" x="341.0" y="12" width="7.0" height="200"><title>Jul 2020
+Minimum variance: −0.9%
+Maximum Sharpe: −1.2%
+60/40: −9.3%</title></rect><rect class="hit" x="347.4" y="12" width="6.7" height="200"><title>Aug 2020
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: −5.7%</title></rect><rect class="hit" x="353.7" y="12" width="6.7" height="200"><title>Sep 2020
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: −5.5%</title></rect><rect class="hit" x="359.9" y="12" width="7.0" height="200"><title>Oct 2020
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: −3.8%</title></rect><rect class="hit" x="366.4" y="12" width="7.0" height="200"><title>Nov 2020
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="372.8" y="12" width="6.5" height="200"><title>Dec 2020
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: −0.5%</title></rect><rect class="hit" x="378.9" y="12" width="6.3" height="200"><title>Jan 2021
+Minimum variance: −0.3%
+Maximum Sharpe: −1.0%
+60/40: −2.1%</title></rect><rect class="hit" x="384.7" y="12" width="7.4" height="200"><title>Feb 2021
+Minimum variance: −0.5%
+Maximum Sharpe: −0.5%
+60/40: −1.0%</title></rect><rect class="hit" x="391.6" y="12" width="13.2" height="200"><title>Apr 2021
+Minimum variance: −2.1%
+Maximum Sharpe: −2.2%
+60/40: −2.3%</title></rect><rect class="hit" x="404.3" y="12" width="6.7" height="200"><title>May 2021
+Minimum variance: −0.7%
+Maximum Sharpe: −1.6%
+60/40: −1.6%</title></rect><rect class="hit" x="410.5" y="12" width="6.7" height="200"><title>Jun 2021
+Minimum variance: −3.7%
+Maximum Sharpe: −3.7%
+60/40: −4.0%</title></rect><rect class="hit" x="416.7" y="12" width="7.2" height="200"><title>Jul 2021
+Minimum variance: −3.7%
+Maximum Sharpe: −3.6%
+60/40: −4.2%</title></rect><rect class="hit" x="423.4" y="12" width="6.7" height="200"><title>Aug 2021
+Minimum variance: −5.3%
+Maximum Sharpe: −4.6%
+60/40: −5.2%</title></rect><rect class="hit" x="429.7" y="12" width="6.5" height="200"><title>Sep 2021
+Minimum variance: −4.5%
+Maximum Sharpe: −2.8%
+60/40: −3.1%</title></rect><rect class="hit" x="435.7" y="12" width="7.2" height="200"><title>Oct 2021
+Minimum variance: −5.4%
+Maximum Sharpe: −2.7%
+60/40: −2.6%</title></rect><rect class="hit" x="442.3" y="12" width="7.0" height="200"><title>Nov 2021
+Minimum variance: −7.0%
+Maximum Sharpe: −3.4%
+60/40: −3.3%</title></rect><rect class="hit" x="448.8" y="12" width="7.0" height="200"><title>Dec 2021
+Minimum variance: −6.1%
+Maximum Sharpe: −1.8%
+60/40: −0.8%</title></rect><rect class="hit" x="455.3" y="12" width="6.3" height="200"><title>Jan 2022
+Minimum variance: −6.5%
+Maximum Sharpe: −3.0%
+60/40: −3.7%</title></rect><rect class="hit" x="461.1" y="12" width="13.0" height="200"><title>Mar 2022
+Minimum variance: −9.8%
+Maximum Sharpe: −7.0%
+60/40: −7.7%</title></rect><rect class="hit" x="473.6" y="12" width="7.2" height="200"><title>Apr 2022
+Minimum variance: −10.1%
+Maximum Sharpe: −5.7%
+60/40: −5.5%</title></rect><rect class="hit" x="480.2" y="12" width="6.7" height="200"><title>May 2022
+Minimum variance: −13.3%
+Maximum Sharpe: −8.9%
+60/40: −9.4%</title></rect><rect class="hit" x="486.5" y="12" width="6.5" height="200"><title>Jun 2022
+Minimum variance: −14.9%
+Maximum Sharpe: −11.6%
+60/40: −13.2%</title></rect><rect class="hit" x="492.5" y="12" width="7.4" height="200"><title>Jul 2022
+Minimum variance: −15.5%
+Maximum Sharpe: −13.9%
+60/40: −16.5%</title></rect><rect class="hit" x="499.4" y="12" width="6.7" height="200"><title>Aug 2022
+Minimum variance: −18.1%
+Maximum Sharpe: −16.2%
+60/40: −20.1%</title></rect><rect class="hit" x="505.6" y="12" width="7.0" height="200"><title>Sep 2022
+Minimum variance: −17.2%
+Maximum Sharpe: −16.3%
+60/40: −20.1%</title></rect><rect class="hit" x="512.1" y="12" width="6.7" height="200"><title>Oct 2022
+Minimum variance: −16.1%
+Maximum Sharpe: −15.6%
+60/40: −19.5%</title></rect><rect class="hit" x="518.3" y="12" width="6.7" height="200"><title>Nov 2022
+Minimum variance: −15.0%
+Maximum Sharpe: −14.0%
+60/40: −17.9%</title></rect><rect class="hit" x="524.6" y="12" width="7.2" height="200"><title>Dec 2022
+Minimum variance: −13.2%
+Maximum Sharpe: −12.9%
+60/40: −17.1%</title></rect><rect class="hit" x="531.2" y="12" width="12.8" height="200"><title>Feb 2023
+Minimum variance: −9.0%
+Maximum Sharpe: −8.1%
+60/40: −11.6%</title></rect><rect class="hit" x="543.5" y="12" width="6.3" height="200"><title>Mar 2023
+Minimum variance: −8.0%
+Maximum Sharpe: −6.8%
+60/40: −10.2%</title></rect><rect class="hit" x="549.3" y="12" width="7.4" height="200"><title>Apr 2023
+Minimum variance: −8.0%
+Maximum Sharpe: −7.0%
+60/40: −10.5%</title></rect><rect class="hit" x="556.2" y="12" width="6.7" height="200"><title>May 2023
+Minimum variance: −9.2%
+Maximum Sharpe: −8.5%
+60/40: −11.4%</title></rect><rect class="hit" x="562.5" y="12" width="7.0" height="200"><title>Jun 2023
+Minimum variance: −10.0%
+Maximum Sharpe: −9.2%
+60/40: −11.6%</title></rect><rect class="hit" x="568.9" y="12" width="7.0" height="200"><title>Jul 2023
+Minimum variance: −8.5%
+Maximum Sharpe: −8.4%
+60/40: −11.0%</title></rect><rect class="hit" x="575.4" y="12" width="6.5" height="200"><title>Aug 2023
+Minimum variance: −7.2%
+Maximum Sharpe: −8.1%
+60/40: −12.2%</title></rect><rect class="hit" x="581.4" y="12" width="7.2" height="200"><title>Sep 2023
+Minimum variance: −7.7%
+Maximum Sharpe: −9.1%
+60/40: −12.5%</title></rect><rect class="hit" x="588.1" y="12" width="6.7" height="200"><title>Oct 2023
+Minimum variance: −5.9%
+Maximum Sharpe: −7.9%
+60/40: −10.3%</title></rect><rect class="hit" x="594.3" y="12" width="6.5" height="200"><title>Nov 2023
+Minimum variance: −3.4%
+Maximum Sharpe: −5.0%
+60/40: −6.2%</title></rect><rect class="hit" x="600.3" y="12" width="13.4" height="200"><title>Jan 2024
+Minimum variance: −0.1%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="613.3" y="12" width="6.5" height="200"><title>Feb 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="619.3" y="12" width="7.2" height="200"><title>Mar 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="625.9" y="12" width="7.0" height="200"><title>Apr 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="632.4" y="12" width="6.3" height="200"><title>May 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="638.2" y="12" width="7.4" height="200"><title>Jun 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="645.1" y="12" width="6.7" height="200"><title>Jul 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="651.3" y="12" width="7.0" height="200"><title>Aug 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="657.8" y="12" width="7.0" height="200"><title>Sep 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="664.2" y="12" width="6.5" height="200"><title>Oct 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="670.3" y="12" width="13.6" height="200"><title>Dec 2024
+Minimum variance: 0.0%
+Maximum Sharpe: 0.0%
+60/40: 0.0%</title></rect><rect class="hit" x="683.4" y="12" width="6.3" height="200"><title>Jan 2025
+Minimum variance: −4.3%
+Maximum Sharpe: −5.8%
+60/40: −7.8%</title></rect><rect class="hit" x="689.2" y="12" width="7.0" height="200"><title>Feb 2025
+Minimum variance: −3.0%
+Maximum Sharpe: −4.8%
+60/40: −6.4%</title></rect><rect class="hit" x="695.7" y="12" width="6.7" height="200"><title>Mar 2025
+Minimum variance: −3.0%
+Maximum Sharpe: −6.0%
+60/40: −8.2%</title></rect><rect class="hit" x="701.9" y="12" width="6.7" height="200"><title>Apr 2025
+Minimum variance: −3.0%
+Maximum Sharpe: −5.8%
+60/40: −7.0%</title></rect><rect class="hit" x="708.2" y="12" width="7.0" height="200"><title>May 2025
+Minimum variance: −2.9%
+Maximum Sharpe: −6.9%
+60/40: −9.0%</title></rect><rect class="hit" x="714.6" y="12" width="7.0" height="200"><title>Jun 2025
+Minimum variance: −6.2%
+Maximum Sharpe: −11.2%
+60/40: −16.1%</title></rect><rect class="hit" x="721.1" y="12" width="6.5" height="200"><title>Jul 2025
+Minimum variance: −7.2%
+Maximum Sharpe: −12.6%
+60/40: −17.8%</title></rect><rect class="hit" x="727.1" y="12" width="7.2" height="200"><title>Aug 2025
+Minimum variance: −7.1%
+Maximum Sharpe: −12.4%
+60/40: −18.2%</title></rect><rect class="hit" x="733.8" y="12" width="7.0" height="200"><title>Sep 2025
+Minimum variance: −6.4%
+Maximum Sharpe: −11.2%
+60/40: −16.3%</title></rect><rect class="hit" x="740.2" y="12" width="13.2" height="200"><title>Nov 2025
+Minimum variance: −6.8%
+Maximum Sharpe: −11.6%
+60/40: −17.2%</title></rect><rect class="hit" x="752.9" y="12" width="6.7" height="200"><title>Dec 2025
+Minimum variance: −8.0%
+Maximum Sharpe: −13.1%
+60/40: −18.3%</title></rect><rect class="hit" x="759.2" y="12" width="6.3" height="200"><title>Jan 2026
+Minimum variance: −6.9%
+Maximum Sharpe: −12.4%
+60/40: −17.8%</title></rect><rect class="hit" x="765.0" y="12" width="7.2" height="200"><title>Feb 2026
+Minimum variance: −8.0%
+Maximum Sharpe: −12.3%
+60/40: −18.0%</title></rect><rect class="hit" x="771.7" y="12" width="6.7" height="200"><title>Mar 2026
+Minimum variance: −7.8%
+Maximum Sharpe: −11.4%
+60/40: −16.3%</title></rect><rect class="hit" x="777.9" y="12" width="6.5" height="200"><title>Apr 2026
+Minimum variance: −9.8%
+Maximum Sharpe: −13.1%
+60/40: −18.7%</title></rect><rect class="hit" x="783.9" y="12" width="7.2" height="200"><title>May 2026
+Minimum variance: −9.5%
+Maximum Sharpe: −14.0%
+60/40: −21.2%</title></rect><rect class="hit" x="790.6" y="12" width="7.0" height="200"><title>Jun 2026
+Minimum variance: −13.1%
+Maximum Sharpe: −17.5%
+60/40: −24.6%</title></rect><rect class="hit" x="797.1" y="12" width="7.0" height="200"><title>Jul 2026
+Minimum variance: −12.1%
+Maximum Sharpe: −15.9%
+60/40: −22.1%</title></rect><rect class="hit" x="803.5" y="12" width="6.7" height="200"><title>Aug 2026
+Minimum variance: −12.3%
+Maximum Sharpe: −17.5%
+60/40: −25.0%</title></rect><rect class="hit" x="809.8" y="12" width="6.7" height="200"><title>Sep 2026
+Minimum variance: −9.7%
+Maximum Sharpe: −15.0%
+60/40: −21.0%</title></rect></svg></div><div class="card"><h3>Sharpe ratio over the past 3 years</h3><div class="legend"><span class="key"><i style="background:var(--s1)"></i>Minimum variance −0.14</span><span class="key"><i style="background:var(--s2)"></i>Maximum Sharpe −0.23</span><span class="key"><i style="background:var(--s3)"></i>60/40 −0.09</span></div><svg class="chart" viewBox="0 0 880 240" role="img"><line class="grid" x1="56" x2="816" y1="212.0" y2="212.0"/><text class="tick" x="48" y="216.0" text-anchor="end">−1.0</text><line class="grid" x1="56" x2="816" y1="162.0" y2="162.0"/><text class="tick" x="48" y="166.0" text-anchor="end">0.0</text><line class="grid" x1="56" x2="816" y1="112.0" y2="112.0"/><text class="tick" x="48" y="116.0" text-anchor="end">1.0</text><line class="grid" x1="56" x2="816" y1="62.0" y2="62.0"/><text class="tick" x="48" y="66.0" text-anchor="end">2.0</text><line class="grid" x1="56" x2="816" y1="12.0" y2="12.0"/><text class="tick" x="48" y="16.0" text-anchor="end">3.0</text><text class="tick" x="74.4" y="232" text-anchor="middle">2020</text><text class="tick" x="183.3" y="232" text-anchor="middle">2021</text><text class="tick" x="291.8" y="232" text-anchor="middle">2022</text><text class="tick" x="400.3" y="232" text-anchor="middle">2023</text><text class="tick" x="508.8" y="232" text-anchor="middle">2024</text><text class="tick" x="617.7" y="232" text-anchor="middle">2025</text><text class="tick" x="726.2" y="232" text-anchor="middle">2026</text><line class="base" x1="56" x2="816" y1="162.0" y2="162.0"/><path class="line" d="M56.0,64.6 L64.6,86.9 L74.1,90.9 L83.4,85.5 L91.7,104.4 L101.2,113.2 L110.1,121.6 L118.7,113.6 L128.3,108.1 L137.5,115.7 L146.7,107.5 L155.6,101.9 L164.5,96.9 L173.7,94.2 L183.0,93.4 L191.6,97.7 L199.9,100.9 L209.7,116.2 L218.6,113.9 L227.9,108.6 L236.8,121.2 L245.7,127.3 L255.2,136.1 L264.1,136.2 L272.8,136.8 L282.3,145.5 L291.5,146.1 L300.7,150.9 L309.0,165.2 L318.3,161.8 L326.9,159.8 L336.4,163.8 L345.3,171.1 L353.9,173.0 L363.7,180.6 L372.7,190.1 L381.9,183.1 L390.8,174.3 L399.7,170.1 L409.2,166.4 L417.6,156.0 L426.8,151.5 L435.1,150.4 L444.9,163.9 L453.8,180.1 L463.1,174.1 L472.3,176.8 L480.9,182.7 L490.4,181.8 L499.3,183.4 L508.0,180.6 L517.8,177.9 L526.4,178.2 L535.0,171.9 L544.5,175.4 L553.7,174.5 L562.1,159.6 L571.9,157.9 L580.8,152.5 L590.0,155.4 L599.2,151.0 L607.9,136.1 L617.4,132.8 L626.6,145.0 L634.9,129.2 L644.1,132.3 L653.1,131.8 L662.0,120.0 L671.2,126.7 L680.4,128.5 L689.0,117.7 L698.6,119.0 L707.8,121.4 L716.1,128.5 L725.9,138.3 L734.8,140.8 L743.2,151.0 L752.7,153.0 L761.6,158.9 L770.2,154.2 L779.7,162.6 L788.9,164.0 L798.2,167.9 L807.1,158.5 L816.0,168.9" style="stroke:var(--s1)"/><circle class="dot" cx="816.0" cy="168.9" r="4" style="fill:var(--s1)"/><path class="line" d="M56.0,78.6 L64.6,93.6 L74.1,92.0 L83.4,80.6 L91.7,107.8 L101.2,117.5 L110.1,128.9 L118.7,122.6 L128.3,114.4 L137.5,124.2 L146.7,116.2 L155.6,111.1 L164.5,105.7 L173.7,101.2 L183.0,99.7 L191.6,105.2 L199.9,101.4 L209.7,110.2 L218.6,113.7 L227.9,113.9 L236.8,124.9 L245.7,129.9 L255.2,137.0 L264.1,133.4 L272.8,133.6 L282.3,141.1 L291.5,140.0 L300.7,144.5 L309.0,158.3 L318.3,155.8 L326.9,149.7 L336.4,154.7 L345.3,162.7 L353.9,169.1 L363.7,172.7 L372.7,186.0 L381.9,181.3 L390.8,173.3 L399.7,174.6 L409.2,171.8 L417.6,157.8 L426.8,149.8 L435.1,147.0 L444.9,160.2 L453.8,176.0 L463.1,172.0 L472.3,178.5 L480.9,183.9 L490.4,185.0 L499.3,188.6 L508.0,184.1 L517.8,175.4 L526.4,176.0 L535.0,170.4 L544.5,169.0 L553.7,163.6 L562.1,151.4 L571.9,150.7 L580.8,146.1 L590.0,150.2 L599.2,150.6 L607.9,143.2 L617.4,142.8 L626.6,154.9 L634.9,141.1 L644.1,147.1 L653.1,150.0 L662.0,144.9 L671.2,150.1 L680.4,147.8 L689.0,140.9 L698.6,137.6 L707.8,139.2 L716.1,145.6 L725.9,153.1 L734.8,157.5 L743.2,163.8 L752.7,164.3 L761.6,168.2 L770.2,166.6 L779.7,173.8 L788.9,171.0 L798.2,175.8 L807.1,166.4 L816.0,173.6" style="stroke:var(--s2)"/><circle class="dot" cx="816.0" cy="173.6" r="4" style="fill:var(--s2)"/><path class="line" d="M56.0,63.5 L64.6,73.9 L74.1,71.2 L83.4,58.4 L91.7,101.0 L101.2,116.5 L110.1,127.1 L118.7,122.7 L128.3,115.8 L137.5,125.4 L146.7,117.7 L155.6,116.1 L164.5,112.3 L173.7,107.3 L183.0,109.5 L191.6,114.2 L199.9,106.6 L209.7,111.0 L218.6,117.1 L227.9,120.0 L236.8,130.4 L245.7,135.1 L255.2,140.9 L264.1,137.5 L272.8,139.6 L282.3,146.9 L291.5,146.1 L300.7,149.1 L309.0,159.3 L318.3,157.9 L326.9,151.8 L336.4,156.6 L345.3,163.7 L353.9,170.4 L363.7,175.4 L372.7,188.0 L381.9,185.6 L390.8,180.9 L399.7,184.6 L409.2,181.7 L417.6,165.7 L426.8,153.7 L435.1,149.8 L444.9,158.5 L453.8,174.6 L463.1,170.9 L472.3,183.1 L480.9,185.2 L490.4,184.4 L499.3,186.0 L508.0,177.8 L517.8,166.3 L526.4,168.5 L535.0,165.5 L544.5,161.2 L553.7,153.5 L562.1,142.5 L571.9,140.1 L580.8,134.3 L590.0,136.2 L599.2,137.1 L607.9,133.2 L617.4,136.2 L626.6,147.3 L634.9,136.3 L644.1,141.5 L653.1,143.5 L662.0,140.1 L671.2,147.9 L680.4,144.9 L689.0,138.4 L698.6,134.4 L707.8,135.4 L716.1,141.4 L725.9,145.5 L734.8,151.5 L743.2,155.6 L752.7,154.4 L761.6,158.7 L770.2,162.2 L779.7,168.5 L788.9,164.3 L798.2,167.6 L807.1,158.8 L816.0,166.4" style="stroke:var(--s3)"/><circle class="dot" cx="816.0" cy="166.4" r="4" style="fill:var(--s3)"/><rect class="hit" x="56.0" y="12" width="9.1" height="200"><title>Oct 2019
+Minimum variance: 1.95
+Maximum Sharpe: 1.67
+60/40: 1.97</title></rect><rect class="hit" x="64.6" y="12" width="10.0" height="200"><title>Nov 2019
+Minimum variance: 1.50
+Maximum Sharpe: 1.37
+60/40: 1.76</title></rect><rect class="hit" x="74.1" y="12" width="9.7" height="200"><title>Dec 2019
+Minimum variance: 1.42
+Maximum Sharpe: 1.40
+60/40: 1.82</title></rect><rect class="hit" x="83.4" y="12" width="8.8" height="200"><title>Jan 2020
+Minimum variance: 1.53
+Maximum Sharpe: 1.63
+60/40: 2.07</title></rect><rect class="hit" x="91.7" y="12" width="10.0" height="200"><title>Feb 2020
+Minimum variance: 1.15
+Maximum Sharpe: 1.08
+60/40: 1.22</title></rect><rect class="hit" x="101.2" y="12" width="9.4" height="200"><title>Mar 2020
+Minimum variance: 0.98
+Maximum Sharpe: 0.89
+60/40: 0.91</title></rect><rect class="hit" x="110.1" y="12" width="9.1" height="200"><title>Apr 2020
+Minimum variance: 0.81
+Maximum Sharpe: 0.66
+60/40: 0.70</title></rect><rect class="hit" x="118.7" y="12" width="10.0" height="200"><title>May 2020
+Minimum variance: 0.97
+Maximum Sharpe: 0.79
+60/40: 0.79</title></rect><rect class="hit" x="128.3" y="12" width="9.7" height="200"><title>Jun 2020
+Minimum variance: 1.08
+Maximum Sharpe: 0.95
+60/40: 0.92</title></rect><rect class="hit" x="137.5" y="12" width="9.7" height="200"><title>Jul 2020
+Minimum variance: 0.93
+Maximum Sharpe: 0.76
+60/40: 0.73</title></rect><rect class="hit" x="146.7" y="12" width="9.4" height="200"><title>Aug 2020
+Minimum variance: 1.09
+Maximum Sharpe: 0.92
+60/40: 0.89</title></rect><rect class="hit" x="155.6" y="12" width="9.4" height="200"><title>Sep 2020
+Minimum variance: 1.20
+Maximum Sharpe: 1.02
+60/40: 0.92</title></rect><rect class="hit" x="164.5" y="12" width="9.7" height="200"><title>Oct 2020
+Minimum variance: 1.30
+Maximum Sharpe: 1.13
+60/40: 0.99</title></rect><rect class="hit" x="173.7" y="12" width="9.7" height="200"><title>Nov 2020
+Minimum variance: 1.36
+Maximum Sharpe: 1.22
+60/40: 1.09</title></rect><rect class="hit" x="183.0" y="12" width="9.1" height="200"><title>Dec 2020
+Minimum variance: 1.37
+Maximum Sharpe: 1.25
+60/40: 1.05</title></rect><rect class="hit" x="191.6" y="12" width="8.8" height="200"><title>Jan 2021
+Minimum variance: 1.29
+Maximum Sharpe: 1.14
+60/40: 0.96</title></rect><rect class="hit" x="199.9" y="12" width="10.3" height="200"><title>Feb 2021
+Minimum variance: 1.22
+Maximum Sharpe: 1.21
+60/40: 1.11</title></rect><rect class="hit" x="209.7" y="12" width="9.4" height="200"><title>Mar 2021
+Minimum variance: 0.92
+Maximum Sharpe: 1.04
+60/40: 1.02</title></rect><rect class="hit" x="218.6" y="12" width="9.7" height="200"><title>Apr 2021
+Minimum variance: 0.96
+Maximum Sharpe: 0.97
+60/40: 0.90</title></rect><rect class="hit" x="227.9" y="12" width="9.4" height="200"><title>May 2021
+Minimum variance: 1.07
+Maximum Sharpe: 0.96
+60/40: 0.84</title></rect><rect class="hit" x="236.8" y="12" width="9.4" height="200"><title>Jun 2021
+Minimum variance: 0.82
+Maximum Sharpe: 0.74
+60/40: 0.63</title></rect><rect class="hit" x="245.7" y="12" width="10.0" height="200"><title>Jul 2021
+Minimum variance: 0.69
+Maximum Sharpe: 0.64
+60/40: 0.54</title></rect><rect class="hit" x="255.2" y="12" width="9.4" height="200"><title>Aug 2021
+Minimum variance: 0.52
+Maximum Sharpe: 0.50
+60/40: 0.42</title></rect><rect class="hit" x="264.1" y="12" width="9.1" height="200"><title>Sep 2021
+Minimum variance: 0.52
+Maximum Sharpe: 0.57
+60/40: 0.49</title></rect><rect class="hit" x="272.8" y="12" width="10.0" height="200"><title>Oct 2021
+Minimum variance: 0.50
+Maximum Sharpe: 0.57
+60/40: 0.45</title></rect><rect class="hit" x="282.3" y="12" width="9.7" height="200"><title>Nov 2021
+Minimum variance: 0.33
+Maximum Sharpe: 0.42
+60/40: 0.30</title></rect><rect class="hit" x="291.5" y="12" width="9.7" height="200"><title>Dec 2021
+Minimum variance: 0.32
+Maximum Sharpe: 0.44
+60/40: 0.32</title></rect><rect class="hit" x="300.7" y="12" width="8.8" height="200"><title>Jan 2022
+Minimum variance: 0.22
+Maximum Sharpe: 0.35
+60/40: 0.26</title></rect><rect class="hit" x="309.0" y="12" width="9.7" height="200"><title>Feb 2022
+Minimum variance: −0.06
+Maximum Sharpe: 0.07
+60/40: 0.05</title></rect><rect class="hit" x="318.3" y="12" width="9.1" height="200"><title>Mar 2022
+Minimum variance: 0.00
+Maximum Sharpe: 0.12
+60/40: 0.08</title></rect><rect class="hit" x="326.9" y="12" width="10.0" height="200"><title>Apr 2022
+Minimum variance: 0.04
+Maximum Sharpe: 0.25
+60/40: 0.20</title></rect><rect class="hit" x="336.4" y="12" width="9.4" height="200"><title>May 2022
+Minimum variance: −0.04
+Maximum Sharpe: 0.15
+60/40: 0.11</title></rect><rect class="hit" x="345.3" y="12" width="9.1" height="200"><title>Jun 2022
+Minimum variance: −0.18
+Maximum Sharpe: −0.01
+60/40: −0.03</title></rect><rect class="hit" x="353.9" y="12" width="10.3" height="200"><title>Jul 2022
+Minimum variance: −0.22
+Maximum Sharpe: −0.14
+60/40: −0.17</title></rect><rect class="hit" x="363.7" y="12" width="9.4" height="200"><title>Aug 2022
+Minimum variance: −0.37
+Maximum Sharpe: −0.21
+60/40: −0.27</title></rect><rect class="hit" x="372.7" y="12" width="9.7" height="200"><title>Sep 2022
+Minimum variance: −0.56
+Maximum Sharpe: −0.48
+60/40: −0.52</title></rect><rect class="hit" x="381.9" y="12" width="9.4" height="200"><title>Oct 2022
+Minimum variance: −0.42
+Maximum Sharpe: −0.39
+60/40: −0.47</title></rect><rect class="hit" x="390.8" y="12" width="9.4" height="200"><title>Nov 2022
+Minimum variance: −0.25
+Maximum Sharpe: −0.23
+60/40: −0.38</title></rect><rect class="hit" x="399.7" y="12" width="10.0" height="200"><title>Dec 2022
+Minimum variance: −0.16
+Maximum Sharpe: −0.25
+60/40: −0.45</title></rect><rect class="hit" x="409.2" y="12" width="8.8" height="200"><title>Jan 2023
+Minimum variance: −0.09
+Maximum Sharpe: −0.20
+60/40: −0.39</title></rect><rect class="hit" x="417.6" y="12" width="9.7" height="200"><title>Feb 2023
+Minimum variance: 0.12
+Maximum Sharpe: 0.08
+60/40: −0.07</title></rect><rect class="hit" x="426.8" y="12" width="8.8" height="200"><title>Mar 2023
+Minimum variance: 0.21
+Maximum Sharpe: 0.24
+60/40: 0.17</title></rect><rect class="hit" x="435.1" y="12" width="10.3" height="200"><title>Apr 2023
+Minimum variance: 0.23
+Maximum Sharpe: 0.30
+60/40: 0.24</title></rect><rect class="hit" x="444.9" y="12" width="9.4" height="200"><title>May 2023
+Minimum variance: −0.04
+Maximum Sharpe: 0.04
+60/40: 0.07</title></rect><rect class="hit" x="453.8" y="12" width="9.7" height="200"><title>Jun 2023
+Minimum variance: −0.36
+Maximum Sharpe: −0.28
+60/40: −0.25</title></rect><rect class="hit" x="463.1" y="12" width="9.7" height="200"><title>Jul 2023
+Minimum variance: −0.24
+Maximum Sharpe: −0.20
+60/40: −0.18</title></rect><rect class="hit" x="472.3" y="12" width="9.1" height="200"><title>Aug 2023
+Minimum variance: −0.30
+Maximum Sharpe: −0.33
+60/40: −0.42</title></rect><rect class="hit" x="480.9" y="12" width="10.0" height="200"><title>Sep 2023
+Minimum variance: −0.41
+Maximum Sharpe: −0.44
+60/40: −0.46</title></rect><rect class="hit" x="490.4" y="12" width="9.4" height="200"><title>Oct 2023
+Minimum variance: −0.40
+Maximum Sharpe: −0.46
+60/40: −0.45</title></rect><rect class="hit" x="499.3" y="12" width="9.1" height="200"><title>Nov 2023
+Minimum variance: −0.43
+Maximum Sharpe: −0.53
+60/40: −0.48</title></rect><rect class="hit" x="508.0" y="12" width="10.3" height="200"><title>Dec 2023
+Minimum variance: −0.37
+Maximum Sharpe: −0.44
+60/40: −0.32</title></rect><rect class="hit" x="517.8" y="12" width="9.1" height="200"><title>Jan 2024
+Minimum variance: −0.32
+Maximum Sharpe: −0.27
+60/40: −0.09</title></rect><rect class="hit" x="526.4" y="12" width="9.1" height="200"><title>Feb 2024
+Minimum variance: −0.32
+Maximum Sharpe: −0.28
+60/40: −0.13</title></rect><rect class="hit" x="535.0" y="12" width="10.0" height="200"><title>Mar 2024
+Minimum variance: −0.20
+Maximum Sharpe: −0.17
+60/40: −0.07</title></rect><rect class="hit" x="544.5" y="12" width="9.7" height="200"><title>Apr 2024
+Minimum variance: −0.27
+Maximum Sharpe: −0.14
+60/40: 0.02</title></rect><rect class="hit" x="553.7" y="12" width="8.8" height="200"><title>May 2024
+Minimum variance: −0.25
+Maximum Sharpe: −0.03
+60/40: 0.17</title></rect><rect class="hit" x="562.1" y="12" width="10.3" height="200"><title>Jun 2024
+Minimum variance: 0.05
+Maximum Sharpe: 0.21
+60/40: 0.39</title></rect><rect class="hit" x="571.9" y="12" width="9.4" height="200"><title>Jul 2024
+Minimum variance: 0.08
+Maximum Sharpe: 0.23
+60/40: 0.44</title></rect><rect class="hit" x="580.8" y="12" width="9.7" height="200"><title>Aug 2024
+Minimum variance: 0.19
+Maximum Sharpe: 0.32
+60/40: 0.55</title></rect><rect class="hit" x="590.0" y="12" width="9.7" height="200"><title>Sep 2024
+Minimum variance: 0.13
+Maximum Sharpe: 0.24
+60/40: 0.52</title></rect><rect class="hit" x="599.2" y="12" width="9.1" height="200"><title>Oct 2024
+Minimum variance: 0.22
+Maximum Sharpe: 0.23
+60/40: 0.50</title></rect><rect class="hit" x="607.9" y="12" width="10.0" height="200"><title>Nov 2024
+Minimum variance: 0.52
+Maximum Sharpe: 0.38
+60/40: 0.58</title></rect><rect class="hit" x="617.4" y="12" width="9.7" height="200"><title>Dec 2024
+Minimum variance: 0.58
+Maximum Sharpe: 0.38
+60/40: 0.52</title></rect><rect class="hit" x="626.6" y="12" width="8.8" height="200"><title>Jan 2025
+Minimum variance: 0.34
+Maximum Sharpe: 0.14
+60/40: 0.29</title></rect><rect class="hit" x="634.9" y="12" width="9.7" height="200"><title>Feb 2025
+Minimum variance: 0.66
+Maximum Sharpe: 0.42
+60/40: 0.51</title></rect><rect class="hit" x="644.1" y="12" width="9.4" height="200"><title>Mar 2025
+Minimum variance: 0.59
+Maximum Sharpe: 0.30
+60/40: 0.41</title></rect><rect class="hit" x="653.1" y="12" width="9.4" height="200"><title>Apr 2025
+Minimum variance: 0.60
+Maximum Sharpe: 0.24
+60/40: 0.37</title></rect><rect class="hit" x="662.0" y="12" width="9.7" height="200"><title>May 2025
+Minimum variance: 0.84
+Maximum Sharpe: 0.34
+60/40: 0.44</title></rect><rect class="hit" x="671.2" y="12" width="9.7" height="200"><title>Jun 2025
+Minimum variance: 0.71
+Maximum Sharpe: 0.24
+60/40: 0.28</title></rect><rect class="hit" x="680.4" y="12" width="9.1" height="200"><title>Jul 2025
+Minimum variance: 0.67
+Maximum Sharpe: 0.28
+60/40: 0.34</title></rect><rect class="hit" x="689.0" y="12" width="10.0" height="200"><title>Aug 2025
+Minimum variance: 0.89
+Maximum Sharpe: 0.42
+60/40: 0.47</title></rect><rect class="hit" x="698.6" y="12" width="9.7" height="200"><title>Sep 2025
+Minimum variance: 0.86
+Maximum Sharpe: 0.49
+60/40: 0.55</title></rect><rect class="hit" x="707.8" y="12" width="8.8" height="200"><title>Oct 2025
+Minimum variance: 0.81
+Maximum Sharpe: 0.46
+60/40: 0.53</title></rect><rect class="hit" x="716.1" y="12" width="10.3" height="200"><title>Nov 2025
+Minimum variance: 0.67
+Maximum Sharpe: 0.33
+60/40: 0.41</title></rect><rect class="hit" x="725.9" y="12" width="9.4" height="200"><title>Dec 2025
+Minimum variance: 0.47
+Maximum Sharpe: 0.18
+60/40: 0.33</title></rect><rect class="hit" x="734.8" y="12" width="8.8" height="200"><title>Jan 2026
+Minimum variance: 0.42
+Maximum Sharpe: 0.09
+60/40: 0.21</title></rect><rect class="hit" x="743.2" y="12" width="10.0" height="200"><title>Feb 2026
+Minimum variance: 0.22
+Maximum Sharpe: −0.04
+60/40: 0.13</title></rect><rect class="hit" x="752.7" y="12" width="9.4" height="200"><title>Mar 2026
+Minimum variance: 0.18
+Maximum Sharpe: −0.05
+60/40: 0.15</title></rect><rect class="hit" x="761.6" y="12" width="9.1" height="200"><title>Apr 2026
+Minimum variance: 0.06
+Maximum Sharpe: −0.12
+60/40: 0.07</title></rect><rect class="hit" x="770.2" y="12" width="10.0" height="200"><title>May 2026
+Minimum variance: 0.16
+Maximum Sharpe: −0.09
+60/40: 0.00</title></rect><rect class="hit" x="779.7" y="12" width="9.7" height="200"><title>Jun 2026
+Minimum variance: −0.01
+Maximum Sharpe: −0.24
+60/40: −0.13</title></rect><rect class="hit" x="788.9" y="12" width="9.7" height="200"><title>Jul 2026
+Minimum variance: −0.04
+Maximum Sharpe: −0.18
+60/40: −0.05</title></rect><rect class="hit" x="798.2" y="12" width="9.4" height="200"><title>Aug 2026
+Minimum variance: −0.12
+Maximum Sharpe: −0.28
+60/40: −0.11</title></rect><rect class="hit" x="807.1" y="12" width="9.4" height="200"><title>Sep 2026
+Minimum variance: 0.07
+Maximum Sharpe: −0.09
+60/40: 0.06</title></rect><rect class="hit" x="816.0" y="12" width="1.5" height="200"><title>Oct 2026
+Minimum variance: −0.14
+Maximum Sharpe: −0.23
+60/40: −0.09</title></rect></svg></div></section><section id="c-robustness"><header class="sh"><h2>In and out of sample</h2><p>How much of each method&#39;s promise survived</p></header><div class="card"><h3>In sample and out of sample</h3><div class="legend"><span class="key"><i class="hollow"></i>In sample</span><span class="key"><i style="background:var(--ink2)"></i>Out of sample</span></div><svg class="chart" viewBox="0 0 880 320" role="img"><line class="grid" x1="56" x2="690" y1="280.0" y2="280.0"/><text class="tick" x="48" y="284.0" text-anchor="end">4%</text><line class="grid" x1="56" x2="690" y1="217.5" y2="217.5"/><text class="tick" x="48" y="221.5" text-anchor="end">5%</text><line class="grid" x1="56" x2="690" y1="155.0" y2="155.0"/><text class="tick" x="48" y="159.0" text-anchor="end">6%</text><line class="grid" x1="56" x2="690" y1="92.5" y2="92.5"/><text class="tick" x="48" y="96.5" text-anchor="end">7%</text><line class="grid" x1="56" x2="690" y1="30.0" y2="30.0"/><text class="tick" x="48" y="34.0" text-anchor="end">8%</text><text class="tick" x="56.0" y="300" text-anchor="middle">5.5%</text><text class="tick" x="182.8" y="300" text-anchor="middle">6%</text><text class="tick" x="309.6" y="300" text-anchor="middle">6.5%</text><text class="tick" x="436.4" y="300" text-anchor="middle">7%</text><text class="tick" x="563.2" y="300" text-anchor="middle">7.5%</text><text class="tick" x="690.0" y="300" text-anchor="middle">8%</text><text class="tick" x="373" y="318" text-anchor="middle">Volatility, a year</text><text class="tick" x="12" y="14">Return, a year</text><line x1="270.9" y1="141.3" x2="284.6" y2="227.8" style="stroke:var(--s1);stroke-width:1.5;stroke-dasharray:3 3;opacity:.7"/><circle cx="270.9" cy="141.3" r="5" style="fill:var(--surface);stroke:var(--s1);stroke-width:2"><title>Minimum variance, in sample
+Return 6.2%, volatility 6.3%</title></circle><circle class="dot" cx="284.6" cy="227.8" r="6" style="fill:var(--s1)"><title>Minimum variance, out of sample
+Return 4.8%, volatility 6.4%</title></circle><line x1="292.6" y1="227.8" x2="696.0" y2="227.8" style="stroke:var(--grid);stroke-width:1"/><text class="lab" x="702.0" y="231.8">Minimum variance</text><line x1="483.3" y1="80.0" x2="502.1" y2="256.0" style="stroke:var(--s2);stroke-width:1.5;stroke-dasharray:3 3;opacity:.7"/><circle cx="483.3" cy="80.0" r="5" style="fill:var(--surface);stroke:var(--s2);stroke-width:2"><title>Maximum Sharpe, in sample
+Return 7.2%, volatility 7.2%</title></circle><circle class="dot" cx="502.1" cy="256.0" r="6" style="fill:var(--s2)"><title>Maximum Sharpe, out of sample
+Return 4.4%, volatility 7.3%</title></circle><line x1="510.1" y1="256.0" x2="696.0" y2="256.0" style="stroke:var(--grid);stroke-width:1"/><text class="lab" x="702.0" y="260.0">Maximum Sharpe</text></svg><p class="note">In sample is the history the weights were fitted to, Nov 1996 to Oct 2016; out of sample is Nov 2016 to Oct 2026.</p></div><div class="card"><h3>What each method promised and delivered</h3><div class="tw"><table class="cmp"><thead><tr><th>Method</th><th class="r">Sharpe in</th><th class="r">Sharpe out</th><th class="r">Change</th><th class="r">Return in</th><th class="r">Return out</th><th class="r">Drawdown in</th><th class="r">Drawdown out</th></tr></thead><tbody><tr><td><span class="key"><i style="background:var(--s1)"></i>Minimum variance</span></td><td class="r">0.63</td><td class="r">0.38</td><td class="r">−0.25</td><td class="r">6.2%</td><td class="r">4.8%</td><td class="r">−16.0%</td><td class="r">−18.1%</td></tr><tr><td><span class="key"><i style="background:var(--s2)"></i>Maximum Sharpe</span></td><td class="r">0.69</td><td class="r">0.29</td><td class="r">−0.40</td><td class="r">7.2%</td><td class="r">4.4%</td><td class="r">−22.9%</td><td class="r">−17.5%</td></tr></tbody></table></div></div></section><section id="c-weights"><header class="sh"><h2>Weights</h2><p>What each strategy held, and how often it traded</p></header><div class="card"><h3>Weights, fitted to the history to Oct 2016</h3><div class="tw"><table class="heat"><thead><tr><th></th><th>US Equity</th><th>Intl Equity</th><th>Bonds</th><th>Gold</th><th>Real Estate</th></tr></thead><tbody><tr><th>Minimum variance</th><td style="background:color-mix(in oklab, var(--pos) 27%, var(--mid));color:var(--ink)">16%</td><td style="background:color-mix(in oklab, var(--pos) 13%, var(--mid));color:var(--ink)">8%</td><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff">60%</td><td style="background:color-mix(in oklab, var(--pos) 27%, var(--mid));color:var(--ink)">16%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td></tr><tr><th>Maximum Sharpe</th><td style="background:color-mix(in oklab, var(--pos) 53%, var(--mid));color:var(--ink)">32%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff">60%</td><td style="background:color-mix(in oklab, var(--pos) 6%, var(--mid));color:var(--ink)">4%</td><td style="background:color-mix(in oklab, var(--pos) 7%, var(--mid));color:var(--ink)">4%</td></tr><tr><th>60/40</th><td style="background:color-mix(in oklab, var(--pos) 100%, var(--mid));color:#fff">60%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td><td style="background:color-mix(in oklab, var(--pos) 67%, var(--mid));color:#fff">40%</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td><td style="background:color-mix(in oklab, var(--pos) 0%, var(--mid));color:var(--ink)">–</td></tr></tbody></table></div></div></section><section id="c-method"><header class="sh"><h2>Method</h2><p>How the comparison was run</p></header><div class="card"><h3>How the strategies were tested</h3><table><tbody><tr><th style="white-space:nowrap">Assets</th><td>US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as the risk-free asset, held as cash. Monthly returns, Nov 1996 to Oct 2026.</td></tr><tr><th style="white-space:nowrap">Validation</th><td>A holdout: weights fitted to the history to Oct 2016 and scored on Nov 2016 to Oct 2026, returns they had not seen. Fixed weights, not fitted to any returns, are scored on the same periods.</td></tr><tr><th style="white-space:nowrap">Estimates</th><td>The Ledoit–Wolf covariance and historical mean returns, annualised by 12.</td></tr><tr><th style="white-space:nowrap">Limits</th><td>At most 60% in any asset; fully invested.</td></tr><tr><th style="white-space:nowrap">Rebalancing</th><td>Quarterly, to the targets; between rebalances the weights drift with prices.</td></tr><tr><th style="white-space:nowrap">Trading costs</th><td>10 bp of the value traded, paid from the next period&#39;s return.</td></tr><tr><th style="white-space:nowrap">In sample</th><td>The same weights over the history they were fitted to, Nov 1996 to Oct 2016.</td></tr><tr><th style="white-space:nowrap">Ratios</th><td>Sharpe and Sortino ratios against the T-Bills return over each period scored (2.5% a year over the test); value at risk and expected shortfall from history, at 95% over one month.</td></tr></tbody></table></div></section>
+<div class="foot">Every figure is computed by Finalytics 1.0.0-rc.7 from the assets&#39; returns; the same inputs give the same report, identified by the input digest <code>c72a32bbff46</code>.</div>
+</div></body></html>

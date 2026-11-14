@@ -344,12 +344,14 @@ def scratch() -> Path:
 
 
 def install_npm(here: Path) -> None:
-    target = here / "node_modules" / "finalytics"
-    try:
-        os.symlink(NPM, target, target_is_directory=True)
-    except OSError:
-        # Windows allows links only with privileges; a copy will do.
-        shutil.copytree(NPM, target)
+    # The second link lets the worker guide's documented `new URL("finalytics/worker.js",
+    # import.meta.url)` resolve under Node too; a browser bundler resolves it for the page.
+    for target in (here / "node_modules" / "finalytics", here / "finalytics"):
+        try:
+            os.symlink(NPM, target, target_is_directory=True)
+        except OSError:
+            # Windows allows links only with privileges; a copy will do.
+            shutil.copytree(NPM, target)
 
 
 # Python and JavaScript hand show() pages to a handler that records them for the site's output
@@ -367,7 +369,9 @@ Path(os.environ["FINALYTICS_GUIDE_PAGES"]).write_text(json.dumps(pages), encodin
 """
 JAVASCRIPT_RUNNER = """\
 import {{ writeFile }} from "node:fs/promises";
+import {{ Worker }} from "node:worker_threads";
 import {{ setShowHandler }} from "finalytics";
+globalThis.Worker ??= Worker;
 const pages = [];
 setShowHandler((page) => pages.push(page));
 await import("./{name}");
@@ -478,8 +482,19 @@ def main() -> int:
             continue
         first, first_result = next(iter(ran.items()))
         text = first_result.text
+
+        def comparable(value: str) -> str:
+            # Native and WebAssembly floating point can change a screen's input digest while all
+            # displayed figures agree. Keep each runtime's provenance, but compare nothing else.
+            value = re.sub(r"(· inputs )[0-9a-f]{12}", r"\1<digest>", value)
+            return re.sub(
+                r"(input digest <code>)[0-9a-f]{12}(</code>)",
+                r"\1<digest>\2",
+                value,
+            )
+
         for language, result in ran.items():
-            if result.text != text:
+            if comparable(result.text) != comparable(text):
                 problems.append(
                     f"docs/examples/{example.key}: {language} prints otherwise than {first}:\n"
                     + diff(text, result.text, first, language)
@@ -500,7 +515,7 @@ def main() -> int:
                 )
                 continue
             for number, (wanted, found_page) in enumerate(zip(reports, result.pages), 1):
-                if found_page != wanted:
+                if comparable(found_page) != comparable(wanted):
                     problems.append(
                         f"docs/examples/{example.key}: {language}'s report {number} differs from "
                         f"{reference_language}'s:\n"
@@ -521,7 +536,7 @@ def main() -> int:
             recorded = example.recorded.read_text(encoding="utf-8")
             then = RECORDED_VERSION.search(recorded)
             for language, result in ran.items():
-                if result.text == recorded:
+                if result.text == recorded or comparable(result.text) == comparable(recorded):
                     continue
                 if then and result.text == recorded.replace(then.group(0), f"Finalytics {VERSION_NOW} ·"):
                     problems.append(
@@ -543,7 +558,7 @@ def main() -> int:
                 else:
                     for number, (path, report) in enumerate(zip(recorded_pages, reports), 1):
                         recorded_page = path.read_text(encoding="utf-8")
-                        if recorded_page != report:
+                        if comparable(recorded_page) != comparable(report):
                             problems.append(
                                 f"{path.relative_to(ROOT)} differs from the example's report {number}:\n"
                                 + diff(recorded_page, report, "recorded", reference_language)

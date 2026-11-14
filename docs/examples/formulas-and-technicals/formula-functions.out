@@ -1,0 +1,92 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 30 Oct 2026
+10 matches among 200 securities
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+142 of 200 securities pass both rules. The 10 with the highest log size are
+shown.
+
+  Securities 200   ·   Matches 10   ·   Rules 2   ·   Prices to 30 Oct 2026
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                             ██████████████████████████████  200
+  With a price in the 5 days to 30 Oct 2026  ██████████████████████████████  199
+  Value score below 5                        ████████████████████████████    185
+                                             185 pass this rule on its own
+  Risk score below 2                         █████████████████████           142
+                                             153 pass this rule on its own
+  Top 10 by log size                         ██                               10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by log size
+────────────────────
+                             Log  Value   Risk
+   #  Ticker  Sector        size  score  score
+   1  SELS    Industrials  27.09   0.88   0.97
+   2  SELM    Financials   27.07   1.56   0.98
+   3  DUNH    Staples      27.04   1.46   0.35
+   4  SELH    Energy       26.97   1.75   0.27
+   5  GARM    Health Care  26.97   0.85   0.14
+   6  YARM    Real Estate  26.92   2.39   0.84
+   7  ULVH    Staples      26.87   0.57   0.16
+   8  WEXD    Energy       26.86   1.57   0.49
+   9  IVOH    Financials   26.81   3.43   1.37
+  10  VERW    Technology   26.79   0.58   1.48
+
+  Also pass every rule, outside the top 10: VERD (26.78), QUIG (26.76), KELD
+  (26.75), KELG (26.72), ROSW (26.71), KELH (26.64), MARD (26.61), ALDC
+  (26.48), OSBH (26.46), GARB (26.46) and 122 more.
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  PEMS  Risk score 2.02, needs below 2
+  BRAS  Risk score 2.03, needs below 2
+  WEXS  Risk score 2.05, needs below 2
+  QUIW  Risk score 2.12, needs below 2
+  LINH  Risk score 2.16, needs below 2
+  IVOB  Risk score 2.18, needs below 2
+  ELMM  Risk score 2.21, needs below 2
+  VERG  Risk score 2.24, needs below 2
+  MARG  Risk score 2.25, needs below 2
+  FALW  Risk score 2.27, needs below 2
+  WEXB  Risk score 2.31, needs below 2
+  ZENB  Risk score 2.37, needs below 2
+  KELB  Risk score 2.38, needs below 2
+  IVOS  Risk score 2.55, needs below 2
+  TORC  Risk score 2.56, needs below 2
+  ZENC  Risk score 2.57, needs below 2
+  VERB  Risk score 2.62, needs below 2
+  DUNB  Risk score 2.69, needs below 2
+  ASHM  Risk score 2.71, needs below 2
+  CALG  Risk score 2.71, needs below 2
+
+  And 34 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  Value score below 5                                            185 of 200 pass
+    ▂▂▂▇▃▆█▅▅▂▂▂▇▁▂▁▃▃▃▂▂▂▂▂▂▃▁▂▂ ▃▂▁▁▂▁▂▁ ▁▁▁▁   ▁ ▁  ▁▁        ▁     ▁ ▁
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃───
+  0.24                                                                    5
+
+  Risk score below 2                                             153 of 200 pass
+   ▁▁▄▄▆▄▇▃█▄▄▆▂▃▅▄▄▄▄▅▁▃▁▂▅▁▁▄▁▁▃▂▁▂▁▁▂▁▁  ▁▁▁▁ ▁▂▁ ▁ ▁▁  ▁▁▁▁ ▁▁ ▁ ▁ ▁▁▁▁  ▂
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃──────────────────────────────────────────
+  −0.09                            2                                       4.6
+
+Data
+────
+  199 of 200 securities have the prices every rule needs. 1 has no price in
+  the 5 days to 30 Oct 2026 and is left out: NORH. Formulas: log_size =
+  log(market_cap); value_score = sqrt(max(trailing_pe, 0)) / price_to_book (14
+  securities without a value); risk_score = abs(return_1y) / max(volatility,
+  0.01). 42 closes are not numbers, and their dates are left out: YARW, OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs a3f5fb055b0c
+

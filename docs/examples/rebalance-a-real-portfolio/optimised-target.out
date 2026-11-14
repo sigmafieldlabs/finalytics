@@ -1,0 +1,70 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  REBALANCE                                             30 Oct 2026
+To minimum variance · 5% to 40% in each asset · whole units · tax-aware
+2 accounts · $696,578 · 10 trades · one-way turnover 39.2%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Weights
+───────
+  Holding   Before  Target  After  Change  Value after
+  BND        24.9%   40.0%  40.0%  +15.1%     $278,512
+  EXSA        8.4%   25.8%  25.8%  +17.4%     $179,793
+  VTI        51.2%   16.3%  16.4%  −34.8%     $114,072
+  GLD         6.9%    9.4%   9.4%   +2.4%      $65,108
+  VNQ         4.1%    8.4%   8.4%   +4.3%      $58,525
+  USD cash    3.9%    0.0%   0.0%   −3.8%         $311
+  EUR cash    0.5%    0.0%   0.0%   −0.5%           $0
+
+  Volatility 9.5% → 7.5% (target 7.5%); expected return 14.3% → 11.2%.
+
+Trades
+──────
+  Brokerage account · $470,522 · one-way turnover 35.5%
+    Sell    394  VTI   371.57 USD  $146,399   gain $44,991, tax $9,194
+    Buy     898  BND    71.56 USD   $64,261
+    Buy   1,033  EXSA   64.08 EUR   $74,024
+    Buy      29  GLD   355.78 USD   $10,318
+    Buy     194  VNQ    93.94 USD   $18,224
+    Convert 70,559.02 USD to 63,096.02 EUR
+
+  Retirement account · $226,056 · one-way turnover 46.8%
+    Sell    259  VTI   371.57 USD   $96,237   gain $42,093, not taxed
+    Buy     570  BND    71.56 USD   $40,789
+    Buy     656  EXSA   64.08 EUR   $47,009
+    Buy      18  GLD   355.78 USD    $6,404
+    Buy     123  VNQ    93.94 USD   $11,555
+    Convert 47,032.06 USD to 42,057.50 EUR
+
+Costs and tax
+─────────────
+                      Fees     Gain  Long-term  Short-term        Tax
+  Brokerage account   $157  $44,991    $43,841      $1,150     $9,194
+  Retirement account  $101  $42,093    $42,093          $0  not taxed
+  Total               $258  $87,084    $85,934      $1,150     $9,194
+
+  Fees: 0.05% of the value traded, at least 1.00, in the instrument's currency.
+  Tax 37% short-term and 20% long-term, after fees.
+
+How the trades were found
+─────────────────────────
+  Targets    Minimum variance, 5% to 40% in each asset, from an optimisation.
+  Accounts   Brokerage account and Retirement account, rebalanced together. A
+             holding above its target is sold from the accounts that hold it, in
+             proportion to their holdings; one below it is bought in proportion
+             to the value each account has free. Trades do not move cash between
+             accounts.
+  Prices     30 Oct 2026; other currencies at the exchange rates of that day.
+  Trades     Whole units, each rounded towards zero. Purchases leave room for
+             the fees, so the trades fit the cash each account has.
+  Lots       In taxable accounts, each sale takes the lots that cost the least
+             tax, losses first.
+  Fees       0.05% of the value traded, at least 1.00, in the instrument's
+             currency.
+  Tax        37% on short-term and 20% on long-term gains (held more than 365
+             days), after fees; Retirement account not taxable.
+  Estimates  Volatility and expected return from the holdings' daily returns,
+             Nov 2023 to Oct 2026, annualised: the Ledoit–Wolf covariance and
+             historical means. Cash is riskless and earns nothing here.
+
+  Finalytics 1.0.0-rc.7 · inputs 8e0fbadeb37a
+

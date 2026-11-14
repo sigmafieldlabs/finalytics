@@ -1,0 +1,98 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  PLANNING                                     Nov 2026 to Dec 2040
+Projection
+Projection to December 2040 · 200 scenarios · today's money
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Where you stand
+───────────────
+  In an average market, you would have about 156,000 by December 2040. What you
+  put in comes to 95,000.
+
+  By December 2040 you would have
+    Strong market (1 in 10 does better)     332,000
+    Average market                          156,000
+    Weak market (1 in 10 does worse)         89,800
+
+Your plan
+─────────
+  November 2026                      Already set aside                    10,000
+                                     What the plan starts with
+  Every month, Nov 2026 to Dec 2040  Monthly saving                          500
+                                     170 payments
+
+  Returns are after inflation (2.0% a year), so every amount is in today's
+  money: 10,000 in 2040 buys what 10,000 buys today.
+
+What if markets do worse?
+─────────────────────────
+                           Average market, Dec 2040
+  Your plan as it stands                    156,000
+  Returns 1% a year lower                   143,000
+  Crash in the last year                     85,600
+
+  The crash: your mix falls 42% in the year to December 2040, as it did from Dec
+  2007 to Nov 2008.
+
+Your investment mix
+───────────────────
+  US Equity  ██████████████████████████████  100%
+
+  Rebalanced back to these weights every month.
+
+  Typical return a year  5.6%      Largest fall   −44%
+  Worst year in 20       −23%      Volatility    17.0%
+
+How we worked it out
+────────────────────
+  Market scenarios
+    We simulated 200 possible paths for the markets, month by month, by
+    replaying blocks of past monthly returns, about 6 months at a time, in a
+    random order (a stationary block bootstrap). The past returns are the
+    assets' monthly returns from Nov 1996 to Oct 2026.
+
+  Strong, average and weak markets
+    The average market is the middle scenario (the median). Only 1 scenario in
+    10 does better than the strong market (the 90th percentile), and only 1 in
+    10 does worse than the weak market (the 10th).
+
+  Today's money
+    Returns are after inflation (2.0% a year), so every amount is in today's
+    money: 10,000 in 2040 buys what 10,000 buys today. Taxes aren't included.
+
+  What if markets do worse
+    Lower returns: every scenario earns 1 percentage point a year less. A crash:
+    the markets of the worst 12 months in the data for your mix (Dec 2007 to Nov
+    2008) replace the same months of every scenario.
+
+  Worst year and largest fall
+    Worst year in 20: only 1 twelve-month stretch in 20 of the scenarios loses
+    more. Largest fall: the typical largest fall from a peak over the plan's 14
+    years, before any money is paid in or out. Volatility: of the mix's monthly
+    returns in the history, a year, before inflation.
+
+  What this can't tell you
+    The scenarios only replay months that happened, so none has a month worse
+    than the worst in the data. The chance is an estimate from past markets, not
+    a promise.
+
+  Repeatable
+    Seed 0: the same plan gives the same report.
+
+  Important   The projections in this report about the likelihood of investment
+              outcomes are hypothetical in nature, do not reflect actual
+              investment results and are not guarantees of future results.
+              Results may vary with each use and over time: different data,
+              assumptions or seeds give different figures, while the same inputs
+              and seed give the same report.
+
+  Not advice  This report is for illustration and information only. It is not
+              investment, financial, tax or legal advice, and it is not a
+              recommendation or an offer to buy or sell any security or to
+              follow any strategy. The changes it shows illustrate what the
+              figures would need; they are not suggestions to act. Before making
+              financial decisions, consider your own circumstances and, where
+              appropriate, seek advice from a qualified professional.
+
+  Finalytics 1.0.0-rc.7 · inputs a7d9ac9762ea
+

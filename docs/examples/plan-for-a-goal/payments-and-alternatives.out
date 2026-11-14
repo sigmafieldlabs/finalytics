@@ -1,0 +1,146 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  PLANNING                                     Nov 2026 to Oct 2066
+Retirement income
+4,000 a month, Nov 2046 to Oct 2066 · Balanced 60/40 · 500 scenarios ·
+today's money
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Where you stand
+───────────────
+  On track: an 88% chance of paying 4,000 a month in full from November 2046 to
+  October 2066. You want at least 85%.
+  When the money runs short, it is typically in March 2062; even then, about 76%
+  of the money planned is paid.
+
+  By October 2066
+    Strong market (1 in 10 does better)             5.9M left
+    Average market                                  1.4M left
+    Weak market (1 in 10 does worse)        Runs out Jun 2065
+
+Your plan
+─────────
+  November 2026                      Already set aside                   250,000
+                                     What the plan starts with
+  Every month, Nov 2026 to Oct 2046  Monthly saving                        1,500
+                                     240 payments
+  Every month, Nov 2046 to Oct 2066  Goal: retirement income              −4,000
+                                     240 monthly payments; chance wanted: at
+                                     least 85% that every one is paid in full
+
+  Returns are after inflation (2.5% a year), so every amount is in today's
+  money: 4,000 in 2066 buys what 4,000 buys today. If there is ever not enough
+  left for a payment, the plan pays what it can and counts that payment as
+  missed.
+
+How much room there is: any one of these would still keep an 85% chance
+───────────────────────────────────────────────────────────────────────
+  Saving less each month        −250     1,250 a month instead of 1,500, until
+                                         October 2046
+  Setting aside less today      −40,000  Starting with 210,000 instead of
+                                         250,000
+  Starting the payments sooner  −1 year  Starting in November 2045, saving until
+                                         then
+  Taking a little more          +320     4,320 a month instead of 4,000
+
+  Any one of these on its own would still keep an 85% chance.
+
+What if markets do worse?
+─────────────────────────
+                           Chance  Average market, Oct 2066
+  Your plan as it stands      88%                 1.4M left
+  Returns 1% a year lower     77%                 666k left
+  Crash as payments start     70%                 488k left
+
+  The crash: your mix falls 26% in the first year of payments, as it did from
+  Dec 2007 to Nov 2008.
+
+  A crash as the payments start is the bigger danger: the payments keep selling
+  investments while prices are low, so less is left to recover.
+
+Your investment mix: Balanced 60/40
+───────────────────────────────────
+  US Equity  ██████████████████               60%
+  Bonds      ████████████                     40%
+
+  Rebalanced back to these weights every month.
+
+  Typical return a year  4.6%      Largest fall   −39%
+  Worst year in 20       −15%      Volatility    10.4%
+
+  Mix                     Chance        Weak market  Average market  Worst year
+  Cautious 30/70             82%  Runs out Sep 2063       439k left         −9%
+  Balanced 60/40 (yours)     88%  Runs out Jun 2065       1.4M left        −15%
+  Growth 80/20               88%  Runs out Jul 2064       2.3M left        −20%
+
+How we worked it out
+────────────────────
+  Market scenarios
+    We simulated 500 possible paths for the markets, month by month, by
+    replaying blocks of past monthly returns, about 12 months at a time, in a
+    random order (a stationary block bootstrap). The past returns are the
+    assets' monthly returns from Nov 1996 to Oct 2026.
+
+  Strong, average and weak markets
+    The average market is the middle scenario (the median). Only 1 scenario in
+    10 does better than the strong market (the 90th percentile), and only 1 in
+    10 does worse than the weak market (the 10th).
+
+  Chance
+    The share of scenarios in which every payment from November 2046 to October
+    2066 is made in full.
+
+  Status
+    Room to spare when the chance is at least 90%; on track when it is at least
+    the 85% you want; nearly on track when it is up to 15 points below it; off
+    track below that.
+
+  Today's money
+    Returns are after inflation (2.5% a year), so every amount is in today's
+    money: 4,000 in 2066 buys what 4,000 buys today. Taxes aren't included.
+
+  How much room there is
+    Each change is worked out on the same scenarios, one at a time: the largest
+    change that still keeps an 85% chance.
+
+  Runs out
+    The month the money can no longer pay in full. In a weak market, that is the
+    month by which 1 scenario in 10 has run out; in an average market, half
+    have.
+
+  What if markets do worse
+    Lower returns: every scenario earns 1 percentage point a year less. A crash:
+    the markets of the worst 12 months in the data for your mix (Dec 2007 to Nov
+    2008) replace the same months of every scenario; other mixes are tested with
+    the same months.
+
+  Worst year and largest fall
+    Worst year in 20: only 1 twelve-month stretch in 20 of the scenarios loses
+    more. Largest fall: the typical largest fall from a peak over the plan's 40
+    years, before any money is paid in or out. Volatility: of the mix's monthly
+    returns in the history, a year, before inflation.
+
+  What this can't tell you
+    The scenarios only replay months that happened, so none has a month worse
+    than the worst in the data. The chance is an estimate from past markets, not
+    a promise.
+
+  Repeatable
+    Seed 0: the same plan gives the same report.
+
+  Important   The projections in this report about the likelihood of investment
+              outcomes are hypothetical in nature, do not reflect actual
+              investment results and are not guarantees of future results.
+              Results may vary with each use and over time: different data,
+              assumptions or seeds give different figures, while the same inputs
+              and seed give the same report.
+
+  Not advice  This report is for illustration and information only. It is not
+              investment, financial, tax or legal advice, and it is not a
+              recommendation or an offer to buy or sell any security or to
+              follow any strategy. The changes it shows illustrate what the
+              figures would need; they are not suggestions to act. Before making
+              financial decisions, consider your own circumstances and, where
+              appropriate, seek advice from a qualified professional.
+
+  Finalytics 1.0.0-rc.7 · inputs c50158ea230e
+

@@ -1,0 +1,55 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  REBALANCE                                             30 Oct 2026
+To the target weights · whole units
+1 account · $470,522 · 5 trades · one-way turnover 17.7%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Weights
+───────
+  Holding   Before  Target  After  Change  Value after
+  BND        21.0%   35.0%  34.9%  +13.9%     $164,159
+  VTI        45.7%   35.0%  35.1%  −10.7%     $164,977
+  EXSA       12.5%   10.0%  10.0%   −2.5%      $47,080
+  GLD        10.3%   10.0%  10.1%   −0.2%      $47,319
+  VNQ         6.1%   10.0%  10.0%   +3.9%      $46,876
+  USD cash    3.6%    0.0%   0.0%   −3.6%          $28
+  EUR cash    0.7%    0.0%   0.0%   −0.7%           $0
+
+  Volatility 9.4% → 8.5% (target 8.5%); expected return 14.8% → 12.7%.
+
+Trades
+──────
+  Brokerage account · $470,522 · one-way turnover 17.7%
+    Sell  163  EXSA   64.08 EUR  $11,680   gain $4,221
+    Sell    3  GLD   355.78 USD   $1,067   gain $514
+    Sell  135  VTI   371.57 USD  $50,162   gain $6,704
+    Buy   913  BND    71.56 USD  $65,334
+    Buy   193  VNQ    93.94 USD  $18,130
+    Convert 13,569.54 EUR to 15,174.55 USD
+
+Costs
+─────
+                     Fees     Gain
+  Brokerage account   $83  $11,439
+
+  Fees: 0.05% of the value traded plus 2.00 a trade, at least 1.00, in the
+  instrument's currency.
+
+How the trades were found
+─────────────────────────
+  Targets    Weights given by holding.
+  Accounts   Brokerage account.
+  Prices     30 Oct 2026; other currencies at the exchange rates of that day.
+  Trades     Whole units, each rounded towards zero. Trades worth less than $100
+             are left out. Purchases leave room for the fees, so the trades fit
+             the cash each account has.
+  Lots       The highest-cost lots first.
+  Fees       0.05% of the value traded plus 2.00 a trade, at least 1.00, in the
+             instrument's currency.
+  Tax        Not estimated: no tax rates were given.
+  Estimates  Volatility and expected return from the holdings' daily returns,
+             Nov 2023 to Oct 2026, annualised: the Ledoit–Wolf covariance and
+             historical means. Cash is riskless and earns nothing here.
+
+  Finalytics 1.0.0-rc.7 · inputs 75859ae14b28
+

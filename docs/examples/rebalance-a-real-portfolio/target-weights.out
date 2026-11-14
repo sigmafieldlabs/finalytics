@@ -1,0 +1,67 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  REBALANCE                                             30 Oct 2026
+To the target weights · whole units
+2 accounts · $696,578 · 10 trades · one-way turnover 15.5%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Weights
+───────
+  Holding   Before  Target  After  Change  Value after
+  VTI        51.2%   40.0%  40.1%  −11.1%     $279,049
+  BND        24.9%   35.0%  35.0%  +10.1%     $243,662
+  EXSA        8.4%   10.0%  10.0%   +1.6%      $69,581
+  GLD         6.9%   10.0%  10.0%   +3.0%      $69,377
+  VNQ         4.1%    5.0%   5.0%   +0.9%      $34,758
+  EUR cash    0.5%    0.0%   0.0%   −0.5%           $0
+  USD cash    3.9%    0.0%   0.0%   −3.9%         $151
+
+  Volatility 9.5% → 8.6% (target 8.6%); expected return 14.3% → 13.2%.
+
+Trades
+──────
+  Brokerage account · $470,522 · one-way turnover 14.3%
+    Sell  126  VTI   371.57 USD  $46,818   gain $20,501
+    Buy   612  BND    71.56 USD  $43,795
+    Buy    94  EXSA   64.08 EUR   $6,736
+    Buy    37  GLD   355.78 USD  $13,164
+    Buy    40  VNQ    93.94 USD   $3,758
+    Convert 3,233.84 USD to 2,891.80 EUR
+
+  Retirement account · $226,056 · one-way turnover 17.9%
+    Sell   83  VTI   371.57 USD  $30,840   gain $13,505
+    Buy   369  BND    71.56 USD  $26,406
+    Buy    57  EXSA   64.08 EUR   $4,085
+    Buy    22  GLD   355.78 USD   $7,827
+    Buy    24  VNQ    93.94 USD   $2,255
+    Convert 4,084.58 USD to 3,652.56 EUR
+
+Costs
+─────
+                      Fees     Gain
+  Brokerage account     $0  $20,501
+  Retirement account    $0  $13,505
+  Total                 $0  $34,006
+
+  Fees: none.
+
+How the trades were found
+─────────────────────────
+  Targets    Weights given by holding.
+  Accounts   Brokerage account and Retirement account, rebalanced together. A
+             holding above its target is sold from the accounts that hold it, in
+             proportion to their holdings; one below it is bought in proportion
+             to the value each account has free. Trades do not move cash between
+             accounts.
+  Prices     30 Oct 2026; other currencies at the exchange rates of that day.
+  Trades     Whole units, each rounded towards zero. Purchases leave room for
+             the fees, so the trades fit the cash each account has.
+  Lots       Each account's own lot method (first in, first out unless the
+             account says otherwise).
+  Fees       None.
+  Tax        Not estimated: no tax rates were given.
+  Estimates  Volatility and expected return from the holdings' daily returns,
+             Nov 2023 to Oct 2026, annualised: the Ledoit–Wolf covariance and
+             historical means. Cash is riskless and earns nothing here.
+
+  Finalytics 1.0.0-rc.7 · inputs 34c45b192165
+

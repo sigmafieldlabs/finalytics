@@ -1,0 +1,88 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  COMPARISON                                   Nov 2001 to Oct 2026
+Walk-forward on 5 years · rebalanced quarterly · 10 bp trading costs
+3 methods · 5 assets · monthly · T-Bills as cash
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Out of sample, Nov 2001 to Oct 2026
+───────────────────────────────────
+  Method            Return  Volatility  Sharpe  Drawdown  CVaR 95%  Turnover
+  Equal weight        7.7%       11.4%    0.55    −37.8%      6.9%       10%
+  Minimum variance    5.8%        8.4%    0.50    −22.3%      4.7%       15%
+  Maximum Sharpe      6.1%       10.6%    0.44    −40.8%      6.6%       35%
+
+  Return, volatility and turnover a year, turnover one-way (the share of value
+  bought, or sold); drawdown the largest fall; CVaR the average loss in the
+  worst 5% of periods. Equal weight: fully invested and long only; the limits on
+  weights do not apply. Maximum Sharpe found no weights at 6 refits, from Jun
+  2008 to Sep 2009 (infeasible); it kept the weights it held.
+
+In sample and out of sample
+───────────────────────────
+  Method            Sharpe in  Sharpe out  Change  Return in  Return out
+  Equal weight           0.55        0.55    0.00       7.7%        7.7%
+  Minimum variance       0.59        0.50   −0.09       6.5%        5.8%
+  Maximum Sharpe         0.64        0.44   −0.20       7.1%        6.1%
+  In sample, each method is fitted to the whole history and scored on the
+  periods tested, Nov 2001 to Oct 2026: it sees the returns it is scored on, so
+  it looks better than it can be. The gap to out of sample is the cost of
+  estimating from the past.
+
+Growth of 100, out of sample
+────────────────────────────
+  Equal weight      ▁▁▁▁▁▁▁▂▂▂▁▁▂▁▁▁▁▂▂▂▂▂▃▃▃▃▃▃▃▄▄▄▄▅▆▆▆▅▆▆▆▆▅▆▆▇██▇▇  645.5
+  Minimum variance  ▁▁▁▁▁▁▂▁▁▂▁▁▁▁▁▁▁▂▂▂▂▂▂▃▂▂▃▃▃▃▃▄▄▅▅▆▆▅▆▆▆▆▅▆▆▇▇██▇  409.6
+  Maximum Sharpe    ▁▁▁▁▁▁▂▂▂▂▂▂▂▁▁▁▁▂▂▂▂▂▂▃▂▃▃▃▃▃▃▄▄▄▅▅▆▅▆▆▅▅▅▅▆▆▇██▇  442.7
+
+Calendar-year returns
+─────────────────────
+  Year   Equal weight  Minimum variance  Maximum Sharpe
+  2001*          0.4%              0.7%            0.3%
+  2002           3.4%              2.9%            2.2%
+  2003          22.2%             12.3%           11.0%
+  2004           9.1%              4.5%           11.4%
+  2005           7.0%             −2.6%           12.0%
+  2006         −11.2%             −8.3%           −7.0%
+  2007          −3.6%             −1.5%           −3.3%
+  2008         −22.1%             −9.8%          −27.8%
+  2009          41.6%             29.9%           36.7%
+  2010          19.4%              4.9%           14.6%
+  2011          24.3%             17.1%           13.6%
+  2012          20.7%             12.5%            8.1%
+  2013          10.8%             −1.2%            4.3%
+  2014          −4.0%              0.3%            0.5%
+  2015          18.1%             17.3%           14.0%
+  2016          17.0%             14.6%           13.2%
+  2017          18.0%             16.0%           12.8%
+  2018          29.6%             24.3%           25.8%
+  2019           7.6%              4.6%            7.6%
+  2020           1.1%              9.1%            6.7%
+  2021         −10.1%             −9.7%           −9.1%
+  2022         −10.5%             −6.2%           −7.8%
+  2023          21.0%             17.2%           20.7%
+  2024          33.9%             24.5%           26.2%
+  2025         −15.4%             −8.3%           −5.5%
+  2026*         −4.4%             −4.8%           −6.2%
+
+  * Part of the year.
+
+Weights at the last refit, Sep 2026
+───────────────────────────────────
+                    US Equity  Intl Equity  Bonds  Gold  Real Estate
+  Equal weight            20%          20%    20%   20%          20%
+  Minimum variance        22%           4%    40%   28%           6%
+  Maximum Sharpe          33%          10%      –   40%          17%
+
+How the methods were tested
+───────────────────────────
+  Assets      US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as
+              cash. Monthly returns, Nov 1996 to Oct 2026.
+  Validation  Walk-forward: refitted at each rebalance on the previous 60
+              months, scored on Nov 2001 to Oct 2026.
+  Limits      At most 40% in any asset; fully invested.
+  Trading     Rebalanced quarterly, 10 bp trading costs.
+  Ratios      Against the T-Bills return, 1.8% a year over the test; value at
+              risk and expected shortfall from history, at 95% over one month.
+
+  Finalytics 1.0.0-rc.7 · inputs 170629937beb
+

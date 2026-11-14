@@ -1,0 +1,106 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 30 Oct 2026
+Positive trend without extreme RSI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+59 of 200 securities pass all 4 rules. The 10 with the highest 6-month return
+are shown.
+
+  Securities 200   ·   Matches 10   ·   Rules 4   ·   Prices to 30 Oct 2026
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                             ██████████████████████████████  200
+  With a price in the 5 days to 30 Oct 2026  ██████████████████████████████  199
+  Price above its 200-day average            ███████████████████████         154
+                                             154 pass this rule on its own
+  50-day average above 200-day at least 1    ██████████████████              122
+                                             127 pass this rule on its own
+  RSI (14 days) between 40 and 70            ██████████                       68
+                                             123 pass this rule on its own
+  MACD histogram above 0                     █████████                        59
+                                             187 pass this rule on its own
+  Top 10 by 6-month return                   ██                               10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by 6-month return
+──────────────────────────
+                              Return  vs 200-  50 above     RSI       MACD
+   #  Ticker  Sector         6-month  day avg   200-day  14-day  histogram
+   1  PEMD    Technology      157.6%   +71.1%       yes◆   67.7◆      7.72
+   2  GARS    Communication   108.4%   +45.2%       yes◆   64.0◆      0.33
+   3  FALG    Health Care      74.6%   +39.2%       yes◆   58.7       1.50
+   4  HALW    Health Care      66.6%   +41.3%       yes◆   69.1◆      0.72
+   5  BRAG    Health Care      65.0%   +37.4%       yes◆   67.9◆      0.20
+   6  VERB    Health Care      63.8%   +32.0%       yes◆   62.7       1.44
+   7  LINM    Communication    61.2%   +44.1%       yes◆   67.0◆      0.02◆
+   8  YARS    Technology       60.5%   +28.0%       yes◆   68.7◆      1.41
+   9  KELB    Technology       57.8%   +42.0%       yes◆   65.1◆      0.07
+  10  ASHB    Technology       57.2%   +27.7%       yes◆   68.8◆     76.64
+
+  ◆ close to a rule's limit: within 10% of it (for a limit of 0, within 10% of
+  a typical value).
+  Also pass every rule, outside the top 10: YARH (56.8%), ZENG (54.7%), DUNW
+  (49.7%), TORC (48.0%), TORG (46.5%), IVOB (46.2%), KELH (46.0%), PEMG
+  (45.9%), ULVG (44.1%), IVOD (43.5%) and 39 more.
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  KELC  RSI (14 days) 70.1, needs 40 to 70
+  BRAW  RSI (14 days) 70.1, needs 40 to 70
+  FALS  RSI (14 days) 70.2, needs 40 to 70
+  OSBC  RSI (14 days) 70.3, needs 40 to 70
+  DUNB  RSI (14 days) 70.9, needs 40 to 70
+  IVOW  RSI (14 days) 70.9, needs 40 to 70
+  BRAH  RSI (14 days) 71.1, needs 40 to 70
+  NORC  RSI (14 days) 71.4, needs 40 to 70
+  ELMG  RSI (14 days) 71.4, needs 40 to 70
+  DUNC  RSI (14 days) 71.5, needs 40 to 70
+  WEXB  RSI (14 days) 71.5, needs 40 to 70
+  VERD  RSI (14 days) 71.6, needs 40 to 70
+  ZENB  RSI (14 days) 71.6, needs 40 to 70
+  ZENH  RSI (14 days) 71.8, needs 40 to 70
+  IVOH  RSI (14 days) 72.1, needs 40 to 70
+  GARD  RSI (14 days) 72.2, needs 40 to 70
+  VERG  RSI (14 days) 72.3, needs 40 to 70
+  OSBM  Price vs 200-day average −0.6%, needs above its average
+  KELW  RSI (14 days) 72.8, needs 40 to 70
+  WEXH  RSI (14 days) 72.8, needs 40 to 70
+
+  And 64 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  Price above its 200-day average                                154 of 200 pass
+  ▂▁ ▂▂ ▂▂  ▁ ▂▁▂ ▂▃▃▆▂▄▁▆▃▂▅▂▅▃▄▆▂▆▅▄▆█▄▆▂▅▂▃▄▂▂▄▁ ▂▂   ▂▂▂▁▁ ▂▂▁ ▂▁ ▂   ▁▁ ▂
+  ─────────────────────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  −23.9%          its average                                           +59.8%
+
+  50-day average above 200-day at least 1                        127 of 200 pass
+     ▅                                                                    █
+  ────────────────────────────────────────────────────────────────────────┃━━━
+  yes                                                                     1
+
+  RSI (14 days) between 40 and 70                                123 of 200 pass
+  ▃  ▁    ▁ ▂▃ ▂▂  ▁▂  ▁ ▁ ▁▂▂▃ ▂▇▃▄▄ ▃█▅▄▃▂▄▁▄▅▅▄▅▇▄▅▆▃▇▃▇▂▃▄▄▂▄▂▂▃▄▁▂▁▁▁▂ ▁▂
+  ───┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃───────────────────────
+    40                                               70                   84.5
+
+  MACD histogram above 0                                         187 of 200 pass
+  ▁▁ ▁▁▁█▅▃▁▃▁▂▂▁▁▁▁▁▁▁▁ ▁▁▁▁▁ ▁▁▁ ▁▁▁ ▁▁ ▁▁   ▁    ▁   ▁  ▁▁       ▁   ▁ ▁  ▁
+  ──────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  −1.09 0                                                                13.58
+
+Data
+────
+  199 of 200 securities have the prices every rule needs. 1 has no price in
+  the 5 days to 30 Oct 2026 and is left out: NORH. 42 closes are not numbers,
+  and their dates are left out: YARW, OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs df00e230c63d
+

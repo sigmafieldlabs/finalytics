@@ -57,9 +57,12 @@ file. An example belongs to one page, and lives in the folder named after it.
 - **One whole program.** It imports what it uses and runs on its own, so that a reader can start
   at any example. The same code runs in the page, in a terminal and in a notebook.
 - **The same in every language.** Each language's program prints the same output, character for
-  character, and CI fails if they differ. Print what the engine lays out (a report, a table of
-  results), or round numbers the same way in each language. An example leaves out a language
-  only when the feature is not in it, such as the pandas helpers, which are Python's.
+  character, and CI fails if they differ. A screen's input digest is the one exception: native
+  and WebAssembly floating point may give it different values even when every displayed figure
+  agrees, so the check ignores that digest alone. Each page still records its runtime's real
+  provenance. Print what the engine lays out (a report, a table of results), or round numbers
+  the same way in each language. An example leaves out a language only when the feature is not
+  in it, such as the pandas helpers, which are Python's.
 - **The data the packages ship.** `datasets` in each language: the household portfolio, the six
   asset classes and the universe of 200 companies for screening. An example may also read the
   household's files by name (`transactions.csv`, `prices.csv`, `fx.csv`, `instruments.csv` and

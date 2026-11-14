@@ -1,0 +1,97 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 30 Oct 2026
+Large companies at moderate valuations
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+67 of 200 securities pass all 3 rules. The 10 with the highest market cap are
+shown.
+
+  Securities 200   ·   Matches 10   ·   Rules 3   ·   Prices to 30 Oct 2026
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                             ██████████████████████████████  200
+  With a price in the 5 days to 30 Oct 2026  ██████████████████████████████  199
+  Trailing pe between 5 and 25               █████████████████████           138
+                                             138 pass this rule on its own
+  Price to book below 3                      ██████████                       67
+                                             89 pass this rule on its own
+  Market cap above 1000000000                ██████████                       67
+                                             199 pass this rule on its own
+  Top 10 by market cap                       ██                               10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by market cap
+──────────────────────
+                          Market  Trailing    Price
+   #  Ticker  Sector         cap        pe  to book
+   1  SELM    Financials    570B      11.6     2.18
+   2  SELH    Energy        518B      14.3     2.16
+   3  WEXD    Energy        461B      11.7     2.18
+   4  IVOH    Financials    439B      14.5     1.11
+   5  VERD    Financials    428B        10        1
+   6  QUIG    Financials    419B      14.3     2.43
+   7  KELD    Materials     415B      17.5     1.76
+   8  KELG    Financials    402B      13.2     2.44
+   9  KELH    Energy        371B         8     2.43
+  10  TORC    Financials    361B      12.3     2.34
+
+  Also pass every rule, outside the top 10: GARB (310B), LINC (289B), LINH
+  (286B), OSBC (265B), MARB (252B), ZENB (246B), TORM (197B), ULVG (195B),
+  ASHG (187B), ZENC (148B) and 47 more.
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  ALDG  Price to book 3.2, needs below 3
+  KELS  Price to book 3.21, needs below 3
+  DUNH  Price to book 3.24, needs below 3
+  MARM  Price to book 3.24, needs below 3
+  YARB  Price to book 3.24, needs below 3
+  DUNG  Price to book 3.35, needs below 3
+  HALH  Price to book 3.35, needs below 3
+  TORW  Price to book 3.4, needs below 3
+  FALM  Trailing pe 28.6, needs 5 to 25
+  PEMH  Trailing pe 28.8, needs 5 to 25
+  IVOS  Price to book 3.63, needs below 3
+  HALG  Trailing pe 31.4, needs 5 to 25
+  OSBW  Trailing pe 31.9, needs 5 to 25
+  QUIH  Price to book 3.84, needs below 3
+  ULVW  Price to book 3.85, needs below 3
+  DUND  Price to book 3.86, needs below 3
+  CALW  Price to book 4.01, needs below 3
+  ELMW  Trailing pe 33.5, needs 5 to 25
+  HALC  Price to book 4.06, needs below 3
+  NORM  Price to book 4.14, needs below 3
+
+  And 73 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  Trailing pe between 5 and 25                                   138 of 200 pass
+         ▁▁▂▁▁▂▁▂▂▁▁▁▂▄▃▅▂▂▃▂▅▄▅█▂▂▂▂▄▄▃▅▂  ▂▂▂▂▁ ▁▁▂▁  ▁  ▁▁▁   ▂ ▁▁▁▁▁▁ ▂▁▁
+  ───┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃─────────────────────────────────────
+     5                                 25                                45.46
+
+  Price to book below 3                                           89 of 200 pass
+   ▁▁▄▂▄▄▂█▆▆▃▂▂ ▂▂▁▁▂▂▂▁▄▂▁▂▂▄▁▂▂▂▁▁▁▂▁ ▃▃ ▂▂   ▁ ▁    ▁  ▁   ▁▁▁ ▁▁▁▁  ▁▁  ▂
+  ━━━━━━━━━━━━━━┃─────────────────────────────────────────────────────────────
+  0.76          3                                                        13.12
+
+  Market cap above 1000000000                                    199 of 200 pass
+     █▄▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▁▁▁▁▁▁▁▁ ▁▁ ▁▁▁▁ ▁▁  ▁▁     ▁▁▁ ▁▁▁▁▁▁▁▁  ▁▁▁▁▁  ▁  ▁
+  ───┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1000000000                                                              539B
+
+Data
+────
+  199 of 200 securities have the prices every rule needs. 1 has no price in
+  the 5 days to 30 Oct 2026 and is left out: NORH. 42 closes are not numbers,
+  and their dates are left out: YARW, OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs bd9e0046a968
+

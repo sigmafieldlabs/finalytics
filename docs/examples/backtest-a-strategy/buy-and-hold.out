@@ -1,0 +1,83 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  BACKTEST                                     Nov 1996 to Oct 2026
+Buy and hold
+Fixed weights · bought and held · no trading costs
+Monthly · T-Bills as cash
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Allocation: fixed weights
+─────────────────────────
+  US Equity  █████████████████████            70.0%
+  Gold       █████████                        30.0%
+
+Statistics
+──────────
+                    Buy and hold
+  Return a year             8.2%
+  Volatility               14.4%
+  Sharpe ratio              0.46
+  Sortino ratio             0.73
+  Maximum drawdown        −46.9%
+  CDaR 95%                −37.3%
+  Ulcer index              14.3%
+  Worst month             −17.9%
+  VaR 95%, 1 month          5.3%
+
+Trading
+───────
+  Bought at the start and held: no trades after it, so no turnover or trading
+  costs.
+
+Growth of 100
+─────────────
+  Buy and hold  ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▂▂▂▂▃▃▃▄▄▆▆▅▆▆▆▅▆▆██▇▇  1078.0
+
+Calendar-year returns
+─────────────────────
+  Year   Buy and hold
+  1996*         +2.6%
+  1997          +9.4%
+  1998          +9.5%
+  1999         +24.3%
+  2000          −7.8%
+  2001          −5.3%
+  2002          −4.5%
+  2003         +19.0%
+  2004          +7.3%
+  2005          +5.0%
+  2006         −13.0%
+  2007          −8.2%
+  2008         −26.7%
+  2009         +55.6%
+  2010         +37.6%
+  2011         +10.5%
+  2012         +21.1%
+  2013         +16.9%
+  2014          −1.9%
+  2015         +16.5%
+  2016         +25.0%
+  2017         +27.4%
+  2018         +52.7%
+  2019         +18.0%
+  2020          −5.3%
+  2021          −2.3%
+  2022         −20.1%
+  2023         +27.7%
+  2024         +43.5%
+  2025         −20.7%
+  2026*         −8.5%
+
+  * Part of the year.
+
+How the allocation was tested
+─────────────────────────────
+  Assets      US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as
+              cash. Monthly returns, Nov 1996 to Oct 2026.
+  Validation  Fixed weights, not fitted to these returns, scored on Nov 1996 to
+              Oct 2026.
+  Trading     Bought and held, no trading costs.
+  Ratios      Against the T-Bills return, 2.3% a year over the test; value at
+              risk and expected shortfall from history, at 95% over one month.
+
+  Finalytics 1.0.0-rc.7 · inputs edea2577507d
+

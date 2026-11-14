@@ -1,0 +1,136 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  PLANNING                                     Nov 2026 to Jun 2030
+House deposit
+$150,000 by June 2030 · 1,000 scenarios · today's money
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Where you stand
+───────────────
+  Off track: a 62% chance of reaching $150,000 by June 2030.
+  You want at least 80%. If you fall short, it is usually by about $14,200.
+
+  By June 2030 you would have
+    Strong market (1 in 10 does better)     $199,000
+    Average market                          $158,000
+    Weak market (1 in 10 does worse)        $125,000
+
+Your plan
+─────────
+  November 2026                      Already set aside                   $60,000
+                                     What the plan starts with
+  Every month, Nov 2026 to May 2030  Monthly saving                       $2,500
+                                     43 payments
+  March 2028                         Car                                −$25,000
+                                     Taken out as planned
+  June 2030                          Goal: house deposit                $150,000
+                                     Chance wanted: at least 80%
+
+  Returns are after inflation (2.5% a year) and fees (0.25% a year), so every
+  amount is in today's money: $150,000 in 2030 buys what $150,000 buys today. If
+  there is ever not enough left for a payment, the plan pays what it can.
+
+Getting on track: any one of these would give an 80% chance
+───────────────────────────────────────────────────────────
+  Saving more each month  +$330      $2,830 a month instead of $2,500
+  Adding to it today      +$14,600   Starting with $74,600 instead of $60,000
+  Allowing more time      +6 months  Reaching it by December 2030, saving until
+                                     then
+  A lower target          −$14,000   $136,000 instead of $150,000
+
+  Any one of these would be enough on its own.
+
+What if markets do worse?
+─────────────────────────
+                           Chance  Average market, Jun 2030
+  Your plan as it stands      62%                  $158,000
+  Returns 1% a year lower     57%                  $154,000
+  Crash before the goal        1%                  $112,000
+
+  The crash: your mix falls 26% in the year before June 2030, as it did from Dec
+  2007 to Nov 2008.
+
+  A crash just before the money is needed is the bigger danger: there is no time
+  to recover. The plan has little to spare: typically you would have only $8,400
+  more than the goal.
+
+Your investment mix
+───────────────────
+  US Equity  ██████████████████               60%
+  Bonds      ████████████                     40%
+
+  Rebalanced back to these weights every month.
+
+  Typical return a year  4.3%      Largest fall   −16%
+  Worst year in 20       −16%      Volatility    10.4%
+
+How we worked it out
+────────────────────
+  Market scenarios
+    We simulated 1,000 possible paths for the markets, month by month, by
+    replaying blocks of past monthly returns, about 12 months at a time, in a
+    random order (a stationary block bootstrap). The past returns are the
+    assets' monthly returns from Nov 1996 to Oct 2026.
+
+  Strong, average and weak markets
+    The average market is the middle scenario (the median). Only 1 scenario in
+    10 does better than the strong market (the 90th percentile), and only 1 in
+    10 does worse than the weak market (the 10th).
+
+  Chance
+    The share of scenarios in which the value at the start of June 2030 is at
+    least $150,000.
+
+  Status
+    Room to spare when the chance is at least 90%; on track when it is at least
+    the 80% you want; nearly on track when it is up to 15 points below it; off
+    track below that.
+
+  Today's money
+    Returns are after inflation (2.5% a year) and fees (0.25% a year), so every
+    amount is in today's money: $150,000 in 2030 buys what $150,000 buys today.
+    Taxes aren't included.
+
+  Getting on track
+    Each change is worked out on the same scenarios, one at a time: the smallest
+    change that gives an 80% chance.
+
+  Spending
+    Spending is paid as far as the money goes: Car is paid in full in 100% of
+    scenarios.
+
+  What if markets do worse
+    Lower returns: every scenario earns 1 percentage point a year less. A crash:
+    the markets of the worst 12 months in the data for your mix (Dec 2007 to Nov
+    2008) replace the same months of every scenario.
+
+  Worst year and largest fall
+    Worst year in 20: only 1 twelve-month stretch in 20 of the scenarios loses
+    more. Largest fall: the typical largest fall from a peak over the plan's 4
+    years, before any money is paid in or out. Volatility: of the mix's monthly
+    returns in the history, a year, before inflation.
+
+  What this can't tell you
+    The scenarios only replay months that happened, so none has a month worse
+    than the worst in the data. The chance is an estimate from past markets, not
+    a promise.
+
+  Repeatable
+    Seed 0: the same plan gives the same report.
+
+  Important   The projections in this report about the likelihood of investment
+              outcomes are hypothetical in nature, do not reflect actual
+              investment results and are not guarantees of future results.
+              Results may vary with each use and over time: different data,
+              assumptions or seeds give different figures, while the same inputs
+              and seed give the same report.
+
+  Not advice  This report is for illustration and information only. It is not
+              investment, financial, tax or legal advice, and it is not a
+              recommendation or an offer to buy or sell any security or to
+              follow any strategy. The changes it shows illustrate what the
+              figures would need; they are not suggestions to act. Before making
+              financial decisions, consider your own circumstances and, where
+              appropriate, seek advice from a qualified professional.
+
+  Finalytics 1.0.0-rc.7 · inputs fcad63ab85dd
+

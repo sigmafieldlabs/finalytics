@@ -1,0 +1,360 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  PORTFOLIO OVERVIEW                              as of 30 Oct 2026
+Attribution and scenarios since 2025
+2 accounts · 6 instruments · 203 transactions · USD · from 1 Jan 2025
+Benchmark: BENCH, in USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Key figures
+───────────
+  Value (USD)             696,578      Volatility                  9.6%
+  Return, last day         −1.10%      Sharpe ratio                0.81
+  Return, year to date      +5.6%      Maximum drawdown           −9.5%
+  Return since inception   +23.7%      Value at risk, 95%, 1 day  6,177
+  Annualised               +12.3%      Expected shortfall, 1 day  9,353
+
+Growth of 100
+─────────────
+  Portfolio    ▂▂▂▃▃▂▂▁▂▂▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▅▆▆▆▆▇▇▆▅▅▇▇▇▇▇▇▇▇▇██▇▇▇▇  123.7
+  BENCH        ▂▂▂▂▂▂▂▁▂▂▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▅▆▆▆▆▇▇▆▅▆▇▇▇▇▇▇▇▇▇██▇▇▇▇  124.8
+               1 Jan 2025                             30 Oct 2026
+
+Allocation by asset class
+─────────────────────────
+  Equity          █████████████████▉              59.6%  415,468
+  Fixed income    ███████▌                        24.9%  173,461
+  Real assets     ███▍                            11.1%   77,132
+  Cash            █▍                               4.4%   30,517
+
+Allocation by region
+────────────────────
+  North America   ████████████████████████        80.2%  558,914
+  Europe          ██▌                              8.4%   58,761
+  Global          ██▏                              6.9%   48,386
+  Cash            █▍                               4.4%   30,517
+
+Holdings: expected return and risk
+──────────────────────────────────
+  Holding   Weight  Exp. return  Volatility  Share of risk
+  BND        24.9%        −0.2%        5.9%           4.5%
+  EXSA        8.4%       +18.9%       16.0%           5.5%
+  GLD         6.9%       +24.3%       24.6%           6.1%
+  VNQ         4.1%        +4.2%       16.1%           3.6%
+  VTI        51.2%       +15.1%       16.8%          80.3%
+  EUR cash    0.5%        +4.2%        8.0%           0.0%
+  USD cash    3.9%        +0.0%        0.0%           0.0%
+  Expected returns are historical means; the Ledoit–Wolf covariance over 459
+  days.
+
+Efficient frontier (invested holdings, long only)
+─────────────────────────────────────────────────
+                           Exp. return  Volatility
+  Current portfolio             +11.1%       10.2%
+  Without USD cash              +11.6%       10.7%
+  Lowest volatility              +2.3%        5.6%
+  At a similar volatility       +15.1%       10.3%
+
+  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 6 warnings
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! rate for 2025-01-01 carried from 2024-12-31
+  ! and 3 more
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  HOLDINGS                                        as of 30 Oct 2026
+Attribution and scenarios since 2025
+2 accounts · 6 instruments · 203 transactions · USD · from 1 Jan 2025
+Benchmark: BENCH, in USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Positions · total 696,578 USD
+─────────────────────────────
+  Holding   Quantity   Price  Value (USD)  Weight  Unrealised  Return
+  VTI            960  371.57      356,707   51.2%     135,844  +61.5%
+  BND          2,424   71.56      173,461   24.9%       4,713   +2.8%
+  EXSA           820   64.08       58,761    8.4%      21,276  +56.8%
+  GLD            136  355.78       48,386    6.9%      23,428  +93.9%
+  VNQ            306   93.94       28,746    4.1%       6,293  +28.0%
+  USD cash    27,015               27,015    3.9%
+  EUR cash     3,132                3,502    0.5%
+
+Accounts
+────────
+  Account             Value (USD)  Weight  Cash (USD)
+  Brokerage account       470,522   67.5%      20,666
+  Retirement account      226,056   32.5%       9,851
+
+Concentration
+─────────────
+  Largest holding  VTI 53.6%      Effective holdings    2.7
+  Top five            100.0%      Herfindahl index    0.370
+  Shares of the value invested in instruments, cash aside.
+
+Allocation by currency
+──────────────────────
+  USD             ███████████████████████████▍    91.1%  634,315
+  EUR             ██▋                              8.9%   62,263
+
+Allocation by account
+─────────────────────
+  Brokerage account  ████████████████████▎           67.5%  470,522
+  Retirement account █████████▊                      32.5%  226,056
+
+Tax lots · 44 open
+──────────────────
+                            Lots  Unrealised (USD)
+  Long-term, over 365 days    32           190,392
+  Short-term                  12             1,162
+  5 lots at a loss.
+
+  Largest unrealised gains
+  Lot  Account             Holding    Acquired  Quantity  Gain (USD)  Term
+  t3   Brokerage account   VTI      1 Nov 2023       362      58,900  long
+  t9   Retirement account  VTI      1 Nov 2023       359      58,412  long
+  t7   Brokerage account   GLD      1 Nov 2023       136      23,428  long
+  t5   Brokerage account   EXSA     1 Nov 2023       820      21,276  long
+  t8   Brokerage account   VNQ      1 Nov 2023       306       6,293  long
+
+Realised gains and income (USD)
+───────────────────────────────
+                   2023    2024    2025    2026   Total  Period
+  Realised gains      0       0  10,156       0  10,156  10,156
+  Income          2,106  10,552  12,370  10,133  35,160  22,502
+  Realised: 0 short-term, 10,156 long-term.
+  Period: from 1 Jan 2025 to 30 Oct 2026, the report's period; realised 0
+  short-term, 10,156 long-term.
+
+  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  PERFORMANCE                                     as of 30 Oct 2026
+Attribution and scenarios since 2025
+2 accounts · 6 instruments · 203 transactions · USD · from 1 Jan 2025
+Benchmark: BENCH, in USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Returns by period
+─────────────────
+  Period         From  Return  Annualised  Money-wtd  Benchmark  Excess
+  MTD     30 Sep 2026   −0.1%           –      −0.1%      +0.6%   −0.7%
+  QTD     30 Sep 2026   −0.1%           –      −0.1%      +0.6%   −0.7%
+  YTD     31 Dec 2025   +5.6%           –      +5.5%      +5.7%   −0.1%
+  1Y      30 Oct 2025   +7.0%       +7.0%      +6.9%      +7.2%   −0.2%
+  3Y                –       –           –          –          –       –
+  5Y                –       –           –          –          –       –
+  ITD      1 Jan 2025  +23.7%      +12.3%     +12.3%     +24.8%   −1.1%
+  Time-weighted unless noted; money-weighted returns are annual rates for a year
+  or more and over the period for shorter ones; – where the history is too
+  short.
+
+Monthly returns (%)
+───────────────────
+       Jan Feb  Mar Apr May  Jun  Jul Aug  Sep  Oct Nov Dec Year
+  2025 2.7 0.4 −2.1 0.5 3.0  2.9  0.8 2.2  2.9  1.5 0.9 0.3 17.2
+  2026 2.4 1.4 −5.1 5.8 2.7 −1.0 −0.2 2.1 −2.2 −0.1   ·   ·  5.6
+
+Calendar years
+──────────────
+  Year          From           To  Portfolio  Benchmark  Excess
+  2025*   1 Jan 2025  31 Dec 2025     +17.2%     +18.1%   −0.9%
+  2026*  31 Dec 2025  30 Oct 2026      +5.6%      +5.7%   −0.1%
+  * part of the year
+
+Contribution to return, since inception
+───────────────────────────────────────
+  Holding         Contribution  Return  Currency  Avg weight
+  VTI                   +14.8%  +30.5%     +0.0%       47.3%
+  EXSA                   +3.4%  +43.8%    +10.0%        8.6%
+  GLD                    +2.9%  +46.9%     +0.0%        7.7%
+  BND                    +2.1%   +6.6%     +0.0%       28.1%
+  VNQ                    +0.6%  +12.8%     +0.0%        4.5%
+  EUR cash               +0.0%   +7.6%     +7.6%        0.4%
+  USD cash               +0.0%   +0.0%     +0.0%        3.4%
+  Fees and taxes        −0.05%
+
+  By asset class  Contribution  Avg weight
+  Equity                +18.2%       56.0%
+  Fixed income           +2.1%       28.1%
+  Real assets            +3.5%       12.2%
+  Cash                   +0.0%        3.7%
+
+  By region      Contribution  Avg weight
+  Europe                +3.4%        8.6%
+  Global                +2.9%        7.7%
+  North America        +17.5%       79.9%
+  Cash                  +0.0%        3.7%
+
+Accounts
+────────
+  Account               Start      End  Net flows     Gain  Return  Money-wtd
+  Brokerage account   345,777  470,522     34,000   90,745  +25.2%     +13.0%
+  Retirement account  186,966  226,056          0   39,090  +20.9%     +10.9%
+  Household           532,743  696,578     34,000  129,835  +23.7%     +12.3%
+
+Flows and income (USD)
+──────────────────────
+  Year      In      Out  Income
+  2025  24,000        0  12,370
+  2026  20,000  −10,000  10,133
+
+  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 6 warnings
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! rate for 2025-01-01 carried from 2024-12-31
+  ! and 3 more
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  RISK                                            as of 30 Oct 2026
+Attribution and scenarios since 2025
+2 accounts · 6 instruments · 203 transactions · USD · from 1 Jan 2025
+Benchmark: BENCH, in USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Statistics · 459 daily returns, annualised
+──────────────────────────────────────────
+  Return              +12.4%      CDaR 95%          −6.0%
+  Volatility            9.6%      Ulcer index        1.9%
+  Downside deviation    6.6%      Best day         +4.44%
+  Sharpe ratio          0.81      Worst day        −3.14%
+  Sortino ratio         1.17      Skewness           0.28
+  Calmar ratio          1.30      Excess kurtosis    7.74
+  Maximum drawdown     −9.5%
+  Sharpe and Sortino ratios against a risk-free rate of 4.5% a year; the
+  downside deviation is below it. Annual figures here count 252 days a year; the
+  performance section's annualised returns count calendar days.
+
+Against the benchmark
+─────────────────────
+  Active return      −0.6%      Alpha                        −0.9%
+  Tracking error      1.7%      Correlation                   0.99
+  Information ratio  −0.28      Downside beta, capture  1.05, 1.04
+  Beta                1.05      Upside beta, capture    1.06, 1.07
+
+Value at risk and expected shortfall, 1 day (USD)
+─────────────────────────────────────────────────
+  Confidence  Method          Value at risk         Exp. shortfall
+  95%         Historical              6,177  0.89%           9,353   1.34%
+  95%         Parametric              6,578  0.94%           8,335   1.20%
+  95%         Cornish–Fisher          5,575  0.80%           6,195   0.89%
+  99%         Historical             10,070  1.45%          14,468   2.08%
+  99%         Parametric              9,443  1.36%          10,867   1.56%
+  99%         Cornish–Fisher         16,043  2.30%          16,043  2.30%*
+  * The Cornish–Fisher expansion put the tail's mean above its quantile, as it
+  can when the excess kurtosis is large; the expected shortfall is shown at the
+  value at risk, its least.
+
+Drawdowns
+─────────
+  █▆███▆▃▅▅▁▃▆███▇███▆████████▆▅███████▇▆▄▁▃█▇█▆█▄▆▇▇▆███▇▆▄▆▆
+
+  Peak         Trough       Recovery     Depth  Days down  Days back
+  19 Feb 2025  8 Apr 2025   16 May 2025  −9.5%         48         38
+  25 Feb 2026  27 Mar 2026  17 Apr 2026  −6.9%         30         21
+  13 Aug 2026  30 Oct 2026  not yet      −3.1%         78          –
+  2 Jun 2026   10 Jun 2026  4 Aug 2026   −3.1%          8         55
+  12 Nov 2025  20 Nov 2025  28 Nov 2025  −3.0%          8          8
+
+Where the risk comes from · volatility 10.2%
+────────────────────────────────────────────
+  VTI      weight  51.2%   risk ████████████████████████▏       80.3%
+  GLD      weight   6.9%   risk █▊                               6.1%
+  EXSA     weight   8.4%   risk █▋                               5.5%
+  BND      weight  24.9%   risk █▍                               4.5%
+  VNQ      weight   4.1%   risk █▏                               3.6%
+  EUR cash weight   0.5%   risk                                  0.0%
+  USD cash weight   3.9%   risk                                  0.0%
+
+  Equity       weight  59.6%   risk ████████████████████▋     85.8%
+  Real assets  weight  11.1%   risk ██▍                        9.7%
+  Fixed income weight  24.9%   risk █▏                         4.5%
+  Cash         weight   4.4%   risk                            0.0%
+
+  North America weight  80.2%   risk █████████████████████▎    88.4%
+  Global        weight   6.9%   risk █▌                         6.1%
+  Europe        weight   8.4%   risk █▍                         5.5%
+  Cash          weight   4.4%   risk                            0.0%
+
+Correlation
+───────────
+                 1     2     3     4     5     6
+  1 BND       1.00  0.10  0.13  0.29  0.14  0.01
+  2 EXSA      0.10  1.00  0.15  0.22  0.27  0.40
+  3 GLD       0.13  0.15  1.00  0.11  0.18  0.03
+  4 VNQ       0.29  0.22  0.11  1.00  0.49  0.00
+  5 VTI       0.14  0.27  0.18  0.49  1.00  0.00
+  6 EUR cash  0.01  0.40  0.03  0.00  0.00  1.00
+  USD cash has no risk and is left out.
+
+Rolling 63-day figures (last value)
+───────────────────────────────────
+  Rolling volatility       ▄██████▂▁▂▁▁▁▁▂▂▂▂▂▃▂▂▃▃▃▄▅▅▅▅▅▅▄▄▄▃▃▃▃▃  7.5%
+  Rolling Sharpe ratio     ▂▁▂▂▃▄▄██▆▆▇▇▇▆▆▄▅▃▃▄▄▄▄▃▁▃▂▃▃▃▅▄▃▃▃▄▃▂▂  −1.11
+  Rolling beta             ▄▄▄▄▄▄▄▁▁▁▂▁▂▁▃▅▅▅▅▆▆▆▇▇▆▆▅▅▄▄▅▅▆▆▇██▆▆▆  1.12
+  Rolling tracking error   ▄████▇▇▂▁▁▁▁▁▁▂▂▂▂▂▂▂▅▆▆▆▇██▅▄▅▆▄▅▅▅▅▃▃▄  1.7%
+
+  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 6 warnings
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! rate for 2025-01-01 carried from 2024-12-31
+  ! and 3 more
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  ATTRIBUTION                                     as of 30 Oct 2026
+Attribution and scenarios since 2025
+2 accounts · 6 instruments · 203 transactions · USD · from 1 Jan 2025
+Benchmark: BENCH, in USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Brinson–Fachler by asset class, 22 periods linked (Cariño)
+──────────────────────────────────────────────────────────
+  Portfolio return  +23.39%      Allocation   +0.09%
+  Benchmark return  +24.85%      Selection    −1.53%
+  Excess return      −1.46%      Interaction  −0.02%
+
+  Segment       Allocation  Selection  Interaction   Total
+  Equity            +0.01%     −1.61%       +0.01%  −1.59%
+  Fixed income      +1.07%     −0.01%       +0.00%  +1.06%
+  Real assets       −0.01%     +0.09%       −0.03%  +0.05%
+  Cash              −0.98%     +0.00%       +0.00%  −0.98%
+  Total             +0.09%     −1.53%       −0.02%  −1.46%
+  Segment returns are measured over each period, so the linked total can differ
+  slightly from the time-weighted return over the same span (+23.68%).
+
+  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 21 warnings
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! price for 2025-01-01 carried from 2024-12-31
+  ! rate for 2025-01-01 carried from 2024-12-31
+  ! and 18 more
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCENARIOS                                       as of 30 Oct 2026
+Attribution and scenarios since 2025
+2 accounts · 6 instruments · 203 transactions · USD · from 1 Jan 2025
+Benchmark: BENCH, in USD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Effect on today's portfolio · value 696,578 USD
+───────────────────────────────────────────────
+  Scenario              Change  Return  Hardest hit           Vol after
+  Equity sell-off     −106,376  −15.3%  VTI          −89,177      16.0%
+  Rates up 1%          −31,181   −4.5%  VTI          −17,835      10.2%
+  Dollar up 10%         −6,226   −0.9%  EXSA          −5,876      10.3%
+  Spring 2025 replay   −76,785  −11.0%  VTI          −69,866       9.6%
+  Equity sell-off: the risk after is with every volatility ×1.5 and every
+  correlation moved 30% of the way to one, as in a crisis.
+
+Change in value by holding (USD)
+────────────────────────────────
+  Holding   Equity sell-off  Rates up 1%  Dollar up 10%  Spring 2025 replay
+  BND                 5,204      −10,408              0                 360
+  EXSA              −14,690       −2,938         −5,876              −4,367
+  GLD                −4,839            0              0                 777
+  VNQ                −2,875            0              0              −3,845
+  VTI               −89,177      −17,835              0             −69,866
+  EUR cash                0            0           −350                 157
+  USD cash                0            0              0                   0
+  Spring 2025 replay: the price and rate changes from 19 Feb 2025 to 8 Apr 2025,
+  on today's holdings.
+
+  Finalytics 1.0.0-rc.7 · inputs 3856d6909f90 · 0 warnings
+

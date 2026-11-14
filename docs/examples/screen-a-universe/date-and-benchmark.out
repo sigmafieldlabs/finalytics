@@ -1,0 +1,83 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 31 Dec 2025
+10 matches among 201 securities
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+133 of 201 securities pass the rule. The 10 with the lowest beta are shown.
+
+  Securities 201   ·   Matches 10   ·   Rules 1   ·   Prices to 31 Dec 2025
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                ███████████████████████████████████████████  201
+  1-year return above 0%        ████████████████████████████                 133
+                                133 pass this rule on its own
+  Top 10 by beta, lowest first  ██                                            10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by beta, lowest first
+──────────────────────────────
+                                 Return
+   #  Ticker  Sector       Beta  1-year
+   1  ULVC    Staples      0.31    0.3%◆
+   2  OSBS    Utilities    0.35   23.5%
+   3  FALC    Utilities    0.37   12.1%
+   4  GARB    Utilities    0.40   36.0%
+   5  TORD    Utilities    0.41    5.9%
+   6  DUNH    Staples      0.43    7.2%
+   7  NORB    Utilities    0.44   16.1%
+   8  IVOD    Health Care  0.46   19.8%
+   9  PEMH    Health Care  0.46   20.1%
+  10  ROSH    Utilities    0.49    5.1%
+
+  ◆ close to a rule's limit: within 10% of it (for a limit of 0, within 10% of
+  a typical value).
+  Also pass every rule, outside the top 10: WEXB (0.58), VERB (0.58), HALM
+  (0.59), QUIC (0.59), ZENW (0.60), CALS (0.61), GARH (0.61), ALDM (0.63),
+  GARD (0.64), YARC (0.64) and 113 more.
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  BRAS  1-year return 0.0%, needs above 0%
+  LINH  1-year return −0.3%, needs above 0%
+  ALDC  1-year return −1.8%, needs above 0%
+  HALS  1-year return −2.8%, needs above 0%
+  MARC  1-year return −2.8%, needs above 0%
+  TORB  1-year return −3.1%, needs above 0%
+  VERW  1-year return −3.4%, needs above 0%
+  QUIG  1-year return −3.7%, needs above 0%
+  VERS  1-year return −3.9%, needs above 0%
+  ZENM  1-year return −4.0%, needs above 0%
+  HALB  1-year return −4.2%, needs above 0%
+  SELD  1-year return −4.5%, needs above 0%
+  ZENB  1-year return −5.8%, needs above 0%
+  DUNS  1-year return −5.8%, needs above 0%
+  VERC  1-year return −6.5%, needs above 0%
+  TORG  1-year return −7.0%, needs above 0%
+  ZENS  1-year return −7.2%, needs above 0%
+  ASHM  1-year return −7.3%, needs above 0%
+  ELMW  1-year return −7.9%, needs above 0%
+  ULVM  1-year return −8.5%, needs above 0%
+
+  And 48 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  1-year return above 0%                                         133 of 201 pass
+  ▁ ▁▁▁▂▁▆▁▄▁▄▄▃▅▄▅▃▂▅▄█▅▄▇▅▇▅▄▂▃▁▂▃▁▂▃▂▁▁▁ ▂▁▁ ▁  ▁▁ ▁▁▁▁▁▁  ▁    ▁ ▁    ▁  ▂
+  ─────────────────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  −46.9%          0%                                                    160.5%
+
+Data
+────
+  199 of 201 securities have the prices every rule needs. 2 have too little
+  history for a rule: WEXH, ELMM. 42 closes are not numbers, and their dates
+  are left out: YARW, OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs 23d3d07eb993
+

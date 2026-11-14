@@ -1,0 +1,85 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  BACKTEST                                     Nov 1996 to Oct 2026
+Balanced
+Fixed weights · rebalanced when a weight drifts 5 points · 25 bp trading costs
+Monthly · T-Bills as cash
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Allocation: fixed weights
+─────────────────────────
+  US Equity  ██████████████████               60.0%
+  Bonds      ████████████                     40.0%
+
+Statistics
+──────────
+                    Balanced
+  Return a year         7.5%
+  Volatility           10.5%
+  Sharpe ratio          0.52
+  Sortino ratio         0.83
+  Maximum drawdown    −36.2%
+  CDaR 95%            −27.4%
+  Ulcer index           9.5%
+  Worst month          −9.6%
+  VaR 95%, 1 month      4.0%
+
+Trading
+───────
+  Rebalances         25      Costs a year       0.02%
+  Turnover a year  4.9%      Largest rebalance   7.1%
+  Turnover is one-way: the share of the portfolio's value bought (or, equally,
+  sold). Trading costs are charged on the value traded both ways.
+
+Growth of 100
+─────────────
+  Balanced  ▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▁▂▁▁▂▂▂▂▂▃▃▃▃▃▄▄▄▅▅▆▆▆▆▇▇▆▆▆██▇▇  869.4
+
+Calendar-year returns
+─────────────────────
+  Year   Balanced
+  1996*     −0.6%
+  1997     +10.1%
+  1998      +0.8%
+  1999     +21.7%
+  2000      −2.1%
+  2001      −2.1%
+  2002      +3.5%
+  2003     +24.3%
+  2004      +9.5%
+  2005      +6.4%
+  2006      −9.0%
+  2007      −3.2%
+  2008     −21.0%
+  2009     +45.0%
+  2010     +25.8%
+  2011     +13.0%
+  2012     +10.8%
+  2013     +16.5%
+  2014      +5.2%
+  2015     +13.7%
+  2016     +17.7%
+  2017     +16.1%
+  2018     +33.7%
+  2019      +9.9%
+  2020      +2.9%
+  2021      −0.4%
+  2022     −16.0%
+  2023     +17.5%
+  2024     +30.9%
+  2025     −18.0%
+  2026*     −6.2%
+
+  * Part of the year.
+
+How the allocation was tested
+─────────────────────────────
+  Assets      US Equity, Intl Equity, Bonds, Gold and Real Estate; T-Bills as
+              cash. Monthly returns, Nov 1996 to Oct 2026.
+  Validation  Fixed weights, not fitted to these returns, scored on Nov 1996 to
+              Oct 2026.
+  Trading     Rebalanced when a weight drifts 5 points, 25 bp trading costs.
+  Ratios      Against the T-Bills return, 2.3% a year over the test; value at
+              risk and expected shortfall from history, at 95% over one month.
+
+  Finalytics 1.0.0-rc.7 · inputs cab00106c47e
+

@@ -1,0 +1,106 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 30 Oct 2026
+10 matches among 200 securities
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+44 of 200 securities pass all 4 rules. The 10 with the highest volume vs 20-day
+average are shown.
+
+  Securities 200   ·   Matches 10   ·   Rules 4   ·   Prices to 30 Oct 2026
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                             ██████████████████████████████  200
+  With a price in the 5 days to 30 Oct 2026  ██████████████████████████████  199
+  Below 52-week high better than −10%        ██████████████████              123
+                                             123 pass this rule on its own
+  Above 52-week low above 10%                ██████████████████              123
+                                             191 pass this rule on its own
+  Volume vs 20-day average above 1           ███████                          44
+                                             68 pass this rule on its own
+  20-day dollar volume above 1.00M           ███████                          44
+                                             196 pass this rule on its own
+  Top 10 by volume vs 20-day average         ██                               10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by volume vs 20-day average
+────────────────────────────────────
+                             Volume vs     Below    Above  $ volume
+   #  Ticker  Sector           20d avg  52w high  52w low    20-day
+   1  OSBS    Utilities           2.29     −4.2%    29.9%     13.8M
+   2  BRAG    Health Care         1.92      0.0%   133.5%     2.44B
+   3  QUIB    Communication       1.91     −9.7%◆   52.4%     82.9M
+   4  ASHD    Industrials         1.81      0.0%    51.1%     27.2M
+   5  GARD    Communication       1.73     −4.5%    27.7%     3.36B
+   6  OSBH    Real Estate         1.65     −5.2%    29.1%     2.15B
+   7  BRAS    Industrials         1.63      0.0%    64.1%      421M
+   8  KELW    Technology          1.62     −1.6%    45.0%     7.95M
+   9  IVOB    Real Estate         1.49      0.0%    67.0%     91.4M
+  10  SELC    Technology          1.44     −9.7%◆   26.4%     26.0M
+
+  ◆ close to a rule's limit: within 10% of it (for a limit of 0, within 10% of
+  a typical value).
+  Also pass every rule, outside the top 10: PEMD (1.38), QUIC (1.38), WEXG
+  (1.35), WEXB (1.32), ULVC (1.28), WEXW (1.26), MARG (1.25), KELH (1.23),
+  KELM (1.22), ULVD (1.18) and 24 more.
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  ASHB  Volume vs 20-day average 0.99, needs above 1
+  OSBC  Volume vs 20-day average 0.98, needs above 1
+  PEMS  Volume vs 20-day average 0.98, needs above 1
+  ULVW  Volume vs 20-day average 0.97, needs above 1
+  ALDM  Volume vs 20-day average 0.97, needs above 1
+  ZENS  Below 52-week high −10.3%, needs better than −10%
+  ELMG  Volume vs 20-day average 0.96, needs above 1
+  WEXH  Volume vs 20-day average 0.95, needs above 1
+  ALDS  Volume vs 20-day average 0.94, needs above 1
+  CALD  Below 52-week high −10.7%, needs better than −10%
+  ROSD  Volume vs 20-day average 0.92, needs above 1
+  ALDD  Volume vs 20-day average 0.92, needs above 1
+  PEMB  Volume vs 20-day average 0.92, needs above 1
+  PEMH  Volume vs 20-day average 0.87, needs above 1
+  NORC  Volume vs 20-day average 0.85, needs above 1
+  CALW  Volume vs 20-day average 0.85, needs above 1
+  ULVM  Below 52-week high −11.6%, needs better than −10%
+  NORD  Volume vs 20-day average 0.83, needs above 1
+  TORS  Volume vs 20-day average 0.83, needs above 1
+  CALG  Volume vs 20-day average 0.82, needs above 1
+
+  And 78 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  Below 52-week high better than −10%                            123 of 200 pass
+  ▁  ▁ ▁ ▁ ▁▁ ▁ ▁▁▁ ▁   ▁  ▁▁▁  ▁▁ ▁▁▁ ▁▁▁▁ ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█
+  ────────────────────────────────────────────────────────┃━━━━━━━━━━━━━━━━━━━
+  −45.6%                                                −10%              1.8%
+
+  Above 52-week low above 10%                                    191 of 200 pass
+   ▁▁▂▃▃▂▄▃▅▅▄█▄▆▃▂▂▃▄▄▃▃▃▂▁▂▁▃▃▁▁▁▁▂▁▁▁   ▂   ▁▁ ▂▁   ▁▁ ▁▁   ▁          ▁  ▁
+  ────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     10%                                                                209.5%
+
+  Volume vs 20-day average above 1                                68 of 200 pass
+  ▂  ▃▂▂▂▁▂▂▆▂▃▂▃▅▆▆▄▅▄▃▄▆▃▅▂▅▂▃▆▂▁█▂▁▄▃▆▄▁▂▂▁▂▁▁▁▂ ▁▁ ▁  ▁  ▁▂   ▁   ▁   ▂  ▂
+  ───────────────────────────────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  0.32                           1                                        1.97
+
+  20-day dollar volume above 1.00M                               196 of 200 pass
+     █▅▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▁▁  ▁▁ ▁▁▁▁▁    ▁ ▁▁    ▁ ▁    ▁      ▁     ▁  ▁
+  ───┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1.00M                                                                 5.95B
+
+Data
+────
+  199 of 200 securities have the prices every rule needs. 1 has no price in
+  the 5 days to 30 Oct 2026 and is left out: NORH. 42 closes are not numbers,
+  and their dates are left out: YARW, OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs 32a66e5c2a32
+

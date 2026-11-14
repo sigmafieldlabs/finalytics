@@ -1,0 +1,30 @@
+periods: 7 rows, 9 columns
+Period      Start        End    Return  Annualised  Money-weighted  Modified Dietz  Benchmark    Excess
+   MTD 2026-09-30 2026-10-30 -0.000561         NaN       -0.000561       -0.000561    0.00552 -0.006081
+   QTD 2026-09-30 2026-10-30 -0.000561         NaN       -0.000561       -0.000561    0.00552 -0.006081
+
+monthly_returns: 4 rows, 14 columns
+Year      Jan      Feb      Mar       Apr      May      Jun      Jul      Aug      Sep       Oct      Nov       Dec     Year
+2023      NaN      NaN      NaN       NaN      NaN      NaN      NaN      NaN      NaN       NaN 0.065635  0.045876 0.114521
+2024 0.000107 0.022906 0.027498 -0.032052 0.035127 0.015769 0.025301 0.022315 0.018741 -0.014877 0.034664 -0.027219 0.132684
+
+calendar_years: 4 rows, 7 columns
+  Year       From         To  Whole year  Portfolio  Benchmark    Excess
+2023.0 2023-11-01 2023-12-29       False   0.114521   0.117038 -0.002517
+2024.0 2023-12-29 2024-12-31        True   0.132684   0.112866  0.019817
+
+contributions: 8 rows, 6 columns
+Holding  Contribution  Return (USD)  Return (local)  Currency effect  Average weight
+    BND      0.054874      0.158832        0.158832         0.000000         0.28501
+   EXSA      0.058775      0.679010        0.588369         0.090641         0.08821
+
+value: 752 rows, 4 columns
+      Date   Value (USD)  Growth of 100  Benchmark growth of 100
+2023-11-01 399992.938702     100.000000                 100.0000
+2023-11-02 405710.835424     101.429499                 101.4345
+
+flows: 36 rows, 4 columns
+  Month  In (USD)  Out (USD)  Income (USD)
+2023-11  400000.0        0.0      0.000000
+2023-12    2000.0        0.0   2106.058326
+

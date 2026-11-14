@@ -1,0 +1,93 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  SCREEN                                      prices to 30 Oct 2026
+10 matches among 200 securities
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+110 of 200 securities pass both rules. The 10 with the highest score are shown.
+
+  Securities 200   ·   Matches 10   ·   Rules 2   ·   Prices to 30 Oct 2026
+
+How the rules narrow the list
+─────────────────────────────
+  All securities                             ██████████████████████████████  200
+  With a price in the 5 days to 30 Oct 2026  ██████████████████████████████  199
+  Earnings yield above 0.04                  █████████████████████           137
+                                             137 pass this rule on its own
+  Score above 0                              ████████████████                110
+                                             166 pass this rule on its own
+  Top 10 by score                            ██                               10
+
+  Each bar is how many are left after that rule and the ones above it.
+
+Matches, by score
+─────────────────
+                                    Earnings
+   #  Ticker  Sector         Score     yield
+   1  IVOD    Health Care     4.78      0.05
+   2  FALS    Discretionary   4.35      0.06
+   3  PEMC    Staples          4.3      0.05
+   4  NORC    Discretionary   4.25      0.05
+   5  ASHS    Staples         4.09      0.04◆
+   6  KELC    Discretionary   3.81      0.05
+   7  NORW    Discretionary   3.69      0.06
+   8  ULVW    Industrials      3.6      0.05
+   9  WEXG    Discretionary   3.56      0.04◆
+  10  BRAG    Health Care      3.5      0.06
+
+  ◆ close to a rule's limit: within 10% of it (for a limit of 0, within 10% of
+  a typical value).
+  Also pass every rule, outside the top 10: NORM (3.3), GARS (3.21), HALC
+  (3.12), PEMM (3.08), ALDM (2.91), GARC (2.91), CALG (2.71), ASHM (2.71),
+  DUNB (2.69), ZENC (2.57) and 90 more.
+
+Near misses: securities that fail just one rule
+───────────────────────────────────────────────
+  QUIB  Earnings yield 0.04, needs above 0.04
+  ELMB  Score 0, needs above 0
+  CALC  Earnings yield 0.04, needs above 0.04
+  ZENG  Earnings yield 0.04, needs above 0.04
+  NORD  Earnings yield 0.04, needs above 0.04
+  CALB  Score −0.05, needs above 0
+  BRAM  Earnings yield 0.04, needs above 0.04
+  ULVS  Earnings yield 0.04, needs above 0.04
+  GARW  Earnings yield 0.04, needs above 0.04
+  DUNM  Score −0.09, needs above 0
+  GARH  Score −0.09, needs above 0
+  LINC  Score −0.1, needs above 0
+  YARD  Earnings yield 0.04, needs above 0.04
+  MARG  Earnings yield 0.04, needs above 0.04
+  DUNW  Earnings yield 0.04, needs above 0.04
+  PEMW  Earnings yield 0.04, needs above 0.04
+  VERB  Earnings yield 0.04, needs above 0.04
+  ZEND  Earnings yield 0.04, needs above 0.04
+  FALB  Score −0.12, needs above 0
+  FALM  Earnings yield 0.03, needs above 0.04
+
+  And 63 more. Closest to passing first.
+
+Where the limits fall
+─────────────────────
+  Each column of the strip counts the securities with a value there: the
+  taller the mark, the more. ┃ is the limit; ━ marks the side that passes.
+
+  Earnings yield above 0.04                                      137 of 200 pass
+    ▁▆▅▃▂▂▁▃▂▁▆▄▁▂▇█▅▃▃▂█▇▆▂▆▂▂▃▂▁▃▃▂▄▂▃▂▂▁▁▁   ▁▁▁▂▂▁▁    ▂▁▁▁ ▁ ▁ ▁    ▁▁ ▁▂
+  ────────────────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  0.02          0.04                                                      0.12
+
+  Score above 0                                                  166 of 200 pass
+  ▃  ▁  ▂ ▁▃ ▄▃▄▁▂▄▃ ▄▄▇▅▄▆▇▄▄█▅▄▆▆▄▃▂▇▁▃▃▄▄▃▂▃▃▂▂ ▃▁▃▁▃▂ ▂▁▁  ▂▁▁ ▂ ▁▂ ▁▂▁  ▃
+  ─────────────────┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  −1.41            0                                                      4.65
+
+Data
+────
+  199 of 200 securities have the prices every rule needs. 1 has no price in
+  the 5 days to 30 Oct 2026 and is left out: NORH. Formulas: earnings_yield =
+  1 / trailing_pe (14 securities without a value); score = return_1y /
+  volatility. 42 closes are not numbers, and their dates are left out: YARW,
+  OSBW.
+  Benchmark: INDEX · risk-free rate: 4% a year.
+
+  Finalytics 1.0.0-rc.7 · inputs c3d15eb76bc8
+

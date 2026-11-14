@@ -1,0 +1,63 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINALYTICS  ·  BACKTEST                                     Nov 2023 to Oct 2026
+Screened funds, rebalanced monthly
+Fixed weights · rebalanced monthly · 10 bp trading costs
+Daily · against BENCH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Allocation: fixed weights
+─────────────────────────
+  EXSA  ██████████                       33.3%
+  VNQ   ██████████                       33.3%
+  VTI   ██████████                       33.3%
+
+Statistics
+──────────
+                     Screened funds, rebalance…  BENCH
+  Return a year                           14.8%  15.9%
+  Volatility                              11.5%   8.4%
+  Sharpe ratio                             0.92   1.32
+  Sortino ratio                            1.30   1.95
+  Maximum drawdown                       −15.0%  −9.2%
+  CDaR 95%                                −8.2%  −5.0%
+  Ulcer index                              2.7%   1.7%
+  Worst day                               −5.2%  −3.2%
+  VaR 95%, 1 day                           1.1%   0.7%
+  Tracking error                           4.9%
+  Information ratio                       −0.12
+  Downside capture                         1.14
+  Upside capture                           1.32
+
+Trading
+───────
+  Rebalances         35      Costs a year       0.02%
+  Turnover a year  9.7%      Largest rebalance   1.6%
+  Turnover is one-way: the share of the portfolio's value bought (or, equally,
+  sold). Trading costs are charged on the value traded both ways.
+
+Growth of 100
+─────────────
+  Screened funds, rebalan…  ▁▁▂▃▃▃▃▄▃▄▄▄▄▅▅▄▅▅▄▅▅▄▄▄▅▅▅▆▆▆▆▆▆▆▆▇▆▇█████▇█  151.1
+  BENCH                     ▁▁▂▂▂▃▃▃▃▃▃▄▄▄▄▄▄▄▄▄▄▄▄▄▅▅▅▆▆▆▆▇▇▇▇▇▆▇███████  155.2
+
+Calendar-year returns
+─────────────────────
+  Year   Screened funds, rebalanced monthly   BENCH  Difference
+  2023*                              +14.5%  +11.7%       +2.8%
+  2024                                +9.5%  +11.3%       −1.8%
+  2025                               +10.7%  +18.1%       −7.4%
+  2026*                               +8.9%   +5.7%       +3.2%
+
+  * Part of the year.
+
+How the allocation was tested
+─────────────────────────────
+  Assets      EXSA, VTI and VNQ. Daily returns, Nov 2023 to Oct 2026.
+  Validation  Fixed weights, not fitted to these returns, scored on Nov 2023 to
+              Oct 2026.
+  Trading     Rebalanced monthly, 10 bp trading costs.
+  Ratios      Against the risk-free return, 4.0% a year over the test; value at
+              risk and expected shortfall from history, at 95% over one day.
+
+  Finalytics 1.0.0-rc.7 · inputs 38256f086b03
+
