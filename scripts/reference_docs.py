@@ -211,7 +211,7 @@ def declarations(path: Path) -> list[tuple[str, str, str, str]]:
         # not the package's public API and must not make the generated reference nondeterministic.
         declaration = "\n".join(
             line for line in block
-            if not re.match(r"^\s*(?:readonly\s+)?(?:__\w+|wasm_bindgen__)\w+\s*:", line)
+            if not re.match(r"^\s*(?:readonly\s+)?(?:__\w+|wasm_bindgen_)\w+\s*:", line)
         )
         found.append((name, kind, comment(docs), declaration))
         docs = []
