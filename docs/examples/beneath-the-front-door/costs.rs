@@ -19,10 +19,18 @@ fn main() -> Result<()> {
     let objective = opt::Objective::MeanVariance { risk_aversion: 4.0 };
     let solution = problem.solve(&objective)?;
     println!("Status: {}", solution.status);
-    let weights = solution.weights.as_ref().unwrap();
+    let weights = solution
+        .weights
+        .as_ref()
+        .expect("the guide's fixed sample supplies this value");
     for (label, weight) in solution.labels.iter().zip(weights) {
         println!("{}: {:.6}", label, weight);
     }
-    println!("Largest violation: {:.9}", solution.max_violation.unwrap(),);
+    println!(
+        "Largest violation: {:.9}",
+        solution
+            .max_violation
+            .expect("the guide's fixed sample supplies this value"),
+    );
     Ok(())
 }

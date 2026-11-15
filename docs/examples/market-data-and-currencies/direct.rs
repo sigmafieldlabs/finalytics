@@ -12,10 +12,16 @@ fn main() -> Result<()> {
         finalytics::Currency::USD,
         "2026-06-30".parse()?,
     );
-    println!("EUR/USD: {:.2}", rate.value().unwrap());
+    println!(
+        "EUR/USD: {:.2}",
+        rate.value()
+            .expect("the guide's fixed sample supplies this value")
+    );
     println!(
         "100 EUR in USD: {:.2}",
-        rate.value().unwrap() * finalytics::Decimal::from(100)
+        rate.value()
+            .expect("the guide's fixed sample supplies this value")
+            * finalytics::Decimal::from(100)
     );
     Ok(())
 }

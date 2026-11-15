@@ -14,7 +14,12 @@ fn main() -> Result<()> {
         let result = risk::risk_decomposition(&[0.6, 0.4], matrix)?;
         println!("{}: volatility={:.6}", name, result.volatility);
         for item in &result.contributions {
-            println!("  {}: share={:.6}", item.label, item.share.unwrap());
+            println!(
+                "  {}: share={:.6}",
+                item.label,
+                item.share
+                    .expect("the guide's fixed sample supplies this value")
+            );
         }
     }
     Ok(())

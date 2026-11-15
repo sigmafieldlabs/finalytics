@@ -20,14 +20,23 @@ fn main() -> Result<()> {
             .accounts(accounts)
             .prices("date,VOO\n2026-01-02,500\n2026-01-05,505\n"),
     )?;
-    println!("{}", portfolio.data().instruments[0].name.as_ref().unwrap());
+    println!(
+        "{}",
+        portfolio.data().instruments[0]
+            .name
+            .as_ref()
+            .expect("the guide's fixed sample supplies this value")
+    );
     let classes =
         format!("{:?}", portfolio.data().instruments[0].classifications)
             .replace(": ", ":");
     println!("{}", classes);
     println!(
         "{} {}",
-        portfolio.data().accounts[0].name.as_ref().unwrap(),
+        portfolio.data().accounts[0]
+            .name
+            .as_ref()
+            .expect("the guide's fixed sample supplies this value"),
         portfolio.data().accounts[0].taxable
     );
     Ok(())

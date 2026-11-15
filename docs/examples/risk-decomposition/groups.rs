@@ -23,7 +23,8 @@ fn main() -> Result<()> {
             item.group,
             item.weight,
             item.component,
-            item.share.unwrap(),
+            item.share
+                .expect("the guide's fixed sample supplies this value"),
         );
     }
     Ok(())

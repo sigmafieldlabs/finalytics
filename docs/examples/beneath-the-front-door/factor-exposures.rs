@@ -22,7 +22,10 @@ fn main() -> Result<()> {
         opt::Problem::from_factor_model(model).with_constraints(constraints);
     let solution = problem.solve(&opt::Objective::MinimumVariance)?;
     println!("Status: {}", solution.status);
-    let weights = solution.weights.as_ref().unwrap();
+    let weights = solution
+        .weights
+        .as_ref()
+        .expect("the guide's fixed sample supplies this value");
     for (label, weight) in solution.labels.iter().zip(weights) {
         println!("{}: {:.6}", label, weight);
     }

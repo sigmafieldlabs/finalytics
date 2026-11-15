@@ -17,7 +17,9 @@ fn main() -> Result<()> {
             index,
             stats.annualised_return,
             stats.volatility,
-            stats.sharpe_ratio.unwrap(),
+            stats
+                .sharpe_ratio
+                .expect("the guide's fixed sample supplies this value"),
         );
     }
     Ok(())

@@ -16,7 +16,9 @@ fn main() -> Result<()> {
     println!(
         "Universe: {} {}",
         universe.len(),
-        universe.benchmark().unwrap()
+        universe
+            .benchmark()
+            .expect("the guide's fixed sample supplies this value")
     );
     Ok(())
 }

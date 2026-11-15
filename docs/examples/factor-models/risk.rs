@@ -23,10 +23,16 @@ fn main() -> Result<()> {
                 item.factor,
                 item.exposure,
                 item.component,
-                item.share.unwrap(),
+                item.share
+                    .expect("the guide's fixed sample supplies this value"),
             );
         }
-        println!("  specific: share={:.6}", result.specific_share.unwrap());
+        println!(
+            "  specific: share={:.6}",
+            result
+                .specific_share
+                .expect("the guide's fixed sample supplies this value")
+        );
     }
     Ok(())
 }

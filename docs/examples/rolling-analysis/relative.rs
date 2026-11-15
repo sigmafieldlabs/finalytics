@@ -19,8 +19,12 @@ fn main() -> Result<()> {
             index,
             stats.active_return,
             stats.tracking_error,
-            stats.beta.unwrap(),
-            stats.correlation.unwrap(),
+            stats
+                .beta
+                .expect("the guide's fixed sample supplies this value"),
+            stats
+                .correlation
+                .expect("the guide's fixed sample supplies this value"),
         );
     }
     Ok(())

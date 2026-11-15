@@ -10,7 +10,13 @@ fn main() -> Result<()> {
         .max_weight(0.4)
         .build()?;
     let result = assets
-        .evaluate(optimised.results.weights.clone().unwrap())
+        .evaluate(
+            optimised
+                .results
+                .weights
+                .clone()
+                .expect("the guide's fixed sample supplies this value"),
+        )
         .name("Optimised weights")
         .build()?;
     println!("{result}");

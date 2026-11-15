@@ -10,7 +10,9 @@ fn main() -> Result<()> {
     let result = risk::historical_scenario(
         portfolio.books(),
         portfolio.market(),
-        portfolio.as_of().unwrap(),
+        portfolio
+            .as_of()
+            .expect("the guide's fixed sample supplies this value"),
         &window,
         &risk::ScenarioOptions::default(),
     )?;

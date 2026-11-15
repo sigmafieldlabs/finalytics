@@ -14,9 +14,11 @@ fn main() -> Result<()> {
         println!(
             "{}: marginal={:.6} component={:.6} share={:.6}",
             item.label,
-            item.marginal.unwrap(),
+            item.marginal
+                .expect("the guide's fixed sample supplies this value"),
             item.component,
-            item.share.unwrap(),
+            item.share
+                .expect("the guide's fixed sample supplies this value"),
         );
     }
     let total: f64 = result.contributions.iter().map(|c| c.component).sum();

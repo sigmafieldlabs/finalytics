@@ -13,6 +13,10 @@ fn main() -> Result<()> {
         "2026-06-30".parse()?,
     );
     println!("Pivot: {}", portfolio.market().pivot());
-    println!("EUR/GBP: {}", rate.value().unwrap());
+    println!(
+        "EUR/GBP: {}",
+        rate.value()
+            .expect("the guide's fixed sample supplies this value")
+    );
     Ok(())
 }

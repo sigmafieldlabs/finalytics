@@ -3,8 +3,12 @@ use finalytics::prelude::*;
 fn main() -> Result<()> {
     let portfolio = datasets::portfolio();
     let dates = portfolio.dates();
-    let start = *dates.first().unwrap();
-    let end = *dates.last().unwrap();
+    let start = *dates
+        .first()
+        .expect("the guide's fixed sample supplies this value");
+    let end = *dates
+        .last()
+        .expect("the guide's fixed sample supplies this value");
     let performance = portfolio.performance()?;
     let holdings = portfolio
         .books()
@@ -12,9 +16,21 @@ fn main() -> Result<()> {
     let contributions = performance.contributions(&holdings, start, end)?;
     for item in contributions {
         if item.holding.to_string() == "EXSA" {
-            println!("Local: {:.6}", item.return_local.unwrap());
-            println!("Base: {:.6}", item.return_base.unwrap());
-            println!("Currency effect: {:.6}", item.currency_effect.unwrap());
+            println!(
+                "Local: {:.6}",
+                item.return_local
+                    .expect("the guide's fixed sample supplies this value")
+            );
+            println!(
+                "Base: {:.6}",
+                item.return_base
+                    .expect("the guide's fixed sample supplies this value")
+            );
+            println!(
+                "Currency effect: {:.6}",
+                item.currency_effect
+                    .expect("the guide's fixed sample supplies this value")
+            );
         }
     }
     Ok(())

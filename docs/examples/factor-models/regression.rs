@@ -45,8 +45,10 @@ fn main() -> Result<()> {
             "{}: beta={:.6} alpha={:.6} R2={:.6}",
             fit.asset,
             exposures[0],
-            fit.intercept.unwrap(),
-            fit.r_squared.unwrap(),
+            fit.intercept
+                .expect("the guide's fixed sample supplies this value"),
+            fit.r_squared
+                .expect("the guide's fixed sample supplies this value"),
         );
     }
     Ok(())

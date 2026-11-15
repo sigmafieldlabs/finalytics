@@ -12,12 +12,22 @@ fn main() -> Result<()> {
     )?;
     let found = performance
         .period(Period::Years { years: 3 }, None)
-        .unwrap();
+        .expect("the guide's fixed sample supplies this value");
     println!("Cumulative: {:.6}", found.cumulative);
-    println!("Annualised: {:.6}", found.annualised.unwrap());
+    println!(
+        "Annualised: {:.6}",
+        found
+            .annualised
+            .expect("the guide's fixed sample supplies this value")
+    );
     let short = datasets::portfolio()
         .performance()?
         .period(Period::Years { years: 1 }, None);
-    println!("One year: {:.6}", short.unwrap().cumulative);
+    println!(
+        "One year: {:.6}",
+        short
+            .expect("the guide's fixed sample supplies this value")
+            .cumulative
+    );
     Ok(())
 }

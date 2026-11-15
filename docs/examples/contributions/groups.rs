@@ -10,8 +10,12 @@ fn main() -> Result<()> {
         .map(|i| (i.id.to_string(), i.classifications["asset_class"].clone()))
         .collect::<std::collections::BTreeMap<_, _>>();
     let dates = portfolio.dates();
-    let start = *dates.first().unwrap();
-    let end = *dates.last().unwrap();
+    let start = *dates
+        .first()
+        .expect("the guide's fixed sample supplies this value");
+    let end = *dates
+        .last()
+        .expect("the guide's fixed sample supplies this value");
     let performance = portfolio.performance()?;
     let holdings = portfolio
         .books()

@@ -8411,12 +8411,6 @@ No additional description in the package source.
 ```typescript
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly __wbg_assets_free: (a: number, b: number) => void;
-    readonly __wbg_datasets_free: (a: number, b: number) => void;
-    readonly __wbg_marketdata_free: (a: number, b: number) => void;
-    readonly __wbg_performance_free: (a: number, b: number) => void;
-    readonly __wbg_portfolio_free: (a: number, b: number) => void;
-    readonly __wbg_universe_free: (a: number, b: number) => void;
     readonly assets_backtest: (a: number, b: any) => [number, number, number];
     readonly assets_cashAssets: (a: number) => [number, number];
     readonly assets_classes: (a: number) => [number, number, number];
@@ -8562,17 +8556,6 @@ export interface InitOutput {
     readonly validatePortfolio: (a: any) => [number, number, number];
     readonly version: () => [number, number];
     readonly writeDocument: (a: any, b: any) => [number, number, number, number];
-    readonly wasm_bindgen__convert__closures_____invoke__h066d594f1655bfbd: (a: number, b: number, c: any, d: any) => any;
-    readonly __wbindgen_malloc: (a: number, b: number) => number;
-    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-    readonly __wbindgen_exn_store: (a: number) => void;
-    readonly __externref_table_alloc: () => number;
-    readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_destroy_closure: (a: number, b: number) => void;
-    readonly __externref_table_dealloc: (a: number) => void;
-    readonly __externref_drop_slice: (a: number, b: number) => void;
-    readonly __wbindgen_start: () => void;
 }
 ```
 

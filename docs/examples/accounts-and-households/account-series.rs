@@ -10,11 +10,21 @@ fn main() -> Result<()> {
         println!(
             "{} {} {}",
             line.account,
-            line.values.last().unwrap(),
-            line.flows.last().unwrap()
+            line.values
+                .last()
+                .expect("the guide's fixed sample supplies this value"),
+            line.flows
+                .last()
+                .expect("the guide's fixed sample supplies this value")
         );
     }
     let total = series.combined(|_| true);
-    println!("Household: {}", total.values.last().unwrap());
+    println!(
+        "Household: {}",
+        total
+            .values
+            .last()
+            .expect("the guide's fixed sample supplies this value")
+    );
     Ok(())
 }

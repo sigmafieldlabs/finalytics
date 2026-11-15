@@ -34,7 +34,9 @@ fn main() -> Result<()> {
     let result = risk::shock_scenario(
         portfolio.books(),
         portfolio.market(),
-        portfolio.as_of().unwrap(),
+        portfolio
+            .as_of()
+            .expect("the guide's fixed sample supplies this value"),
         &shocks,
         &risk::ScenarioOptions::default(),
     )?;

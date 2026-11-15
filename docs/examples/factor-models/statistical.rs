@@ -32,8 +32,11 @@ fn main() -> Result<()> {
     )?;
     let estimate = risk::statistical_model(&returns, 2)?;
     println!("Method: statistical");
-    for (index, share) in
-        estimate.explained_variance.unwrap().iter().enumerate()
+    for (index, share) in estimate
+        .explained_variance
+        .expect("the guide's fixed sample supplies this value")
+        .iter()
+        .enumerate()
     {
         println!("pc{}: explained={:.6}", index + 1, share);
     }

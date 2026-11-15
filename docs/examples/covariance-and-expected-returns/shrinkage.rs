@@ -21,7 +21,9 @@ fn main() -> Result<()> {
         println!(
             "{}: shrinkage={:.6} equity_variance={:.8}",
             name,
-            estimate.shrinkage.unwrap(),
+            estimate
+                .shrinkage
+                .expect("the guide's fixed sample supplies this value"),
             estimate.matrix.get(0, 0),
         );
     }

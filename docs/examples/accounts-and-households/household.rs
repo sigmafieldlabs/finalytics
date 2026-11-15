@@ -12,13 +12,18 @@ fn main() -> Result<()> {
     )?;
     println!(
         "Household: {:.6}",
-        household.household.time_weighted.unwrap()
+        household
+            .household
+            .time_weighted
+            .expect("the guide's fixed sample supplies this value")
     );
     for account in household.accounts {
         println!(
             "{} {:.6} {:.6}",
             account.name,
-            account.time_weighted.unwrap(),
+            account
+                .time_weighted
+                .expect("the guide's fixed sample supplies this value"),
             account.contribution
         );
     }

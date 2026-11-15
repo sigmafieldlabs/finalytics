@@ -18,8 +18,14 @@ fn main() -> Result<()> {
         println!(
             "{} {:.6} {:.6}",
             name,
-            result.results.expected_return.unwrap(),
-            result.results.volatility.unwrap()
+            result
+                .results
+                .expected_return
+                .expect("the guide's fixed sample supplies this value"),
+            result
+                .results
+                .volatility
+                .expect("the guide's fixed sample supplies this value")
         );
     }
     Ok(())

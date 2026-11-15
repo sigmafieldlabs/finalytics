@@ -14,12 +14,20 @@ fn main() -> Result<()> {
             vec![0.0, 500.0],
             timing,
         )?;
-        let start = *performance.dates().first().unwrap();
-        let end = *performance.dates().last().unwrap();
+        let start = *performance
+            .dates()
+            .first()
+            .expect("the guide's fixed sample supplies this value");
+        let end = *performance
+            .dates()
+            .last()
+            .expect("the guide's fixed sample supplies this value");
         println!(
             "{} {:.6}",
             name,
-            performance.time_weighted(start, end).unwrap()
+            performance
+                .time_weighted(start, end)
+                .expect("the guide's fixed sample supplies this value")
         );
     }
     Ok(())

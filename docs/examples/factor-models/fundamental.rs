@@ -53,7 +53,12 @@ fn main() -> Result<()> {
         );
     }
     for fit in &estimate.fit {
-        println!("{}: R2={:.6}", fit.asset, fit.r_squared.unwrap());
+        println!(
+            "{}: R2={:.6}",
+            fit.asset,
+            fit.r_squared
+                .expect("the guide's fixed sample supplies this value")
+        );
     }
     Ok(())
 }

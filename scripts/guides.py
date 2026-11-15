@@ -452,7 +452,10 @@ def main() -> int:
     all_pages = pages()
     if args.page and args.page not in {e.page for e in found.values()}:
         parser.error(f"no page {args.page!r} has examples in docs/examples")
-    problems = sync_reference_docs(write=args.record)
+    problems = sync_reference_docs(
+        write=args.record,
+        allow_missing_javascript=not (NPM / "finalytics.d.ts").exists(),
+    )
     problems += check_layout(found, all_pages)
     names = [e.cargo_name for e in found.values() if "rust" in e.files]
     for name in sorted({n for n in names if names.count(n) > 1}):

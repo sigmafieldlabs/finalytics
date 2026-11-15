@@ -14,7 +14,9 @@ fn main() -> Result<()> {
             "Target {:.2}: downside={:.6} Sortino={:.6}",
             target,
             stats.downside_deviation,
-            stats.sortino_ratio.unwrap(),
+            stats
+                .sortino_ratio
+                .expect("the guide's fixed sample supplies this value"),
         );
     }
     let constant = risk::statistics(&[0.01; 12], &Default::default())?;

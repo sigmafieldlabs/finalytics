@@ -8,7 +8,10 @@ fn main() {
         println!(
             "{} {} {} {}",
             account.id,
-            account.name.as_ref().unwrap(),
+            account
+                .name
+                .as_ref()
+                .expect("the guide's fixed sample supplies this value"),
             account.taxable,
             classes
         );

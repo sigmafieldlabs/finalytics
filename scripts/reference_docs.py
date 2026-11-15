@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import difflib
 import json
 import re
 from pathlib import Path
@@ -206,7 +207,13 @@ def declarations(path: Path) -> list[tuple[str, str, str, str]]:
         else:
             while not block[-1].rstrip().endswith((";", "}")):
                 block.append(source[index + len(block)])
-        found.append((name, kind, comment(docs), "\n".join(block)))
+        # Internal wasm-bindgen runtime symbols can include compiler-dependent hashes. They are
+        # not the package's public API and must not make the generated reference nondeterministic.
+        declaration = "\n".join(
+            line for line in block
+            if not re.match(r"^\s*(?:readonly\s+)?(?:__\w+|wasm_bindgen__)\w+\s*:", line)
+        )
+        found.append((name, kind, comment(docs), declaration))
         docs = []
     return found
 
@@ -289,16 +296,31 @@ def generated() -> dict[str, str]:
     }
 
 
-def sync(write: bool) -> list[str]:
+def sync(write: bool, allow_missing_javascript: bool = False) -> list[str]:
     problems = []
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, text in generated().items():
+    if allow_missing_javascript and not (WASM / "finalytics.d.ts").exists():
+        # The Pyodide-only workflow has no npm build. Check Python there, not a missing artifact.
+        documents = {"python.md": python_reference()[0]}
+    else:
+        documents = generated()
+    for name, text in documents.items():
         path = OUT / name
         if write:
             path.write_text(text, encoding="utf-8")
-        elif not path.exists() or path.read_text(encoding="utf-8") != text:
+            continue
+        if not path.exists():
+            problems.append(f"{path.relative_to(ROOT)} does not exist: run scripts/reference_docs.py")
+            continue
+        recorded = path.read_text(encoding="utf-8")
+        if recorded != text:
+            difference = "".join(difflib.unified_diff(
+                recorded.splitlines(keepends=True), text.splitlines(keepends=True),
+                fromfile="recorded", tofile="generated", n=2,
+            ))
             problems.append(
-                f"{path.relative_to(ROOT)} is not current: run scripts/reference_docs.py"
+                f"{path.relative_to(ROOT)} is not current: run scripts/reference_docs.py\n"
+                + difference[:6000]
             )
     return problems
 

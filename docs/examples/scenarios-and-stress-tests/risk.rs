@@ -35,13 +35,27 @@ fn main() -> Result<()> {
     let result = risk::shock_scenario(
         portfolio.books(),
         portfolio.market(),
-        portfolio.as_of().unwrap(),
+        portfolio
+            .as_of()
+            .expect("the guide's fixed sample supplies this value"),
         &shocks,
         &options,
     )?;
     for (name, scenario_risk) in [
-        ("Before", result.risk_before.as_ref().unwrap()),
-        ("After", result.risk_after.as_ref().unwrap()),
+        (
+            "Before",
+            result
+                .risk_before
+                .as_ref()
+                .expect("the guide's fixed sample supplies this value"),
+        ),
+        (
+            "After",
+            result
+                .risk_after
+                .as_ref()
+                .expect("the guide's fixed sample supplies this value"),
+        ),
     ] {
         println!("{}: volatility={:.6}", name, scenario_risk.volatility);
         println!(

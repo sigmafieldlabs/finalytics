@@ -10,7 +10,9 @@ fn main() -> Result<()> {
     for method in ["fifo", "lifo", "highest_cost", "lowest_cost"] {
         let sale = format!("t4,main,2026-06-01,sell,AAPL,5,190,0,,,{method},");
         let mut lines = base.lines();
-        let header = lines.next().unwrap();
+        let header = lines
+            .next()
+            .expect("the guide's fixed sample supplies this value");
         let transactions = format!(
             "{}\n{}\n{}\n",
             header,

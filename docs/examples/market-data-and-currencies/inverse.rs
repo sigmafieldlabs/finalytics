@@ -12,6 +12,10 @@ fn main() -> Result<()> {
         finalytics::Currency::USD,
         "2026-06-30".parse()?,
     );
-    println!("{}", rate.value().unwrap());
+    println!(
+        "{}",
+        rate.value()
+            .expect("the guide's fixed sample supplies this value")
+    );
     Ok(())
 }

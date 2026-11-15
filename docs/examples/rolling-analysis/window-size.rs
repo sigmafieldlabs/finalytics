@@ -13,7 +13,10 @@ fn main() -> Result<()> {
             "Window {}: count={} latest_volatility={:.6}",
             window,
             windows.len(),
-            windows.last().unwrap().volatility,
+            windows
+                .last()
+                .expect("the guide's fixed sample supplies this value")
+                .volatility,
         );
     }
     Ok(())

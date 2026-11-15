@@ -15,13 +15,53 @@ fn main() -> Result<()> {
     let stats = risk::relative_statistics(&returns, &benchmark, &options)?;
     println!("Active Return: {:.6}", stats.active_return);
     println!("Tracking Error: {:.6}", stats.tracking_error);
-    println!("Information Ratio: {:.6}", stats.information_ratio.unwrap());
-    println!("Beta: {:.6}", stats.beta.unwrap());
-    println!("Alpha: {:.6}", stats.alpha.unwrap());
-    println!("Correlation: {:.6}", stats.correlation.unwrap());
-    println!("Downside Beta: {:.6}", stats.downside_beta.unwrap());
-    println!("Upside Beta: {:.6}", stats.upside_beta.unwrap());
-    println!("Downside Capture: {:.6}", stats.downside_capture.unwrap());
-    println!("Upside Capture: {:.6}", stats.upside_capture.unwrap());
+    println!(
+        "Information Ratio: {:.6}",
+        stats
+            .information_ratio
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Beta: {:.6}",
+        stats
+            .beta
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Alpha: {:.6}",
+        stats
+            .alpha
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Correlation: {:.6}",
+        stats
+            .correlation
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Downside Beta: {:.6}",
+        stats
+            .downside_beta
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Upside Beta: {:.6}",
+        stats
+            .upside_beta
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Downside Capture: {:.6}",
+        stats
+            .downside_capture
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Upside Capture: {:.6}",
+        stats
+            .upside_capture
+            .expect("the guide's fixed sample supplies this value")
+    );
     Ok(())
 }

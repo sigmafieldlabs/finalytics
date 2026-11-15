@@ -9,8 +9,23 @@ fn main() -> Result<()> {
     let mut options = StatisticsOptions::default();
     options.periods_per_year = 12.0;
     let found = relative_statistics(&returns, &benchmark, &options)?;
-    println!("Upside capture: {:.6}", found.upside_capture.unwrap());
-    println!("Downside capture: {:.6}", found.downside_capture.unwrap());
-    println!("Beta: {:.6}", found.beta.unwrap());
+    println!(
+        "Upside capture: {:.6}",
+        found
+            .upside_capture
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Downside capture: {:.6}",
+        found
+            .downside_capture
+            .expect("the guide's fixed sample supplies this value")
+    );
+    println!(
+        "Beta: {:.6}",
+        found
+            .beta
+            .expect("the guide's fixed sample supplies this value")
+    );
     Ok(())
 }

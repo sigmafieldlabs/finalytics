@@ -13,8 +13,10 @@ fn main() -> Result<()> {
         ("highest_cost", finalytics::LotMethod::HighestCost),
     ] {
         let lots = portfolio.books().holdings().lots_for_sale(
-            &finalytics::AccountId::new("main").unwrap(),
-            &finalytics::InstrumentId::new("AAPL").unwrap(),
+            &finalytics::AccountId::new("main")
+                .expect("the guide's fixed sample supplies this value"),
+            &finalytics::InstrumentId::new("AAPL")
+                .expect("the guide's fixed sample supplies this value"),
             finalytics::Decimal::from(5),
             method,
         )?;

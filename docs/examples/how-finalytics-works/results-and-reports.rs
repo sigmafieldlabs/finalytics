@@ -7,9 +7,18 @@ fn main() -> Result<()> {
     let result = assets.optimise(Method::MinimumVariance).build()?;
     println!(
         "Expected return: {:.6}",
-        result.results.expected_return.unwrap()
+        result
+            .results
+            .expected_return
+            .expect("the guide's fixed sample supplies this value")
     );
-    println!("Volatility: {:.6}", result.results.volatility.unwrap());
+    println!(
+        "Volatility: {:.6}",
+        result
+            .results
+            .volatility
+            .expect("the guide's fixed sample supplies this value")
+    );
     print!("{result}");
     result.show()?;
     Ok(())

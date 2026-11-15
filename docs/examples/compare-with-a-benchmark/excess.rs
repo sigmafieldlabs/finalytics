@@ -16,7 +16,7 @@ fn main() -> Result<()> {
     )?;
     let excess = performance
         .excess_return(Period::SinceInception, None, &benchmark, 5)
-        .unwrap();
+        .expect("the guide's fixed sample supplies this value");
     println!("Portfolio: {:.6}", excess.portfolio);
     println!("Benchmark: {:.6}", excess.benchmark);
     println!("Arithmetic: {:.6}", excess.arithmetic);

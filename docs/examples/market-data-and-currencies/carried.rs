@@ -9,9 +9,15 @@ fn main() -> Result<()> {
         ))
         .prices("date,VOO\n2026-06-30,500\n"),
     )?;
-    let instrument = finalytics::InstrumentId::new("VOO").unwrap();
+    let instrument = finalytics::InstrumentId::new("VOO")
+        .expect("the guide's fixed sample supplies this value");
     let found = portfolio.market().price(&instrument, "2026-07-03".parse()?);
-    println!("Value: {}", found.value().unwrap());
+    println!(
+        "Value: {}",
+        found
+            .value()
+            .expect("the guide's fixed sample supplies this value")
+    );
     if let finalytics::Observation::Carried { from, .. } = found {
         println!("Observed: {from}");
         println!("Carried: true");

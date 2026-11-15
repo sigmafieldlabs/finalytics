@@ -11,6 +11,11 @@ fn main() -> Result<()> {
     let found = relative_statistics(&returns, &benchmark, &options)?;
     println!("Active return: {:.6}", found.active_return);
     println!("Tracking error: {:.6}", found.tracking_error);
-    println!("Information ratio: {:.6}", found.information_ratio.unwrap());
+    println!(
+        "Information ratio: {:.6}",
+        found
+            .information_ratio
+            .expect("the guide's fixed sample supplies this value")
+    );
     Ok(())
 }

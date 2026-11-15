@@ -54,9 +54,9 @@ stage_lint() {
   venv_python || return
   run cargo fmt --all --check
   run cargo clippy --workspace --lib --bins --tests --benches -- -D warnings
-  # Examples print their results and may unwrap values from fixed, valid sample inputs. Every
-  # guide example is executed by the guides stage; library code still denies unwrap_used.
-  run cargo clippy --workspace --examples -- -D warnings -A clippy::print_stdout -A clippy::unwrap_used
+  # Examples print their results. Every guide example is executed by the guides stage; fixed
+  # sample values use expect() with a description rather than an undocumented unwrap().
+  run cargo clippy --workspace --examples -- -D warnings -A clippy::print_stdout
   run .venv/bin/python scripts/check-consistency.py --run-examples
   run cargo run --quiet -p finalytics-codegen -- --check
   run .venv/bin/python scripts/generate-types.py --check

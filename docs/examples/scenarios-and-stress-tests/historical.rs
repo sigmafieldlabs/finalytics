@@ -9,12 +9,20 @@ fn main() -> Result<()> {
     let result = risk::historical_scenario(
         portfolio.books(),
         portfolio.market(),
-        portfolio.as_of().unwrap(),
+        portfolio
+            .as_of()
+            .expect("the guide's fixed sample supplies this value"),
         &window,
         &risk::ScenarioOptions::default(),
     )?;
-    let path = result.path.as_ref().unwrap();
-    let drawdown = path.worst_drawdown.as_ref().unwrap();
+    let path = result
+        .path
+        .as_ref()
+        .expect("the guide's fixed sample supplies this value");
+    let drawdown = path
+        .worst_drawdown
+        .as_ref()
+        .expect("the guide's fixed sample supplies this value");
     println!("Value before: {:.2}", result.value_before);
     println!("Value after: {:.2}", result.value_after);
     println!("Portfolio return: {:.6}", result.portfolio_return);
